@@ -67,8 +67,11 @@ function LandingPage() {
               <Sparkles className="h-3.5 w-3.5 text-pink" />
               Built for SQE1 & SQE2 candidates
             </span>
-            <h1 className="mt-6 text-5xl font-normal leading-[1] text-foreground md:text-7xl lg:text-8xl">
-              Your <span className="italic text-gradient-tentra">personal</span>
+            <h1 className="mt-6 text-5xl font-bold leading-[1.05] text-foreground md:text-7xl lg:text-8xl">
+              Your{" "}
+              <span className="italic text-gradient-tentra inline-block pr-2">
+                personal
+              </span>
               <br />
               SQE coach.
             </h1>
