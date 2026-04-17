@@ -2,23 +2,31 @@ import { Link } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { Button } from "@/components/ui/button";
-import { ArrowRight, CheckCircle2, Leaf, Sun, Heart } from "lucide-react";
+import {
+  ArrowRight,
+  Sparkles,
+  Calendar,
+  Target,
+  Brain,
+  Scale,
+} from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
     meta: [
-      { title: "Bloomly — gentle productivity for busy minds" },
+      { title: "Tentra — your personalised SQE study plan" },
       {
         name: "description",
         content:
-          "Bloomly is a soft, playful productivity space for planning your week, tracking habits, and celebrating small wins.",
+          "Tentra builds a personalised SQE study plan from your exam date and confidence. Built for UK law students.",
       },
-      { property: "og:title", content: "Bloomly — gentle productivity" },
+      { property: "og:title", content: "Tentra — your personalised SQE plan" },
       {
         property: "og:description",
-        content: "Plan, focus, and bloom — without the burnout.",
+        content:
+          "Tell us your exam date. We build the plan. You just study.",
       },
     ],
   }),
@@ -33,11 +41,11 @@ function LandingPage() {
         <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
           <BrandMark />
           <nav className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
+            <a href="#how" className="hover:text-foreground transition-colors">
+              How it works
+            </a>
             <a href="#features" className="hover:text-foreground transition-colors">
               Features
-            </a>
-            <a href="#loved" className="hover:text-foreground transition-colors">
-              Loved by
             </a>
             <Link to="/dashboard" className="hover:text-foreground transition-colors">
               Demo
@@ -47,193 +55,244 @@ function LandingPage() {
             <Button asChild variant="ghost" className="hidden sm:inline-flex rounded-full">
               <Link to="/dashboard">Sign in</Link>
             </Button>
-            <Button asChild className="rounded-full shadow-soft">
+            <Button asChild className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95">
               <Link to="/onboarding">Get started</Link>
             </Button>
           </div>
         </header>
 
-        <section className="mx-auto max-w-6xl px-6 pt-10 pb-24 md:pt-20">
-          <div className="grid items-center gap-12 md:grid-cols-2">
-            <div>
-              <span className="inline-flex items-center gap-2 rounded-full bg-mint px-4 py-1.5 text-xs font-semibold text-mint-foreground shadow-card">
-                <Leaf className="h-3.5 w-3.5" /> New · Habit garden v2
-              </span>
-              <h1 className="mt-6 text-5xl font-bold leading-[1.05] text-foreground md:text-6xl lg:text-7xl">
-                Productivity that feels like a{" "}
-                <span className="italic text-primary">warm hug</span>.
-              </h1>
-              <p className="mt-6 max-w-md text-lg text-muted-foreground">
-                Bloomly is a soft, playful workspace for planning your days, growing tiny
-                habits, and celebrating the wins — big and small.
-              </p>
-              <div className="mt-8 flex flex-wrap items-center gap-3">
-                <Button asChild size="lg" className="rounded-full shadow-pop">
-                  <Link to="/onboarding">
-                    Start blooming <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button
-                  asChild
-                  size="lg"
-                  variant="outline"
-                  className="rounded-full border-2"
-                >
-                  <Link to="/dashboard">Peek the dashboard</Link>
-                </Button>
-              </div>
-              <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" /> No card needed
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" /> Cancel anytime
-                </div>
-              </div>
+        <section className="mx-auto max-w-6xl px-6 pt-12 pb-20 md:pt-24">
+          <div className="mx-auto max-w-3xl text-center">
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5 text-pink" />
+              Built for SQE1 & SQE2 candidates
+            </span>
+            <h1 className="mt-6 text-5xl font-normal leading-[1] text-foreground md:text-7xl lg:text-8xl">
+              Your <span className="italic text-gradient-tentra">personal</span>
+              <br />
+              SQE coach.
+            </h1>
+            <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
+              Tell Tentra your exam date and how confident you feel. We'll build a
+              week-by-week plan tuned to <em>you</em> — and refine it as you go.
+            </p>
+            <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
+              <Button
+                asChild
+                size="lg"
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+              >
+                <Link to="/onboarding">
+                  Build my plan <ArrowRight className="ml-1 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="rounded-full border-border bg-card/40 backdrop-blur"
+              >
+                <Link to="/dashboard">See the dashboard</Link>
+              </Button>
             </div>
+          </div>
 
+          <div className="mt-20">
             <HeroPreview />
           </div>
         </section>
 
-        <section id="features" className="mx-auto max-w-6xl px-6 pb-24">
+        <section id="how" className="mx-auto max-w-6xl px-6 pb-24">
+          <div className="mb-12 text-center">
+            <div className="text-sm font-semibold uppercase tracking-wider text-pink">
+              How it works
+            </div>
+            <h2 className="mt-2 text-4xl font-normal text-foreground md:text-5xl">
+              Three steps to a smarter prep.
+            </h2>
+          </div>
           <div className="grid gap-6 md:grid-cols-3">
-            <FeatureCard
-              tone="bg-peach"
-              icon={<Sun className="h-6 w-6" />}
-              title="Soft daily plans"
-              body="Wake up to a gentle to-do list that adapts to your energy, not the other way around."
+            <StepCard
+              num="01"
+              icon={<Calendar className="h-5 w-5" />}
+              title="Set your date"
+              body="Pick your SQE1 or SQE2 sitting and tell us how many hours a week you can give."
             />
-            <FeatureCard
-              tone="bg-mint"
-              icon={<Leaf className="h-6 w-6" />}
-              title="Habit garden"
-              body="Grow tiny rituals into a flourishing routine. Watch your garden bloom as you do."
+            <StepCard
+              num="02"
+              icon={<Brain className="h-5 w-5" />}
+              title="Rate your confidence"
+              body="Score each module 1–5. We'll prioritise your weak spots without burning you out."
             />
-            <FeatureCard
-              tone="bg-lavender"
-              icon={<Heart className="h-6 w-6" />}
-              title="Kind reminders"
-              body="No nags. No streaks lost. Just warm nudges that meet you where you are."
+            <StepCard
+              num="03"
+              icon={<Target className="h-5 w-5" />}
+              title="Follow the plan"
+              body="A clear today-list, a weekly theme, and a mastery heatmap that updates as you go."
             />
           </div>
         </section>
 
-        <section id="loved" className="mx-auto max-w-6xl px-6 pb-28">
-          <div className="rounded-4xl bg-card p-10 shadow-card md:p-16">
-            <p className="font-display text-3xl leading-snug text-foreground md:text-4xl">
-              "Bloomly is the first productivity app that didn't make me feel guilty.
-              It feels like journaling with a friend who happens to be{" "}
-              <span className="italic text-primary">very organized</span>."
-            </p>
-            <div className="mt-6 flex items-center gap-3">
-              <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-sunshine font-bold text-butter-foreground">
-                M
-              </div>
+        <section id="features" className="mx-auto max-w-6xl px-6 pb-28">
+          <div className="rounded-[2rem] border border-border bg-card/60 p-10 backdrop-blur md:p-16">
+            <div className="grid items-center gap-10 md:grid-cols-2">
               <div>
-                <div className="font-semibold text-foreground">Maya R.</div>
-                <div className="text-sm text-muted-foreground">writer & part-time chaos</div>
+                <Scale className="h-8 w-8 text-pink" />
+                <h2 className="mt-4 text-3xl font-normal text-foreground md:text-5xl">
+                  Built around the
+                  <span className="italic text-gradient-tentra"> SQE syllabus</span>.
+                </h2>
+                <p className="mt-4 text-muted-foreground">
+                  Tentra knows the FLK1 & FLK2 papers, the SQE2 skills assessments,
+                  and weighting of each topic. Your plan reflects what actually
+                  matters on exam day.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {[
+                  "Contract",
+                  "Tort",
+                  "Land Law",
+                  "Trusts",
+                  "Criminal Practice",
+                  "Dispute Resolution",
+                  "Business Law",
+                  "Ethics",
+                ].map((m) => (
+                  <div
+                    key={m}
+                    className="rounded-2xl border border-border bg-background/40 p-4 text-sm font-medium text-foreground"
+                  >
+                    {m}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </section>
 
         <footer className="mx-auto max-w-6xl px-6 pb-10 text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Bloomly · made with care
+          © {new Date().getFullYear()} Tentra · for the next generation of solicitors
         </footer>
       </div>
     </div>
   );
 }
 
-function FeatureCard({
-  tone,
+function StepCard({
+  num,
   icon,
   title,
   body,
 }: {
-  tone: string;
+  num: string;
   icon: React.ReactNode;
   title: string;
   body: string;
 }) {
   return (
-    <div className="group rounded-3xl bg-card p-7 shadow-card transition-transform hover:-translate-y-1">
-      <div
-        className={`mb-5 grid h-12 w-12 place-items-center rounded-2xl ${tone} text-foreground transition-transform group-hover:rotate-6`}
-      >
-        {icon}
+    <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-glow">
+      <div className="absolute -right-6 -top-6 font-display text-7xl text-pink/15">
+        {num}
       </div>
-      <h3 className="text-xl font-bold text-foreground">{title}</h3>
-      <p className="mt-2 text-muted-foreground">{body}</p>
+      <div className="relative">
+        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+          {icon}
+        </div>
+        <h3 className="mt-5 text-xl font-semibold text-foreground">{title}</h3>
+        <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+      </div>
     </div>
   );
 }
 
 function HeroPreview() {
+  const days = 84;
+  const modules = [
+    { name: "Contract", c: 4 },
+    { name: "Tort", c: 3 },
+    { name: "Criminal", c: 2 },
+    { name: "Land Law", c: 2 },
+    { name: "Trusts", c: 1 },
+    { name: "Business", c: 3 },
+    { name: "Dispute", c: 4 },
+    { name: "Ethics", c: 5 },
+  ];
   return (
-    <div className="relative">
-      <div className="absolute -top-6 -left-6 hidden h-24 w-24 rounded-full bg-butter shadow-soft md:block animate-float" />
-      <div
-        className="absolute -bottom-8 -right-4 hidden h-20 w-20 rounded-3xl bg-blush shadow-soft md:block animate-float"
-        style={{ animationDelay: "-2s" }}
-      />
-
-      <div className="relative rounded-4xl bg-card p-6 shadow-pop">
-        <div className="flex items-center justify-between">
+    <div className="relative mx-auto max-w-4xl">
+      <div className="absolute inset-0 -z-10 rounded-[2.5rem] bg-gradient-tentra opacity-30 blur-3xl" />
+      <div className="rounded-[2rem] border border-border bg-card/80 p-6 shadow-glow backdrop-blur md:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Tuesday
+            <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              SQE1 · January sitting
             </div>
-            <div className="font-display text-2xl font-bold">Today's bloom</div>
+            <div className="mt-1 text-2xl font-semibold text-foreground">
+              Hi Amelia 👋
+            </div>
           </div>
-          <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-warm text-primary-foreground font-bold">
-            72%
+          <div className="flex items-center gap-3 rounded-2xl bg-background/60 px-4 py-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Days to exam
+              </div>
+              <div className="font-display text-3xl text-gradient-tentra">
+                {days}
+              </div>
+            </div>
+            <div className="h-12 w-px bg-border" />
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                This week
+              </div>
+              <div className="text-lg font-semibold text-foreground">12 hrs</div>
+            </div>
           </div>
         </div>
 
-        <div className="mt-5 space-y-2.5">
-          {[
-            { tone: "bg-mint", label: "Morning pages", done: true },
-            { tone: "bg-peach", label: "Walk to the bakery", done: true },
-            { tone: "bg-lavender", label: "Draft launch email", done: false },
-            { tone: "bg-butter", label: "Water the monstera", done: false },
-          ].map((t) => (
-            <div
-              key={t.label}
-              className="flex items-center gap-3 rounded-2xl bg-muted/60 p-3"
-            >
-              <span
-                className={`grid h-8 w-8 place-items-center rounded-xl ${t.tone}`}
-              >
-                {t.done && <CheckCircle2 className="h-4 w-4 text-foreground" />}
-              </span>
-              <span
-                className={`flex-1 text-sm font-medium ${
-                  t.done ? "text-muted-foreground line-through" : "text-foreground"
-                }`}
-              >
-                {t.label}
-              </span>
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-border bg-background/40 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wider text-pink">
+              Today
             </div>
-          ))}
-        </div>
-
-        <div className="mt-5 rounded-2xl bg-gradient-cool p-4">
-          <div className="text-xs font-semibold uppercase tracking-wider text-mint-foreground/80">
-            Habit garden
+            <ul className="mt-3 space-y-2">
+              {[
+                { t: "Read: Negligence — duty of care", m: "45m" },
+                { t: "Practice MCQs: Misrepresentation", m: "30m" },
+                { t: "Flashcards: Trust formalities", m: "20m" },
+              ].map((x, i) => (
+                <li
+                  key={i}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-card/60 p-3 text-sm"
+                >
+                  <span className="flex items-center gap-3 text-foreground">
+                    <span className="h-2 w-2 rounded-full bg-gradient-pink-blue" />
+                    {x.t}
+                  </span>
+                  <span className="text-xs text-muted-foreground">{x.m}</span>
+                </li>
+              ))}
+            </ul>
           </div>
-          <div className="mt-2 flex gap-1.5">
-            {[...Array(14)].map((_, i) => (
-              <div
-                key={i}
-                className="h-8 flex-1 rounded-md"
-                style={{
-                  background: `oklch(${0.7 + (i % 3) * 0.08} 0.12 ${140 + i * 6})`,
-                  opacity: i < 11 ? 1 : 0.35,
-                }}
-              />
-            ))}
+          <div className="rounded-2xl border border-border bg-background/40 p-5">
+            <div className="text-xs font-semibold uppercase tracking-wider text-cyan">
+              Topic mastery
+            </div>
+            <div className="mt-3 grid grid-cols-4 gap-2">
+              {modules.map((m) => (
+                <div key={m.name} className="space-y-1.5">
+                  <div
+                    className="h-14 rounded-lg"
+                    style={{
+                      background: `linear-gradient(180deg, oklch(0.72 0.24 350 / ${m.c / 5}), oklch(0.62 0.22 250 / ${m.c / 5}))`,
+                    }}
+                  />
+                  <div className="truncate text-[10px] font-medium text-muted-foreground">
+                    {m.name}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
