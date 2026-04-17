@@ -1,14 +1,14 @@
 export function BackgroundBlobs() {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute -top-24 -left-24 h-96 w-96 bg-peach opacity-70 blur-3xl animate-blob" />
+      <div className="absolute -top-32 -left-32 h-[28rem] w-[28rem] bg-pink opacity-40 blur-3xl animate-blob" />
       <div
-        className="absolute top-1/3 -right-24 h-[28rem] w-[28rem] bg-lavender opacity-60 blur-3xl animate-blob"
-        style={{ animationDelay: "-3s" }}
+        className="absolute top-1/4 -right-32 h-[32rem] w-[32rem] bg-blue opacity-40 blur-3xl animate-blob"
+        style={{ animationDelay: "-4s" }}
       />
       <div
-        className="absolute -bottom-32 left-1/4 h-96 w-96 bg-mint opacity-60 blur-3xl animate-blob"
-        style={{ animationDelay: "-6s" }}
+        className="absolute -bottom-40 left-1/3 h-[28rem] w-[28rem] bg-violet opacity-35 blur-3xl animate-blob"
+        style={{ animationDelay: "-8s" }}
       />
     </div>
   );
