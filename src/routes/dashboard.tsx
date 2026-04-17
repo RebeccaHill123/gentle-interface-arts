@@ -432,6 +432,28 @@ function Sidebar() {
   );
 }
 
+function Panel({
+  title,
+  subtitle,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-3xl border border-border bg-card p-6 shadow-card">
+      <div className="mb-4">
+        <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+        {subtitle && (
+          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+        )}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 function TopBar({ name, onReset }: { name: string; onReset: () => void }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-border bg-card/60 p-3 pl-5 backdrop-blur">
