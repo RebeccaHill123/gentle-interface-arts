@@ -2,6 +2,26 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
 import {
   Home,
   CheckCircle2,
@@ -14,10 +34,14 @@ import {
   BookOpen,
   Target,
   Circle,
+  Plus,
 } from "lucide-react";
 import {
   loadPlan,
   toggleTaskCompletion,
+  addStudySession,
+  computeStreak,
+  todayKey,
   type StoredPlan,
 } from "@/lib/plan-store";
 
@@ -44,15 +68,20 @@ function DashboardPage() {
     return <NoPlanState />;
   }
 
-  const { input, plan, daysUntilExam, completedTaskIds } = stored;
+
+
+  const { input, plan, daysUntilExam, completedTaskIds, sessions } = stored;
   const completed = completedTaskIds.length;
   const totalToday = plan.todayTasks.length;
   const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
+  const streak = computeStreak(sessions);
 
   const handleToggle = (i: number) => {
     toggleTaskCompletion(i);
     setTick((t) => t + 1);
   };
+
+  const refresh = () => setTick((t) => t + 1);
 
   return (
     <div className="min-h-screen bg-background">
@@ -60,7 +89,12 @@ function DashboardPage() {
         <Sidebar />
 
         <div className="flex-1 space-y-6">
-          <TopBar name={input.name} onReset={() => navigate({ to: "/onboarding" })} />
+          <TopBar
+            name={input.name}
+            onReset={() => navigate({ to: "/onboarding" })}
+            moduleNames={input.modules.map((m) => m.name)}
+            onSessionLogged={refresh}
+          />
 
           <HeroBanner
             name={input.name}
@@ -70,6 +104,7 @@ function DashboardPage() {
             completed={completed}
             total={totalToday}
             overview={plan.overview}
+            streak={streak}
           />
 
           <div className="grid gap-6 lg:grid-cols-3">
@@ -205,6 +240,7 @@ function HeroBanner({
   completed,
   total,
   overview,
+  streak,
 }: {
   name: string;
   examType: string;
@@ -213,6 +249,7 @@ function HeroBanner({
   completed: number;
   total: number;
   overview: string;
+  streak: { current: number; longest: number; studiedToday: boolean; totalMinutesToday: number };
 }) {
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-8 md:p-10">
@@ -227,8 +264,9 @@ function HeroBanner({
           </h1>
           <p className="mt-3 text-sm text-muted-foreground md:text-base">{overview}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <CountdownRing days={daysUntilExam} />
+          <StreakCard streak={streak} />
           <div className="rounded-2xl border border-border bg-background/60 p-5 backdrop-blur">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Today
@@ -251,6 +289,53 @@ function HeroBanner({
         </div>
       </div>
     </section>
+  );
+}
+
+function StreakCard({
+  streak,
+}: {
+  streak: { current: number; longest: number; studiedToday: boolean; totalMinutesToday: number };
+}) {
+  const active = streak.studiedToday;
+  return (
+    <div
+      className={`relative overflow-hidden rounded-2xl border p-5 backdrop-blur ${
+        active
+          ? "border-pink/40 bg-gradient-pink-blue/10"
+          : "border-border bg-background/60"
+      }`}
+    >
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Streak
+      </div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <div className="flex items-center gap-1.5">
+          <Flame
+            className={`h-7 w-7 ${active ? "text-pink" : "text-muted-foreground"}`}
+            fill={active ? "currentColor" : "none"}
+          />
+          <span className="font-display text-4xl text-foreground">
+            {streak.current}
+          </span>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {streak.current === 1 ? "day" : "days"}
+        </span>
+      </div>
+      <div className="mt-2 text-[11px] text-muted-foreground">
+        {active
+          ? `${streak.totalMinutesToday}m logged today`
+          : streak.current > 0
+            ? "Log today to keep it alive"
+            : "Log a session to start"}
+      </div>
+      {streak.longest > streak.current && (
+        <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+          Best: {streak.longest}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -454,7 +539,17 @@ function Panel({
   );
 }
 
-function TopBar({ name, onReset }: { name: string; onReset: () => void }) {
+function TopBar({
+  name,
+  onReset,
+  moduleNames,
+  onSessionLogged,
+}: {
+  name: string;
+  onReset: () => void;
+  moduleNames: string[];
+  onSessionLogged: () => void;
+}) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-border bg-card/60 p-3 pl-5 backdrop-blur">
       <div className="md:hidden">
@@ -466,6 +561,10 @@ function TopBar({ name, onReset }: { name: string; onReset: () => void }) {
         </Link>
       </div>
       <div className="flex items-center gap-2">
+        <RecordSessionDialog
+          moduleNames={moduleNames}
+          onSessionLogged={onSessionLogged}
+        />
         <Button
           size="sm"
           variant="ghost"
@@ -482,5 +581,115 @@ function TopBar({ name, onReset }: { name: string; onReset: () => void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function RecordSessionDialog({
+  moduleNames,
+  onSessionLogged,
+}: {
+  moduleNames: string[];
+  onSessionLogged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [minutes, setMinutes] = useState("30");
+  const [moduleName, setModuleName] = useState<string>(moduleNames[0] ?? "");
+  const [note, setNote] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const m = parseInt(minutes, 10);
+    if (!m || m <= 0) {
+      toast.error("Add a number of minutes");
+      return;
+    }
+    addStudySession({
+      date: todayKey(),
+      minutes: m,
+      module: moduleName || undefined,
+      note: note.trim() || undefined,
+    });
+    toast.success(`Logged ${m} minutes${moduleName ? ` of ${moduleName}` : ""}`);
+    setOpen(false);
+    setMinutes("30");
+    setNote("");
+    onSessionLogged();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+        >
+          <Plus className="h-4 w-4" /> Record session
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Log a study session</DialogTitle>
+          <DialogDescription>
+            Track your time to keep your streak going.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="minutes">Minutes studied</Label>
+            <Input
+              id="minutes"
+              type="number"
+              min={1}
+              max={1440}
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+              autoFocus
+            />
+          </div>
+          {moduleNames.length > 0 && (
+            <div className="space-y-2">
+              <Label>Module</Label>
+              <Select value={moduleName} onValueChange={setModuleName}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick a module" />
+                </SelectTrigger>
+                <SelectContent>
+                  {moduleNames.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="note">Notes (optional)</Label>
+            <Textarea
+              id="note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="What did you cover?"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+            >
+              Save session
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
