@@ -78,13 +78,31 @@ function DashboardPage() {
     setTick((t) => t + 1);
   };
 
+  const { input, plan, daysUntilExam, completedTaskIds, sessions } = stored;
+  const completed = completedTaskIds.length;
+  const totalToday = plan.todayTasks.length;
+  const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
+  const streak = computeStreak(sessions);
+
+  const handleToggle = (i: number) => {
+    toggleTaskCompletion(i);
+    setTick((t) => t + 1);
+  };
+
+  const refresh = () => setTick((t) => t + 1);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-7xl gap-6 p-4 md:p-6">
         <Sidebar />
 
         <div className="flex-1 space-y-6">
-          <TopBar name={input.name} onReset={() => navigate({ to: "/onboarding" })} />
+          <TopBar
+            name={input.name}
+            onReset={() => navigate({ to: "/onboarding" })}
+            moduleNames={input.modules.map((m) => m.name)}
+            onSessionLogged={refresh}
+          />
 
           <HeroBanner
             name={input.name}
@@ -94,6 +112,7 @@ function DashboardPage() {
             completed={completed}
             total={totalToday}
             overview={plan.overview}
+            streak={streak}
           />
 
           <div className="grid gap-6 lg:grid-cols-3">
