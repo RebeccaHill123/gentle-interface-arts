@@ -35,15 +35,27 @@ import {
   Target,
   Circle,
   Plus,
+  Loader2,
+  Check,
+  X,
 } from "lucide-react";
 import {
   loadPlan,
   toggleTaskCompletion,
   addStudySession,
+  adjustModuleConfidence,
   computeStreak,
   todayKey,
   type StoredPlan,
 } from "@/lib/plan-store";
+import { supabase } from "@/integrations/supabase/client";
+
+interface QuizQuestion {
+  prompt: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
 
 export const Route = createFileRoute("/dashboard")({
   component: DashboardPage,
