@@ -790,3 +790,241 @@ function RecordSessionDialog({
     </Dialog>
   );
 }
+
+function QuizDialog({
+  task,
+  examType,
+  confidence,
+  onClose,
+  onComplete,
+}: {
+  task: { index: number; title: string; module: string; minutes: number };
+  examType: "SQE1" | "SQE2";
+  confidence: number;
+  onClose: () => void;
+  onComplete: (accuracy: number, minutesSpent: number) => void;
+}) {
+  const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [current, setCurrent] = useState(0);
+  const [answers, setAnswers] = useState<number[]>([]);
+  const [revealed, setRevealed] = useState(false);
+  const [startedAt] = useState(() => Date.now());
+  const [finished, setFinished] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    const run = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const { data, error: fnErr } = await supabase.functions.invoke(
+          "generate-quiz",
+          {
+            body: {
+              module: task.module,
+              topic: task.title,
+              examType,
+              confidence,
+            },
+          },
+        );
+        if (cancelled) return;
+        if (fnErr) throw fnErr;
+        if (data?.error) throw new Error(data.error);
+        const qs: QuizQuestion[] = (data?.questions ?? []).filter(
+          (q: QuizQuestion) =>
+            q && Array.isArray(q.options) && q.options.length === 4,
+        );
+        if (qs.length === 0) throw new Error("No questions returned");
+        setQuestions(qs);
+      } catch (e) {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : "Could not load quiz");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [task.module, task.title, examType, confidence]);
+
+  const total = questions?.length ?? 0;
+  const correctCount = useMemo(() => {
+    if (!questions) return 0;
+    return answers.reduce(
+      (acc, a, i) => (a === questions[i]?.correctIndex ? acc + 1 : acc),
+      0,
+    );
+  }, [answers, questions]);
+  const accuracy = total > 0 ? correctCount / total : 0;
+
+  const handleSelect = (optionIdx: number) => {
+    if (revealed) return;
+    const next = [...answers];
+    next[current] = optionIdx;
+    setAnswers(next);
+    setRevealed(true);
+  };
+
+  const handleNext = () => {
+    if (!questions) return;
+    if (current < questions.length - 1) {
+      setCurrent(current + 1);
+      setRevealed(false);
+    } else {
+      setFinished(true);
+    }
+  };
+
+  const handleFinish = () => {
+    const minutesSpent = Math.max(
+      1,
+      Math.round((Date.now() - startedAt) / 60000),
+    );
+    onComplete(accuracy, minutesSpent);
+  };
+
+  const q = questions?.[current];
+  const selected = answers[current];
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Mini-assessment · {task.module}</DialogTitle>
+          <DialogDescription>
+            10 quick questions on{" "}
+            <span className="text-foreground">{task.title}</span>. Your score
+            adjusts your topic mastery.
+          </DialogDescription>
+        </DialogHeader>
+
+        {loading && (
+          <div className="flex flex-col items-center justify-center gap-3 py-10 text-muted-foreground">
+            <Loader2 className="h-6 w-6 animate-spin text-pink" />
+            <p className="text-sm">Generating your questions…</p>
+          </div>
+        )}
+
+        {error && !loading && (
+          <div className="space-y-3 py-4 text-center">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button variant="ghost" onClick={onClose}>
+              Close
+            </Button>
+          </div>
+        )}
+
+        {!loading && !error && questions && !finished && q && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                Question {current + 1} of {questions.length}
+              </span>
+              <span>
+                {correctCount} correct so far
+              </span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-gradient-pink-blue transition-all"
+                style={{
+                  width: `${((current + (revealed ? 1 : 0)) / questions.length) * 100}%`,
+                }}
+              />
+            </div>
+            <p className="text-sm font-medium text-foreground">{q.prompt}</p>
+            <div className="space-y-2">
+              {q.options.map((opt, i) => {
+                const isCorrect = i === q.correctIndex;
+                const isPicked = selected === i;
+                let cls =
+                  "border-border bg-background/40 hover:border-pink/40 hover:bg-card";
+                if (revealed) {
+                  if (isCorrect)
+                    cls = "border-green-500/60 bg-green-500/10 text-foreground";
+                  else if (isPicked)
+                    cls = "border-destructive/60 bg-destructive/10 text-foreground";
+                  else cls = "border-border bg-background/30 text-muted-foreground";
+                }
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => handleSelect(i)}
+                    disabled={revealed}
+                    className={`flex w-full items-center gap-3 rounded-xl border p-3 text-left text-sm transition-all ${cls}`}
+                  >
+                    <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md border border-border text-[11px] font-semibold">
+                      {String.fromCharCode(65 + i)}
+                    </span>
+                    <span className="flex-1">{opt}</span>
+                    {revealed && isCorrect && (
+                      <Check className="h-4 w-4 text-green-500" />
+                    )}
+                    {revealed && isPicked && !isCorrect && (
+                      <X className="h-4 w-4 text-destructive" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            {revealed && (
+              <div className="rounded-xl border border-border bg-background/40 p-3 text-xs text-muted-foreground">
+                <span className="font-semibold text-foreground">Why: </span>
+                {q.explanation}
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="ghost" onClick={onClose}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleNext}
+                disabled={!revealed}
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+              >
+                {current < questions.length - 1 ? "Next" : "See results"}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {!loading && !error && finished && questions && (
+          <div className="space-y-4 py-2 text-center">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+              <CheckCircle2 className="h-7 w-7" />
+            </div>
+            <div>
+              <div className="font-display text-4xl text-gradient-tentra">
+                {Math.round(accuracy * 100)}%
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {correctCount} / {questions.length} correct
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {accuracy >= 0.8
+                ? "Strong work — your mastery for this module will rise."
+                : accuracy >= 0.5
+                  ? "Solid effort. We'll nudge mastery up slightly."
+                  : "Tricky one — we'll lower mastery so the plan focuses here."}
+            </p>
+            <DialogFooter>
+              <Button
+                onClick={handleFinish}
+                className="w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+              >
+                Mark task complete
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
