@@ -102,3 +102,67 @@ export function toggleTaskCompletion(index: number) {
   stored.completedTaskIds = Array.from(set);
   savePlan(stored);
 }
+
+export function addStudySession(session: Omit<StudySession, "loggedAt">) {
+  const stored = loadPlan();
+  if (!stored) return;
+  const sessions = stored.sessions ?? [];
+  sessions.push({ ...session, loggedAt: new Date().toISOString() });
+  stored.sessions = sessions;
+  savePlan(stored);
+}
+
+function toDateKey(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function todayKey(): string {
+  return toDateKey(new Date());
+}
+
+export function computeStreak(sessions: StudySession[] | undefined): {
+  current: number;
+  longest: number;
+  studiedToday: boolean;
+  totalMinutesToday: number;
+} {
+  if (!sessions || sessions.length === 0) {
+    return { current: 0, longest: 0, studiedToday: false, totalMinutesToday: 0 };
+  }
+  const days = new Set(sessions.map((s) => s.date));
+  const today = new Date();
+  const tKey = toDateKey(today);
+  const studiedToday = days.has(tKey);
+  const totalMinutesToday = sessions
+    .filter((s) => s.date === tKey)
+    .reduce((acc, s) => acc + s.minutes, 0);
+
+  let current = 0;
+  const cursor = new Date(today);
+  if (!studiedToday) cursor.setDate(cursor.getDate() - 1);
+  while (days.has(toDateKey(cursor))) {
+    current++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+
+  const sorted = Array.from(days).sort();
+  let longest = 0;
+  let run = 0;
+  let prev: Date | null = null;
+  for (const key of sorted) {
+    const d = new Date(key);
+    if (prev) {
+      const diff = Math.round((d.getTime() - prev.getTime()) / 86400000);
+      run = diff === 1 ? run + 1 : 1;
+    } else {
+      run = 1;
+    }
+    longest = Math.max(longest, run);
+    prev = d;
+  }
+
+  return { current, longest, studiedToday, totalMinutesToday };
+}
