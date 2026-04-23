@@ -86,8 +86,37 @@ function DashboardPage() {
   const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
   const streak = computeStreak(sessions);
 
+  const [quizTask, setQuizTask] = useState<{
+    index: number;
+    title: string;
+    module: string;
+    minutes: number;
+  } | null>(null);
+
   const handleToggle = (i: number) => {
-    toggleTaskCompletion(i);
+    const done = completedTaskIds.includes(String(i));
+    if (done) {
+      // Un-complete without quiz
+      toggleTaskCompletion(i);
+      setTick((t) => t + 1);
+      return;
+    }
+    // Open quiz before marking complete
+    const task = plan.todayTasks[i];
+    setQuizTask({ index: i, ...task });
+  };
+
+  const handleQuizComplete = (accuracy: number, minutesSpent: number) => {
+    if (!quizTask) return;
+    toggleTaskCompletion(quizTask.index);
+    adjustModuleConfidence(quizTask.module, accuracy);
+    addStudySession({
+      date: todayKey(),
+      minutes: minutesSpent,
+      module: quizTask.module,
+      note: `Mini-assessment: ${Math.round(accuracy * 100)}% (${quizTask.title})`,
+    });
+    setQuizTask(null);
     setTick((t) => t + 1);
   };
 
