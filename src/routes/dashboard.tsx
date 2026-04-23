@@ -71,6 +71,12 @@ function DashboardPage() {
   const navigate = useNavigate();
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [tick, setTick] = useState(0);
+  const [quizTask, setQuizTask] = useState<{
+    index: number;
+    title: string;
+    module: string;
+    minutes: number;
+  } | null>(null);
 
   useEffect(() => {
     setStored(loadPlan());
@@ -85,13 +91,6 @@ function DashboardPage() {
   const totalToday = plan.todayTasks.length;
   const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
   const streak = computeStreak(sessions);
-
-  const [quizTask, setQuizTask] = useState<{
-    index: number;
-    title: string;
-    module: string;
-    minutes: number;
-  } | null>(null);
 
   const handleToggle = (i: number) => {
     const done = completedTaskIds.includes(String(i));
