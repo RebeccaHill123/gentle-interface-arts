@@ -68,15 +68,7 @@ function DashboardPage() {
     return <NoPlanState />;
   }
 
-  const { input, plan, daysUntilExam, completedTaskIds } = stored;
-  const completed = completedTaskIds.length;
-  const totalToday = plan.todayTasks.length;
-  const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
 
-  const handleToggle = (i: number) => {
-    toggleTaskCompletion(i);
-    setTick((t) => t + 1);
-  };
 
   const { input, plan, daysUntilExam, completedTaskIds, sessions } = stored;
   const completed = completedTaskIds.length;
