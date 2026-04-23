@@ -27,12 +27,21 @@ export interface StudyPlan {
   }[];
 }
 
+export interface StudySession {
+  date: string; // YYYY-MM-DD
+  minutes: number;
+  module?: string;
+  note?: string;
+  loggedAt: string; // ISO
+}
+
 export interface StoredPlan {
   input: OnboardingInput;
   plan: StudyPlan;
   daysUntilExam: number;
   generatedAt: string;
   completedTaskIds: string[];
+  sessions?: StudySession[];
 }
 
 const KEY = "tentra.plan.v1";
