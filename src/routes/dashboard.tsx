@@ -266,6 +266,18 @@ function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {quizTask && (
+        <QuizDialog
+          task={quizTask}
+          examType={input.examType}
+          confidence={
+            input.modules.find((m) => m.name === quizTask.module)?.confidence ?? 3
+          }
+          onClose={() => setQuizTask(null)}
+          onComplete={handleQuizComplete}
+        />
+      )}
     </div>
   );
 }
