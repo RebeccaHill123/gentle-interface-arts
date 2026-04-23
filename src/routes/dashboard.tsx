@@ -539,7 +539,17 @@ function Panel({
   );
 }
 
-function TopBar({ name, onReset }: { name: string; onReset: () => void }) {
+function TopBar({
+  name,
+  onReset,
+  moduleNames,
+  onSessionLogged,
+}: {
+  name: string;
+  onReset: () => void;
+  moduleNames: string[];
+  onSessionLogged: () => void;
+}) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-border bg-card/60 p-3 pl-5 backdrop-blur">
       <div className="md:hidden">
@@ -551,6 +561,10 @@ function TopBar({ name, onReset }: { name: string; onReset: () => void }) {
         </Link>
       </div>
       <div className="flex items-center gap-2">
+        <RecordSessionDialog
+          moduleNames={moduleNames}
+          onSessionLogged={onSessionLogged}
+        />
         <Button
           size="sm"
           variant="ghost"
@@ -567,5 +581,115 @@ function TopBar({ name, onReset }: { name: string; onReset: () => void }) {
         </div>
       </div>
     </div>
+  );
+}
+
+function RecordSessionDialog({
+  moduleNames,
+  onSessionLogged,
+}: {
+  moduleNames: string[];
+  onSessionLogged: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [minutes, setMinutes] = useState("30");
+  const [moduleName, setModuleName] = useState<string>(moduleNames[0] ?? "");
+  const [note, setNote] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const m = parseInt(minutes, 10);
+    if (!m || m <= 0) {
+      toast.error("Add a number of minutes");
+      return;
+    }
+    addStudySession({
+      date: todayKey(),
+      minutes: m,
+      module: moduleName || undefined,
+      note: note.trim() || undefined,
+    });
+    toast.success(`Logged ${m} minutes${moduleName ? ` of ${moduleName}` : ""}`);
+    setOpen(false);
+    setMinutes("30");
+    setNote("");
+    onSessionLogged();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          size="sm"
+          className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+        >
+          <Plus className="h-4 w-4" /> Record session
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Log a study session</DialogTitle>
+          <DialogDescription>
+            Track your time to keep your streak going.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="minutes">Minutes studied</Label>
+            <Input
+              id="minutes"
+              type="number"
+              min={1}
+              max={1440}
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+              autoFocus
+            />
+          </div>
+          {moduleNames.length > 0 && (
+            <div className="space-y-2">
+              <Label>Module</Label>
+              <Select value={moduleName} onValueChange={setModuleName}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick a module" />
+                </SelectTrigger>
+                <SelectContent>
+                  {moduleNames.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {m}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label htmlFor="note">Notes (optional)</Label>
+            <Textarea
+              id="note"
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="What did you cover?"
+              rows={3}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+            >
+              Save session
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
