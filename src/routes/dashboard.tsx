@@ -240,6 +240,7 @@ function HeroBanner({
   completed,
   total,
   overview,
+  streak,
 }: {
   name: string;
   examType: string;
@@ -248,6 +249,7 @@ function HeroBanner({
   completed: number;
   total: number;
   overview: string;
+  streak: { current: number; longest: number; studiedToday: boolean; totalMinutesToday: number };
 }) {
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-8 md:p-10">
@@ -262,8 +264,9 @@ function HeroBanner({
           </h1>
           <p className="mt-3 text-sm text-muted-foreground md:text-base">{overview}</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           <CountdownRing days={daysUntilExam} />
+          <StreakCard streak={streak} />
           <div className="rounded-2xl border border-border bg-background/60 p-5 backdrop-blur">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
               Today
@@ -286,6 +289,53 @@ function HeroBanner({
         </div>
       </div>
     </section>
+  );
+}
+
+function StreakCard({
+  streak,
+}: {
+  streak: { current: number; longest: number; studiedToday: boolean; totalMinutesToday: number };
+}) {
+  const active = streak.studiedToday;
+  return (
+    <div
+      className={`relative overflow-hidden rounded-2xl border p-5 backdrop-blur ${
+        active
+          ? "border-pink/40 bg-gradient-pink-blue/10"
+          : "border-border bg-background/60"
+      }`}
+    >
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Streak
+      </div>
+      <div className="mt-1 flex items-baseline gap-2">
+        <div className="flex items-center gap-1.5">
+          <Flame
+            className={`h-7 w-7 ${active ? "text-pink" : "text-muted-foreground"}`}
+            fill={active ? "currentColor" : "none"}
+          />
+          <span className="font-display text-4xl text-foreground">
+            {streak.current}
+          </span>
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {streak.current === 1 ? "day" : "days"}
+        </span>
+      </div>
+      <div className="mt-2 text-[11px] text-muted-foreground">
+        {active
+          ? `${streak.totalMinutesToday}m logged today`
+          : streak.current > 0
+            ? "Log today to keep it alive"
+            : "Log a session to start"}
+      </div>
+      {streak.longest > streak.current && (
+        <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+          Best: {streak.longest}
+        </div>
+      )}
+    </div>
   );
 }
 
