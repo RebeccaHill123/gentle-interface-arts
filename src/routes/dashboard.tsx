@@ -389,6 +389,8 @@ function CountdownRing({ days }: { days: number }) {
 }
 
 function MasteryHeatmap({ stored }: { stored: StoredPlan }) {
+  const [expanded, setExpanded] = useState(false);
+
   // Build a heatmap: each module gets a row of 14 cells representing weeks ahead.
   // Cells get warmer as confidence target rises and as the week approaches the exam.
   const rows = useMemo(() => {
@@ -408,17 +410,50 @@ function MasteryHeatmap({ stored }: { stored: StoredPlan }) {
     });
   }, [stored]);
 
+  const visibleRows = expanded ? rows : rows.slice(0, 5);
+  const hiddenCount = rows.length - 5;
+
+  // Legend swatches showing the confidence ramp
+  const legendStops = [0.15, 0.35, 0.55, 0.75, 1];
+
   return (
-    <div className="space-y-2">
-      <div className="grid grid-cols-[140px_1fr_60px] items-center gap-3 px-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="space-y-3">
+      {/* Legend */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/60 bg-background/40 px-3 py-2">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Confidence:</span>
+          <span>Low</span>
+          <div className="flex gap-0.5">
+            {legendStops.map((v) => (
+              <div
+                key={v}
+                className="h-4 w-5 rounded-sm"
+                style={{
+                  background: `linear-gradient(135deg, oklch(0.72 0.24 350 / ${v}), oklch(0.62 0.22 250 / ${v}))`,
+                  border: "1px solid oklch(1 0 0 / 0.05)",
+                }}
+              />
+            ))}
+          <span className="ml-1">High</span>
+          </div>
+        </div>
+        <div className="text-xs text-muted-foreground">
+          Each cell = 1 week (next 14 weeks)
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[140px_1fr_70px] items-center gap-3 px-1 text-sm font-semibold text-foreground">
         <div>Module</div>
-        <div>14 weeks →</div>
+        <div className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          14 weeks →
+        </div>
         <div className="text-right">Target</div>
       </div>
-      {rows.map((r) => (
+
+      {visibleRows.map((r) => (
         <div
           key={r.name}
-          className="grid grid-cols-[140px_1fr_60px] items-center gap-3"
+          className="grid grid-cols-[140px_1fr_70px] items-center gap-3"
         >
           <div className="truncate text-xs font-medium text-foreground">
             {r.name}
@@ -443,6 +478,15 @@ function MasteryHeatmap({ stored }: { stored: StoredPlan }) {
           </div>
         </div>
       ))}
+
+      {hiddenCount > 0 && (
+        <button
+          onClick={() => setExpanded((e) => !e)}
+          className="mt-2 w-full rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-pink/40 hover:bg-card"
+        >
+          {expanded ? "Show less" : `Show ${hiddenCount} more module${hiddenCount === 1 ? "" : "s"}`}
+        </button>
+      )}
     </div>
   );
 }
