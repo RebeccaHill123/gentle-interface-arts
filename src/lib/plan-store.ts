@@ -112,6 +112,24 @@ export function addStudySession(session: Omit<StudySession, "loggedAt">) {
   savePlan(stored);
 }
 
+/**
+ * Adjust a module's confidence (1-5) based on quiz accuracy.
+ * accuracy is a number 0..1. We move the current value toward the implied
+ * score (accuracy * 5) by a small step, so a single quiz nudges mastery
+ * without overwriting it.
+ */
+export function adjustModuleConfidence(moduleName: string, accuracy: number) {
+  const stored = loadPlan();
+  if (!stored) return;
+  const mod = stored.input.modules.find((m) => m.name === moduleName);
+  if (!mod) return;
+  const implied = Math.max(1, Math.min(5, accuracy * 5));
+  const step = 0.4; // how much one quiz can move the needle
+  const next = mod.confidence + (implied - mod.confidence) * step;
+  mod.confidence = Math.round(Math.max(1, Math.min(5, next)));
+  savePlan(stored);
+}
+
 function toDateKey(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
