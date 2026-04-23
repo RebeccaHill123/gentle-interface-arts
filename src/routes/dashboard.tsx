@@ -258,7 +258,10 @@ function HeroBanner({
             {examType} · personalised plan
           </div>
           <h1 className="mt-2 text-4xl font-normal text-foreground md:text-5xl">
-            Welcome back, <span className="text-gradient-tentra italic">{name}</span>
+            Welcome back,{" "}
+            <span className="text-gradient-tentra inline-block italic pr-2">
+              {name}
+            </span>
           </h1>
           <p className="mt-3 text-sm text-muted-foreground md:text-base">{overview}</p>
         </div>
