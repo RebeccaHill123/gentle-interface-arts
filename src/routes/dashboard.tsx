@@ -68,8 +68,6 @@ function DashboardPage() {
     return <NoPlanState />;
   }
 
-
-
   const { input, plan, daysUntilExam, completedTaskIds, sessions } = stored;
   const completed = completedTaskIds.length;
   const totalToday = plan.todayTasks.length;
