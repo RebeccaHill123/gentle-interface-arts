@@ -69,7 +69,7 @@ function LandingPage() {
             </span>
             <h1 className="mt-6 text-[3.65rem] font-light leading-[1.18] tracking-tight text-foreground/80 md:text-[5.5rem] lg:text-[6.4rem]">
               Your{" "}
-              <span className="italic text-gradient-tentra inline-block px-1 pt-1 font-light leading-[1.2] text-8xl border-none border-8 rounded-none">
+              <span className="italic text-gradient-tentra inline-flex items-center px-3 py-2 font-light leading-none text-[0.9em] border-2 border-transparent outline outline-1 outline-border rounded-sm">
                 personal
               </span>
               <br />
