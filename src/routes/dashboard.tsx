@@ -38,6 +38,7 @@ import {
   Loader2,
   Check,
   X,
+  LogOut,
 } from "lucide-react";
 import {
   loadPlan,
@@ -49,6 +50,7 @@ import {
   type StoredPlan,
 } from "@/lib/plan-store";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 
 interface QuizQuestion {
   prompt: string;
@@ -69,6 +71,7 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardPage() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [tick, setTick] = useState(0);
   const [quizTask, setQuizTask] = useState<{
@@ -81,6 +84,12 @@ function DashboardPage() {
   useEffect(() => {
     setStored(loadPlan());
   }, [tick]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: "/login" });
+    }
+  }, [loading, user, navigate]);
 
   if (!stored) {
     return <NoPlanState />;
