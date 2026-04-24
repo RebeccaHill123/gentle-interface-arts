@@ -195,7 +195,7 @@ function StepCard({
 }) {
   return (
     <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-glow">
-      <div className="absolute -right-6 -top-6 font-display text-7xl text-pink/15">
+      <div className="absolute left-4 top-3 font-display text-5xl leading-none text-pink/20">
         {num}
       </div>
       <div className="relative">
