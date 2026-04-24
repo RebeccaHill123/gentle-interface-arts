@@ -682,6 +682,18 @@ function TopBar({
         <Button size="icon" variant="ghost" className="rounded-full">
           <Bell className="h-4 w-4" />
         </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="rounded-full"
+          title="Sign out"
+          onClick={async () => {
+            await supabase.auth.signOut();
+            toast.success("Signed out");
+          }}
+        >
+          <LogOut className="h-4 w-4" />
+        </Button>
         <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-pink-blue font-semibold text-primary-foreground">
           {name.slice(0, 1).toUpperCase()}
         </div>
