@@ -53,10 +53,10 @@ function LandingPage() {
           </nav>
           <div className="flex items-center gap-2">
             <Button asChild variant="ghost" className="hidden sm:inline-flex rounded-full">
-              <Link to="/dashboard">Sign in</Link>
+              <Link to="/login">Sign in</Link>
             </Button>
             <Button asChild className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95">
-              <Link to="/onboarding">Get started</Link>
+              <Link to="/signup">Get started</Link>
             </Button>
           </div>
         </header>
@@ -85,7 +85,7 @@ function LandingPage() {
                 size="lg"
                 className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
               >
-                <Link to="/onboarding">
+                <Link to="/signup">
                   Build my plan <ArrowRight className="ml-1 h-4 w-4" />
                 </Link>
               </Button>
@@ -95,7 +95,7 @@ function LandingPage() {
                 variant="outline"
                 className="rounded-full border-border bg-card/40 backdrop-blur"
               >
-                <Link to="/dashboard">See the dashboard</Link>
+                <Link to="/login">Sign in</Link>
               </Button>
             </div>
           </div>
