@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, ArrowRight, Calendar, Loader2, Scale } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import {
   SQE1_MODULES,
   SQE2_MODULES,
@@ -37,6 +38,7 @@ function defaultDate(monthsAhead = 3) {
 
 function OnboardingPage() {
   const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [step, setStep] = useState(0);
   const [name, setName] = useState("");
   const [examType, setExamType] = useState<ExamType>("SQE1");
@@ -44,6 +46,12 @@ function OnboardingPage() {
   const [hoursPerWeek, setHoursPerWeek] = useState(12);
   const [confidences, setConfidences] = useState<Record<string, number>>({});
   const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      navigate({ to: "/signup" });
+    }
+  }, [loading, user, navigate]);
 
   const totalSteps = 4;
   const moduleList = examType === "SQE1" ? SQE1_MODULES : SQE2_MODULES;
