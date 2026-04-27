@@ -105,40 +105,10 @@ function SignupPage() {
 
       <div className="relative mx-auto flex max-w-md flex-col px-6 py-10">
         <div className="rounded-[2rem] border border-border bg-card/70 p-8 backdrop-blur md:p-10">
-          {submittedEmail ? (
-            <div
-              className="animate-in fade-in slide-in-from-bottom-4 duration-500"
-              aria-live="polite"
-            >
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow">
-                <Mail className="h-6 w-6" />
-              </div>
-              <h1 className="mt-5 text-center text-3xl font-normal text-foreground md:text-4xl">
-                Check your{" "}
-                <span className="italic text-gradient-tentra">inbox</span>
-              </h1>
-              <p className="mt-3 text-center text-sm text-muted-foreground">
-                We've sent a confirmation link to{" "}
-                <span className="font-medium text-foreground">
-                  {submittedEmail}
-                </span>
-                .
-              </p>
-              <p className="mt-2 text-center text-sm text-muted-foreground">
-                Can't see it? It may be in your{" "}
-                <span className="font-medium text-foreground">junk</span> or
-                spam folder.
-              </p>
-              <div className="mt-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Taking you to your plan…
-              </div>
+          <>
+            <div className="text-xs font-semibold uppercase tracking-wider text-pink">
+              Get started
             </div>
-          ) : (
-            <>
-              <div className="text-xs font-semibold uppercase tracking-wider text-pink">
-                Get started
-              </div>
               <h1 className="mt-2 text-3xl font-normal text-foreground md:text-4xl">
                 Create your{" "}
                 <span className="italic text-gradient-tentra">account</span>
