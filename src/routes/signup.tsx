@@ -223,8 +223,7 @@ function SignupPage() {
                   Sign in
                 </Link>
               </p>
-            </>
-          )}
+          </>
         </div>
       </div>
     </div>
