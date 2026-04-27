@@ -79,11 +79,10 @@ function SignupPage() {
         }
         return;
       }
-      setSubmittedEmail(email);
-      // Smooth transition: show confirmation, then continue to onboarding
-      setTimeout(() => {
-        navigate({ to: "/onboarding" });
-      }, 3200);
+      navigate({
+        to: "/verify-email",
+        search: { email },
+      });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not sign up");
     } finally {
