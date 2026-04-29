@@ -29,7 +29,7 @@ function VerifyEmailPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setRedirecting(true);
-      navigate({ to: "/onboarding" });
+      navigate({ to: "/dashboard" });
     }, 3200);
     return () => clearTimeout(timer);
   }, [navigate]);
@@ -81,7 +81,7 @@ function VerifyEmailPage() {
 
           <div className="mt-6 text-center text-sm text-muted-foreground">
             <Link
-              to="/onboarding"
+              to="/dashboard"
               className="font-medium text-foreground hover:underline"
             >
               Continue now →
