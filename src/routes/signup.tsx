@@ -67,7 +67,7 @@ function SignupPage() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/onboarding`,
+          emailRedirectTo: `${window.location.origin}/dashboard`,
           data: { display_name: name },
         },
       });
