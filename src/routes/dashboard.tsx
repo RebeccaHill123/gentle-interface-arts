@@ -87,9 +87,25 @@ function DashboardPage() {
   }, [tick]);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    if (!user) {
       navigate({ to: "/login" });
+      return;
     }
+    // Hydrate plan from cloud whenever this user lands here.
+    let cancelled = false;
+    pullPlanFromCloud().then((plan) => {
+      if (cancelled) return;
+      if (plan) {
+        setStored(plan);
+      } else if (!loadPlan()) {
+        // No cloud and no local plan yet — push to onboarding.
+        navigate({ to: "/onboarding" });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loading, user, navigate]);
 
   if (!stored) {
