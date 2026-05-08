@@ -13,6 +13,7 @@ import {
   SQE1_MODULES,
   SQE2_MODULES,
   savePlan,
+  pullPlanFromCloud,
   type ExamType,
   type ModuleConfidence,
 } from "@/lib/plan-store";
@@ -48,9 +49,19 @@ function OnboardingPage() {
   const [generating, setGenerating] = useState(false);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return;
+    if (!user) {
       navigate({ to: "/signup" });
+      return;
     }
+    // If this account already has a saved plan, skip onboarding.
+    let cancelled = false;
+    pullPlanFromCloud().then((plan) => {
+      if (!cancelled && plan) navigate({ to: "/dashboard" });
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [loading, user, navigate]);
 
   const totalSteps = 4;

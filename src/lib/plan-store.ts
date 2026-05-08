@@ -1,4 +1,5 @@
-// Local plan store (prototype-only, persists in localStorage)
+// Plan store: localStorage cache + Supabase sync (per user).
+import { supabase } from "@/integrations/supabase/client";
 
 export type ExamType = "SQE1" | "SQE2";
 
@@ -85,11 +86,61 @@ export function loadPlan(): StoredPlan | null {
 export function savePlan(plan: StoredPlan) {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(plan));
+  // Fire-and-forget cloud sync — caller doesn't need to await.
+  void pushPlanToCloud(plan);
 }
 
 export function clearPlan() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(KEY);
+}
+
+/** Push current plan to Supabase for the signed-in user. */
+export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    await supabase
+      .from("user_plans")
+      .upsert(
+        [{ user_id: user.id, plan: plan as unknown as never }],
+        { onConflict: "user_id" }
+      );
+  } catch (e) {
+    console.warn("pushPlanToCloud failed", e);
+  }
+}
+
+/**
+ * Pull the signed-in user's plan from Supabase. If found, mirror it into
+ * localStorage and return it. Returns null if the user has no plan yet.
+ */
+export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
+  if (typeof window === "undefined") return null;
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+    const { data, error } = await supabase
+      .from("user_plans")
+      .select("plan")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    if (error) {
+      console.warn("pullPlanFromCloud error", error);
+      return null;
+    }
+    if (!data?.plan) {
+      // No cloud plan — clear stale local cache from a previous account.
+      localStorage.removeItem(KEY);
+      return null;
+    }
+    const plan = data.plan as unknown as StoredPlan;
+    localStorage.setItem(KEY, JSON.stringify(plan));
+    return plan;
+  } catch (e) {
+    console.warn("pullPlanFromCloud failed", e);
+    return null;
+  }
 }
 
 export function toggleTaskCompletion(index: number) {

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { loadPlan } from "@/lib/plan-store";
+import { pullPlanFromCloud } from "@/lib/plan-store";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -46,8 +46,8 @@ function LoginPage() {
         return;
       }
       toast.success("Welcome back.");
-      // If the user has no plan yet, send them through onboarding
-      const existing = loadPlan();
+      // Pull the user's plan from the cloud and route accordingly.
+      const existing = await pullPlanFromCloud();
       navigate({ to: existing ? "/dashboard" : "/onboarding" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not sign in");

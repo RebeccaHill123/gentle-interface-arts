@@ -1,4 +1,5 @@
-import { Link } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import {
   Scale,
 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -33,6 +35,17 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Already signed in? Send them to the dashboard, which will route to
+  // onboarding if they don't yet have a saved plan.
+  useEffect(() => {
+    if (!loading && user) {
+      navigate({ to: "/dashboard" });
+    }
+  }, [loading, user, navigate]);
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <BackgroundBlobs />
