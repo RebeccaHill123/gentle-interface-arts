@@ -35,6 +35,17 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
+  const { user, loading } = useAuth();
+  const navigate = useNavigate();
+
+  // Already signed in? Send them to the dashboard, which will route to
+  // onboarding if they don't yet have a saved plan.
+  useEffect(() => {
+    if (!loading && user) {
+      navigate({ to: "/dashboard" });
+    }
+  }, [loading, user, navigate]);
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <BackgroundBlobs />
