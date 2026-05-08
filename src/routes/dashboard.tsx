@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import {
   loadPlan,
+  pullPlanFromCloud,
   toggleTaskCompletion,
   addStudySession,
   adjustModuleConfidence,
