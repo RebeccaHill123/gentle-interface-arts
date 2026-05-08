@@ -46,8 +46,8 @@ function LoginPage() {
         return;
       }
       toast.success("Welcome back.");
-      // If the user has no plan yet, send them through onboarding
-      const existing = loadPlan();
+      // Pull the user's plan from the cloud and route accordingly.
+      const existing = await pullPlanFromCloud();
       navigate({ to: existing ? "/dashboard" : "/onboarding" });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not sign in");
