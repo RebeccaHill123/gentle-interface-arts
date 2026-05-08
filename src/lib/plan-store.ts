@@ -134,7 +134,7 @@ export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
       localStorage.removeItem(KEY);
       return null;
     }
-    const plan = data.plan as StoredPlan;
+    const plan = data.plan as unknown as StoredPlan;
     localStorage.setItem(KEY, JSON.stringify(plan));
     return plan;
   } catch (e) {
