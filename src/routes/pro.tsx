@@ -300,23 +300,26 @@ function ProDashboard({
   busy: boolean;
 }) {
   const stored = useMemo(() => loadPlan(), []);
-  const streak = useMemo(() => (stored ? computeStreak(stored.sessions) : 0), [stored]);
+  const streakObj = useMemo(
+    () => (stored ? computeStreak(stored.sessions) : { current: 0, longest: 0, studiedToday: false, totalMinutesToday: 0 }),
+    [stored],
+  );
+  const streak = streakObj.current;
   const focus = useMemo(
     () => (stored ? computeFocusInsights(stored.sessions) : null),
     [stored],
   );
 
   // Weekly deep work minutes from focus store; fallback 0
-  const weeklyMinutes = focus?.weeklyMinutes ?? 0;
+  const weeklyMinutes = focus?.totalFocusMinThisWeek ?? 0;
   const weeklyGoal = 600; // 10h
   const weeklyPct = Math.min(100, Math.round((weeklyMinutes / weeklyGoal) * 100));
 
-  // Weak topics derived from confidence levels in the plan input
+  // Weak topics derived from confidence levels in onboarding input
   const weakTopics = useMemo(() => {
-    if (!stored) return [] as { name: string; confidence: number }[];
-    const confs = stored.input?.moduleConfidence ?? {};
-    return Object.entries(confs)
-      .map(([name, c]) => ({ name, confidence: Number(c) || 0 }))
+    const mods = stored?.input?.modules ?? [];
+    return mods
+      .map((m) => ({ name: m.name, confidence: Number(m.confidence) || 0 }))
       .sort((a, b) => a.confidence - b.confidence)
       .slice(0, 4);
   }, [stored]);
@@ -342,19 +345,18 @@ function ProDashboard({
 
   // 7-day heatmap from sessions
   const heatmap = useMemo(() => {
-    if (!stored) return Array.from({ length: 7 }).map(() => 0);
+    const sessions = stored?.sessions ?? [];
     const now = Date.now();
     const dayMs = 24 * 60 * 60 * 1000;
     return Array.from({ length: 7 }).map((_, i) => {
       const start = now - (6 - i) * dayMs;
       const end = start + dayMs;
-      const mins = stored.sessions
+      return sessions
         .filter((s) => {
-          const t = new Date(s.completedAt).getTime();
+          const t = new Date(s.loggedAt).getTime();
           return t >= start && t < end;
         })
         .reduce((sum, s) => sum + (s.minutes || 0), 0);
-      return mins;
     });
   }, [stored]);
 
