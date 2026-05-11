@@ -35,6 +35,9 @@ export interface StudySession {
   module?: string;
   note?: string;
   loggedAt: string; // ISO
+  sessionType?: "study" | "quiz" | "mock" | "review" | "flashcards";
+  mood?: 1 | 2 | 3 | 4 | 5;
+  focus?: number; // 0..1
 }
 
 export interface StoredPlan {
