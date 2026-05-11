@@ -53,6 +53,7 @@ import {
 } from "@/lib/plan-store";
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
+import { RecentSessions } from "@/components/recent-sessions";
 
 interface QuizQuestion {
   prompt: string;
@@ -225,6 +226,13 @@ function DashboardPage() {
                     );
                   })}
                 </ul>
+              </Panel>
+
+              <Panel
+                title="Recent sessions"
+                subtitle="Your latest study activity, freshest first."
+              >
+                <RecentSessions sessions={sessions} />
               </Panel>
 
               <Panel title="Topic mastery" subtitle="Heat shows current confidence. Cooler = needs work.">
