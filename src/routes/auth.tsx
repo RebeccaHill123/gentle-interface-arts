@@ -181,12 +181,38 @@ function AuthPage() {
               Click the link inside to confirm your account — you'll then be taken to build your study plan.
             </p>
             <p className="mt-4 text-xs text-muted-foreground">
-              Didn't get it? Check spam, or wait a minute and try again.
+              Didn't get it? Check spam, or resend below.
             </p>
+            {resendMsg && (
+              <div className="mt-4 rounded-xl border border-border bg-muted/40 p-3 text-sm text-foreground">
+                {resendMsg}
+              </div>
+            )}
+            {resendErr && (
+              <div
+                role="alert"
+                className="mt-4 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>{resendErr}</div>
+              </div>
+            )}
+            <Button
+              type="button"
+              onClick={() => handleResend(verifySent)}
+              disabled={resending}
+              className="mt-6 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+            >
+              {resending ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resending…</>
+              ) : (
+                "Resend verification email"
+              )}
+            </Button>
             <Button
               type="button"
               onClick={() => { setVerifySent(null); setMode("signin"); }}
-              className="mt-6 w-full rounded-full"
+              className="mt-3 w-full rounded-full"
               variant="outline"
             >
               Back to sign in
