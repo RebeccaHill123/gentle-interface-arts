@@ -21,6 +21,35 @@ export const Route = createFileRoute("/auth_/callback")({
 function AuthCallbackPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
+  const [resendErr, setResendErr] = useState<string | null>(null);
+
+  const handleResend = async (e: FormEvent) => {
+    e.preventDefault();
+    setResendMsg(null);
+    setResendErr(null);
+    const email = resendEmail.trim();
+    if (!email) {
+      setResendErr("Enter your email address.");
+      return;
+    }
+    setResending(true);
+    try {
+      const { error: rErr } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (rErr) setResendErr(rErr.message);
+      else setResendMsg("Verification email sent — check your inbox.");
+    } catch (err) {
+      setResendErr(err instanceof Error ? err.message : "Failed to resend");
+    } finally {
+      setResending(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
