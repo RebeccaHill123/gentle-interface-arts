@@ -74,26 +74,13 @@ function AuthCallbackPage() {
           throw new Error("Verification link is invalid or has expired.");
         }
 
-        // Determine onboarding status from profile.
-        let onboardingComplete = false;
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("onboarding_completed_at")
-          .eq("user_id", user.id)
-          .maybeSingle();
-        if (profile && (profile as any).onboarding_completed_at) {
-          onboardingComplete = true;
-        }
-
         if (cancelled) return;
 
         // Clean the URL (remove tokens from hash/search) before navigating.
         window.history.replaceState({}, document.title, "/auth/callback");
 
-        navigate({
-          to: onboardingComplete ? "/dashboard" : "/onboarding",
-          replace: true,
-        });
+        // /onboarding handles redirect to /dashboard if a plan already exists.
+        navigate({ to: "/onboarding", replace: true });
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "Verification failed");
