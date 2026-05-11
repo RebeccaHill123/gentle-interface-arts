@@ -70,7 +70,7 @@ function AuthPage() {
           email: parsed.data.email,
           password: parsed.data.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/onboarding`,
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
             data: {
               first_name: parsed.data.firstName,
               last_name: parsed.data.lastName,
