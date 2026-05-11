@@ -164,6 +164,25 @@ export function addStudySession(session: Omit<StudySession, "loggedAt">) {
   savePlan(stored);
 }
 
+export function updateStudySession(
+  loggedAt: string,
+  patch: Partial<Omit<StudySession, "loggedAt">>,
+) {
+  const stored = loadPlan();
+  if (!stored?.sessions) return;
+  const idx = stored.sessions.findIndex((s) => s.loggedAt === loggedAt);
+  if (idx === -1) return;
+  stored.sessions[idx] = { ...stored.sessions[idx], ...patch };
+  savePlan(stored);
+}
+
+export function removeStudySession(loggedAt: string) {
+  const stored = loadPlan();
+  if (!stored?.sessions) return;
+  stored.sessions = stored.sessions.filter((s) => s.loggedAt !== loggedAt);
+  savePlan(stored);
+}
+
 export function adjustModuleConfidence(moduleName: string, accuracy: number) {
   const stored = loadPlan();
   if (!stored) return;
