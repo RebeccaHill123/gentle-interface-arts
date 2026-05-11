@@ -865,14 +865,19 @@ function RecordSessionDialog({
             <div className="space-y-2">
               <Label>Suggested activity</Label>
               <Select value={suggestedIdx} onValueChange={applySuggested}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Pick from today's plan" />
+                <SelectTrigger className="w-full">
+                  <SelectValue
+                    placeholder="Pick from today's plan"
+                    className="block truncate"
+                  />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-w-[calc(100vw-3rem)] sm:max-w-[28rem]">
                   <SelectItem value="__none">None — log freely</SelectItem>
                   {todayTasks.map((t, i) => (
                     <SelectItem key={i} value={String(i)}>
-                      {t.title} · {t.minutes}m
+                      <span className="block max-w-[22rem] truncate sm:max-w-[24rem]">
+                        {t.title} · {t.minutes}m
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>
