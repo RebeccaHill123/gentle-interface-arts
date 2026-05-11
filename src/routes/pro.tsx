@@ -17,7 +17,7 @@ import {
   Trophy,
   Zap,
   ArrowRight,
-  Check,
+  
   Loader2,
   MessageCircle,
   BarChart3,
