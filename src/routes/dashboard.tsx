@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -70,7 +70,6 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function DashboardPage() {
-  const navigate = useNavigate();
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [tick, setTick] = useState(0);
   const [quizTask, setQuizTask] = useState<{
