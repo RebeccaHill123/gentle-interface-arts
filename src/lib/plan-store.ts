@@ -1,5 +1,4 @@
-// Plan store: localStorage cache + Supabase sync (per user).
-import { supabase } from "@/integrations/supabase/client";
+// Plan store: localStorage cache only.
 
 export type ExamType = "SQE1" | "SQE2";
 
@@ -86,61 +85,11 @@ export function loadPlan(): StoredPlan | null {
 export function savePlan(plan: StoredPlan) {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(plan));
-  // Fire-and-forget cloud sync — caller doesn't need to await.
-  void pushPlanToCloud(plan);
 }
 
 export function clearPlan() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(KEY);
-}
-
-/** Push current plan to Supabase for the signed-in user. */
-export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase
-      .from("user_plans")
-      .upsert(
-        [{ user_id: user.id, plan: plan as unknown as never }],
-        { onConflict: "user_id" }
-      );
-  } catch (e) {
-    console.warn("pushPlanToCloud failed", e);
-  }
-}
-
-/**
- * Pull the signed-in user's plan from Supabase. If found, mirror it into
- * localStorage and return it. Returns null if the user has no plan yet.
- */
-export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
-  if (typeof window === "undefined") return null;
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-    const { data, error } = await supabase
-      .from("user_plans")
-      .select("plan")
-      .eq("user_id", user.id)
-      .maybeSingle();
-    if (error) {
-      console.warn("pullPlanFromCloud error", error);
-      return null;
-    }
-    if (!data?.plan) {
-      // No cloud plan — clear stale local cache from a previous account.
-      localStorage.removeItem(KEY);
-      return null;
-    }
-    const plan = data.plan as unknown as StoredPlan;
-    localStorage.setItem(KEY, JSON.stringify(plan));
-    return plan;
-  } catch (e) {
-    console.warn("pullPlanFromCloud failed", e);
-    return null;
-  }
 }
 
 export function toggleTaskCompletion(index: number) {
@@ -163,19 +112,13 @@ export function addStudySession(session: Omit<StudySession, "loggedAt">) {
   savePlan(stored);
 }
 
-/**
- * Adjust a module's confidence (1-5) based on quiz accuracy.
- * accuracy is a number 0..1. We move the current value toward the implied
- * score (accuracy * 5) by a small step, so a single quiz nudges mastery
- * without overwriting it.
- */
 export function adjustModuleConfidence(moduleName: string, accuracy: number) {
   const stored = loadPlan();
   if (!stored) return;
   const mod = stored.input.modules.find((m) => m.name === moduleName);
   if (!mod) return;
   const implied = Math.max(1, Math.min(5, accuracy * 5));
-  const step = 0.4; // how much one quiz can move the needle
+  const step = 0.4;
   const next = mod.confidence + (implied - mod.confidence) * step;
   mod.confidence = Math.round(Math.max(1, Math.min(5, next)));
   savePlan(stored);

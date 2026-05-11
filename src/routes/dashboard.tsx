@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,11 +38,11 @@ import {
   Loader2,
   Check,
   X,
-  LogOut,
+  
 } from "lucide-react";
 import {
   loadPlan,
-  pullPlanFromCloud,
+  clearPlan,
   toggleTaskCompletion,
   addStudySession,
   adjustModuleConfidence,
@@ -51,7 +51,6 @@ import {
   type StoredPlan,
 } from "@/lib/plan-store";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
 
 interface QuizQuestion {
   prompt: string;
@@ -71,8 +70,6 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function DashboardPage() {
-  const navigate = useNavigate();
-  const { user, loading } = useAuth();
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [tick, setTick] = useState(0);
   const [quizTask, setQuizTask] = useState<{
@@ -85,28 +82,6 @@ function DashboardPage() {
   useEffect(() => {
     setStored(loadPlan());
   }, [tick]);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      navigate({ to: "/login" });
-      return;
-    }
-    // Hydrate plan from cloud whenever this user lands here.
-    let cancelled = false;
-    pullPlanFromCloud().then((plan) => {
-      if (cancelled) return;
-      if (plan) {
-        setStored(plan);
-      } else if (!loadPlan()) {
-        // No cloud and no local plan yet — push to onboarding.
-        navigate({ to: "/onboarding" });
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [loading, user, navigate]);
 
   if (!stored) {
     return <NoPlanState />;
@@ -155,7 +130,10 @@ function DashboardPage() {
         <div className="flex-1 space-y-6">
           <TopBar
             name={input.name}
-            onReset={() => navigate({ to: "/onboarding" })}
+            onReset={() => {
+              clearPlan();
+              setTick((t) => t + 1);
+            }}
             moduleNames={input.modules.map((m) => m.name)}
             onSessionLogged={refresh}
           />
@@ -587,7 +565,7 @@ function NoPlanState() {
           asChild
           className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
         >
-          <Link to="/onboarding">Build my plan</Link>
+          <Link to="/">Back to home</Link>
         </Button>
       </div>
     </div>
@@ -698,18 +676,6 @@ function TopBar({
         </Button>
         <Button size="icon" variant="ghost" className="rounded-full">
           <Bell className="h-4 w-4" />
-        </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="rounded-full"
-          title="Sign out"
-          onClick={async () => {
-            await supabase.auth.signOut();
-            toast.success("Signed out");
-          }}
-        >
-          <LogOut className="h-4 w-4" />
         </Button>
         <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-pink-blue font-semibold text-primary-foreground">
           {name.slice(0, 1).toUpperCase()}
