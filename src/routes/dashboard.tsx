@@ -53,6 +53,7 @@ import {
 } from "@/lib/plan-store";
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
+import { RecentSessions } from "@/components/recent-sessions";
 
 interface QuizQuestion {
   prompt: string;
