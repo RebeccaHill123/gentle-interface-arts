@@ -652,13 +652,19 @@ function NoPlanState() {
   );
 }
 
-function Sidebar() {
-  const items = [
-    { icon: Home, label: "Today", active: true },
-    { icon: Calendar, label: "Plan" },
-    { icon: Target, label: "Mastery" },
-    { icon: Scale, label: "Mocks" },
-    { icon: Settings, label: "Settings" },
+function Sidebar({
+  active,
+  onChange,
+}: {
+  active: DashboardTab;
+  onChange: (tab: DashboardTab) => void;
+}) {
+  const items: { icon: typeof Calendar; label: string; tab: DashboardTab }[] = [
+    { icon: Calendar, label: "This Week", tab: "week" },
+    { icon: Activity, label: "Activity Feed", tab: "activity" },
+    { icon: Target, label: "Mastery", tab: "mastery" },
+    { icon: Scale, label: "Mocks", tab: "mocks" },
+    { icon: Settings, label: "Settings", tab: "settings" },
   ];
   return (
     <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-60 shrink-0 flex-col rounded-3xl border border-border bg-sidebar p-5 shadow-card md:flex">
@@ -666,11 +672,13 @@ function Sidebar() {
       <nav className="mt-8 space-y-1">
         {items.map((it) => {
           const Icon = it.icon;
+          const isActive = active === it.tab;
           return (
             <button
               key={it.label}
+              onClick={() => onChange(it.tab)}
               className={`flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium transition-colors ${
-                it.active
+                isActive
                   ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
                   : "text-muted-foreground hover:bg-card hover:text-foreground"
               }`}
