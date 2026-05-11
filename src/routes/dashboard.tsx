@@ -60,6 +60,13 @@ interface QuizQuestion {
 }
 
 export const Route = createFileRoute("/dashboard")({
+  beforeLoad: async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      throw redirect({ to: "/auth", search: { mode: "signin" } });
+    }
+  },
   component: DashboardPage,
   head: () => ({
     meta: [
