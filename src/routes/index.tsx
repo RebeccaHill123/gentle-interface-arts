@@ -47,13 +47,13 @@ function LandingPage() {
             <a href="#features" className="hover:text-foreground transition-colors">
               Features
             </a>
-            <Link to="/dashboard" className="hover:text-foreground transition-colors">
-              Demo
-            </Link>
           </nav>
           <div className="flex items-center gap-2">
+            <Button asChild variant="ghost" className="rounded-full">
+              <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
+            </Button>
             <Button asChild className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95">
-              <Link to="/dashboard">Open dashboard</Link>
+              <Link to="/auth" search={{ mode: "signup" }}>Get started</Link>
             </Button>
           </div>
         </header>
