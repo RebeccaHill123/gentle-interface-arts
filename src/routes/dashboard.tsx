@@ -719,8 +719,8 @@ function Sidebar({
         <p className="mt-1 text-[11px] text-muted-foreground">
           Mock exams, AI feedback & smart re-planning.
         </p>
-        <Button size="sm" className="mt-3 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95">
-          Upgrade
+        <Button asChild size="sm" className="mt-3 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95">
+          <Link to="/pro">Upgrade</Link>
         </Button>
       </div>
     </aside>
