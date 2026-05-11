@@ -43,6 +43,7 @@ import {
 import {
   loadPlan,
   clearPlan,
+  pullPlanFromCloud,
   toggleTaskCompletion,
   addStudySession,
   adjustModuleConfidence,
@@ -78,6 +79,7 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardPage() {
   const [stored, setStored] = useState<StoredPlan | null>(null);
+  const [hydrating, setHydrating] = useState(true);
   const [tick, setTick] = useState(0);
   const [quizTask, setQuizTask] = useState<{
     index: number;
@@ -86,12 +88,38 @@ function DashboardPage() {
     minutes: number;
   } | null>(null);
 
+  // Hydrate plan from cloud on mount; redirect to onboarding if user has none.
   useEffect(() => {
+    let active = true;
+    (async () => {
+      const cloud = await pullPlanFromCloud();
+      if (!active) return;
+      if (cloud) {
+        setStored(cloud);
+      } else {
+        // No plan saved for this account — send them through onboarding.
+        window.location.replace("/onboarding");
+        return;
+      }
+      setHydrating(false);
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Re-read local cache when tick changes (e.g. after task toggle)
+  useEffect(() => {
+    if (tick === 0) return;
     setStored(loadPlan());
   }, [tick]);
 
-  if (!stored) {
-    return <NoPlanState />;
+  if (hydrating || !stored) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
   }
 
   const { input, plan, daysUntilExam, completedTaskIds, sessions } = stored;

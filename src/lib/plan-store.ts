@@ -1,4 +1,5 @@
-// Plan store: localStorage cache only.
+// Plan store: localStorage cache + Supabase cloud sync (per-user).
+import { supabase } from "@/integrations/supabase/client";
 
 export type ExamType = "SQE1" | "SQE2";
 
@@ -85,11 +86,55 @@ export function loadPlan(): StoredPlan | null {
 export function savePlan(plan: StoredPlan) {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(plan));
+  // Fire-and-forget cloud sync
+  void pushPlanToCloud(plan);
 }
 
 export function clearPlan() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(KEY);
+}
+
+export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData.user?.id;
+    if (!uid) return;
+    await (supabase as any)
+      .from("user_plans")
+      .upsert(
+        [{ user_id: uid, plan }],
+        { onConflict: "user_id" },
+      );
+  } catch (e) {
+    console.warn("pushPlanToCloud failed", e);
+  }
+}
+
+export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
+  try {
+    const { data: userData } = await supabase.auth.getUser();
+    const uid = userData.user?.id;
+    if (!uid) return null;
+    const { data, error } = await supabase
+      .from("user_plans")
+      .select("plan")
+      .eq("user_id", uid)
+      .maybeSingle();
+    if (error || !data) {
+      // No cloud plan for this user — clear any stale local cache
+      if (typeof window !== "undefined") localStorage.removeItem(KEY);
+      return null;
+    }
+    const plan = data.plan as unknown as StoredPlan;
+    if (typeof window !== "undefined") {
+      localStorage.setItem(KEY, JSON.stringify(plan));
+    }
+    return plan;
+  } catch (e) {
+    console.warn("pullPlanFromCloud failed", e);
+    return null;
+  }
 }
 
 export function toggleTaskCompletion(index: number) {
