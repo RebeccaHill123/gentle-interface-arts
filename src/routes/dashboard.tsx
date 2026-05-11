@@ -680,6 +680,7 @@ function Sidebar({
 }) {
   const items: { icon: typeof Calendar; label: string; tab: DashboardTab }[] = [
     { icon: Calendar, label: "This Week", tab: "week" },
+    { icon: Flame, label: "Focus", tab: "focus" },
     { icon: Activity, label: "Activity Feed", tab: "activity" },
     { icon: Target, label: "Mastery", tab: "mastery" },
     { icon: Scale, label: "Mocks", tab: "mocks" },
