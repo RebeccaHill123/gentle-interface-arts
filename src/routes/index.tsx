@@ -82,9 +82,17 @@ function LandingPage() {
                 size="lg"
                 className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
               >
-                <Link to="/dashboard">
-                  Open dashboard <ArrowRight className="ml-1 h-4 w-4" />
+                <Link to="/auth" search={{ mode: "signup" }}>
+                  Get started <ArrowRight className="ml-1 h-4 w-4" />
                 </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="rounded-full"
+              >
+                <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
               </Button>
             </div>
           </div>
