@@ -294,7 +294,7 @@ function HeroPreview() {
                     className="flex items-center justify-between gap-3 rounded-xl bg-card/70 p-3 text-sm"
                   >
                     <span className="flex items-center gap-3 text-foreground">
-                      <span className="h-2 w-2 rounded-full bg-[#534AB7]" />
+                      <span className="h-2 w-2 rounded-full bg-gradient-pink-blue" />
                       {x.t}
                     </span>
                     <span className="text-xs text-muted-foreground">{x.m}</span>
