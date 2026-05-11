@@ -754,11 +754,13 @@ function TopBar({
   onReset,
   moduleNames,
   onSessionLogged,
+  todayTasks,
 }: {
   name: string;
   onReset: () => void;
   moduleNames: string[];
   onSessionLogged: () => void;
+  todayTasks: { title: string; module: string; minutes: number }[];
 }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-border bg-card/60 p-3 pl-5 backdrop-blur">
@@ -774,6 +776,7 @@ function TopBar({
         <RecordSessionDialog
           moduleNames={moduleNames}
           onSessionLogged={onSessionLogged}
+          todayTasks={todayTasks}
         />
         <Button
           size="sm"
