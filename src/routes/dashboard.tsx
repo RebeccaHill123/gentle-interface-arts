@@ -709,19 +709,24 @@ function Sidebar({
           );
         })}
       </nav>
-      <div className="mt-auto rounded-2xl border border-border bg-background/40 p-4">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-pink" />
-          <div className="text-xs font-semibold text-foreground">
-            Tentra Pro
-          </div>
-        </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          Mock exams, AI feedback & smart re-planning.
-        </p>
-        <Button asChild size="sm" className="mt-3 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95">
-          <Link to="/pro">Upgrade</Link>
+      <div className="mt-auto space-y-3">
+        <Button asChild size="sm" variant="outline" className="w-full rounded-full">
+          <Link to="/coach">✨ Ask Tentra Coach</Link>
         </Button>
+        <div className="rounded-2xl border border-border bg-background/40 p-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-4 w-4 text-pink" />
+            <div className="text-xs font-semibold text-foreground">
+              Tentra Pro
+            </div>
+          </div>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Mock exams, AI feedback & smart re-planning.
+          </p>
+          <Button asChild size="sm" className="mt-3 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95">
+            <Link to="/pro">Upgrade</Link>
+          </Button>
+        </div>
       </div>
     </aside>
   );
