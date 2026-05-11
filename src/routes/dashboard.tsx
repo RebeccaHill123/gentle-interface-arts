@@ -43,6 +43,7 @@ import {
 import {
   loadPlan,
   clearPlan,
+  pullPlanFromCloud,
   toggleTaskCompletion,
   addStudySession,
   adjustModuleConfidence,
