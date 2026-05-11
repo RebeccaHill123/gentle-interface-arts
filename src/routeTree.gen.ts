@@ -16,6 +16,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
+import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
@@ -55,6 +56,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCoachRoute = ApiCoachRouteImport.update({
+  id: '/api/coach',
+  path: '/api/coach',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -79,6 +85,7 @@ export interface FileRoutesByFullPath {
   '/focus': typeof FocusRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
+  '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByTo {
   '/focus': typeof FocusRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
+  '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -104,6 +112,7 @@ export interface FileRoutesById {
   '/focus': typeof FocusRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
+  '/api/coach': typeof ApiCoachRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -118,6 +127,7 @@ export interface FileRouteTypes {
     | '/focus'
     | '/onboarding'
     | '/pro'
+    | '/api/coach'
     | '/auth/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/focus'
     | '/onboarding'
     | '/pro'
+    | '/api/coach'
     | '/auth/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/focus'
     | '/onboarding'
     | '/pro'
+    | '/api/coach'
     | '/auth_/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -155,6 +167,7 @@ export interface RootRouteChildren {
   FocusRoute: typeof FocusRoute
   OnboardingRoute: typeof OnboardingRoute
   ProRoute: typeof ProRoute
+  ApiCoachRoute: typeof ApiCoachRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -212,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/coach': {
+      id: '/api/coach'
+      path: '/api/coach'
+      fullPath: '/api/coach'
+      preLoaderRoute: typeof ApiCoachRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
       path: '/lovable/email/queue/process'
@@ -243,6 +263,7 @@ const rootRouteChildren: RootRouteChildren = {
   FocusRoute: FocusRoute,
   OnboardingRoute: OnboardingRoute,
   ProRoute: ProRoute,
+  ApiCoachRoute: ApiCoachRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
