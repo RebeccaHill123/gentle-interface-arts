@@ -289,7 +289,11 @@ function DashboardPage() {
               title="Activity feed"
               subtitle="Your latest study sessions, freshest first."
             >
-              <RecentSessions sessions={sessions} />
+              <RecentSessions
+                sessions={sessions}
+                moduleNames={input.modules.map((m) => m.name)}
+                onChange={refresh}
+              />
             </Panel>
           )}
 
