@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  Home,
   CheckCircle2,
   Calendar,
   Settings,
@@ -38,7 +37,7 @@ import {
   Loader2,
   Check,
   X,
-  
+  Activity,
 } from "lucide-react";
 import {
   loadPlan,
