@@ -309,6 +309,18 @@ function AuthPage() {
               </div>
             )}
 
+            {!isSignup && (
+              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="h-4 w-4 rounded border-border accent-pink"
+                />
+                <span>Remember me on this device</span>
+              </label>
+            )}
+
             {error && (
               <div
                 role="alert"
