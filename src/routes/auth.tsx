@@ -51,6 +51,7 @@ function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [verifySent, setVerifySent] = useState<string | null>(null);
 
   const reset = () => setError(null);
 
