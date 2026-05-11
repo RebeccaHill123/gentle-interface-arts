@@ -77,7 +77,6 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function DashboardPage() {
-  const navigate = (useNavigate as any) ? null : null; // placeholder to avoid removal
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [hydrating, setHydrating] = useState(true);
   const [tick, setTick] = useState(0);
