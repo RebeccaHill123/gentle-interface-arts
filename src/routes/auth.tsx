@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getRememberMe, setRememberMe } from "@/lib/remember-me";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
