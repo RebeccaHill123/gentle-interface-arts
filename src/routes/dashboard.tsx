@@ -185,6 +185,7 @@ function DashboardPage() {
             }}
             moduleNames={input.modules.map((m) => m.name)}
             onSessionLogged={refresh}
+            todayTasks={plan.todayTasks}
           />
 
           {tab === "week" && (
