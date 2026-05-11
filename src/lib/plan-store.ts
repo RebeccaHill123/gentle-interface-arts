@@ -103,7 +103,7 @@ export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
     await supabase
       .from("user_plans")
       .upsert(
-        { user_id: uid, plan: plan as unknown as Record<string, unknown> },
+        [{ user_id: uid, plan: plan as unknown as Record<string, unknown> }],
         { onConflict: "user_id" },
       );
   } catch (e) {
