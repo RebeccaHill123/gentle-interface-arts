@@ -69,7 +69,7 @@ function AuthPage() {
           email: parsed.data.email,
           password: parsed.data.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/dashboard`,
+            emailRedirectTo: `${window.location.origin}/onboarding`,
             data: {
               first_name: parsed.data.firstName,
               last_name: parsed.data.lastName,
@@ -83,7 +83,9 @@ function AuthPage() {
         }
         const userId = data.user?.id;
         if (userId) {
-          const { error: profileErr } = await supabase.from("profiles").upsert(
+          // Profile row will be created automatically by handle_new_user trigger;
+          // upsert anyway so first/last names are stored.
+          await supabase.from("profiles").upsert(
             {
               user_id: userId,
               first_name: parsed.data.firstName,
@@ -93,12 +95,13 @@ function AuthPage() {
             },
             { onConflict: "user_id" },
           );
-          if (profileErr) {
-            setError(profileErr.message);
-            return;
-          }
         }
-        navigate({ to: "/dashboard" });
+        // Email verification is required — session will be null until they click the link.
+        if (!data.session) {
+          setVerifySent(parsed.data.email);
+          return;
+        }
+        navigate({ to: "/onboarding" });
       } else {
         const parsed = signInSchema.safeParse({ email, password });
         if (!parsed.success) {
