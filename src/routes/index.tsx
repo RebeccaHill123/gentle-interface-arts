@@ -1,5 +1,4 @@
-import { useEffect } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,6 @@ import {
   Scale,
 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
-import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -35,17 +33,6 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
-  const { user, loading } = useAuth();
-  const navigate = useNavigate();
-
-  // Already signed in? Send them to the dashboard, which will route to
-  // onboarding if they don't yet have a saved plan.
-  useEffect(() => {
-    if (!loading && user) {
-      navigate({ to: "/dashboard" });
-    }
-  }, [loading, user, navigate]);
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <BackgroundBlobs />
@@ -65,11 +52,8 @@ function LandingPage() {
             </Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" className="hidden sm:inline-flex rounded-full">
-              <Link to="/login">Sign in</Link>
-            </Button>
             <Button asChild className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95">
-              <Link to="/signup">Get started</Link>
+              <Link to="/dashboard">Open dashboard</Link>
             </Button>
           </div>
         </header>
@@ -98,17 +82,9 @@ function LandingPage() {
                 size="lg"
                 className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
               >
-                <Link to="/signup">
-                  Build my plan <ArrowRight className="ml-1 h-4 w-4" />
+                <Link to="/dashboard">
+                  Open dashboard <ArrowRight className="ml-1 h-4 w-4" />
                 </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="rounded-full border-border bg-card/40 backdrop-blur"
-              >
-                <Link to="/login">Sign in</Link>
               </Button>
             </div>
           </div>

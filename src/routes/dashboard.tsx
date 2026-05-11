@@ -42,7 +42,7 @@ import {
 } from "lucide-react";
 import {
   loadPlan,
-  pullPlanFromCloud,
+  clearPlan,
   toggleTaskCompletion,
   addStudySession,
   adjustModuleConfidence,
@@ -51,7 +51,6 @@ import {
   type StoredPlan,
 } from "@/lib/plan-store";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
 
 interface QuizQuestion {
   prompt: string;
@@ -72,7 +71,6 @@ export const Route = createFileRoute("/dashboard")({
 
 function DashboardPage() {
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [tick, setTick] = useState(0);
   const [quizTask, setQuizTask] = useState<{
@@ -85,28 +83,6 @@ function DashboardPage() {
   useEffect(() => {
     setStored(loadPlan());
   }, [tick]);
-
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      navigate({ to: "/login" });
-      return;
-    }
-    // Hydrate plan from cloud whenever this user lands here.
-    let cancelled = false;
-    pullPlanFromCloud().then((plan) => {
-      if (cancelled) return;
-      if (plan) {
-        setStored(plan);
-      } else if (!loadPlan()) {
-        // No cloud and no local plan yet — push to onboarding.
-        navigate({ to: "/onboarding" });
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [loading, user, navigate]);
 
   if (!stored) {
     return <NoPlanState />;
@@ -155,7 +131,10 @@ function DashboardPage() {
         <div className="flex-1 space-y-6">
           <TopBar
             name={input.name}
-            onReset={() => navigate({ to: "/onboarding" })}
+            onReset={() => {
+              clearPlan();
+              setTick((t) => t + 1);
+            }}
             moduleNames={input.modules.map((m) => m.name)}
             onSessionLogged={refresh}
           />
@@ -587,7 +566,7 @@ function NoPlanState() {
           asChild
           className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
         >
-          <Link to="/onboarding">Build my plan</Link>
+          <Link to="/">Back to home</Link>
         </Button>
       </div>
     </div>
