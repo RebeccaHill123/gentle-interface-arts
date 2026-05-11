@@ -64,17 +64,18 @@ function LandingPage() {
               <Sparkles className="h-3.5 w-3.5 text-pink" />
               Built for SQE1 & SQE2 candidates
             </span>
-            <h1 className="mt-6 text-[3.65rem] font-light leading-[1.18] tracking-tight text-foreground/80 md:text-[5.5rem] lg:text-[6.4rem]">
-              Your{" "}
-              <span className="italic text-gradient-tentra inline-flex items-center px-3 py-2 font-light leading-none text-[0.9em] border-2 border-transparent outline outline-1 outline-border rounded-sm">
-                personal
+            <h1 className="mt-6 text-[2.5rem] font-light leading-[1.05] tracking-tight text-foreground/85 md:text-[4rem] lg:text-[4.75rem]">
+              Study{" "}
+              <span className="italic text-gradient-tentra inline-flex items-center px-2.5 py-1.5 font-light leading-none text-[0.92em] border-2 border-transparent outline outline-1 outline-border rounded-sm">
+                smarter
               </span>
+              .
               <br />
-              SQE coach.
+              Score higher.
             </h1>
-            <p className="mx-auto mt-6 max-w-xl text-lg text-muted-foreground">
-              Tell Tentra your exam date and how confident you feel. We'll build a
-              week-by-week plan tuned to <em>you</em> — and refine it as you go.
+            <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground md:text-[1.05rem]">
+              Tentra builds your personalised SQE revision plan and keeps you
+              accountable — every session, every streak, every sitting.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
               <Button
