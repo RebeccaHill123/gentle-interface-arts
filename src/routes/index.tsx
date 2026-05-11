@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
-import { BackgroundBlobs } from "@/components/background-blobs";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -34,8 +33,7 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
-      <BackgroundBlobs />
+    <div className="relative min-h-screen overflow-hidden bg-[#FAFAFA] text-neutral-900">
 
       <div className="relative">
         <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
@@ -52,7 +50,7 @@ function LandingPage() {
             <Button asChild variant="ghost" className="rounded-full">
               <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
             </Button>
-            <Button asChild className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95">
+            <Button asChild className="rounded-full bg-[#534AB7] text-white shadow-[0_8px_24px_-8px_rgba(83,74,183,0.5)] hover:bg-[#473fa0]">
               <Link to="/auth" search={{ mode: "signup" }}>Get started</Link>
             </Button>
           </div>
@@ -61,12 +59,12 @@ function LandingPage() {
         <section className="mx-auto max-w-6xl px-6 pt-12 pb-20 md:pt-24">
           <div className="mx-auto max-w-3xl text-center">
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5 text-pink" />
+              <Sparkles className="h-3.5 w-3.5 text-[#534AB7]" />
               Built for SQE1 & SQE2 candidates
             </span>
             <h1 className="mt-6 text-[2.5rem] font-light leading-[1.05] tracking-tight text-foreground/85 md:text-[4rem] lg:text-[4.75rem]">
               Study{" "}
-              <span className="italic text-gradient-tentra inline-flex items-center px-2.5 py-1.5 font-light leading-none text-[0.92em] border-2 border-transparent outline outline-1 outline-border rounded-sm">
+              <span className="italic text-[#534AB7] inline-flex items-center px-2.5 py-1.5 font-light leading-none text-[0.92em] border-2 border-transparent outline outline-1 outline-border rounded-sm">
                 smarter
               </span>
               .
@@ -81,7 +79,7 @@ function LandingPage() {
               <Button
                 asChild
                 size="lg"
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                className="rounded-full bg-[#534AB7] text-white shadow-[0_8px_24px_-8px_rgba(83,74,183,0.5)] hover:bg-[#473fa0]"
               >
                 <Link to="/auth" search={{ mode: "signup" }}>
                   Get started <ArrowRight className="ml-1 h-4 w-4" />
@@ -105,7 +103,7 @@ function LandingPage() {
 
         <section id="how" className="mx-auto max-w-6xl px-6 pb-24">
           <div className="mb-12 text-center">
-            <div className="text-sm font-semibold uppercase tracking-wider text-pink">
+            <div className="text-sm font-semibold uppercase tracking-wider text-[#534AB7]">
               How it works
             </div>
             <h2 className="mt-2 text-4xl font-normal text-foreground md:text-5xl">
@@ -138,10 +136,10 @@ function LandingPage() {
           <div className="rounded-[2rem] border border-border bg-card/60 p-10 backdrop-blur md:p-16">
             <div className="grid items-center gap-10 md:grid-cols-2">
               <div>
-                <Scale className="h-8 w-8 text-pink" />
+                <Scale className="h-8 w-8 text-[#534AB7]" />
                 <h2 className="mt-4 text-3xl font-normal text-foreground md:text-5xl">
                   Built around the
-                  <span className="italic text-gradient-tentra inline-flex items-center px-3 py-2 font-light leading-none text-[0.9em] border-2 border-transparent outline outline-1 outline-border rounded-sm">SQE syllabus</span>.
+                  <span className="italic text-[#534AB7] inline-flex items-center px-3 py-2 font-light leading-none text-[0.9em] border-2 border-transparent outline outline-1 outline-border rounded-sm">SQE syllabus</span>.
                 </h2>
                 <p className="mt-4 text-muted-foreground">
                   Tentra knows the FLK1 & FLK2 papers, the SQE2 skills assessments,
@@ -192,12 +190,12 @@ function StepCard({
   body: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-glow">
-      <div className="absolute right-5 top-3 font-display text-5xl leading-none text-pink/20">
+    <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-lg">
+      <div className="absolute right-5 top-3 font-display text-5xl leading-none text-[#534AB7]/20">
         {num}
       </div>
       <div className="relative">
-        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#534AB7] text-white">
           {icon}
         </div>
         <h3 className="mt-5 text-xl font-semibold text-foreground">{title}</h3>
@@ -221,7 +219,7 @@ function HeroPreview() {
   ];
   return (
     <div className="relative mx-auto max-w-5xl">
-      <div className="absolute -inset-x-10 -top-10 -bottom-20 -z-10 rounded-[3rem] bg-gradient-tentra opacity-30 blur-3xl" />
+      <div className="absolute -inset-x-10 -top-10 -bottom-20 -z-10 rounded-[3rem] bg-[#534AB7]/10 blur-3xl" />
       {/* Browser frame */}
       <div className="overflow-hidden rounded-2xl border border-border bg-card/90 shadow-[0_40px_120px_-30px_oklch(0.5_0.2_320/0.45)] backdrop-blur">
         {/* Title bar */}
@@ -237,7 +235,7 @@ function HeroPreview() {
         </div>
 
         {/* Dashboard content */}
-        <div className="bg-gradient-soft p-6 md:p-8">
+        <div className="bg-white p-6 md:p-8">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -252,7 +250,7 @@ function HeroPreview() {
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   Days to exam
                 </div>
-                <div className="font-display text-3xl text-gradient-tentra">
+                <div className="font-display text-3xl text-[#534AB7]">
                   {days}
                 </div>
               </div>
@@ -278,7 +276,7 @@ function HeroPreview() {
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <div className="rounded-2xl border border-border bg-background/60 p-5">
               <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wider text-pink">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#534AB7]">
                   Today's plan
                 </div>
                 <div className="text-[10px] font-medium text-muted-foreground">
@@ -296,7 +294,7 @@ function HeroPreview() {
                     className="flex items-center justify-between gap-3 rounded-xl bg-card/70 p-3 text-sm"
                   >
                     <span className="flex items-center gap-3 text-foreground">
-                      <span className="h-2 w-2 rounded-full bg-gradient-pink-blue" />
+                      <span className="h-2 w-2 rounded-full bg-[#534AB7]" />
                       {x.t}
                     </span>
                     <span className="text-xs text-muted-foreground">{x.m}</span>
@@ -314,7 +312,7 @@ function HeroPreview() {
                     <div
                       className="h-14 rounded-lg ring-1 ring-border/60"
                       style={{
-                        background: `linear-gradient(180deg, oklch(0.72 0.24 350 / ${m.c / 5}), oklch(0.62 0.22 250 / ${m.c / 5}))`,
+                        background: `rgba(83, 74, 183, ${0.15 + (m.c / 5) * 0.6})`,
                       }}
                     />
                     <div className="truncate text-[10px] font-medium text-muted-foreground">
