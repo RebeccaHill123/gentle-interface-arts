@@ -839,6 +839,7 @@ function RecordSessionDialog({
     setOpen(false);
     setMinutes("30");
     setNote("");
+    setSuggestedIdx("__none");
     onSessionLogged();
   };
 
