@@ -305,7 +305,7 @@ function EditSessionDialog({
   const [note, setNote] = useState<string>("");
 
   // Reset state whenever a new session opens
-  useMemo(() => {
+  useEffect(() => {
     if (session) {
       setMinutes(session.minutes);
       setModule(session.module ?? "");
