@@ -219,7 +219,7 @@ function HeroPreview() {
   ];
   return (
     <div className="relative mx-auto max-w-5xl">
-      <div className="absolute -inset-x-10 -top-10 -bottom-20 -z-10 rounded-[3rem] bg-[#534AB7]/10 blur-3xl" />
+      <div className="absolute -inset-x-10 -top-10 -bottom-20 -z-10 rounded-[3rem] bg-gradient-tentra opacity-20 blur-3xl" />
       {/* Browser frame */}
       <div className="overflow-hidden rounded-2xl border border-border bg-card/90 shadow-[0_40px_120px_-30px_oklch(0.5_0.2_320/0.45)] backdrop-blur">
         {/* Title bar */}
@@ -312,7 +312,7 @@ function HeroPreview() {
                     <div
                       className="h-14 rounded-lg ring-1 ring-border/60"
                       style={{
-                        background: `rgba(83, 74, 183, ${0.15 + (m.c / 5) * 0.6})`,
+                        background: `linear-gradient(180deg, oklch(0.72 0.24 350 / ${0.25 + (m.c / 5) * 0.5}), oklch(0.62 0.22 250 / ${0.25 + (m.c / 5) * 0.5}))`,
                       }}
                     />
                     <div className="truncate text-[10px] font-medium text-muted-foreground">
