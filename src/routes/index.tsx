@@ -312,7 +312,7 @@ function HeroPreview() {
                     <div
                       className="h-14 rounded-lg ring-1 ring-border/60"
                       style={{
-                        background: `linear-gradient(180deg, oklch(0.72 0.24 350 / ${m.c / 5}), oklch(0.62 0.22 250 / ${m.c / 5}))`,
+                        background: `rgba(83, 74, 183, ${0.15 + (m.c / 5) * 0.6})`,
                       }}
                     />
                     <div className="truncate text-[10px] font-medium text-muted-foreground">
