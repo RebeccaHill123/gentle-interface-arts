@@ -108,7 +108,9 @@ export type Database = {
           email: string | null
           first_name: string | null
           id: string
+          is_pro: boolean
           last_name: string | null
+          pro_since: string | null
           updated_at: string
           user_id: string
         }
@@ -118,7 +120,9 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           id?: string
+          is_pro?: boolean
           last_name?: string | null
+          pro_since?: string | null
           updated_at?: string
           user_id: string
         }
@@ -128,7 +132,9 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           id?: string
+          is_pro?: boolean
           last_name?: string | null
+          pro_since?: string | null
           updated_at?: string
           user_id?: string
         }
