@@ -7,6 +7,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { Loader2, AlertCircle, ArrowRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { waitForAuthUser } from "@/lib/auth-session";
 import {
   SQE1_MODULES,
   SQE2_MODULES,
@@ -20,8 +21,8 @@ import {
 
 export const Route = createFileRoute("/onboarding")({
   beforeLoad: async () => {
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) {
+    const user = await waitForAuthUser();
+    if (!user) {
       throw redirect({ to: "/auth", search: { mode: "signin" } });
     }
   },
