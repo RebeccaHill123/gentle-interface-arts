@@ -190,12 +190,12 @@ function StepCard({
   body: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-glow">
+    <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-7 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-lg">
       <div className="absolute right-5 top-3 font-display text-5xl leading-none text-[#534AB7]/20">
         {num}
       </div>
       <div className="relative">
-        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#534AB7] text-primary-foreground shadow-glow">
+        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[#534AB7] text-white">
           {icon}
         </div>
         <h3 className="mt-5 text-xl font-semibold text-foreground">{title}</h3>
@@ -219,7 +219,7 @@ function HeroPreview() {
   ];
   return (
     <div className="relative mx-auto max-w-5xl">
-      <div className="absolute -inset-x-10 -top-10 -bottom-20 -z-10 rounded-[3rem] bg-gradient-tentra opacity-30 blur-3xl" />
+      <div className="absolute -inset-x-10 -top-10 -bottom-20 -z-10 rounded-[3rem] bg-[#534AB7]/10 blur-3xl" />
       {/* Browser frame */}
       <div className="overflow-hidden rounded-2xl border border-border bg-card/90 shadow-[0_40px_120px_-30px_oklch(0.5_0.2_320/0.45)] backdrop-blur">
         {/* Title bar */}
