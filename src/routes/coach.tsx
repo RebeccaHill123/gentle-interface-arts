@@ -70,12 +70,14 @@ function CoachPage() {
       const part = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
       setGreeting(name ? `${part}, ${name} — what are we tackling?` : `${part} — what are we tackling?`);
 
-      const plan = await loadPlan();
+      const plan = loadPlan();
       if (plan) {
-        setStreak(computeStreak(plan));
-        const mods = plan.modules || [];
+        setStreak(computeStreak(plan.sessions).current);
+        const mods = plan.input?.modules ?? [];
         if (mods.length) {
-          const avg = mods.reduce((a, m) => a + (m.confidence ?? 0), 0) / mods.length;
+          const avg =
+            mods.reduce((a: number, m: { confidence?: number }) => a + (m.confidence ?? 0), 0) /
+            mods.length;
           setReadiness(Math.round(Math.min(95, Math.max(15, avg * 18 + 25))));
         }
       }
