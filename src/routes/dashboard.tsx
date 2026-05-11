@@ -162,6 +162,7 @@ function DashboardPage() {
 
   const tabMeta: Record<DashboardTab, { title: string; subtitle: string }> = {
     week: { title: "This Week", subtitle: "Your focus, your plan, your countdown." },
+    focus: { title: "Focus", subtitle: "Distraction-free deep work, the Tentra way." },
     activity: { title: "Activity Feed", subtitle: "A Strava-style log of your study sessions." },
     mastery: { title: "Mastery", subtitle: "Where you're strong, and where to dig in." },
     mocks: { title: "Mocks", subtitle: "Practice under exam conditions." },
