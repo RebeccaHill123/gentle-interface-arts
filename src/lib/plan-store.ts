@@ -1,5 +1,6 @@
 // Plan store: localStorage cache + Supabase cloud sync (per-user).
 import { supabase } from "@/integrations/supabase/client";
+import { hasRecentAuthCallback, waitForAuthUser } from "@/lib/auth-session";
 
 export type ExamType = "SQE1" | "SQE2";
 
@@ -113,8 +114,8 @@ export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
 
 export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
   try {
-    const { data: userData } = await supabase.auth.getUser();
-    const uid = userData.user?.id;
+    const user = await waitForAuthUser();
+    const uid = user?.id;
     if (!uid) return null;
     const { data, error } = await supabase
       .from("user_plans")
@@ -122,8 +123,11 @@ export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
       .eq("user_id", uid)
       .maybeSingle();
     if (error || !data) {
-      // No cloud plan for this user — clear any stale local cache
-      if (typeof window !== "undefined") localStorage.removeItem(KEY);
+      // No cloud plan for this user — clear stale local cache after normal sign-in,
+      // but preserve it immediately after verification while auth storage settles.
+      if (typeof window !== "undefined" && !hasRecentAuthCallback()) {
+        localStorage.removeItem(KEY);
+      }
       return null;
     }
     const plan = data.plan as unknown as StoredPlan;

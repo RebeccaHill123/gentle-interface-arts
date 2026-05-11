@@ -52,6 +52,7 @@ import {
   type StoredPlan,
 } from "@/lib/plan-store";
 import { supabase } from "@/integrations/supabase/client";
+import { waitForAuthUser } from "@/lib/auth-session";
 
 interface QuizQuestion {
   prompt: string;
@@ -62,9 +63,8 @@ interface QuizQuestion {
 
 export const Route = createFileRoute("/dashboard")({
   beforeLoad: async () => {
-    const { supabase } = await import("@/integrations/supabase/client");
-    const { data } = await supabase.auth.getUser();
-    if (!data.user) {
+    const user = await waitForAuthUser();
+    if (!user) {
       throw redirect({ to: "/auth", search: { mode: "signin" } });
     }
   },
