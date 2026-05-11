@@ -1,5 +1,7 @@
+import { useEffect } from "react";
 import { Outlet, Link, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
 import { Toaster } from "@/components/ui/sonner";
+import { installRememberMeHandler } from "@/lib/remember-me";
 
 import appCss from "../styles.css?url";
 
