@@ -861,6 +861,27 @@ function RecordSessionDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {todayTasks.length > 0 && (
+            <div className="space-y-2">
+              <Label>Suggested activity</Label>
+              <Select value={suggestedIdx} onValueChange={applySuggested}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick from today's plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">None — log freely</SelectItem>
+                  {todayTasks.map((t, i) => (
+                    <SelectItem key={i} value={String(i)}>
+                      {t.title} · {t.minutes}m
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Prefills minutes, module, and notes from today's plan.
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="minutes">Minutes studied</Label>
             <Input
