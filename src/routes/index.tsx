@@ -103,35 +103,57 @@ function LandingPage() {
           </div>
         </section>
 
-        <section id="how" className="mx-auto max-w-6xl px-6 pb-24">
-          <div className="mb-12 text-center">
+        <section id="how" className="mx-auto max-w-5xl px-6 py-24 md:py-32">
+          <div className="mb-20 text-center">
             <div className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
               How it works
             </div>
             <h2 className="mt-2 text-4xl font-normal text-foreground md:text-5xl">
-              Three steps to a smarter prep.
+              Three steps to smarter prep.
             </h2>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
-            <StepCard
-              num="01"
-              icon={<Calendar className="h-5 w-5" />}
-              title="Set your date"
-              body="Pick your SQE1 or SQE2 sitting and tell us how many hours a week you can give."
-            />
-            <StepCard
-              num="02"
-              icon={<Brain className="h-5 w-5" />}
-              title="Rate your confidence"
-              body="Score each module 1–5. We'll prioritise your weak spots without burning you out."
-            />
-            <StepCard
-              num="03"
-              icon={<Target className="h-5 w-5" />}
-              title="Follow the plan"
-              body="A clear today-list, a weekly theme, and a mastery heatmap that updates as you go."
-            />
-          </div>
+          <ol className="space-y-20 md:space-y-28">
+            {[
+              {
+                num: "01",
+                title: "Set your exam date",
+                body: "Tell us when you're sitting SQE1 or SQE2.",
+                icon: <Calendar className="h-5 w-5" />,
+              },
+              {
+                num: "02",
+                title: "Rate your confidence",
+                body: "Score each module from 1 to 5 so we know where to focus.",
+                icon: <Brain className="h-5 w-5" />,
+              },
+              {
+                num: "03",
+                title: "Follow your plan",
+                body: "A clear daily list and weekly theme, tuned as you go.",
+                icon: <Target className="h-5 w-5" />,
+              },
+            ].map((s) => (
+              <li
+                key={s.num}
+                className="grid items-center gap-6 md:grid-cols-[auto_1fr_auto] md:gap-12"
+              >
+                <div className="font-display text-[5rem] font-light leading-none text-gradient-tentra md:text-[7rem]">
+                  {s.num}
+                </div>
+                <div>
+                  <h3 className="text-2xl font-semibold text-foreground md:text-3xl">
+                    {s.title}
+                  </h3>
+                  <p className="mt-2 text-base text-muted-foreground md:text-lg">
+                    {s.body}
+                  </p>
+                </div>
+                <div className="hidden h-12 w-12 place-items-center rounded-2xl border border-border bg-card/60 text-foreground/70 md:grid">
+                  {s.icon}
+                </div>
+              </li>
+            ))}
+          </ol>
         </section>
 
         <section id="features" className="mx-auto max-w-6xl px-6 pb-28">
