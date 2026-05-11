@@ -228,6 +228,13 @@ function DashboardPage() {
                 </ul>
               </Panel>
 
+              <Panel
+                title="Recent sessions"
+                subtitle="Your latest study activity, freshest first."
+              >
+                <RecentSessions sessions={sessions} />
+              </Panel>
+
               <Panel title="Topic mastery" subtitle="Heat shows current confidence. Cooler = needs work.">
                 <MasteryHeatmap stored={stored} />
               </Panel>
