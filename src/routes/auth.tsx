@@ -36,7 +36,8 @@ const signInSchema = z.object({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"signup" | "signin">("signup");
+  const { mode: initialMode } = Route.useSearch();
+  const [mode, setMode] = useState<"signup" | "signin">(initialMode);
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
