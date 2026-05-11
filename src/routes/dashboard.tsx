@@ -77,10 +77,13 @@ export const Route = createFileRoute("/dashboard")({
   }),
 });
 
+type DashboardTab = "week" | "activity" | "mastery" | "mocks" | "settings";
+
 function DashboardPage() {
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [hydrating, setHydrating] = useState(true);
   const [tick, setTick] = useState(0);
+  const [tab, setTab] = useState<DashboardTab>("week");
   const [quizTask, setQuizTask] = useState<{
     index: number;
     title: string;
