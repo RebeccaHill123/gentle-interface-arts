@@ -711,6 +711,9 @@ function Sidebar({
       </nav>
       <div className="mt-auto space-y-3">
         <Button asChild size="sm" variant="outline" className="w-full rounded-full">
+          <Link to="/analytics">📊 Performance Analytics</Link>
+        </Button>
+        <Button asChild size="sm" variant="outline" className="w-full rounded-full">
           <Link to="/coach">✨ Ask Tentra Coach</Link>
         </Button>
         <div className="rounded-2xl border border-border bg-background/40 p-4">
