@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,6 +60,13 @@ interface QuizQuestion {
 }
 
 export const Route = createFileRoute("/dashboard")({
+  beforeLoad: async () => {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { data } = await supabase.auth.getUser();
+    if (!data.user) {
+      throw redirect({ to: "/auth", search: { mode: "signin" } });
+    }
+  },
   component: DashboardPage,
   head: () => ({
     meta: [
