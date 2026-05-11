@@ -33,8 +33,7 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
-      <BackgroundBlobs />
+    <div className="relative min-h-screen overflow-hidden bg-[#FAFAFA] text-neutral-900">
 
       <div className="relative">
         <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
