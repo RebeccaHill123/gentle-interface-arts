@@ -56,6 +56,7 @@ function AuthPage() {
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   const [resendErr, setResendErr] = useState<string | null>(null);
+  const [remember, setRemember] = useState<boolean>(getRememberMe());
 
   const reset = () => setError(null);
 
