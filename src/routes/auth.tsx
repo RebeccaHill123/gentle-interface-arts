@@ -208,6 +208,21 @@ function AuthPage() {
               )}
             </div>
 
+            {isSignup && (
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword">Confirm password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); reset(); }}
+                  autoComplete="new-password"
+                  maxLength={128}
+                  required
+                />
+              </div>
+            )}
+
             {error && (
               <div
                 role="alert"
