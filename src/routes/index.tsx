@@ -172,8 +172,33 @@ function LandingPage() {
           </div>
         </section>
 
-        <footer className="mx-auto max-w-6xl px-6 pb-10 text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Tentra · for the next generation of solicitors
+        <footer className="mt-12 bg-[#1a1a2e] text-neutral-300">
+          <div className="mx-auto max-w-6xl px-6 py-14">
+            <div className="grid gap-10 md:grid-cols-2 md:items-start">
+              <div>
+                <div className="text-2xl font-semibold tracking-tight text-white">
+                  Tentra
+                </div>
+                <p className="mt-3 max-w-sm text-sm text-neutral-400">
+                  For the next generation of solicitors.
+                </p>
+              </div>
+              <nav className="flex flex-wrap gap-x-8 gap-y-3 text-sm font-medium md:justify-end">
+                <Link to="/" className="text-neutral-300 hover:text-white transition-colors">
+                  About
+                </Link>
+                <Link to="/" className="text-neutral-300 hover:text-white transition-colors">
+                  Privacy Policy
+                </Link>
+                <Link to="/" className="text-neutral-300 hover:text-white transition-colors">
+                  Terms of Service
+                </Link>
+              </nav>
+            </div>
+            <div className="mt-10 border-t border-white/10 pt-6 text-xs text-neutral-500">
+              © {new Date().getFullYear()} Tentra. All rights reserved.
+            </div>
+          </div>
         </footer>
       </div>
     </div>
