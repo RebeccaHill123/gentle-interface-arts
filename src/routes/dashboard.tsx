@@ -185,6 +185,7 @@ function DashboardPage() {
             }}
             moduleNames={input.modules.map((m) => m.name)}
             onSessionLogged={refresh}
+            todayTasks={plan.todayTasks}
           />
 
           {tab === "week" && (
@@ -753,11 +754,13 @@ function TopBar({
   onReset,
   moduleNames,
   onSessionLogged,
+  todayTasks,
 }: {
   name: string;
   onReset: () => void;
   moduleNames: string[];
   onSessionLogged: () => void;
+  todayTasks: { title: string; module: string; minutes: number }[];
 }) {
   return (
     <div className="flex items-center justify-between rounded-2xl border border-border bg-card/60 p-3 pl-5 backdrop-blur">
@@ -773,6 +776,7 @@ function TopBar({
         <RecordSessionDialog
           moduleNames={moduleNames}
           onSessionLogged={onSessionLogged}
+          todayTasks={todayTasks}
         />
         <Button
           size="sm"
@@ -796,14 +800,27 @@ function TopBar({
 function RecordSessionDialog({
   moduleNames,
   onSessionLogged,
+  todayTasks,
 }: {
   moduleNames: string[];
   onSessionLogged: () => void;
+  todayTasks: { title: string; module: string; minutes: number }[];
 }) {
   const [open, setOpen] = useState(false);
   const [minutes, setMinutes] = useState("30");
   const [moduleName, setModuleName] = useState<string>(moduleNames[0] ?? "");
   const [note, setNote] = useState("");
+  const [suggestedIdx, setSuggestedIdx] = useState<string>("__none");
+
+  const applySuggested = (value: string) => {
+    setSuggestedIdx(value);
+    if (value === "__none") return;
+    const task = todayTasks[Number(value)];
+    if (!task) return;
+    setMinutes(String(task.minutes));
+    if (task.module) setModuleName(task.module);
+    setNote(task.title);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -822,6 +839,7 @@ function RecordSessionDialog({
     setOpen(false);
     setMinutes("30");
     setNote("");
+    setSuggestedIdx("__none");
     onSessionLogged();
   };
 
@@ -843,6 +861,27 @@ function RecordSessionDialog({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {todayTasks.length > 0 && (
+            <div className="space-y-2">
+              <Label>Suggested activity</Label>
+              <Select value={suggestedIdx} onValueChange={applySuggested}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Pick from today's plan" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none">None — log freely</SelectItem>
+                  {todayTasks.map((t, i) => (
+                    <SelectItem key={i} value={String(i)}>
+                      {t.title} · {t.minutes}m
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                Prefills minutes, module, and notes from today's plan.
+              </p>
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="minutes">Minutes studied</Label>
             <Input
