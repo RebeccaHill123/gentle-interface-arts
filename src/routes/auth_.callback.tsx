@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
+import { markAuthCallbackComplete, waitForAuthSession } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/auth_/callback")({
   component: AuthCallbackPage,
@@ -98,10 +99,9 @@ function AuthCallbackPage() {
           if (sErr) throw sErr;
         }
 
-        // Confirm we have a session now.
-        const { data: sessionData } = await supabase.auth.getSession();
-        const user = sessionData.session?.user;
-        if (!user) {
+        // Confirm the browser has persisted the session before protected routes run.
+        const session = await waitForAuthSession();
+        if (!session?.user) {
           throw new Error("Verification link is invalid or has expired.");
         }
 
@@ -109,6 +109,7 @@ function AuthCallbackPage() {
 
         // Clean the URL (remove tokens from hash/search) before navigating.
         window.history.replaceState({}, document.title, "/auth/callback");
+        markAuthCallbackComplete();
 
         // /onboarding handles redirect to /dashboard if a plan already exists.
         navigate({ to: "/onboarding", replace: true });
