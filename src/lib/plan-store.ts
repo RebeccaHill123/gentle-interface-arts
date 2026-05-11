@@ -100,10 +100,10 @@ export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
     const { data: userData } = await supabase.auth.getUser();
     const uid = userData.user?.id;
     if (!uid) return;
-    await supabase
+    await (supabase as any)
       .from("user_plans")
       .upsert(
-        [{ user_id: uid, plan: plan as unknown as Record<string, unknown> }],
+        [{ user_id: uid, plan }],
         { onConflict: "user_id" },
       );
   } catch (e) {
