@@ -1,8 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 
@@ -19,6 +21,35 @@ export const Route = createFileRoute("/auth_/callback")({
 function AuthCallbackPage() {
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
+  const [resendEmail, setResendEmail] = useState("");
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
+  const [resendErr, setResendErr] = useState<string | null>(null);
+
+  const handleResend = async (e: FormEvent) => {
+    e.preventDefault();
+    setResendMsg(null);
+    setResendErr(null);
+    const email = resendEmail.trim();
+    if (!email) {
+      setResendErr("Enter your email address.");
+      return;
+    }
+    setResending(true);
+    try {
+      const { error: rErr } = await supabase.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (rErr) setResendErr(rErr.message);
+      else setResendMsg("Verification email sent — check your inbox.");
+    } catch (err) {
+      setResendErr(err instanceof Error ? err.message : "Failed to resend");
+    } finally {
+      setResending(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -116,10 +147,49 @@ function AuthCallbackPage() {
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <div>{error}</div>
               </div>
+              <form onSubmit={handleResend} className="mt-5 space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="resendEmail">Resend verification email</Label>
+                  <Input
+                    id="resendEmail"
+                    type="email"
+                    value={resendEmail}
+                    onChange={(e) => setResendEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    autoComplete="email"
+                    required
+                  />
+                </div>
+                {resendMsg && (
+                  <div className="rounded-xl border border-border bg-muted/40 p-3 text-sm text-foreground">
+                    {resendMsg}
+                  </div>
+                )}
+                {resendErr && (
+                  <div
+                    role="alert"
+                    className="flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+                  >
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <div>{resendErr}</div>
+                  </div>
+                )}
+                <Button
+                  type="submit"
+                  disabled={resending}
+                  className="w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                >
+                  {resending ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resending…</>
+                  ) : (
+                    "Resend verification email"
+                  )}
+                </Button>
+              </form>
               <Button
                 type="button"
                 onClick={() => navigate({ to: "/auth", search: { mode: "signin" } })}
-                className="mt-6 w-full rounded-full"
+                className="mt-3 w-full rounded-full"
                 variant="outline"
               >
                 Back to sign in
