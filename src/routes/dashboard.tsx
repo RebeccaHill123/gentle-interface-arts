@@ -800,14 +800,27 @@ function TopBar({
 function RecordSessionDialog({
   moduleNames,
   onSessionLogged,
+  todayTasks,
 }: {
   moduleNames: string[];
   onSessionLogged: () => void;
+  todayTasks: { title: string; module: string; minutes: number }[];
 }) {
   const [open, setOpen] = useState(false);
   const [minutes, setMinutes] = useState("30");
   const [moduleName, setModuleName] = useState<string>(moduleNames[0] ?? "");
   const [note, setNote] = useState("");
+  const [suggestedIdx, setSuggestedIdx] = useState<string>("__none");
+
+  const applySuggested = (value: string) => {
+    setSuggestedIdx(value);
+    if (value === "__none") return;
+    const task = todayTasks[Number(value)];
+    if (!task) return;
+    setMinutes(String(task.minutes));
+    if (task.module) setModuleName(task.module);
+    setNote(task.title);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
