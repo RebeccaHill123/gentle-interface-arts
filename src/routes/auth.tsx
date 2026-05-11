@@ -10,6 +10,9 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/auth")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    mode: search.mode === "signin" ? ("signin" as const) : ("signup" as const),
+  }),
   component: AuthPage,
   head: () => ({
     meta: [
