@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getRememberMe, setRememberMe } from "@/lib/remember-me";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -55,6 +56,7 @@ function AuthPage() {
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   const [resendErr, setResendErr] = useState<string | null>(null);
+  const [remember, setRemember] = useState<boolean>(getRememberMe());
 
   const reset = () => setError(null);
 
@@ -134,6 +136,7 @@ function AuthPage() {
           setError(parsed.error.issues[0]?.message ?? "Invalid input");
           return;
         }
+        setRememberMe(remember);
         const { error: signInErr } = await supabase.auth.signInWithPassword({
           email: parsed.data.email,
           password: parsed.data.password,
@@ -304,6 +307,18 @@ function AuthPage() {
                   required
                 />
               </div>
+            )}
+
+            {!isSignup && (
+              <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={remember}
+                  onChange={(e) => setRemember(e.target.checked)}
+                  className="h-4 w-4 rounded border-border accent-pink"
+                />
+                <span>Remember me on this device</span>
+              </label>
             )}
 
             {error && (
