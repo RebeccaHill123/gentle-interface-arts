@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 import {
-  Home,
   CheckCircle2,
   Calendar,
   Settings,
@@ -38,7 +37,7 @@ import {
   Loader2,
   Check,
   X,
-  
+  Activity,
 } from "lucide-react";
 import {
   loadPlan,
@@ -78,10 +77,13 @@ export const Route = createFileRoute("/dashboard")({
   }),
 });
 
+type DashboardTab = "week" | "activity" | "mastery" | "mocks" | "settings";
+
 function DashboardPage() {
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [hydrating, setHydrating] = useState(true);
   const [tick, setTick] = useState(0);
+  const [tab, setTab] = useState<DashboardTab>("week");
   const [quizTask, setQuizTask] = useState<{
     index: number;
     title: string;
@@ -158,10 +160,18 @@ function DashboardPage() {
 
   const refresh = () => setTick((t) => t + 1);
 
+  const tabMeta: Record<DashboardTab, { title: string; subtitle: string }> = {
+    week: { title: "This Week", subtitle: "Your focus, your plan, your countdown." },
+    activity: { title: "Activity Feed", subtitle: "A Strava-style log of your study sessions." },
+    mastery: { title: "Mastery", subtitle: "Where you're strong, and where to dig in." },
+    mocks: { title: "Mocks", subtitle: "Practice under exam conditions." },
+    settings: { title: "Settings", subtitle: "Manage your plan and account." },
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto flex max-w-7xl gap-6 p-4 md:p-6">
-        <Sidebar />
+        <Sidebar active={tab} onChange={setTab} />
 
         <div className="flex-1 space-y-6">
           <TopBar
@@ -174,143 +184,170 @@ function DashboardPage() {
             onSessionLogged={refresh}
           />
 
-          <HeroBanner
-            name={input.name}
-            examType={input.examType}
-            daysUntilExam={daysUntilExam}
-            progress={progress}
-            completed={completed}
-            total={totalToday}
-            overview={plan.overview}
-            streak={streak}
-          />
+          {tab === "week" && (
+            <>
+              <HeroBanner
+                name={input.name}
+                examType={input.examType}
+                daysUntilExam={daysUntilExam}
+                progress={progress}
+                completed={completed}
+                total={totalToday}
+                overview={plan.overview}
+                streak={streak}
+              />
 
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="space-y-6 lg:col-span-2">
-              <Panel title="Today's plan" subtitle="Knock these out and you're on track.">
-                <ul className="space-y-2">
-                  {plan.todayTasks.map((t, i) => {
-                    const done = completedTaskIds.includes(String(i));
-                    return (
-                      <li key={i}>
-                        <button
-                          onClick={() => handleToggle(i)}
-                          className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-background/40 p-4 text-left transition-all hover:border-pink/40 hover:bg-card"
-                        >
-                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground transition-transform group-hover:scale-105">
-                            {done ? (
-                              <CheckCircle2 className="h-5 w-5" />
-                            ) : (
-                              <Circle className="h-5 w-5 opacity-70" />
-                            )}
-                          </span>
-                          <span className="flex-1">
-                            <span
-                              className={`block font-medium ${
-                                done
-                                  ? "text-muted-foreground line-through"
-                                  : "text-foreground"
-                              }`}
+              <div className="grid gap-6 lg:grid-cols-3">
+                <div className="space-y-6 lg:col-span-2">
+                  <Panel title="Today's plan" subtitle="Knock these out and you're on track.">
+                    <ul className="space-y-2">
+                      {plan.todayTasks.map((t, i) => {
+                        const done = completedTaskIds.includes(String(i));
+                        return (
+                          <li key={i}>
+                            <button
+                              onClick={() => handleToggle(i)}
+                              className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-background/40 p-4 text-left transition-all hover:border-pink/40 hover:bg-card"
                             >
-                              {t.title}
-                            </span>
-                            <span className="block text-xs text-muted-foreground">
-                              {t.module}
-                            </span>
-                          </span>
-                          <span className="text-sm font-semibold text-cyan">
-                            {t.minutes}m
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </Panel>
+                              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground transition-transform group-hover:scale-105">
+                                {done ? (
+                                  <CheckCircle2 className="h-5 w-5" />
+                                ) : (
+                                  <Circle className="h-5 w-5 opacity-70" />
+                                )}
+                              </span>
+                              <span className="flex-1">
+                                <span
+                                  className={`block font-medium ${
+                                    done
+                                      ? "text-muted-foreground line-through"
+                                      : "text-foreground"
+                                  }`}
+                                >
+                                  {t.title}
+                                </span>
+                                <span className="block text-xs text-muted-foreground">
+                                  {t.module}
+                                </span>
+                              </span>
+                              <span className="text-sm font-semibold text-cyan">
+                                {t.minutes}m
+                              </span>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </Panel>
+                </div>
 
-              <Panel
-                title="Recent sessions"
-                subtitle="Your latest study activity, freshest first."
-              >
-                <RecentSessions sessions={sessions} />
-              </Panel>
+                <div className="space-y-6">
+                  <Panel title="Weekly focus" subtitle="Your plan, week by week.">
+                    <ol className="space-y-3">
+                      {plan.weeklyFocus.slice(0, 6).map((w, i) => (
+                        <li
+                          key={w.week}
+                          className="rounded-2xl border border-border bg-background/40 p-4"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="text-xs font-semibold uppercase tracking-wider text-pink">
+                              Week {w.week}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {w.hours}h
+                            </div>
+                          </div>
+                          <div className="mt-1 text-sm font-semibold text-foreground">
+                            {w.theme}
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {w.modules.slice(0, 3).map((m) => (
+                              <span
+                                key={m}
+                                className="rounded-full bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                              >
+                                {m}
+                              </span>
+                            ))}
+                          </div>
+                          {i === 0 && (
+                            <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-pink-blue px-2.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                              <Flame className="h-3 w-3" /> This week
+                            </div>
+                          )}
+                        </li>
+                      ))}
+                    </ol>
+                  </Panel>
+                </div>
+              </div>
+            </>
+          )}
 
-              <Panel title="Topic mastery" subtitle="Heat shows current confidence. Cooler = needs work.">
-                <MasteryHeatmap stored={stored} />
-              </Panel>
-            </div>
+          {tab === "activity" && (
+            <Panel
+              title="Activity feed"
+              subtitle="Your latest study sessions, freshest first."
+            >
+              <RecentSessions sessions={sessions} />
+            </Panel>
+          )}
 
-            <div className="space-y-6">
-              <Panel title="Weekly focus" subtitle="Your plan, week by week.">
-                <ol className="space-y-3">
-                  {plan.weeklyFocus.slice(0, 6).map((w, i) => (
-                    <li
-                      key={w.week}
-                      className="rounded-2xl border border-border bg-background/40 p-4"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-pink">
-                          Week {w.week}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {w.hours}h
-                        </div>
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
-                        {w.theme}
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {w.modules.slice(0, 3).map((m) => (
-                          <span
-                            key={m}
-                            className="rounded-full bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
-                          >
-                            {m}
-                          </span>
-                        ))}
-                      </div>
-                      {i === 0 && (
-                        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-pink-blue px-2.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                          <Flame className="h-3 w-3" /> This week
-                        </div>
-                      )}
-                    </li>
-                  ))}
-                </ol>
-              </Panel>
-
-              <Panel title="Mastery targets">
-                <ul className="space-y-2">
-                  {plan.masteryTargets.slice(0, 5).map((t) => (
-                    <li
-                      key={t.module}
-                      className="flex items-center justify-between gap-3 rounded-xl bg-background/40 p-3"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-foreground">
-                          {t.module}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground">
-                          target {t.targetConfidence}/5
-                        </div>
-                      </div>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                          t.priority === "high"
-                            ? "bg-pink/20 text-pink"
-                            : t.priority === "medium"
-                              ? "bg-cyan/20 text-cyan"
-                              : "bg-muted text-muted-foreground"
-                        }`}
+          {tab === "mastery" && (
+            <div className="grid gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-2">
+                <Panel
+                  title="Topic mastery"
+                  subtitle="Heat shows current confidence. Cooler = needs work."
+                >
+                  <MasteryHeatmap stored={stored} />
+                </Panel>
+              </div>
+              <div>
+                <Panel title="Mastery targets">
+                  <ul className="space-y-2">
+                    {plan.masteryTargets.slice(0, 8).map((t) => (
+                      <li
+                        key={t.module}
+                        className="flex items-center justify-between gap-3 rounded-xl bg-background/40 p-3"
                       >
-                        {t.priority}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </Panel>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium text-foreground">
+                            {t.module}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            target {t.targetConfidence}/5
+                          </div>
+                        </div>
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                            t.priority === "high"
+                              ? "bg-pink/20 text-pink"
+                              : t.priority === "medium"
+                                ? "bg-cyan/20 text-cyan"
+                                : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {t.priority}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </Panel>
+              </div>
             </div>
-          </div>
+          )}
+
+          {(tab === "mocks" || tab === "settings") && (
+            <Panel title={tabMeta[tab].title} subtitle={tabMeta[tab].subtitle}>
+              <div className="rounded-2xl border border-dashed border-border bg-background/40 p-10 text-center">
+                <p className="text-sm font-medium text-foreground">Coming soon</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  This section is on the way.
+                </p>
+              </div>
+            </Panel>
+          )}
         </div>
       </div>
 
@@ -615,13 +652,19 @@ function NoPlanState() {
   );
 }
 
-function Sidebar() {
-  const items = [
-    { icon: Home, label: "Today", active: true },
-    { icon: Calendar, label: "Plan" },
-    { icon: Target, label: "Mastery" },
-    { icon: Scale, label: "Mocks" },
-    { icon: Settings, label: "Settings" },
+function Sidebar({
+  active,
+  onChange,
+}: {
+  active: DashboardTab;
+  onChange: (tab: DashboardTab) => void;
+}) {
+  const items: { icon: typeof Calendar; label: string; tab: DashboardTab }[] = [
+    { icon: Calendar, label: "This Week", tab: "week" },
+    { icon: Activity, label: "Activity Feed", tab: "activity" },
+    { icon: Target, label: "Mastery", tab: "mastery" },
+    { icon: Scale, label: "Mocks", tab: "mocks" },
+    { icon: Settings, label: "Settings", tab: "settings" },
   ];
   return (
     <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-60 shrink-0 flex-col rounded-3xl border border-border bg-sidebar p-5 shadow-card md:flex">
@@ -629,11 +672,13 @@ function Sidebar() {
       <nav className="mt-8 space-y-1">
         {items.map((it) => {
           const Icon = it.icon;
+          const isActive = active === it.tab;
           return (
             <button
               key={it.label}
+              onClick={() => onChange(it.tab)}
               className={`flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium transition-colors ${
-                it.active
+                isActive
                   ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
                   : "text-muted-foreground hover:bg-card hover:text-foreground"
               }`}
