@@ -60,7 +60,7 @@ function AuthPage() {
     setSubmitting(true);
     try {
       if (mode === "signup") {
-        const parsed = signUpSchema.safeParse({ firstName, lastName, email, password });
+        const parsed = signUpSchema.safeParse({ firstName, lastName, email, password, confirmPassword });
         if (!parsed.success) {
           setError(parsed.error.issues[0]?.message ?? "Invalid input");
           return;
