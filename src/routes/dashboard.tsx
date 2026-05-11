@@ -285,6 +285,18 @@ function DashboardPage() {
             </>
           )}
 
+          {tab === "focus" && (
+            <div className="space-y-6">
+              <FocusLauncher moduleNames={input.modules.map((m) => m.name)} />
+              <Panel
+                title="Focus insights"
+                subtitle="Your deep work rhythm — when you focus best and how it's trending."
+              >
+                <FocusInsights sessions={sessions} />
+              </Panel>
+            </div>
+          )}
+
           {tab === "activity" && (
             <Panel
               title="Activity feed"
