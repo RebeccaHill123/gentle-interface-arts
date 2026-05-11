@@ -59,13 +59,14 @@ type SessionType = NonNullable<StudySession["sessionType"]>;
 
 const TYPE_META: Record<SessionType, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
   study: { label: "Study", icon: BookOpen },
+  focus: { label: "Focus", icon: Zap },
   quiz: { label: "Quiz", icon: Target },
   mock: { label: "Mock", icon: Trophy },
   review: { label: "Review", icon: Zap },
   flashcards: { label: "Flashcards", icon: Flame },
 };
 
-const TYPE_ORDER: SessionType[] = ["study", "quiz", "mock", "review", "flashcards"];
+const TYPE_ORDER: SessionType[] = ["study", "focus", "quiz", "mock", "review", "flashcards"];
 
 function inferType(s: StudySession): SessionType {
   if (s.sessionType) return s.sessionType;

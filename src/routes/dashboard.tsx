@@ -53,6 +53,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { RecentSessions } from "@/components/recent-sessions";
+import { FocusLauncher } from "@/components/focus-launcher";
+import { FocusInsights } from "@/components/focus-insights";
 
 interface QuizQuestion {
   prompt: string;
@@ -77,7 +79,7 @@ export const Route = createFileRoute("/dashboard")({
   }),
 });
 
-type DashboardTab = "week" | "activity" | "mastery" | "mocks" | "settings";
+type DashboardTab = "week" | "focus" | "activity" | "mastery" | "mocks" | "settings";
 
 function DashboardPage() {
   const [stored, setStored] = useState<StoredPlan | null>(null);
@@ -162,6 +164,7 @@ function DashboardPage() {
 
   const tabMeta: Record<DashboardTab, { title: string; subtitle: string }> = {
     week: { title: "This Week", subtitle: "Your focus, your plan, your countdown." },
+    focus: { title: "Focus", subtitle: "Distraction-free deep work, the Tentra way." },
     activity: { title: "Activity Feed", subtitle: "A Strava-style log of your study sessions." },
     mastery: { title: "Mastery", subtitle: "Where you're strong, and where to dig in." },
     mocks: { title: "Mocks", subtitle: "Practice under exam conditions." },
@@ -282,6 +285,18 @@ function DashboardPage() {
                 </div>
               </div>
             </>
+          )}
+
+          {tab === "focus" && (
+            <div className="space-y-6">
+              <FocusLauncher moduleNames={input.modules.map((m) => m.name)} />
+              <Panel
+                title="Focus insights"
+                subtitle="Your deep work rhythm — when you focus best and how it's trending."
+              >
+                <FocusInsights sessions={sessions} />
+              </Panel>
+            </div>
           )}
 
           {tab === "activity" && (
@@ -665,6 +680,7 @@ function Sidebar({
 }) {
   const items: { icon: typeof Calendar; label: string; tab: DashboardTab }[] = [
     { icon: Calendar, label: "This Week", tab: "week" },
+    { icon: Flame, label: "Focus", tab: "focus" },
     { icon: Activity, label: "Activity Feed", tab: "activity" },
     { icon: Target, label: "Mastery", tab: "mastery" },
     { icon: Scale, label: "Mocks", tab: "mocks" },
