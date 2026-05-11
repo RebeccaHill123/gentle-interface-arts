@@ -70,7 +70,7 @@ function AuthPage() {
           email: parsed.data.email,
           password: parsed.data.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/onboarding`,
+            emailRedirectTo: `${window.location.origin}/auth/callback`,
             data: {
               first_name: parsed.data.firstName,
               last_name: parsed.data.lastName,
@@ -114,11 +114,14 @@ function AuthPage() {
           password: parsed.data.password,
         });
         if (signInErr) {
-          setError(
-            signInErr.message.toLowerCase().includes("invalid")
-              ? "Wrong email or password."
-              : signInErr.message,
-          );
+          const msg = signInErr.message.toLowerCase();
+          if (msg.includes("not confirmed") || msg.includes("email not confirmed")) {
+            setError("Please verify your email first — check your inbox.");
+          } else if (msg.includes("invalid")) {
+            setError("Wrong email or password.");
+          } else {
+            setError(signInErr.message);
+          }
           return;
         }
         navigate({ to: "/dashboard" });
