@@ -22,12 +22,18 @@ export const Route = createFileRoute("/auth")({
   }),
 });
 
-const signUpSchema = z.object({
-  firstName: z.string().trim().min(1, "First name is required").max(60),
-  lastName: z.string().trim().min(1, "Last name is required").max(60),
-  email: z.string().trim().email("Enter a valid email").max(255),
-  password: z.string().min(8, "Password must be at least 8 characters").max(128),
-});
+const signUpSchema = z
+  .object({
+    firstName: z.string().trim().min(1, "First name is required").max(60),
+    lastName: z.string().trim().min(1, "Last name is required").max(60),
+    email: z.string().trim().email("Enter a valid email").max(255),
+    password: z.string().min(8, "Password must be at least 8 characters").max(128),
+    confirmPassword: z.string().min(1, "Please confirm your password").max(128),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 const signInSchema = z.object({
   email: z.string().trim().email("Enter a valid email").max(255),
