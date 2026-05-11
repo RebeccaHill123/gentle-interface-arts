@@ -22,12 +22,18 @@ export const Route = createFileRoute("/auth")({
   }),
 });
 
-const signUpSchema = z.object({
-  firstName: z.string().trim().min(1, "First name is required").max(60),
-  lastName: z.string().trim().min(1, "Last name is required").max(60),
-  email: z.string().trim().email("Enter a valid email").max(255),
-  password: z.string().min(8, "Password must be at least 8 characters").max(128),
-});
+const signUpSchema = z
+  .object({
+    firstName: z.string().trim().min(1, "First name is required").max(60),
+    lastName: z.string().trim().min(1, "Last name is required").max(60),
+    email: z.string().trim().email("Enter a valid email").max(255),
+    password: z.string().min(8, "Password must be at least 8 characters").max(128),
+    confirmPassword: z.string().min(1, "Please confirm your password").max(128),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Passwords do not match",
+    path: ["confirmPassword"],
+  });
 
 const signInSchema = z.object({
   email: z.string().trim().email("Enter a valid email").max(255),
@@ -42,6 +48,7 @@ function AuthPage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -53,7 +60,7 @@ function AuthPage() {
     setSubmitting(true);
     try {
       if (mode === "signup") {
-        const parsed = signUpSchema.safeParse({ firstName, lastName, email, password });
+        const parsed = signUpSchema.safeParse({ firstName, lastName, email, password, confirmPassword });
         if (!parsed.success) {
           setError(parsed.error.issues[0]?.message ?? "Invalid input");
           return;
@@ -200,6 +207,21 @@ function AuthPage() {
                 <p className="text-[11px] text-muted-foreground">At least 8 characters.</p>
               )}
             </div>
+
+            {isSignup && (
+              <div className="space-y-1.5">
+                <Label htmlFor="confirmPassword">Confirm password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); reset(); }}
+                  autoComplete="new-password"
+                  maxLength={128}
+                  required
+                />
+              </div>
+            )}
 
             {error && (
               <div
