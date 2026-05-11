@@ -1,4 +1,5 @@
-// Plan store: localStorage cache only.
+// Plan store: localStorage cache + Supabase cloud sync (per-user).
+import { supabase } from "@/integrations/supabase/client";
 
 export type ExamType = "SQE1" | "SQE2";
 
