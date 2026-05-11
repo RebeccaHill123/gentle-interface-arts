@@ -52,8 +52,33 @@ function AuthPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [verifySent, setVerifySent] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
+  const [resendErr, setResendErr] = useState<string | null>(null);
 
   const reset = () => setError(null);
+
+  const handleResend = async (target: string) => {
+    setResendMsg(null);
+    setResendErr(null);
+    setResending(true);
+    try {
+      const { error: rErr } = await supabase.auth.resend({
+        type: "signup",
+        email: target,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (rErr) {
+        setResendErr(rErr.message);
+      } else {
+        setResendMsg("Verification email sent — check your inbox.");
+      }
+    } catch (err) {
+      setResendErr(err instanceof Error ? err.message : "Failed to resend");
+    } finally {
+      setResending(false);
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
