@@ -136,6 +136,7 @@ function AuthPage() {
           setError(parsed.error.issues[0]?.message ?? "Invalid input");
           return;
         }
+        setRememberMe(remember);
         const { error: signInErr } = await supabase.auth.signInWithPassword({
           email: parsed.data.email,
           password: parsed.data.password,
