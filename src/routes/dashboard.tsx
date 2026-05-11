@@ -53,6 +53,8 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { RecentSessions } from "@/components/recent-sessions";
+import { FocusLauncher } from "@/components/focus-launcher";
+import { FocusInsights } from "@/components/focus-insights";
 
 interface QuizQuestion {
   prompt: string;
