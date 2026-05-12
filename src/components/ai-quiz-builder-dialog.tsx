@@ -149,32 +149,48 @@ export function AIQuizBuilderDialog({
   }
 
   function start() {
-    const subjectLine =
-      subject === "auto" ? `your highest-risk module (${targetSubject})` : targetSubject;
     const advTags = [
-      includeMissed && "include previously-missed concepts",
-      highYieldOnly && "prioritise high-yield topics",
-      mixWeakStrong && "mix weak and strong topics",
+      includeMissed && "previously-missed concepts",
+      highYieldOnly && "high-yield topics",
+      mixWeakStrong && "mixed weak/strong",
       examPacing && timed && "exam-style pacing",
-    ]
-      .filter(Boolean)
-      .join("; ");
+    ].filter(Boolean) as string[];
 
-    const prompt =
-      `Generate a ${meta.title} (${format}) on ${subjectLine}. ` +
-      `${questions} questions over ${duration} minutes, difficulty: ${difficulty}, ${
-        timed ? "timed" : "untimed"
-      }. ` +
-      (advTags ? `Constraints: ${advTags}. ` : "") +
-      `Format: brief opening rationale, then numbered items each with the question, ` +
-      `four options A–D where applicable, the correct answer, and a 2–3 sentence explanation. ` +
-      `Finish with a 3-bullet debrief on what to revise next.`;
+    const rationale = targetStat
+      ? `${targetStat.module} sits at ${
+          targetStat.accuracy != null
+            ? `${targetStat.accuracy}% accuracy`
+            : `confidence ${targetStat.confidence}/5`
+        }${
+          targetStat.recencyDays != null
+            ? `, last revised ${targetStat.recencyDays} days ago`
+            : ""
+        }. Targeting ${
+          difficulty === "Adaptive" ? "adaptive" : difficulty.toLowerCase()
+        } difficulty across ${questions} items.`
+      : `Generated from a balanced view of your syllabus.`;
+
+    const config = {
+      source: "ai-quiz" as const,
+      format,
+      formatLabel: meta.title,
+      module: targetSubject,
+      topic: meta.title,
+      questions,
+      duration,
+      difficulty,
+      timed,
+      adaptive: true,
+      rationale,
+      reasonBits: advTags,
+      skillFocus,
+    };
 
     try {
-      sessionStorage.setItem("coach:autosend", prompt);
+      sessionStorage.setItem("practice:config", JSON.stringify(config));
     } catch {}
     onOpenChange(false);
-    navigate({ to: "/coach" });
+    navigate({ to: "/practice" });
   }
 
   function saveToPlan() {
