@@ -15,7 +15,7 @@ import { addStudySession, todayKey } from "@/lib/plan-store";
 import { Confetti } from "@/components/confetti";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/focus")({
+export const Route = createFileRoute("/focus/sprint")({
   beforeLoad: async () => {
     const user = await waitForAuthUser();
     if (!user) {

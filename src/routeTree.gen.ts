@@ -14,13 +14,13 @@ import { Route as SessionsRouteImport } from './routes/sessions'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
-import { Route as FocusRouteImport } from './routes/focus'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FocusSprintRouteImport } from './routes/focus.sprint'
 import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -52,11 +52,6 @@ const MocksRoute = MocksRouteImport.update({
   path: '/mocks',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FocusRoute = FocusRouteImport.update({
-  id: '/focus',
-  path: '/focus',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -85,6 +80,11 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FocusSprintRoute = FocusSprintRouteImport.update({
+  id: '/focus/sprint',
+  path: '/focus/sprint',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
@@ -121,7 +121,6 @@ export interface FileRoutesByFullPath {
   '/coach': typeof CoachRoute
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
-  '/focus': typeof FocusRoute
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
@@ -129,6 +128,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/focus/sprint': typeof FocusSprintRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -140,7 +140,6 @@ export interface FileRoutesByTo {
   '/coach': typeof CoachRoute
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
-  '/focus': typeof FocusRoute
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
@@ -148,6 +147,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/focus/sprint': typeof FocusSprintRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -160,7 +160,6 @@ export interface FileRoutesById {
   '/coach': typeof CoachRoute
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
-  '/focus': typeof FocusRoute
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
@@ -168,6 +167,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth_/callback': typeof AuthCallbackRoute
+  '/focus/sprint': typeof FocusSprintRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -181,7 +181,6 @@ export interface FileRouteTypes {
     | '/coach'
     | '/community'
     | '/dashboard'
-    | '/focus'
     | '/mocks'
     | '/onboarding'
     | '/pro'
@@ -189,6 +188,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/coach'
     | '/auth/callback'
+    | '/focus/sprint'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -200,7 +200,6 @@ export interface FileRouteTypes {
     | '/coach'
     | '/community'
     | '/dashboard'
-    | '/focus'
     | '/mocks'
     | '/onboarding'
     | '/pro'
@@ -208,6 +207,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/coach'
     | '/auth/callback'
+    | '/focus/sprint'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -219,7 +219,6 @@ export interface FileRouteTypes {
     | '/coach'
     | '/community'
     | '/dashboard'
-    | '/focus'
     | '/mocks'
     | '/onboarding'
     | '/pro'
@@ -227,6 +226,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/api/coach'
     | '/auth_/callback'
+    | '/focus/sprint'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -239,7 +239,6 @@ export interface RootRouteChildren {
   CoachRoute: typeof CoachRoute
   CommunityRoute: typeof CommunityRoute
   DashboardRoute: typeof DashboardRoute
-  FocusRoute: typeof FocusRoute
   MocksRoute: typeof MocksRoute
   OnboardingRoute: typeof OnboardingRoute
   ProRoute: typeof ProRoute
@@ -247,6 +246,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   ApiCoachRoute: typeof ApiCoachRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  FocusSprintRoute: typeof FocusSprintRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -289,13 +289,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MocksRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/focus': {
-      id: '/focus'
-      path: '/focus'
-      fullPath: '/focus'
-      preLoaderRoute: typeof FocusRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -336,6 +329,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/focus/sprint': {
+      id: '/focus/sprint'
+      path: '/focus/sprint'
+      fullPath: '/focus/sprint'
+      preLoaderRoute: typeof FocusSprintRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth_/callback': {
@@ -383,7 +383,6 @@ const rootRouteChildren: RootRouteChildren = {
   CoachRoute: CoachRoute,
   CommunityRoute: CommunityRoute,
   DashboardRoute: DashboardRoute,
-  FocusRoute: FocusRoute,
   MocksRoute: MocksRoute,
   OnboardingRoute: OnboardingRoute,
   ProRoute: ProRoute,
@@ -391,6 +390,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   ApiCoachRoute: ApiCoachRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  FocusSprintRoute: FocusSprintRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
@@ -398,3 +398,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
