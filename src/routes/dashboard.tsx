@@ -396,28 +396,30 @@ function HeroBanner({
   name,
   examType,
   daysUntilExam,
-  progress,
-  completed,
-  total,
   overview,
   streak,
+  weeklyDoneMins,
+  weeklyTargetMins,
+  weeklyPct,
 }: {
   name: string;
   examType: string;
   daysUntilExam: number;
-  progress: number;
-  completed: number;
-  total: number;
   overview: string;
   streak: { current: number; longest: number; studiedToday: boolean; totalMinutesToday: number };
+  weeklyDoneMins: number;
+  weeklyTargetMins: number;
+  weeklyPct: number;
 }) {
+  const doneH = (weeklyDoneMins / 60).toFixed(1).replace(/\.0$/, "");
+  const targetH = Math.round(weeklyTargetMins / 60);
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-8 md:p-10">
       <div className="absolute inset-0 bg-gradient-hero opacity-80" />
       <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div className="max-w-xl">
           <div className="text-xs font-semibold uppercase tracking-wider text-pink">
-            {examType} · personalised plan
+            {examType} · adaptive weekly plan
           </div>
           <h1 className="mt-2 text-4xl font-normal text-foreground md:text-5xl">
             Welcome back,{" "}
@@ -432,20 +434,20 @@ function HeroBanner({
           <StreakCard streak={streak} />
           <div className="rounded-2xl border border-border bg-background/60 p-5 backdrop-blur">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Today
+              This week
             </div>
             <div className="mt-1 flex items-baseline gap-2">
               <div className="font-display text-4xl text-gradient-tentra">
-                {progress}%
+                {weeklyPct}%
               </div>
               <div className="text-xs text-muted-foreground">
-                {completed}/{total}
+                {doneH}/{targetH}h
               </div>
             </div>
             <div className="mt-3 h-1.5 w-32 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-gradient-pink-blue transition-all"
-                style={{ width: `${progress}%` }}
+                style={{ width: `${weeklyPct}%` }}
               />
             </div>
           </div>
