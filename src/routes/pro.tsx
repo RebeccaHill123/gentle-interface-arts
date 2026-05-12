@@ -96,30 +96,17 @@ function ProPage() {
   }
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
-      <BackgroundBlobs />
-      <div className="relative">
-        <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
-          <Link to="/dashboard" className="inline-flex items-center gap-2">
-            <BrandMark />
-          </Link>
-          <div className="flex items-center gap-3">
-            <ProBadge active={isPro} />
-            <Button asChild variant="ghost" className="rounded-full">
-              <Link to="/dashboard">Back to dashboard</Link>
-            </Button>
-          </div>
-        </header>
-
-        <main className="mx-auto max-w-6xl px-6 pb-24">
-          {isPro ? (
-            <ProDashboard onCancel={handleCancel} busy={busy} />
-          ) : (
-            <ProUpgrade onUpgrade={handleUpgrade} busy={busy} />
-          )}
-        </main>
-      </div>
-    </div>
+    <AppShell
+      title="Tentra Pro"
+      subtitle="Premium intelligence for ambitious students"
+      actions={<ProBadge active={isPro} />}
+    >
+      {isPro ? (
+        <ProDashboard onCancel={handleCancel} busy={busy} />
+      ) : (
+        <ProUpgrade onUpgrade={handleUpgrade} busy={busy} />
+      )}
+    </AppShell>
   );
 }
 
