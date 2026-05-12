@@ -198,7 +198,19 @@ function DashboardPage() {
         {tab === "week" && (
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="space-y-6 lg:col-span-2">
-              <Panel title="Today's plan" subtitle="Knock these out and you're on track.">
+              {plan.weeklyStrategy && (
+                <Panel
+                  title="Weekly study strategy"
+                  subtitle={plan.weeklyStrategy.summary}
+                >
+                  <AllocationBars allocations={plan.weeklyStrategy.allocations} />
+                </Panel>
+              )}
+
+              <Panel
+                title="This week's strategic tasks"
+                subtitle="Academically specific. Prioritised by weak areas, high-yield topics & recency."
+              >
                 <ul className="space-y-2">
                   {plan.todayTasks.map((t, i) => {
                     const done = completedTaskIds.includes(String(i));
@@ -206,18 +218,18 @@ function DashboardPage() {
                       <li key={i}>
                         <button
                           onClick={() => handleToggle(i)}
-                          className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-background/40 p-4 text-left transition-all hover:border-pink/40 hover:bg-card"
+                          className="group flex w-full items-start gap-4 rounded-2xl border border-border bg-background/40 p-4 text-left transition-all hover:border-pink/40 hover:bg-card"
                         >
-                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground transition-transform group-hover:scale-105">
+                          <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground transition-transform group-hover:scale-105">
                             {done ? (
                               <CheckCircle2 className="h-5 w-5" />
                             ) : (
                               <Circle className="h-5 w-5 opacity-70" />
                             )}
                           </span>
-                          <span className="flex-1">
+                          <span className="min-w-0 flex-1">
                             <span
-                              className={`block font-medium ${
+                              className={`block text-sm font-medium leading-snug ${
                                 done
                                   ? "text-muted-foreground line-through"
                                   : "text-foreground"
@@ -225,11 +237,27 @@ function DashboardPage() {
                             >
                               {t.title}
                             </span>
-                            <span className="block text-xs text-muted-foreground">
-                              {t.module}
+                            <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="text-[11px] text-muted-foreground">
+                                {t.module}
+                              </span>
+                              {t.rationale && (
+                                <RationaleChip rationale={t.rationale} />
+                              )}
+                              {t.taskType && <TypeChip type={t.taskType} />}
+                              {t.priority === "high" && (
+                                <span className="rounded-full bg-pink/20 px-2 py-0.5 text-[10px] font-semibold text-pink">
+                                  high priority
+                                </span>
+                              )}
                             </span>
+                            {t.why && (
+                              <span className="mt-1.5 block text-[11px] italic text-muted-foreground/80">
+                                {t.why}
+                              </span>
+                            )}
                           </span>
-                          <span className="text-sm font-semibold text-cyan">
+                          <span className="shrink-0 text-sm font-semibold text-cyan">
                             {t.minutes}m
                           </span>
                         </button>
@@ -625,6 +653,97 @@ function NoPlanState() {
           <Link to="/">Back to home</Link>
         </Button>
       </div>
+    </div>
+  );
+}
+
+const RATIONALE_META: Record<string, { label: string; cls: string }> = {
+  "high-yield": { label: "High-yield", cls: "bg-pink/15 text-pink" },
+  "weak-area": { label: "Weak area", cls: "bg-destructive/15 text-destructive" },
+  "recency-gap": { label: "Recency gap", cls: "bg-amber-500/15 text-amber-400" },
+  "mixed-practice": { label: "Mixed practice", cls: "bg-cyan/15 text-cyan" },
+  "mock-prep": { label: "Mock prep", cls: "bg-violet-500/15 text-violet-300" },
+  "ethics-cornerstone": { label: "Ethics", cls: "bg-emerald-500/15 text-emerald-400" },
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  "timed-sba": "Timed SBA",
+  "mistake-review": "Mistake review",
+  "scenario-drill": "Scenario drill",
+  "active-recall": "Active recall",
+  "mixed-mock": "Mixed mock",
+  "concept-deepdive": "Deep dive",
+  "ethics-application": "Ethics applied",
+};
+
+function RationaleChip({ rationale }: { rationale: string }) {
+  const meta = RATIONALE_META[rationale] ?? { label: rationale, cls: "bg-muted text-muted-foreground" };
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.cls}`}>
+      {meta.label}
+    </span>
+  );
+}
+
+function TypeChip({ type }: { type: string }) {
+  const label = TYPE_LABELS[type] ?? type;
+  return (
+    <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+      {label}
+    </span>
+  );
+}
+
+function AllocationBars({
+  allocations,
+}: {
+  allocations: { module: string; hours: number; rationale: string; note: string }[];
+}) {
+  const total = Math.max(1, allocations.reduce((acc, a) => acc + a.hours, 0));
+  return (
+    <div className="space-y-3">
+      <div className="flex items-baseline justify-between">
+        <div className="text-xs text-muted-foreground">
+          {allocations.length} modules · {total}h allocated this week
+        </div>
+      </div>
+      <div className="flex h-3 w-full overflow-hidden rounded-full border border-border bg-background/40">
+        {allocations.map((a) => {
+          const pct = (a.hours / total) * 100;
+          const colour = RATIONALE_META[a.rationale]?.cls ?? "bg-muted";
+          return (
+            <div
+              key={a.module}
+              className={`${colour} transition-all`}
+              style={{ width: `${pct}%` }}
+              title={`${a.module} · ${a.hours}h · ${a.rationale}`}
+            />
+          );
+        })}
+      </div>
+      <ul className="space-y-2">
+        {allocations.map((a) => {
+          const pct = Math.round((a.hours / total) * 100);
+          return (
+            <li
+              key={a.module}
+              className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/40 p-3"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium text-foreground">{a.module}</span>
+                  <RationaleChip rationale={a.rationale} />
+                </div>
+                <p className="mt-1 text-[11px] text-muted-foreground">{a.note}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <div className="text-sm font-semibold text-foreground">{a.hours}h</div>
+                <div className="text-[10px] text-muted-foreground">{pct}%</div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
