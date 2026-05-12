@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { BrandMark } from "@/components/brand-mark";
-import { BackgroundBlobs } from "@/components/background-blobs";
+import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
   ArrowLeft,
