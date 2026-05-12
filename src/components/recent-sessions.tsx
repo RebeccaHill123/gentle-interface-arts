@@ -106,10 +106,14 @@ export function RecentSessions({
   sessions,
   moduleNames,
   onChange,
+  showInsights = true,
+  limit = 10,
 }: {
   sessions: StudySession[] | undefined;
   moduleNames?: string[];
   onChange?: () => void;
+  showInsights?: boolean;
+  limit?: number;
 }) {
   const [editing, setEditing] = useState<StudySession | null>(null);
   const [deleting, setDeleting] = useState<StudySession | null>(null);
@@ -118,8 +122,8 @@ export function RecentSessions({
     return (sessions ?? [])
       .slice()
       .sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime())
-      .slice(0, 10);
-  }, [sessions]);
+      .slice(0, limit);
+  }, [sessions, limit]);
 
   const handleDelete = (s: StudySession) => {
     removeStudySession(s.loggedAt);
@@ -130,7 +134,7 @@ export function RecentSessions({
 
   return (
     <div>
-      <ActivityInsights sessions={sessions} />
+      {showInsights && <ActivityInsights sessions={sessions} />}
 
       {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-background/40 p-8 text-center">

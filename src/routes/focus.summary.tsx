@@ -113,7 +113,7 @@ function FocusSummaryPage() {
               <Play className="mr-1.5 h-4 w-4" /> Start another sprint
             </Button>
             <Button
-              onClick={() => navigate({ to: "/sessions" })}
+              onClick={() => navigate({ to: "/focus" })}
               size="lg"
               variant="outline"
               className="rounded-full"
