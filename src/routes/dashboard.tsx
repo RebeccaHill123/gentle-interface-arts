@@ -123,6 +123,27 @@ function DashboardPage() {
   const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
   const streak = computeStreak(sessions);
 
+  // Weekly progress (rolling 7 days)
+  const weeklyTargetMins = (input.hoursPerWeek ?? 0) * 60;
+  const sevenDaysAgo = Date.now() - 7 * 86400000;
+  const weekSessions = (sessions ?? []).filter(
+    (s) => new Date(s.loggedAt).getTime() >= sevenDaysAgo,
+  );
+  const weeklyDoneMins = weekSessions.reduce((a, s) => a + s.minutes, 0);
+  const weeklyPct =
+    weeklyTargetMins > 0
+      ? Math.min(100, Math.round((weeklyDoneMins / weeklyTargetMins) * 100))
+      : 0;
+  const weeklyRemainingMins = Math.max(0, weeklyTargetMins - weeklyDoneMins);
+  const activeDays = new Set(weekSessions.map((s) => s.date)).size;
+  const blocksPlanned = plan.todayTasks.length;
+  const blocksDone = completedTaskIds.length;
+  const plannedMins = plan.todayTasks.reduce((a, t) => a + t.minutes, 0);
+  const completedPlannedMins = plan.todayTasks.reduce(
+    (a, t, i) => (completedTaskIds.includes(String(i)) ? a + t.minutes : a),
+    0,
+  );
+
   const handleToggle = (i: number) => {
     const done = completedTaskIds.includes(String(i));
     if (done) {
@@ -169,11 +190,11 @@ function DashboardPage() {
           name={input.name}
           examType={input.examType}
           daysUntilExam={daysUntilExam}
-          progress={progress}
-          completed={completed}
-          total={totalToday}
           overview={plan.overview}
           streak={streak}
+          weeklyDoneMins={weeklyDoneMins}
+          weeklyTargetMins={weeklyTargetMins}
+          weeklyPct={weeklyPct}
         />
 
         <div className="flex gap-2 rounded-2xl border border-border bg-card/40 p-1.5 backdrop-blur w-fit">
