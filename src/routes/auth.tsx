@@ -228,9 +228,9 @@ function AuthPage() {
           </div>
           <h1 className="mt-2 text-3xl font-normal text-foreground">
             {isSignup ? (
-              <>Create your <span className="italic text-gradient-tentra">Tentra</span> account</>
+              <>Create your <span className="italic text-gradient-tentra font-sans text-2xl">Tentra</span> account</>
             ) : (
-              <>Sign in to <span className="italic text-gradient-tentra">Tentra</span></>
+              <>Sign in to <span className="italic text-gradient-tentra font-sans text-2xl">Tentra</span></>
             )}
           </h1>
 
