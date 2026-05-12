@@ -9,8 +9,10 @@ import {
   Target,
   Brain,
   Scale,
+  LayoutDashboard,
 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
+import { useAuth } from "@/lib/use-auth";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
