@@ -192,7 +192,6 @@ Deno.serve(async (req) => {
   try {
     const body: PlanRequest = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const daysUntilExam = Math.max(
       1,
@@ -200,6 +199,14 @@ Deno.serve(async (req) => {
         (new Date(body.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
       ),
     );
+
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured; using deterministic plan fallback");
+      return new Response(
+        JSON.stringify({ plan: buildDeterministicPlan(body), daysUntilExam, fallback: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const systemPrompt = `You are an elite UK SQE coach with deep knowledge of the SRA assessment specification, examiner reports and historical question frequencies. You design adaptive weekly strategies that read like an Oxbridge tutor + sports performance analyst.
 
@@ -415,33 +422,18 @@ Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names th
     );
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit reached. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Add credits in Lovable workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
       const text = await response.text();
       console.error("AI gateway error", response.status, text);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
-        status: 500,
+      return new Response(JSON.stringify({ plan: buildDeterministicPlan(body), daysUntilExam, fallback: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No structured plan returned");
-    const plan = JSON.parse(toolCall.function.arguments);
+    const plan = extractStructuredPlan(data) ?? buildDeterministicPlan(body);
 
     return new Response(
-      JSON.stringify({ plan, daysUntilExam }),
+      JSON.stringify({ plan, daysUntilExam, fallback: !extractStructuredPlan(data) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
