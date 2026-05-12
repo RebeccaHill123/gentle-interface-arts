@@ -15,6 +15,7 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
 import { Route as FocusRouteImport } from './routes/focus'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CommunityRouteImport } from './routes/community'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
@@ -53,6 +54,11 @@ const FocusRoute = FocusRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunityRoute = CommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CoachRoute = CoachRouteImport.update({
@@ -107,6 +113,7 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
+  '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/focus': typeof FocusRoute
   '/mocks': typeof MocksRoute
@@ -124,6 +131,7 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
+  '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/focus': typeof FocusRoute
   '/mocks': typeof MocksRoute
@@ -142,6 +150,7 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
+  '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/focus': typeof FocusRoute
   '/mocks': typeof MocksRoute
@@ -161,6 +170,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/auth'
     | '/coach'
+    | '/community'
     | '/dashboard'
     | '/focus'
     | '/mocks'
@@ -178,6 +188,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/auth'
     | '/coach'
+    | '/community'
     | '/dashboard'
     | '/focus'
     | '/mocks'
@@ -195,6 +206,7 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/auth'
     | '/coach'
+    | '/community'
     | '/dashboard'
     | '/focus'
     | '/mocks'
@@ -213,6 +225,7 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   AuthRoute: typeof AuthRoute
   CoachRoute: typeof CoachRoute
+  CommunityRoute: typeof CommunityRoute
   DashboardRoute: typeof DashboardRoute
   FocusRoute: typeof FocusRoute
   MocksRoute: typeof MocksRoute
@@ -268,6 +281,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/community': {
+      id: '/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof CommunityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/coach': {
@@ -341,6 +361,7 @@ const rootRouteChildren: RootRouteChildren = {
   AnalyticsRoute: AnalyticsRoute,
   AuthRoute: AuthRoute,
   CoachRoute: CoachRoute,
+  CommunityRoute: CommunityRoute,
   DashboardRoute: DashboardRoute,
   FocusRoute: FocusRoute,
   MocksRoute: MocksRoute,
