@@ -149,6 +149,14 @@ function FocusPage() {
 
       setConfettiKey((k) => k + 1);
       setCompleted({ focusMin, blocksToday: sessionsToday });
+      saveSummary({
+        focusMin,
+        blocksToday: sessionsToday,
+        module: sprint.module,
+        topic: sprint.topic,
+        endedEarly: false,
+        finishedAt: Date.now(),
+      });
 
       // If a break is configured, transition into break phase paused — let user start it.
       if (sprint.breakMs > 0) {
