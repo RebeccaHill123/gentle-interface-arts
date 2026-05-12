@@ -122,8 +122,8 @@ export function RecentSessions({
     return (sessions ?? [])
       .slice()
       .sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime())
-      .slice(0, 10);
-  }, [sessions]);
+      .slice(0, limit);
+  }, [sessions, limit]);
 
   const handleDelete = (s: StudySession) => {
     removeStudySession(s.loggedAt);
