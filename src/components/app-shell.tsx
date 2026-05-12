@@ -16,7 +16,6 @@ import {
   X,
   TrendingUp,
 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { ProfileMenu } from "@/components/profile-menu";
 
 export type AppRoute =
