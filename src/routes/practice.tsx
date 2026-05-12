@@ -737,7 +737,7 @@ function ResultsScreen({
   onNewDrill: () => void;
 }) {
   const total = questions.length;
-  const correct = answers.reduce(
+  const correct = answers.reduce<number>(
     (acc, a, i) => (a === questions[i]?.correctIndex ? acc + 1 : acc),
     0,
   );
