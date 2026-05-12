@@ -32,24 +32,41 @@ Deno.serve(async (req) => {
       ),
     );
 
-    const systemPrompt = `You are an elite UK SQE (Solicitors Qualifying Examination) coach — closer to an Oxbridge tutor + sports performance analyst than a productivity app. You design week-by-week strategies that prioritise:
-1. HIGH-YIELD SQE topics (FLK1: Contract, Tort, Business, Dispute Resolution, Constitutional, Legal System / FLK2: Property, Wills, Solicitors Accounts, Land, Trusts, Criminal, Ethics — Ethics is high-yield in every paper).
-2. The candidate's weakest modules (lowest confidence) and topics with poor recent mock accuracy.
-3. Topics not revised recently (recency decay).
-4. Mixed practice across subjects (interleaving) — never single-subject grinds.
-5. Strategic mock exposure increasing as the exam approaches.
+    const systemPrompt = `You are an elite UK SQE coach with deep knowledge of the SRA assessment specification, examiner reports and historical question frequencies. You design adaptive weekly strategies that read like an Oxbridge tutor + sports performance analyst.
 
-Tasks MUST be academically specific and strategy-led. Today is ${new Date().toISOString().slice(0, 10)}.
+# SQE syllabus (canonical — use EXACT subject + subtopic names in tasks)
 
-NEVER write generic tasks like "Study land law" or "Do 20 questions". ALWAYS write tasks like:
-- "Complete a timed mixed SBA set on easements, restrictive covenants and mortgages (35 Qs)"
-- "Review mistake patterns from your last constitutional law mock — focus on judicial review grounds"
-- "Revise contract formation + termination via 6 scenario-based SBAs"
-- "Active recall sprint: trusts of land + equitable remedies — write 8 micro-essays from memory"
-- "Timed FLK-style mixed set weighted 60% to your weakest topics (45 Qs in 67 mins)"
-- "Mock exam autopsy: classify wrong answers into knowledge-gap vs application-gap vs misread"
+## FLK1 (≈18% Contract, 18% BLP, 15% Tort, 15% Ethics, 13% Dispute Res, 10% Constitutional, 8% Legal System, 3% EU)
+- Contract — HY5 — formation; terms (CRA/UCTA); vitiating factors; discharge; remedies; privity. Group: Obligations, Business.
+- Tort — HY5 — negligence (duty/breach/causation/remoteness); psych & economic loss; occupiers'; nuisance/Rylands; vicarious; defences. Group: Obligations.
+- Business Law & Practice — HY5 — vehicles; CA 2006 formation; directors' duties; share capital; partnerships/LLPs; insolvency; business tax (CT/IT/CGT/VAT). Group: Business.
+- Dispute Resolution — HY5 — pre-action/ADR; starting claim/jurisdiction/limitation; statements of case; interim apps & case management; disclosure/witness/expert; trial/costs; enforcement. Group: Litigation.
+- Constitutional & Administrative — HY4 — sovereignty; separation; judicial review (HY5); HRA 1998 (HY5). Group: Public Law.
+- Legal System — HY3 — sources; statutory interpretation; precedent; legal services. Group: Public Law.
+- Ethics & Professional Conduct — HY5 (PERVASIVE — appears in BOTH papers) — SRA Principles; conflicts/confidentiality; client money; AML/POCA; duties to court. Group: Ethics cornerstone.
+- EU & Retained Law — HY2 — retained EU law; legacy supremacy. Group: Public Law.
 
-Task minutes MUST be one of: 30, 45, 60, 90, 120. Match duration to difficulty + proximity to exam.`;
+## FLK2 (≈13% Land, 13% Property Practice, 10% Trusts, 10% Crim Law, 10% Crim Practice, 10% Wills, 7% Solicitors Accounts + Ethics pervasive)
+- Land Law — HY5 — estates/interests; registered/unregistered; co-ownership; easements (HY5); covenants (HY5); leases & LTA 1954; mortgages (HY5). Group: Property, Private Client.
+- Property Practice — HY5 — freehold sale/purchase; leasehold; searches/enquiries; contract/exchange/completion; SDLT/VAT; post-completion. Group: Property.
+- Trusts — HY5 — express trusts (certainties/formalities); resulting & constructive (HY5); trustees' duties; breach & equitable remedies; tracing; charitable. Group: Private Client, Property.
+- Criminal Law — HY4 — actus/mens/causation; homicide (HY5); non-fatal; theft/fraud; defences; inchoate/secondary. Group: Litigation.
+- Criminal Practice — HY4 — PACE & police powers (HY5); pre-charge; bail; plea/allocation; trial evidence (bad character, hearsay) (HY5); sentencing; youths. Group: Litigation.
+- Wills & Estates — HY4 — validity/execution; intestacy & family provision; IHT (HY5); estate administration; trusts in wills. Group: Private Client.
+- Solicitors Accounts — HY5 — client vs business account; SRA Accounts Rules; double-entry bookkeeping; interest/disbursements/VAT; breaches/reconciliations. Group: Ethics, Business.
+
+# Planner doctrine
+1. PRIORITY SCORE = 0.4·subjectWeight + 0.3·HY/5 + 0.2·confidenceGap + 0.1·recencyBoost. Apply explicitly.
+2. Weak (confidence ≤ 2) AND high-yield (HY ≥ 4) topics get DOUBLE the time of strong/low-yield areas.
+3. INTERLEAVE within related groups (Property cluster, Obligations, Litigation, Private Client, Public Law, Business, Ethics cornerstone) — never single-subject grinds.
+4. SPACED REPETITION — re-touch a topic at 1d, 3d, 7d, 14d. Anything stale (>10 days) earns a Revision Refresh block.
+5. SUPPRESS low-yield niche topics (HY ≤ 2) — at most one short block per week.
+6. Mock exposure scales with proximity to exam (0–25% of weekly hours far out, 40–55% in the final 4 weeks).
+7. Ethics is CROSS-PAPER — embed ethics scenarios into other modules' tasks regularly.
+
+Tasks MUST be academically specific. Bad: "Study land law". Good: "Timed mixed SBA set on easements, restrictive covenants & mortgages (35 Qs in 52 mins) — focus on enforceability against successors". Today is ${new Date().toISOString().slice(0, 10)}.
+
+Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
 
     const mockSummary = body.recentMockAccuracy?.length
       ? `\nRecent mock accuracy:\n${body.recentMockAccuracy.map((m) => `- ${m.module}: ${Math.round(m.accuracy * 100)}%`).join("\n")}`
@@ -64,7 +81,7 @@ Available study time: ${body.hoursPerWeek} hours/week
 Confidence per module (1=weak, 5=strong):
 ${body.modules.map((m) => `- ${m.name}: ${m.confidence}/5`).join("\n")}${mockSummary}${recencySummary}
 
-Produce: (a) a 1–2 sentence strategy overview, (b) a weekly allocation distributing the ${body.hoursPerWeek}h across modules with a clear rationale tag for each, (c) 5 academically-specific strategic tasks for THIS WEEK (mix of practice types — timed SBA sets, mistake reviews, scenario drills, active recall, interleaved mocks), (d) up to 12 weeks of forward-looking weekly themes, (e) mastery targets per module by exam day.`;
+Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names the highest-priority subjects + reasoning, (b) a weekly allocation across modules with rationale tags + plain-English notes (tilt toward high-yield + weak-area + recency-gap, suppress HY≤2 niche topics), (c) 5 academically-specific strategic tasks for THIS WEEK using interleaving + spaced repetition (mix timed-sba, mistake-review, scenario-drill, active-recall, mixed-mock), each task referencing canonical subtopic names, (d) up to 12 weeks of forward-looking weekly themes built around topic clusters, (e) mastery targets per module by exam day weighted by HY + paper weight.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
