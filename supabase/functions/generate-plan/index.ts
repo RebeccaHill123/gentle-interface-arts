@@ -15,22 +15,203 @@ interface PlanRequest {
   recentlyStudied?: { module: string; daysAgo: number }[];
 }
 
+type TaskMinutes = 30 | 45 | 60 | 90 | 120;
+
+interface StudyTask {
+  title: string;
+  module: string;
+  minutes: TaskMinutes;
+  taskType: "timed-sba" | "mistake-review" | "scenario-drill" | "active-recall" | "mixed-mock" | "concept-deepdive" | "ethics-application";
+  rationale: "high-yield" | "weak-area" | "recency-gap" | "mixed-practice" | "mock-prep" | "ethics-cornerstone";
+  priority: "high" | "medium" | "low";
+  why: string;
+}
+
+interface StudyPlanResponse {
+  overview: string;
+  weeklyStrategy: {
+    summary: string;
+    allocations: { module: string; hours: number; rationale: StudyTask["rationale"]; note: string }[];
+  };
+  weeklyFocus: { week: number; theme: string; modules: string[]; hours: number }[];
+  todayTasks: StudyTask[];
+  masteryTargets: { module: string; targetConfidence: number; priority: "high" | "medium" | "low" }[];
+}
+
+const SQE_FALLBACK_SUBJECTS: Record<string, { weight: number; highYield: number; groups: string[]; subtopics: string[] }> = {
+  "Contract": { weight: 0.18, highYield: 5, groups: ["Obligations", "Business"], subtopics: ["formation", "terms", "vitiating factors", "discharge", "remedies", "privity"] },
+  "Tort": { weight: 0.15, highYield: 5, groups: ["Obligations"], subtopics: ["negligence duty, breach, causation and remoteness", "psychiatric and economic loss", "occupiers' liability", "nuisance and Rylands", "vicarious liability", "defences"] },
+  "Business Law & Practice": { weight: 0.18, highYield: 5, groups: ["Business"], subtopics: ["business vehicles", "company formation", "directors' duties", "share capital", "partnerships and LLPs", "insolvency", "business tax"] },
+  "Constitutional & Administrative Law": { weight: 0.10, highYield: 4, groups: ["Public Law"], subtopics: ["parliamentary sovereignty", "separation of powers", "judicial review grounds and remedies", "Human Rights Act 1998"] },
+  "Legal System": { weight: 0.08, highYield: 3, groups: ["Public Law"], subtopics: ["sources of law", "statutory interpretation", "precedent", "legal services"] },
+  "Legal System of England & Wales": { weight: 0.08, highYield: 3, groups: ["Public Law"], subtopics: ["sources of law", "statutory interpretation", "precedent", "legal services"] },
+  "Ethics & Professional Conduct": { weight: 0.15, highYield: 5, groups: ["Ethics cornerstone"], subtopics: ["SRA Principles", "conflicts and confidentiality", "client money", "AML and POCA", "duties to court"] },
+  "EU Law": { weight: 0.03, highYield: 2, groups: ["Public Law"], subtopics: ["retained EU law", "legacy supremacy"] },
+  "EU & Retained Law": { weight: 0.03, highYield: 2, groups: ["Public Law"], subtopics: ["retained EU law", "legacy supremacy"] },
+  "Land Law": { weight: 0.13, highYield: 5, groups: ["Property", "Private Client"], subtopics: ["estates and interests", "registered and unregistered title", "co-ownership", "easements", "covenants", "leases and LTA 1954", "mortgages"] },
+  "Property Practice": { weight: 0.13, highYield: 5, groups: ["Property"], subtopics: ["freehold sale and purchase", "leasehold", "searches and enquiries", "contract, exchange and completion", "SDLT and VAT", "post-completion"] },
+  "Trusts": { weight: 0.10, highYield: 5, groups: ["Private Client", "Property"], subtopics: ["express trusts", "resulting and constructive trusts", "trustees' duties", "breach and equitable remedies", "tracing"] },
+  "Criminal Law": { weight: 0.10, highYield: 4, groups: ["Litigation"], subtopics: ["actus reus, mens rea and causation", "homicide", "non-fatal offences", "theft and fraud", "defences"] },
+  "Criminal Practice": { weight: 0.10, highYield: 4, groups: ["Litigation"], subtopics: ["PACE and police powers", "pre-charge advice", "bail", "plea and allocation", "trial evidence", "sentencing"] },
+  "Criminal Law & Practice": { weight: 0.20, highYield: 4, groups: ["Litigation"], subtopics: ["homicide and non-fatal offences", "theft and fraud", "PACE and police powers", "bail and first hearings", "trial evidence", "sentencing"] },
+  "Dispute Resolution": { weight: 0.13, highYield: 5, groups: ["Litigation"], subtopics: ["pre-action and ADR", "starting claims, jurisdiction and limitation", "statements of case", "interim applications", "disclosure and evidence", "trial and costs", "enforcement"] },
+  "Wills & Estates": { weight: 0.10, highYield: 4, groups: ["Private Client"], subtopics: ["validity and execution", "intestacy and family provision", "IHT", "estate administration", "trusts in wills"] },
+  "Solicitors Accounts": { weight: 0.07, highYield: 5, groups: ["Ethics", "Business"], subtopics: ["client vs business account", "SRA Accounts Rules", "double-entry bookkeeping", "interest, disbursements and VAT", "breaches and reconciliations"] },
+};
+
+function safeParsePlan(payload: unknown): StudyPlanResponse | null {
+  if (!payload || typeof payload !== "object") return null;
+  const maybe = payload as Partial<StudyPlanResponse>;
+  if (
+    typeof maybe.overview === "string" &&
+    Array.isArray(maybe.todayTasks) &&
+    maybe.todayTasks.length > 0 &&
+    Array.isArray(maybe.weeklyFocus) &&
+    Array.isArray(maybe.masteryTargets)
+  ) {
+    return maybe as StudyPlanResponse;
+  }
+  return null;
+}
+
+function extractStructuredPlan(data: any): StudyPlanResponse | null {
+  const message = data?.choices?.[0]?.message;
+  const toolArguments = message?.tool_calls?.[0]?.function?.arguments;
+  if (toolArguments) {
+    try {
+      const parsed = typeof toolArguments === "string" ? JSON.parse(toolArguments) : toolArguments;
+      const plan = safeParsePlan(parsed);
+      if (plan) return plan;
+    } catch (error) {
+      console.error("Could not parse tool-call plan", error);
+    }
+  }
+
+  const content = message?.content;
+  if (typeof content === "string" && content.trim()) {
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)```/i)?.[1] ?? content.match(/\{[\s\S]*\}/)?.[0];
+    if (jsonMatch) {
+      try {
+        const plan = safeParsePlan(JSON.parse(jsonMatch));
+        if (plan) return plan;
+      } catch (error) {
+        console.error("Could not parse content plan", error);
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
+  const targetMinutes = Math.max(30, Math.round(body.hoursPerWeek * 60));
+  const studiedByModule = new Map((body.recentlyStudied ?? []).map((m) => [m.module, m.daysAgo]));
+  const mockByModule = new Map((body.recentMockAccuracy ?? []).map((m) => [m.module, m.accuracy]));
+  const scoredModules = body.modules
+    .map((module) => {
+      const subject = SQE_FALLBACK_SUBJECTS[module.name] ?? { weight: 0.08, highYield: 3, groups: [body.examType], subtopics: [module.name] };
+      const confidenceGap = Math.max(0, 5 - module.confidence) / 5;
+      const recencyDays = studiedByModule.get(module.name);
+      const recencyBoost = recencyDays === undefined ? 0.2 : Math.min(1, recencyDays / 14) * 0.3;
+      const mockAccuracy = mockByModule.get(module.name);
+      const mockWeakness = mockAccuracy === undefined ? 0 : Math.max(0, 0.7 - mockAccuracy);
+      const score = subject.weight * 0.4 + (subject.highYield / 5) * 0.3 + confidenceGap * 0.2 + recencyBoost * 0.1 + mockWeakness * 0.15;
+      return { ...module, subject, score, recencyDays, mockAccuracy };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const focusModules = scoredModules.slice(0, Math.min(6, scoredModules.length || 1));
+  const durations: TaskMinutes[] = [];
+  let remaining = targetMinutes;
+  while (remaining > 0) {
+    const next: TaskMinutes = remaining >= 90 ? 90 : remaining >= 60 ? 60 : remaining >= 45 ? 45 : 30;
+    durations.push(next);
+    remaining -= next;
+  }
+
+  const taskTypes: StudyTask["taskType"][] = ["timed-sba", "active-recall", "scenario-drill", "mistake-review", "ethics-application", "mixed-mock"];
+  const rationales: StudyTask["rationale"][] = ["weak-area", "high-yield", "mixed-practice", "recency-gap", "ethics-cornerstone", "mock-prep"];
+  const todayTasks = durations.map((minutes, index): StudyTask => {
+    const module = focusModules[index % focusModules.length] ?? scoredModules[0];
+    const subtopics = module.subject.subtopics;
+    const topicA = subtopics[index % subtopics.length];
+    const topicB = subtopics[(index + 2) % subtopics.length] ?? topicA;
+    const isWeak = module.confidence <= 2;
+    const isStale = (module.recencyDays ?? 99) > 10;
+    const rationale = isStale ? "recency-gap" : isWeak ? "weak-area" : rationales[index % rationales.length];
+    const taskType = module.name.includes("Ethics") || rationale === "ethics-cornerstone" ? "ethics-application" : taskTypes[index % taskTypes.length];
+    return {
+      title: `${taskType === "timed-sba" || taskType === "mixed-mock" ? "Timed mixed SBA set" : taskType === "active-recall" ? "Active recall drill" : taskType === "mistake-review" ? "Mistake-log review" : "Scenario drill"} on ${topicA}${topicB !== topicA ? ` and ${topicB}` : ""}`,
+      module: module.name,
+      minutes,
+      taskType,
+      rationale,
+      priority: module.score >= 0.55 ? "high" : module.score >= 0.42 ? "medium" : "low",
+      why: `${module.name} is prioritised for ${isWeak ? "low confidence" : module.subject.highYield >= 4 ? "high-yield coverage" : "balanced interleaving"}${isStale ? " and revision staleness" : ""}.`,
+    };
+  });
+
+  const totalScore = focusModules.reduce((sum, module) => sum + module.score, 0) || 1;
+  const allocations = focusModules.map((module) => ({
+    module: module.name,
+    hours: Math.round((body.hoursPerWeek * module.score / totalScore) * 10) / 10,
+    rationale: (module.confidence <= 2 ? "weak-area" : module.subject.highYield >= 5 ? "high-yield" : "mixed-practice") as StudyTask["rationale"],
+    note: `${module.subject.groups.join("/")} cluster; HY${module.subject.highYield}, confidence ${module.confidence}/5.`,
+  }));
+
+  return {
+    overview: `${body.name}, this plan prioritises ${focusModules.slice(0, 3).map((m) => m.name).join(", ")} because they combine high SQE yield with your current confidence and revision recency profile. The week is deliberately interleaved so weak areas are reinforced without crowding out mixed SBA practice.`,
+    weeklyStrategy: {
+      summary: `This week allocates ${body.hoursPerWeek} hours across high-yield weak areas, recency gaps and mixed practice blocks. Task minutes total ${todayTasks.reduce((sum, task) => sum + task.minutes, 0)} minutes.`,
+      allocations,
+    },
+    todayTasks,
+    weeklyFocus: Array.from({ length: Math.min(12, Math.max(4, Math.ceil(84 / 7))) }, (_, index) => {
+      const first = scoredModules[index % scoredModules.length] ?? focusModules[0];
+      const second = scoredModules[(index + 1) % scoredModules.length] ?? first;
+      return {
+        week: index + 1,
+        hours: body.hoursPerWeek,
+        theme: index < 2 ? `High-yield repair: ${first.name} with ${second.name}` : index >= 8 ? `Mock analysis and targeted refresh: ${first.name}` : `Interleaved consolidation: ${first.subject.groups[0] ?? first.name}`,
+        modules: Array.from(new Set([first.name, second.name])),
+      };
+    }),
+    masteryTargets: scoredModules.map((module) => ({
+      module: module.name,
+      targetConfidence: module.subject.highYield >= 4 || module.confidence <= 2 ? 5 : 4,
+      priority: module.score >= 0.55 ? "high" : module.score >= 0.42 ? "medium" : "low",
+    })),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let body: PlanRequest | null = null;
+  let daysUntilExam = 1;
   try {
-    const body: PlanRequest = await req.json();
+    body = await req.json();
+    if (!body || !Array.isArray(body.modules) || body.modules.length === 0 || !body.examDate || !body.name) {
+      throw new Error("Invalid plan request");
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
-    const daysUntilExam = Math.max(
+    daysUntilExam = Math.max(
       1,
       Math.ceil(
         (new Date(body.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
       ),
     );
+
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured; using deterministic plan fallback");
+      return new Response(
+        JSON.stringify({ plan: buildDeterministicPlan(body), daysUntilExam, fallback: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const systemPrompt = `You are an elite UK SQE coach with deep knowledge of the SRA assessment specification, examiner reports and historical question frequencies. You design adaptive weekly strategies that read like an Oxbridge tutor + sports performance analyst.
 
@@ -246,40 +427,32 @@ Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names th
     );
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit reached. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Add credits in Lovable workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
-      }
       const text = await response.text();
       console.error("AI gateway error", response.status, text);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
-        status: 500,
+      return new Response(JSON.stringify({ plan: buildDeterministicPlan(body), daysUntilExam, fallback: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No structured plan returned");
-    const plan = JSON.parse(toolCall.function.arguments);
+    const structuredPlan = extractStructuredPlan(data);
+    const plan = structuredPlan ?? buildDeterministicPlan(body);
 
     return new Response(
-      JSON.stringify({ plan, daysUntilExam }),
+      JSON.stringify({ plan, daysUntilExam, fallback: !structuredPlan }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
     console.error("generate-plan error", e);
+    if (body) {
+      return new Response(
+        JSON.stringify({ plan: buildDeterministicPlan(body), daysUntilExam, fallback: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
