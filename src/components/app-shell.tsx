@@ -33,7 +33,7 @@ const NAV: { to: AppRoute; label: string; icon: typeof LayoutDashboard }[] = [
   { to: "/focus", label: "Focus", icon: Flame },
   { to: "/sessions", label: "Sessions", icon: Activity },
   { to: "/coach", label: "AI Coach", icon: Sparkles },
-  { to: "/mocks", label: "Mock Exams", icon: Scale },
+  { to: "/mocks", label: "Mocks & Practice", icon: Scale },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/community", label: "Community", icon: Users },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
