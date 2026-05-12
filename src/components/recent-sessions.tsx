@@ -106,10 +106,14 @@ export function RecentSessions({
   sessions,
   moduleNames,
   onChange,
+  showInsights = true,
+  limit = 10,
 }: {
   sessions: StudySession[] | undefined;
   moduleNames?: string[];
   onChange?: () => void;
+  showInsights?: boolean;
+  limit?: number;
 }) {
   const [editing, setEditing] = useState<StudySession | null>(null);
   const [deleting, setDeleting] = useState<StudySession | null>(null);
