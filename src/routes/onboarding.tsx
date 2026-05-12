@@ -156,7 +156,7 @@ function OnboardingPage() {
             Welcome to Tentra
           </div>
           <h1 className="mt-2 text-3xl font-normal text-foreground md:text-4xl">
-            Let's build your <span className="italic text-gradient-tentra">plan</span>
+            Let's build your <span className="italic text-gradient-tentra font-sans text-2xl">plan</span>
           </h1>
           <p className="mt-3 text-sm text-muted-foreground">
             Answer a few questions and we'll generate a personalised, week-by-week
