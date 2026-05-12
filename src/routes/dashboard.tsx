@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,24 +23,14 @@ import {
 import { toast } from "sonner";
 import {
   CheckCircle2,
-  Calendar,
-  Settings,
-  Bell,
-  Scale,
-  TrendingUp,
-  Flame,
   BookOpen,
-  Target,
+  Flame,
   Circle,
   Plus,
   Loader2,
-  Check,
-  X,
-  Activity,
 } from "lucide-react";
 import {
   loadPlan,
-  clearPlan,
   pullPlanFromCloud,
   toggleTaskCompletion,
   addStudySession,
@@ -52,9 +41,7 @@ import {
 } from "@/lib/plan-store";
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
-import { RecentSessions } from "@/components/recent-sessions";
-import { FocusLauncher } from "@/components/focus-launcher";
-import { FocusInsights } from "@/components/focus-insights";
+import { AppShell } from "@/components/app-shell";
 
 interface QuizQuestion {
   prompt: string;
