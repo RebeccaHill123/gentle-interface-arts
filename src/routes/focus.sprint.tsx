@@ -273,7 +273,7 @@ function FocusPage() {
       <div className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-6 py-6">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => navigate({ to: "/dashboard" })}
+            onClick={() => navigate({ to: "/focus" })}
             className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" /> Exit
