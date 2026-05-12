@@ -35,6 +35,8 @@ export const Route = createFileRoute("/")({
 });
 
 function LandingPage() {
+  const { isAuthenticated, loading } = useAuth();
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
       <BackgroundBlobs />
@@ -51,12 +53,27 @@ function LandingPage() {
             </a>
           </nav>
           <div className="flex items-center gap-2">
-            <Button asChild variant="ghost" className="rounded-full">
-              <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
-            </Button>
-            <Button asChild className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-[0_10px_30px_-12px_rgba(180,80,160,0.35)] hover:opacity-95">
-              <Link to="/auth" search={{ mode: "signup" }}>Get started</Link>
-            </Button>
+            {loading ? (
+              <div className="h-9 w-32 animate-pulse rounded-full bg-card/60" />
+            ) : isAuthenticated ? (
+              <Button
+                asChild
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-[0_10px_30px_-12px_rgba(180,80,160,0.35)] hover:opacity-95"
+              >
+                <Link to="/dashboard">
+                  <LayoutDashboard className="mr-1 h-4 w-4" /> Go to Dashboard
+                </Link>
+              </Button>
+            ) : (
+              <>
+                <Button asChild variant="ghost" className="rounded-full">
+                  <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
+                </Button>
+                <Button asChild className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-[0_10px_30px_-12px_rgba(180,80,160,0.35)] hover:opacity-95">
+                  <Link to="/auth" search={{ mode: "signup" }}>Get started</Link>
+                </Button>
+              </>
+            )}
           </div>
         </header>
 
@@ -80,23 +97,37 @@ function LandingPage() {
               accountable — every session, every streak, every sitting.
             </p>
             <div className="mt-10 flex flex-wrap items-center justify-center gap-3">
-              <Button
-                asChild
-                size="lg"
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-[0_10px_30px_-12px_rgba(180,80,160,0.35)] hover:opacity-95"
-              >
-                <Link to="/auth" search={{ mode: "signup" }}>
-                  Get started <ArrowRight className="ml-1 h-4 w-4" />
-                </Link>
-              </Button>
-              <Button
-                asChild
-                size="lg"
-                variant="outline"
-                className="rounded-full"
-              >
-                <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
-              </Button>
+              {isAuthenticated ? (
+                <Button
+                  asChild
+                  size="lg"
+                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-[0_10px_30px_-12px_rgba(180,80,160,0.35)] hover:opacity-95"
+                >
+                  <Link to="/dashboard">
+                    Go to Dashboard <ArrowRight className="ml-1 h-4 w-4" />
+                  </Link>
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    asChild
+                    size="lg"
+                    className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-[0_10px_30px_-12px_rgba(180,80,160,0.35)] hover:opacity-95"
+                  >
+                    <Link to="/auth" search={{ mode: "signup" }}>
+                      Get started <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </Button>
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className="rounded-full"
+                  >
+                    <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
+                  </Button>
+                </>
+              )}
             </div>
           </div>
 
