@@ -45,6 +45,12 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface QuizQuestion {
   prompt: string;
@@ -246,33 +252,55 @@ function DashboardPage() {
                 title="Adaptive study blocks"
                 subtitle="Complete these in any order, on any day this week. Streak counts after one block per day."
               >
-                <ul className="space-y-2">
-                  {plan.todayTasks.map((t, i) => {
-                    const done = completedTaskIds.includes(String(i));
-                    return (
-                      <li key={i}>
-                        <button
-                          onClick={() => handleToggle(i)}
-                          className="group flex w-full items-start gap-4 rounded-2xl border border-border bg-background/40 p-4 text-left transition-all hover:border-pink/40 hover:bg-card"
+                <TooltipProvider delayDuration={200}>
+                  <ul className="space-y-2">
+                    {plan.todayTasks.map((t, i) => {
+                      const done = completedTaskIds.includes(String(i));
+                      return (
+                        <li
+                          key={i}
+                          className={`group flex items-start gap-4 rounded-2xl border p-4 transition-all ${
+                            done
+                              ? "border-emerald-400/30 bg-emerald-400/5"
+                              : "border-border bg-background/40 hover:border-pink/40 hover:bg-card"
+                          }`}
                         >
-                          <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground transition-transform group-hover:scale-105">
-                            {done ? (
-                              <CheckCircle2 className="h-5 w-5" />
-                            ) : (
-                              <Circle className="h-5 w-5 opacity-70" />
-                            )}
-                          </span>
-                          <span className="min-w-0 flex-1">
-                            <span
-                              className={`block text-sm font-medium leading-snug ${
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                role="checkbox"
+                                aria-checked={done}
+                                aria-label={done ? `Mark "${t.title}" incomplete` : `Mark "${t.title}" complete`}
+                                onClick={() => handleToggle(i)}
+                                className={`relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 outline-none transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-pink/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-90 ${
+                                  done
+                                    ? "border-transparent bg-gradient-pink-blue text-primary-foreground shadow-glow"
+                                    : "border-muted-foreground/40 bg-background hover:border-pink hover:bg-pink/10 hover:shadow-[0_0_0_4px_hsl(var(--pink)/0.12)] hover:scale-105"
+                                }`}
+                              >
+                                {done ? (
+                                  <Check className="h-5 w-5 animate-scale-in" strokeWidth={3} />
+                                ) : (
+                                  <Check className="h-4 w-4 text-muted-foreground/0 transition-opacity group-hover:text-pink/60 group-hover:opacity-100" strokeWidth={3} />
+                                )}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="right">
+                              {done ? "Mark incomplete" : "Mark complete"}
+                            </TooltipContent>
+                          </Tooltip>
+                          <div className="min-w-0 flex-1">
+                            <p
+                              className={`text-sm font-medium leading-snug transition-all ${
                                 done
-                                  ? "text-muted-foreground line-through"
+                                  ? "text-muted-foreground line-through decoration-emerald-400/60"
                                   : "text-foreground"
                               }`}
                             >
                               {t.title}
-                            </span>
-                            <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                            </p>
+                            <div className={`mt-1 flex flex-wrap items-center gap-1.5 transition-opacity ${done ? "opacity-60" : ""}`}>
                               <span className="text-[11px] text-muted-foreground">
                                 {t.module}
                               </span>
@@ -280,26 +308,26 @@ function DashboardPage() {
                                 <RationaleChip rationale={t.rationale} />
                               )}
                               {t.taskType && <TypeChip type={t.taskType} />}
-                              {t.priority === "high" && (
+                              {t.priority === "high" && !done && (
                                 <span className="rounded-full bg-pink/20 px-2 py-0.5 text-[10px] font-semibold text-pink">
                                   high priority
                                 </span>
                               )}
-                            </span>
+                            </div>
                             {t.why && (
-                              <span className="mt-1.5 block text-[11px] italic text-muted-foreground/80">
+                              <p className={`mt-1.5 text-[11px] italic text-muted-foreground/80 ${done ? "opacity-60" : ""}`}>
                                 {t.why}
-                              </span>
+                              </p>
                             )}
+                          </div>
+                          <span className={`shrink-0 text-sm font-semibold transition-colors ${done ? "text-emerald-300" : "text-cyan"}`}>
+                            {done ? "Done" : `${t.minutes}m`}
                           </span>
-                          <span className="shrink-0 text-sm font-semibold text-cyan">
-                            {t.minutes}m
-                          </span>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </TooltipProvider>
               </Panel>
             </div>
 
