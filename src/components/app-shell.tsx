@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   Flame,
-  Activity,
   Sparkles,
   Scale,
   BarChart3,
