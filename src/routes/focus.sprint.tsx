@@ -38,6 +38,38 @@ function fmt(ms: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+const LAST_SUMMARY_KEY = "tentra.focus.lastSummary.v1";
+
+interface FocusSummary {
+  focusMin: number;
+  blocksToday: number;
+  module?: string;
+  topic?: string;
+  endedEarly: boolean;
+  finishedAt: number;
+}
+
+function saveSummary(s: FocusSummary) {
+  try {
+    localStorage.setItem(LAST_SUMMARY_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
+
+function countFocusBlocksToday(): number {
+  try {
+    const raw = localStorage.getItem("tentra.plan.v1");
+    const stored = raw ? JSON.parse(raw) : null;
+    return (stored?.sessions ?? []).filter(
+      (s: { date: string; sessionType?: string }) =>
+        s.date === todayKey() && s.sessionType === "focus",
+    ).length;
+  } catch {
+    return 0;
+  }
+}
+
 function FocusPage() {
   const navigate = useNavigate();
   const [sprint, setSprint] = useState<ActiveSprint | null>(() => loadActiveSprint());
