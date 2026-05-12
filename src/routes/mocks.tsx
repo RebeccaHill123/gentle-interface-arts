@@ -348,6 +348,9 @@ function MocksPage() {
           not host or distribute third-party providers' copyrighted content.
         </p>
       </section>
+
+      <PracticeLauncherDialog open={practiceOpen} onOpenChange={setPracticeOpen} />
+      <AIQuizBuilderDialog open={quizOpen} onOpenChange={setQuizOpen} />
     </AppShell>
   );
 }
