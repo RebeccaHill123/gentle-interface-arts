@@ -59,6 +59,131 @@ const SQE_FALLBACK_SUBJECTS: Record<string, { weight: number; highYield: number;
   "Solicitors Accounts": { weight: 0.07, highYield: 5, groups: ["Ethics", "Business"], subtopics: ["client vs business account", "SRA Accounts Rules", "double-entry bookkeeping", "interest, disbursements and VAT", "breaches and reconciliations"] },
 };
 
+function safeParsePlan(payload: unknown): StudyPlanResponse | null {
+  if (!payload || typeof payload !== "object") return null;
+  const maybe = payload as Partial<StudyPlanResponse>;
+  if (
+    typeof maybe.overview === "string" &&
+    Array.isArray(maybe.todayTasks) &&
+    maybe.todayTasks.length > 0 &&
+    Array.isArray(maybe.weeklyFocus) &&
+    Array.isArray(maybe.masteryTargets)
+  ) {
+    return maybe as StudyPlanResponse;
+  }
+  return null;
+}
+
+function extractStructuredPlan(data: any): StudyPlanResponse | null {
+  const message = data?.choices?.[0]?.message;
+  const toolArguments = message?.tool_calls?.[0]?.function?.arguments;
+  if (toolArguments) {
+    try {
+      const parsed = typeof toolArguments === "string" ? JSON.parse(toolArguments) : toolArguments;
+      const plan = safeParsePlan(parsed);
+      if (plan) return plan;
+    } catch (error) {
+      console.error("Could not parse tool-call plan", error);
+    }
+  }
+
+  const content = message?.content;
+  if (typeof content === "string" && content.trim()) {
+    const jsonMatch = content.match(/```json\s*([\s\S]*?)```/i)?.[1] ?? content.match(/\{[\s\S]*\}/)?.[0];
+    if (jsonMatch) {
+      try {
+        const plan = safeParsePlan(JSON.parse(jsonMatch));
+        if (plan) return plan;
+      } catch (error) {
+        console.error("Could not parse content plan", error);
+      }
+    }
+  }
+
+  return null;
+}
+
+function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
+  const targetMinutes = Math.max(30, Math.round(body.hoursPerWeek * 60));
+  const studiedByModule = new Map((body.recentlyStudied ?? []).map((m) => [m.module, m.daysAgo]));
+  const mockByModule = new Map((body.recentMockAccuracy ?? []).map((m) => [m.module, m.accuracy]));
+  const scoredModules = body.modules
+    .map((module) => {
+      const subject = SQE_FALLBACK_SUBJECTS[module.name] ?? { weight: 0.08, highYield: 3, groups: [body.examType], subtopics: [module.name] };
+      const confidenceGap = Math.max(0, 5 - module.confidence) / 5;
+      const recencyDays = studiedByModule.get(module.name);
+      const recencyBoost = recencyDays === undefined ? 0.2 : Math.min(1, recencyDays / 14) * 0.3;
+      const mockAccuracy = mockByModule.get(module.name);
+      const mockWeakness = mockAccuracy === undefined ? 0 : Math.max(0, 0.7 - mockAccuracy);
+      const score = subject.weight * 0.4 + (subject.highYield / 5) * 0.3 + confidenceGap * 0.2 + recencyBoost * 0.1 + mockWeakness * 0.15;
+      return { ...module, subject, score, recencyDays, mockAccuracy };
+    })
+    .sort((a, b) => b.score - a.score);
+
+  const focusModules = scoredModules.slice(0, Math.min(6, scoredModules.length || 1));
+  const durations: TaskMinutes[] = [];
+  let remaining = targetMinutes;
+  while (remaining > 0) {
+    const next: TaskMinutes = remaining >= 90 ? 90 : remaining >= 60 ? 60 : remaining >= 45 ? 45 : 30;
+    durations.push(next);
+    remaining -= next;
+  }
+
+  const taskTypes: StudyTask["taskType"][] = ["timed-sba", "active-recall", "scenario-drill", "mistake-review", "ethics-application", "mixed-mock"];
+  const rationales: StudyTask["rationale"][] = ["weak-area", "high-yield", "mixed-practice", "recency-gap", "ethics-cornerstone", "mock-prep"];
+  const todayTasks = durations.map((minutes, index): StudyTask => {
+    const module = focusModules[index % focusModules.length] ?? scoredModules[0];
+    const subtopics = module.subject.subtopics;
+    const topicA = subtopics[index % subtopics.length];
+    const topicB = subtopics[(index + 2) % subtopics.length] ?? topicA;
+    const isWeak = module.confidence <= 2;
+    const isStale = (module.recencyDays ?? 99) > 10;
+    const rationale = isStale ? "recency-gap" : isWeak ? "weak-area" : rationales[index % rationales.length];
+    const taskType = module.name.includes("Ethics") || rationale === "ethics-cornerstone" ? "ethics-application" : taskTypes[index % taskTypes.length];
+    return {
+      title: `${taskType === "timed-sba" || taskType === "mixed-mock" ? "Timed mixed SBA set" : taskType === "active-recall" ? "Active recall drill" : taskType === "mistake-review" ? "Mistake-log review" : "Scenario drill"} on ${topicA}${topicB !== topicA ? ` and ${topicB}` : ""}`,
+      module: module.name,
+      minutes,
+      taskType,
+      rationale,
+      priority: module.score >= 0.55 ? "high" : module.score >= 0.42 ? "medium" : "low",
+      why: `${module.name} is prioritised for ${isWeak ? "low confidence" : module.subject.highYield >= 4 ? "high-yield coverage" : "balanced interleaving"}${isStale ? " and revision staleness" : ""}.`,
+    };
+  });
+
+  const totalScore = focusModules.reduce((sum, module) => sum + module.score, 0) || 1;
+  const allocations = focusModules.map((module) => ({
+    module: module.name,
+    hours: Math.round((body.hoursPerWeek * module.score / totalScore) * 10) / 10,
+    rationale: (module.confidence <= 2 ? "weak-area" : module.subject.highYield >= 5 ? "high-yield" : "mixed-practice") as StudyTask["rationale"],
+    note: `${module.subject.groups.join("/")} cluster; HY${module.subject.highYield}, confidence ${module.confidence}/5.`,
+  }));
+
+  return {
+    overview: `${body.name}, this plan prioritises ${focusModules.slice(0, 3).map((m) => m.name).join(", ")} because they combine high SQE yield with your current confidence and revision recency profile. The week is deliberately interleaved so weak areas are reinforced without crowding out mixed SBA practice.`,
+    weeklyStrategy: {
+      summary: `This week allocates ${body.hoursPerWeek} hours across high-yield weak areas, recency gaps and mixed practice blocks. Task minutes total ${todayTasks.reduce((sum, task) => sum + task.minutes, 0)} minutes.`,
+      allocations,
+    },
+    todayTasks,
+    weeklyFocus: Array.from({ length: Math.min(12, Math.max(4, Math.ceil(84 / 7))) }, (_, index) => {
+      const first = scoredModules[index % scoredModules.length] ?? focusModules[0];
+      const second = scoredModules[(index + 1) % scoredModules.length] ?? first;
+      return {
+        week: index + 1,
+        hours: body.hoursPerWeek,
+        theme: index < 2 ? `High-yield repair: ${first.name} with ${second.name}` : index >= 8 ? `Mock analysis and targeted refresh: ${first.name}` : `Interleaved consolidation: ${first.subject.groups[0] ?? first.name}`,
+        modules: Array.from(new Set([first.name, second.name])),
+      };
+    }),
+    masteryTargets: scoredModules.map((module) => ({
+      module: module.name,
+      targetConfidence: module.subject.highYield >= 4 || module.confidence <= 2 ? 5 : 4,
+      priority: module.score >= 0.55 ? "high" : module.score >= 0.42 ? "medium" : "low",
+    })),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
