@@ -69,31 +69,8 @@ export function AppShell({
   actions,
   bare = false,
 }: AppShellProps) {
-  const [initials, setInitials] = useState("?");
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!active || !user) return;
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("first_name, last_name, display_name")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      const name =
-        profile?.first_name ||
-        profile?.display_name?.split(" ")[0] ||
-        user.email?.split("@")[0] ||
-        "";
-      if (active) setInitials((name[0] || "?").toUpperCase());
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   return (
     <div className="min-h-screen bg-background text-foreground">
