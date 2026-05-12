@@ -204,7 +204,7 @@ function CoachPage() {
           </div>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight md:text-3xl">{greeting}</h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Ask anything. I can explain concepts, build plans, generate quizzes, and keep you accountable.
+            Your SQE tutor and performance strategist. I read your mocks, recency gaps and confidence to tell you exactly what to do next — and why.
           </p>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
