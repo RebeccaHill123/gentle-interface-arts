@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useState } from "react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
   Sparkles,
   Play,
@@ -23,6 +24,8 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { waitForAuthUser } from "@/lib/auth-session";
+import { PracticeLauncherDialog } from "@/components/practice-launcher-dialog";
+import { AIQuizBuilderDialog } from "@/components/ai-quiz-builder-dialog";
 
 export const Route = createFileRoute("/mocks")({
   beforeLoad: async () => {
@@ -83,7 +86,7 @@ const PRACTICE_MODES: Mode[] = [
     adaptive: true,
     personalised: true,
     icon: Target,
-    to: "/coach",
+    to: "practice",
     accent: "from-pink/40 to-blue/20",
   },
   {
@@ -93,7 +96,7 @@ const PRACTICE_MODES: Mode[] = [
     focus: "Active recall",
     adaptive: true,
     icon: Sparkles,
-    to: "/coach",
+    to: "quiz",
     accent: "from-blue/40 to-pink/30",
   },
   {
@@ -179,6 +182,9 @@ const RESOURCES: Resource[] = [
 ];
 
 function MocksPage() {
+  const [practiceOpen, setPracticeOpen] = useState(false);
+  const [quizOpen, setQuizOpen] = useState(false);
+
   return (
     <AppShell title="Mocks & Practice" subtitle="Exam simulation & targeted practice.">
       {/* HERO */}
@@ -200,17 +206,17 @@ function MocksPage() {
 
           <div className="mt-6 flex flex-wrap gap-3">
             <Button
-              asChild
+              onClick={() => setPracticeOpen(true)}
               className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
             >
-              <Link to="/coach">
-                <Play className="mr-1.5 h-4 w-4" /> Start practice
-              </Link>
+              <Play className="mr-1.5 h-4 w-4" /> Start practice
             </Button>
-            <Button asChild variant="outline" className="rounded-full">
-              <Link to="/coach">
-                <Sparkles className="mr-1.5 h-4 w-4" /> Generate AI quiz
-              </Link>
+            <Button
+              variant="outline"
+              onClick={() => setQuizOpen(true)}
+              className="rounded-full"
+            >
+              <Sparkles className="mr-1.5 h-4 w-4" /> Generate AI quiz
             </Button>
           </div>
         </div>
@@ -230,14 +236,21 @@ function MocksPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PRACTICE_MODES.map((m) => {
             const Icon = m.icon;
-            const interactive = !m.comingSoon && m.to;
-            const Wrapper: any = interactive ? Link : "div";
-            const wrapperProps = interactive ? { to: m.to } : {};
+            const interactive = !m.comingSoon && !!m.to;
+            const handleClick = () => {
+              if (!interactive) return;
+              if (m.to === "quiz") setQuizOpen(true);
+              else setPracticeOpen(true);
+            };
+            const Wrapper: any = interactive ? "button" : "div";
+            const wrapperProps = interactive
+              ? { onClick: handleClick, type: "button" as const }
+              : {};
             return (
               <Wrapper
                 key={m.title}
                 {...wrapperProps}
-                className={`group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-5 backdrop-blur transition ${
+                className={`group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-5 text-left backdrop-blur transition ${
                   interactive
                     ? "hover:border-pink/40 hover:shadow-glow"
                     : "opacity-95"
@@ -335,6 +348,9 @@ function MocksPage() {
           not host or distribute third-party providers' copyrighted content.
         </p>
       </section>
+
+      <PracticeLauncherDialog open={practiceOpen} onOpenChange={setPracticeOpen} />
+      <AIQuizBuilderDialog open={quizOpen} onOpenChange={setQuizOpen} />
     </AppShell>
   );
 }
