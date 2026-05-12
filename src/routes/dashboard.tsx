@@ -219,6 +219,19 @@ function DashboardPage() {
         {tab === "week" && (
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="space-y-6 lg:col-span-2">
+              <WeeklyProgressPanel
+                doneMins={weeklyDoneMins}
+                targetMins={weeklyTargetMins}
+                remainingMins={weeklyRemainingMins}
+                pct={weeklyPct}
+                activeDays={activeDays}
+                blocksDone={blocksDone}
+                blocksPlanned={blocksPlanned}
+                plannedMins={plannedMins}
+                completedPlannedMins={completedPlannedMins}
+                streak={streak}
+              />
+
               {plan.weeklyStrategy && (
                 <Panel
                   title="Weekly study strategy"
@@ -229,8 +242,8 @@ function DashboardPage() {
               )}
 
               <Panel
-                title="This week's strategic tasks"
-                subtitle="Academically specific. Prioritised by weak areas, high-yield topics & recency."
+                title="Adaptive study blocks"
+                subtitle="Complete these in any order, on any day this week. Streak counts after one block per day."
               >
                 <ul className="space-y-2">
                   {plan.todayTasks.map((t, i) => {
