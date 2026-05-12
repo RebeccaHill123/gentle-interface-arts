@@ -54,7 +54,7 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
       customFocusMin: customFocus,
       customBreakMin: customBreak,
     });
-    navigate({ to: "/focus" });
+    navigate({ to: "/focus/sprint" });
   };
 
   return (
