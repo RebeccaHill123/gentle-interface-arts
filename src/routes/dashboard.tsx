@@ -198,7 +198,19 @@ function DashboardPage() {
         {tab === "week" && (
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="space-y-6 lg:col-span-2">
-              <Panel title="Today's plan" subtitle="Knock these out and you're on track.">
+              {plan.weeklyStrategy && (
+                <Panel
+                  title="Weekly study strategy"
+                  subtitle={plan.weeklyStrategy.summary}
+                >
+                  <AllocationBars allocations={plan.weeklyStrategy.allocations} />
+                </Panel>
+              )}
+
+              <Panel
+                title="This week's strategic tasks"
+                subtitle="Academically specific. Prioritised by weak areas, high-yield topics & recency."
+              >
                 <ul className="space-y-2">
                   {plan.todayTasks.map((t, i) => {
                     const done = completedTaskIds.includes(String(i));
@@ -206,18 +218,18 @@ function DashboardPage() {
                       <li key={i}>
                         <button
                           onClick={() => handleToggle(i)}
-                          className="group flex w-full items-center gap-4 rounded-2xl border border-border bg-background/40 p-4 text-left transition-all hover:border-pink/40 hover:bg-card"
+                          className="group flex w-full items-start gap-4 rounded-2xl border border-border bg-background/40 p-4 text-left transition-all hover:border-pink/40 hover:bg-card"
                         >
-                          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground transition-transform group-hover:scale-105">
+                          <span className="mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground transition-transform group-hover:scale-105">
                             {done ? (
                               <CheckCircle2 className="h-5 w-5" />
                             ) : (
                               <Circle className="h-5 w-5 opacity-70" />
                             )}
                           </span>
-                          <span className="flex-1">
+                          <span className="min-w-0 flex-1">
                             <span
-                              className={`block font-medium ${
+                              className={`block text-sm font-medium leading-snug ${
                                 done
                                   ? "text-muted-foreground line-through"
                                   : "text-foreground"
@@ -225,11 +237,27 @@ function DashboardPage() {
                             >
                               {t.title}
                             </span>
-                            <span className="block text-xs text-muted-foreground">
-                              {t.module}
+                            <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span className="text-[11px] text-muted-foreground">
+                                {t.module}
+                              </span>
+                              {t.rationale && (
+                                <RationaleChip rationale={t.rationale} />
+                              )}
+                              {t.taskType && <TypeChip type={t.taskType} />}
+                              {t.priority === "high" && (
+                                <span className="rounded-full bg-pink/20 px-2 py-0.5 text-[10px] font-semibold text-pink">
+                                  high priority
+                                </span>
+                              )}
                             </span>
+                            {t.why && (
+                              <span className="mt-1.5 block text-[11px] italic text-muted-foreground/80">
+                                {t.why}
+                              </span>
+                            )}
                           </span>
-                          <span className="text-sm font-semibold text-cyan">
+                          <span className="shrink-0 text-sm font-semibold text-cyan">
                             {t.minutes}m
                           </span>
                         </button>
