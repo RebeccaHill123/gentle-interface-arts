@@ -42,16 +42,6 @@ import {
   todayKey,
   type StoredPlan,
 } from "@/lib/plan-store";
-import {
-  loadPlan,
-  pullPlanFromCloud,
-  toggleTaskCompletion,
-  addStudySession,
-  adjustModuleConfidence,
-  computeStreak,
-  todayKey,
-  type StoredPlan,
-} from "@/lib/plan-store";
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
