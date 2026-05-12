@@ -81,7 +81,7 @@ Available study time: ${body.hoursPerWeek} hours/week
 Confidence per module (1=weak, 5=strong):
 ${body.modules.map((m) => `- ${m.name}: ${m.confidence}/5`).join("\n")}${mockSummary}${recencySummary}
 
-Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names the highest-priority subjects + reasoning, (b) a weekly allocation across modules with rationale tags + plain-English notes (tilt toward high-yield + weak-area + recency-gap, suppress HY≤2 niche topics), (c) 5 academically-specific strategic tasks for THIS WEEK using interleaving + spaced repetition (mix timed-sba, mistake-review, scenario-drill, active-recall, mixed-mock), each task referencing canonical subtopic names, (d) up to 12 weeks of forward-looking weekly themes built around topic clusters, (e) mastery targets per module by exam day weighted by HY + paper weight.`;
+Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names the highest-priority subjects + reasoning, (b) a weekly allocation across modules with rationale tags + plain-English notes (tilt toward high-yield + weak-area + recency-gap, suppress HY≤2 niche topics), (c) academically-specific strategic study blocks for THIS WEEK using interleaving + spaced repetition (mix timed-sba, mistake-review, scenario-drill, active-recall, mixed-mock), each task referencing canonical subtopic names. CRITICAL: the SUM of block minutes MUST equal ${body.hoursPerWeek * 60} (±10%) — i.e. ${body.hoursPerWeek} hours total. Generate as many blocks as needed (typically ${Math.max(4, Math.ceil(body.hoursPerWeek * 60 / 75))}–${Math.ceil(body.hoursPerWeek * 60 / 45)} blocks) using the allowed durations 30/45/60/90/120, and keep the per-module hour split aligned with the weekly allocation in (b). (d) up to 12 weeks of forward-looking weekly themes built around topic clusters, (e) mastery targets per module by exam day weighted by HY + paper weight.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
@@ -164,7 +164,7 @@ Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names th
                     },
                     todayTasks: {
                       type: "array",
-                      description: "5 academically-specific strategic tasks for THIS WEEK. Each task title must be specific (named topics, format, count). Minutes must be one of 30, 45, 60, 90, 120.",
+                      description: `Strategic study blocks for THIS WEEK. Total minutes across blocks MUST sum to roughly ${body.hoursPerWeek * 60} (±10%) — the user's weekly hour target. Generate as many blocks as needed; do NOT cap at 5. Each title must be academically specific (named topics, format, count). Minutes must be one of 30, 45, 60, 90, 120.`,
                       items: {
                         type: "object",
                         properties: {
