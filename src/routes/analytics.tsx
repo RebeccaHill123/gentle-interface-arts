@@ -352,7 +352,7 @@ function AnalyticsPage() {
           </div>
         )}
       </div>
-    </main>
+    </AppShell>
   );
 }
 
