@@ -189,11 +189,13 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  let body: PlanRequest | null = null;
+  let daysUntilExam = 1;
   try {
-    const body: PlanRequest = await req.json();
+    body = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
-    const daysUntilExam = Math.max(
+    daysUntilExam = Math.max(
       1,
       Math.ceil(
         (new Date(body.examDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24),
@@ -439,9 +441,15 @@ Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names th
     );
   } catch (e) {
     console.error("generate-plan error", e);
+    if (body) {
+      return new Response(
+        JSON.stringify({ plan: buildDeterministicPlan(body), daysUntilExam, fallback: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     return new Response(
       JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
