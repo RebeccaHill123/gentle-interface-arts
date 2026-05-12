@@ -965,6 +965,3 @@ function Insight({
 function truncate(s: string, n: number) {
   return s.length <= n ? s : s.slice(0, n - 1) + "…";
 }
-
-// Suppress unused-var warnings for imports that may be conditionally rendered
-void Switch;
