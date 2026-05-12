@@ -11,6 +11,7 @@ import { clearPlan } from "@/lib/plan-store";
 
 export const Route = createFileRoute("/settings")({
   beforeLoad: async () => {
+    if (typeof window === "undefined") return;
     const user = await waitForAuthUser();
     if (!user) throw redirect({ to: "/auth", search: { mode: "signin" } });
   },

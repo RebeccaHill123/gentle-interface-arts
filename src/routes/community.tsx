@@ -5,6 +5,7 @@ import { waitForAuthUser } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/community")({
   beforeLoad: async () => {
+    if (typeof window === "undefined") return;
     const user = await waitForAuthUser();
     if (!user) throw redirect({ to: "/auth", search: { mode: "signin" } });
   },

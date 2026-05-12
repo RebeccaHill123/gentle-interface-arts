@@ -21,6 +21,7 @@ import {
 
 export const Route = createFileRoute("/onboarding")({
   beforeLoad: async () => {
+    if (typeof window === "undefined") return;
     const user = await waitForAuthUser();
     if (!user) {
       throw redirect({ to: "/auth", search: { mode: "signin" } });
