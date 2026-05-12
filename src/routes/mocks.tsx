@@ -1,7 +1,27 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
-import { Scale, Sparkles, Lock } from "lucide-react";
+import {
+  Sparkles,
+  Play,
+  Timer,
+  Target,
+  Brain,
+  Layers,
+  Scale,
+  Lightbulb,
+  BookOpen,
+  Map,
+  ScrollText,
+  FileText,
+  AlertTriangle,
+  StickyNote,
+  Library,
+  Lock,
+  ArrowRight,
+  Zap,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { waitForAuthUser } from "@/lib/auth-session";
 
 export const Route = createFileRoute("/mocks")({
@@ -13,56 +33,308 @@ export const Route = createFileRoute("/mocks")({
   component: MocksPage,
   head: () => ({
     meta: [
-      { title: "Mock exams · Tentra" },
-      { name: "description", content: "Practice under exam conditions." },
+      { title: "Mocks & Practice · Tentra" },
+      {
+        name: "description",
+        content:
+          "Exam simulation and targeted practice for the SQE — timed mocks, adaptive drills and AI-generated revision.",
+      },
     ],
   }),
 });
 
+type Mode = {
+  title: string;
+  desc: string;
+  duration: string;
+  focus: string;
+  adaptive?: boolean;
+  personalised?: boolean;
+  comingSoon?: boolean;
+  icon: typeof Play;
+  to?: string;
+  accent: string;
+};
+
+const PRACTICE_MODES: Mode[] = [
+  {
+    title: "Full Mock",
+    desc: "Sit a full-length FLK paper under exam conditions with topic-by-topic feedback.",
+    duration: "180 Q · 5 hrs",
+    focus: "Endurance · breadth",
+    icon: Scale,
+    comingSoon: true,
+    accent: "from-pink/30 to-blue/30",
+  },
+  {
+    title: "Timed Mini Mock",
+    desc: "Compact, timed SBA set drawn from across the syllabus to simulate exam pacing.",
+    duration: "30 Q · 45 min",
+    focus: "Pacing · accuracy",
+    icon: Timer,
+    comingSoon: true,
+    accent: "from-blue/30 to-pink/20",
+  },
+  {
+    title: "Weak Area Drill",
+    desc: "Targeted SBAs focused on your lowest-confidence and most-missed topics.",
+    duration: "10 Q · 15 min",
+    focus: "Recovery · mastery",
+    adaptive: true,
+    personalised: true,
+    icon: Target,
+    to: "/coach",
+    accent: "from-pink/40 to-blue/20",
+  },
+  {
+    title: "AI Quiz Generator",
+    desc: "Spin up a fresh quiz on any module or topic, calibrated to your confidence.",
+    duration: "10 Q · 10 min",
+    focus: "Active recall",
+    adaptive: true,
+    icon: Sparkles,
+    to: "/coach",
+    accent: "from-blue/40 to-pink/30",
+  },
+  {
+    title: "Flashcard Sprint",
+    desc: "Spaced-repetition burst on key rules, definitions and procedural steps.",
+    duration: "20 cards · 5 min",
+    focus: "Memory · retrieval",
+    adaptive: true,
+    icon: Layers,
+    comingSoon: true,
+    accent: "from-pink/20 to-blue/30",
+  },
+  {
+    title: "Scenario Practice",
+    desc: "Long-form client scenarios with branching SBAs in the SRA assessment style.",
+    duration: "5 scenarios · 30 min",
+    focus: "Application · reasoning",
+    icon: Brain,
+    comingSoon: true,
+    accent: "from-blue/30 to-pink/30",
+  },
+  {
+    title: "Exam Technique Drills",
+    desc: "Short drills on time-per-question, elimination strategy and answer hygiene.",
+    duration: "10 min",
+    focus: "Strategy · pacing",
+    icon: Lightbulb,
+    comingSoon: true,
+    accent: "from-pink/30 to-blue/20",
+  },
+];
+
+type Resource = {
+  title: string;
+  desc: string;
+  icon: typeof BookOpen;
+  status: "available" | "soon";
+};
+
+const RESOURCES: Resource[] = [
+  {
+    title: "Revision frameworks",
+    desc: "Structured templates for breaking down topics, cases and procedural rules.",
+    icon: BookOpen,
+    status: "soon",
+  },
+  {
+    title: "Topic roadmaps",
+    desc: "Visual sequences showing how each module's topics build on one another.",
+    icon: Map,
+    status: "soon",
+  },
+  {
+    title: "Exam technique guides",
+    desc: "Short, original guides on pacing, elimination and assessment-style reading.",
+    icon: ScrollText,
+    status: "soon",
+  },
+  {
+    title: "AI-generated summaries",
+    desc: "On-demand topic summaries written from your syllabus and confidence map.",
+    icon: FileText,
+    status: "available",
+  },
+  {
+    title: "Mistake review log",
+    desc: "Every missed question, organised by topic, with explanations and re-test prompts.",
+    icon: AlertTriangle,
+    status: "soon",
+  },
+  {
+    title: "Personal notes",
+    desc: "Upload and tag your own notes — searchable alongside your study plan.",
+    icon: StickyNote,
+    status: "soon",
+  },
+  {
+    title: "Flashcard collections",
+    desc: "Curate decks per module and review them inside Flashcard Sprint.",
+    icon: Library,
+    status: "soon",
+  },
+];
+
 function MocksPage() {
   return (
-    <AppShell title="Mock Exams" subtitle="Practice under exam conditions.">
-      <section className="rounded-3xl border border-border bg-card p-8 shadow-card">
-        <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-pink-blue shadow-glow">
-          <Scale className="h-6 w-6 text-primary-foreground" />
-        </div>
-        <h2 className="mt-5 text-2xl font-semibold text-foreground">
-          Timed mocks are coming soon
-        </h2>
-        <p className="mt-2 max-w-xl text-sm text-muted-foreground">
-          Sit full-length SQE1 and SQE2 mocks under exam conditions, with instant
-          marking, topic-by-topic accuracy and AI-written feedback.
-        </p>
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button asChild className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95">
-            <Link to="/pro">
-              <Sparkles className="mr-1.5 h-4 w-4" /> Get early access with Pro
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="rounded-full">
-            <Link to="/coach">Try a coach quiz instead</Link>
-          </Button>
+    <AppShell title="Mocks & Practice" subtitle="Exam simulation & targeted practice.">
+      {/* HERO */}
+      <section className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-card md:p-10">
+        <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gradient-pink-blue opacity-20 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-gradient-pink-blue opacity-10 blur-3xl" />
+
+        <div className="relative max-w-2xl">
+          <Badge className="rounded-full bg-pink/15 text-pink hover:bg-pink/15">
+            <Zap className="mr-1 h-3 w-3" /> Adaptive revision
+          </Badge>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-4xl">
+            Exam simulation & targeted practice
+          </h2>
+          <p className="mt-3 text-base text-muted-foreground">
+            Build confidence with timed mocks, adaptive drills and AI-generated
+            revision exercises — calibrated to your syllabus and confidence map.
+          </p>
+
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              asChild
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+            >
+              <Link to="/coach">
+                <Play className="mr-1.5 h-4 w-4" /> Start practice
+              </Link>
+            </Button>
+            <Button asChild variant="outline" className="rounded-full">
+              <Link to="/coach">
+                <Sparkles className="mr-1.5 h-4 w-4" /> Generate AI quiz
+              </Link>
+            </Button>
+          </div>
         </div>
       </section>
 
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
-        {[
-          { title: "FLK1 mock", desc: "180 MCQs · 5 hrs" },
-          { title: "FLK2 mock", desc: "180 MCQs · 5 hrs" },
-          { title: "Skills paper", desc: "SQE2 written tasks" },
-        ].map((c) => (
-          <div
-            key={c.title}
-            className="relative overflow-hidden rounded-2xl border border-border bg-card/60 p-5 backdrop-blur"
-          >
-            <div className="absolute right-3 top-3">
-              <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-            <div className="text-sm font-semibold text-foreground">{c.title}</div>
-            <div className="mt-1 text-xs text-muted-foreground">{c.desc}</div>
+      {/* PRACTICE MODES */}
+      <section className="mt-10">
+        <div className="mb-4 flex items-end justify-between">
+          <div>
+            <h3 className="text-xl font-semibold text-foreground">Practice modes</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Pick the format that matches the time and intensity you have right now.
+            </p>
           </div>
-        ))}
-      </div>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {PRACTICE_MODES.map((m) => {
+            const Icon = m.icon;
+            const interactive = !m.comingSoon && m.to;
+            const Wrapper: any = interactive ? Link : "div";
+            const wrapperProps = interactive ? { to: m.to } : {};
+            return (
+              <Wrapper
+                key={m.title}
+                {...wrapperProps}
+                className={`group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-5 backdrop-blur transition ${
+                  interactive
+                    ? "hover:border-pink/40 hover:shadow-glow"
+                    : "opacity-95"
+                }`}
+              >
+                <div
+                  className={`pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b ${m.accent} opacity-40`}
+                />
+                <div className="relative flex items-start justify-between">
+                  <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  {m.comingSoon ? (
+                    <Badge variant="outline" className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground">
+                      <Lock className="mr-1 h-3 w-3" /> Soon
+                    </Badge>
+                  ) : (
+                    <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+                  )}
+                </div>
+
+                <div className="relative mt-4">
+                  <div className="text-base font-semibold text-foreground">{m.title}</div>
+                  <p className="mt-1 text-sm text-muted-foreground">{m.desc}</p>
+                </div>
+
+                <div className="relative mt-4 flex flex-wrap items-center gap-2 text-[11px]">
+                  <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-muted-foreground">
+                    {m.duration}
+                  </span>
+                  <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-muted-foreground">
+                    {m.focus}
+                  </span>
+                  {m.adaptive && (
+                    <span className="rounded-full bg-pink/15 px-2 py-0.5 font-medium text-pink">
+                      Adaptive
+                    </span>
+                  )}
+                  {m.personalised && (
+                    <span className="rounded-full bg-blue/15 px-2 py-0.5 font-medium text-blue">
+                      Personalised
+                    </span>
+                  )}
+                </div>
+              </Wrapper>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* STUDY RESOURCES */}
+      <section className="mt-12">
+        <div className="mb-4">
+          <h3 className="text-xl font-semibold text-foreground">Study resources</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Original frameworks, AI-generated materials and your own uploaded notes — all in one place.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {RESOURCES.map((r) => {
+            const Icon = r.icon;
+            return (
+              <div
+                key={r.title}
+                className="flex items-start gap-3 rounded-2xl border border-border bg-card/50 p-4 backdrop-blur transition hover:border-pink/30"
+              >
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-border bg-background/60 text-foreground">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <div className="truncate text-sm font-semibold text-foreground">
+                      {r.title}
+                    </div>
+                    {r.status === "soon" ? (
+                      <Badge variant="outline" className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground">
+                        Soon
+                      </Badge>
+                    ) : (
+                      <Badge className="rounded-full bg-emerald-400/15 text-[10px] uppercase tracking-wide text-emerald-300 hover:bg-emerald-400/15">
+                        Live
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{r.desc}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <p className="mt-4 text-[11px] text-muted-foreground">
+          Tentra provides original frameworks and AI-generated study materials. We do
+          not host or distribute third-party providers' copyrighted content.
+        </p>
+      </section>
     </AppShell>
   );
 }
