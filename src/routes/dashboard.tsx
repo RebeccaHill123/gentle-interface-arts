@@ -123,6 +123,27 @@ function DashboardPage() {
   const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
   const streak = computeStreak(sessions);
 
+  // Weekly progress (rolling 7 days)
+  const weeklyTargetMins = (input.hoursPerWeek ?? 0) * 60;
+  const sevenDaysAgo = Date.now() - 7 * 86400000;
+  const weekSessions = (sessions ?? []).filter(
+    (s) => new Date(s.loggedAt).getTime() >= sevenDaysAgo,
+  );
+  const weeklyDoneMins = weekSessions.reduce((a, s) => a + s.minutes, 0);
+  const weeklyPct =
+    weeklyTargetMins > 0
+      ? Math.min(100, Math.round((weeklyDoneMins / weeklyTargetMins) * 100))
+      : 0;
+  const weeklyRemainingMins = Math.max(0, weeklyTargetMins - weeklyDoneMins);
+  const activeDays = new Set(weekSessions.map((s) => s.date)).size;
+  const blocksPlanned = plan.todayTasks.length;
+  const blocksDone = completedTaskIds.length;
+  const plannedMins = plan.todayTasks.reduce((a, t) => a + t.minutes, 0);
+  const completedPlannedMins = plan.todayTasks.reduce(
+    (a, t, i) => (completedTaskIds.includes(String(i)) ? a + t.minutes : a),
+    0,
+  );
+
   const handleToggle = (i: number) => {
     const done = completedTaskIds.includes(String(i));
     if (done) {
@@ -169,11 +190,11 @@ function DashboardPage() {
           name={input.name}
           examType={input.examType}
           daysUntilExam={daysUntilExam}
-          progress={progress}
-          completed={completed}
-          total={totalToday}
           overview={plan.overview}
           streak={streak}
+          weeklyDoneMins={weeklyDoneMins}
+          weeklyTargetMins={weeklyTargetMins}
+          weeklyPct={weeklyPct}
         />
 
         <div className="flex gap-2 rounded-2xl border border-border bg-card/40 p-1.5 backdrop-blur w-fit">
@@ -198,6 +219,19 @@ function DashboardPage() {
         {tab === "week" && (
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="space-y-6 lg:col-span-2">
+              <WeeklyProgressPanel
+                doneMins={weeklyDoneMins}
+                targetMins={weeklyTargetMins}
+                remainingMins={weeklyRemainingMins}
+                pct={weeklyPct}
+                activeDays={activeDays}
+                blocksDone={blocksDone}
+                blocksPlanned={blocksPlanned}
+                plannedMins={plannedMins}
+                completedPlannedMins={completedPlannedMins}
+                streak={streak}
+              />
+
               {plan.weeklyStrategy && (
                 <Panel
                   title="Weekly study strategy"
@@ -208,8 +242,8 @@ function DashboardPage() {
               )}
 
               <Panel
-                title="This week's strategic tasks"
-                subtitle="Academically specific. Prioritised by weak areas, high-yield topics & recency."
+                title="Adaptive study blocks"
+                subtitle="Complete these in any order, on any day this week. Streak counts after one block per day."
               >
                 <ul className="space-y-2">
                   {plan.todayTasks.map((t, i) => {
@@ -375,28 +409,30 @@ function HeroBanner({
   name,
   examType,
   daysUntilExam,
-  progress,
-  completed,
-  total,
   overview,
   streak,
+  weeklyDoneMins,
+  weeklyTargetMins,
+  weeklyPct,
 }: {
   name: string;
   examType: string;
   daysUntilExam: number;
-  progress: number;
-  completed: number;
-  total: number;
   overview: string;
   streak: { current: number; longest: number; studiedToday: boolean; totalMinutesToday: number };
+  weeklyDoneMins: number;
+  weeklyTargetMins: number;
+  weeklyPct: number;
 }) {
+  const doneH = (weeklyDoneMins / 60).toFixed(1).replace(/\.0$/, "");
+  const targetH = Math.round(weeklyTargetMins / 60);
   return (
     <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-8 md:p-10">
       <div className="absolute inset-0 bg-gradient-hero opacity-80" />
       <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
         <div className="max-w-xl">
           <div className="text-xs font-semibold uppercase tracking-wider text-pink">
-            {examType} · personalised plan
+            {examType} · adaptive weekly plan
           </div>
           <h1 className="mt-2 text-4xl font-normal text-foreground md:text-5xl">
             Welcome back,{" "}
@@ -411,20 +447,20 @@ function HeroBanner({
           <StreakCard streak={streak} />
           <div className="rounded-2xl border border-border bg-background/60 p-5 backdrop-blur">
             <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Today
+              This week
             </div>
             <div className="mt-1 flex items-baseline gap-2">
               <div className="font-display text-4xl text-gradient-tentra">
-                {progress}%
+                {weeklyPct}%
               </div>
               <div className="text-xs text-muted-foreground">
-                {completed}/{total}
+                {doneH}/{targetH}h
               </div>
             </div>
             <div className="mt-3 h-1.5 w-32 overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-gradient-pink-blue transition-all"
-                style={{ width: `${progress}%` }}
+                style={{ width: `${weeklyPct}%` }}
               />
             </div>
           </div>
@@ -657,23 +693,23 @@ function NoPlanState() {
   );
 }
 
-const RATIONALE_META: Record<string, { label: string; cls: string }> = {
-  "high-yield": { label: "High-yield", cls: "bg-pink/15 text-pink" },
-  "weak-area": { label: "Weak area", cls: "bg-destructive/15 text-destructive" },
-  "recency-gap": { label: "Recency gap", cls: "bg-amber-500/15 text-amber-400" },
-  "mixed-practice": { label: "Mixed practice", cls: "bg-cyan/15 text-cyan" },
-  "mock-prep": { label: "Mock prep", cls: "bg-violet-500/15 text-violet-300" },
-  "ethics-cornerstone": { label: "Ethics", cls: "bg-emerald-500/15 text-emerald-400" },
+const RATIONALE_META: Record<string, { label: string; cls: string; dot: string }> = {
+  "high-yield": { label: "High Yield", cls: "bg-pink/15 text-pink", dot: "bg-pink" },
+  "weak-area": { label: "Weak Area", cls: "bg-destructive/15 text-destructive", dot: "bg-destructive" },
+  "recency-gap": { label: "Revision Refresh", cls: "bg-amber-500/15 text-amber-400", dot: "bg-amber-400" },
+  "mixed-practice": { label: "Mixed Practice", cls: "bg-cyan/15 text-cyan", dot: "bg-cyan" },
+  "mock-prep": { label: "Mock Recovery", cls: "bg-violet-500/15 text-violet-300", dot: "bg-violet-400" },
+  "ethics-cornerstone": { label: "Ethics", cls: "bg-emerald-500/15 text-emerald-400", dot: "bg-emerald-400" },
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  "timed-sba": "Timed SBA",
-  "mistake-review": "Mistake review",
-  "scenario-drill": "Scenario drill",
-  "active-recall": "Active recall",
-  "mixed-mock": "Mixed mock",
-  "concept-deepdive": "Deep dive",
-  "ethics-application": "Ethics applied",
+  "timed-sba": "Timed Practice",
+  "mistake-review": "Mistake Review",
+  "scenario-drill": "Scenario Drill",
+  "active-recall": "Active Recall",
+  "mixed-mock": "Mixed Mock",
+  "concept-deepdive": "Deep Dive",
+  "ethics-application": "Exam Technique",
 };
 
 function RationaleChip({ rationale }: { rationale: string }) {
@@ -691,6 +727,107 @@ function TypeChip({ type }: { type: string }) {
     <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
       {label}
     </span>
+  );
+}
+
+function WeeklyProgressPanel({
+  doneMins,
+  targetMins,
+  remainingMins,
+  pct,
+  activeDays,
+  blocksDone,
+  blocksPlanned,
+  plannedMins,
+  completedPlannedMins,
+  streak,
+}: {
+  doneMins: number;
+  targetMins: number;
+  remainingMins: number;
+  pct: number;
+  activeDays: number;
+  blocksDone: number;
+  blocksPlanned: number;
+  plannedMins: number;
+  completedPlannedMins: number;
+  streak: { current: number; longest: number; studiedToday: boolean };
+}) {
+  const fmtH = (m: number) => {
+    const h = m / 60;
+    return h >= 10 ? `${Math.round(h)}h` : `${h.toFixed(1).replace(/\.0$/, "")}h`;
+  };
+  const onTrack = pct >= Math.round(((new Date().getDay() || 7) / 7) * 100) - 10;
+  return (
+    <section className="rounded-3xl border border-border bg-card p-6 shadow-card">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Weekly progress</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Flexible — study any day. {onTrack ? "You're on track." : "Slight catch-up needed."}
+          </p>
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+            onTrack ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
+          }`}
+        >
+          {onTrack ? "On track" : "Catch up"}
+        </span>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Done" value={fmtH(doneMins)} sub={`of ${fmtH(targetMins)}`} accent />
+        <Stat label="Remaining" value={fmtH(remainingMins)} sub="this week" />
+        <Stat label="Active days" value={`${activeDays}/7`} sub={`streak ${streak.current}d`} />
+        <Stat
+          label="Blocks"
+          value={`${blocksDone}/${blocksPlanned}`}
+          sub={`${fmtH(completedPlannedMins)} of ${fmtH(plannedMins)}`}
+        />
+      </div>
+
+      <div className="mt-5">
+        <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>Hours toward your weekly target</span>
+          <span className="text-foreground">{pct}%</span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-gradient-pink-blue transition-all"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/40 p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div
+        className={`mt-1 font-display text-2xl ${
+          accent ? "text-gradient-tentra" : "text-foreground"
+        }`}
+      >
+        {value}
+      </div>
+      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
+    </div>
   );
 }
 
