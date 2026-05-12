@@ -86,7 +86,7 @@ const PRACTICE_MODES: Mode[] = [
     adaptive: true,
     personalised: true,
     icon: Target,
-    to: "/coach",
+    to: "practice",
     accent: "from-pink/40 to-blue/20",
   },
   {
@@ -96,7 +96,7 @@ const PRACTICE_MODES: Mode[] = [
     focus: "Active recall",
     adaptive: true,
     icon: Sparkles,
-    to: "/coach",
+    to: "quiz",
     accent: "from-blue/40 to-pink/30",
   },
   {
