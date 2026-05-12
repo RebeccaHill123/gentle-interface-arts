@@ -177,7 +177,7 @@ function AuthPage() {
               One more step
             </div>
             <h1 className="mt-2 text-3xl font-normal text-foreground">
-              Check your <span className="italic text-gradient-tentra">inbox</span>
+              Check your <span className="italic text-gradient-tentra font-sans text-2xl">inbox</span>
             </h1>
             <p className="mt-4 text-sm text-muted-foreground">
               We've sent a verification email to <span className="font-medium text-foreground">{verifySent}</span>.
