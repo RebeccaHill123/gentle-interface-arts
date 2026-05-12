@@ -15,6 +15,50 @@ interface PlanRequest {
   recentlyStudied?: { module: string; daysAgo: number }[];
 }
 
+type TaskMinutes = 30 | 45 | 60 | 90 | 120;
+
+interface StudyTask {
+  title: string;
+  module: string;
+  minutes: TaskMinutes;
+  taskType: "timed-sba" | "mistake-review" | "scenario-drill" | "active-recall" | "mixed-mock" | "concept-deepdive" | "ethics-application";
+  rationale: "high-yield" | "weak-area" | "recency-gap" | "mixed-practice" | "mock-prep" | "ethics-cornerstone";
+  priority: "high" | "medium" | "low";
+  why: string;
+}
+
+interface StudyPlanResponse {
+  overview: string;
+  weeklyStrategy: {
+    summary: string;
+    allocations: { module: string; hours: number; rationale: StudyTask["rationale"]; note: string }[];
+  };
+  weeklyFocus: { week: number; theme: string; modules: string[]; hours: number }[];
+  todayTasks: StudyTask[];
+  masteryTargets: { module: string; targetConfidence: number; priority: "high" | "medium" | "low" }[];
+}
+
+const SQE_FALLBACK_SUBJECTS: Record<string, { weight: number; highYield: number; groups: string[]; subtopics: string[] }> = {
+  "Contract": { weight: 0.18, highYield: 5, groups: ["Obligations", "Business"], subtopics: ["formation", "terms", "vitiating factors", "discharge", "remedies", "privity"] },
+  "Tort": { weight: 0.15, highYield: 5, groups: ["Obligations"], subtopics: ["negligence duty, breach, causation and remoteness", "psychiatric and economic loss", "occupiers' liability", "nuisance and Rylands", "vicarious liability", "defences"] },
+  "Business Law & Practice": { weight: 0.18, highYield: 5, groups: ["Business"], subtopics: ["business vehicles", "company formation", "directors' duties", "share capital", "partnerships and LLPs", "insolvency", "business tax"] },
+  "Constitutional & Administrative Law": { weight: 0.10, highYield: 4, groups: ["Public Law"], subtopics: ["parliamentary sovereignty", "separation of powers", "judicial review grounds and remedies", "Human Rights Act 1998"] },
+  "Legal System": { weight: 0.08, highYield: 3, groups: ["Public Law"], subtopics: ["sources of law", "statutory interpretation", "precedent", "legal services"] },
+  "Legal System of England & Wales": { weight: 0.08, highYield: 3, groups: ["Public Law"], subtopics: ["sources of law", "statutory interpretation", "precedent", "legal services"] },
+  "Ethics & Professional Conduct": { weight: 0.15, highYield: 5, groups: ["Ethics cornerstone"], subtopics: ["SRA Principles", "conflicts and confidentiality", "client money", "AML and POCA", "duties to court"] },
+  "EU Law": { weight: 0.03, highYield: 2, groups: ["Public Law"], subtopics: ["retained EU law", "legacy supremacy"] },
+  "EU & Retained Law": { weight: 0.03, highYield: 2, groups: ["Public Law"], subtopics: ["retained EU law", "legacy supremacy"] },
+  "Land Law": { weight: 0.13, highYield: 5, groups: ["Property", "Private Client"], subtopics: ["estates and interests", "registered and unregistered title", "co-ownership", "easements", "covenants", "leases and LTA 1954", "mortgages"] },
+  "Property Practice": { weight: 0.13, highYield: 5, groups: ["Property"], subtopics: ["freehold sale and purchase", "leasehold", "searches and enquiries", "contract, exchange and completion", "SDLT and VAT", "post-completion"] },
+  "Trusts": { weight: 0.10, highYield: 5, groups: ["Private Client", "Property"], subtopics: ["express trusts", "resulting and constructive trusts", "trustees' duties", "breach and equitable remedies", "tracing"] },
+  "Criminal Law": { weight: 0.10, highYield: 4, groups: ["Litigation"], subtopics: ["actus reus, mens rea and causation", "homicide", "non-fatal offences", "theft and fraud", "defences"] },
+  "Criminal Practice": { weight: 0.10, highYield: 4, groups: ["Litigation"], subtopics: ["PACE and police powers", "pre-charge advice", "bail", "plea and allocation", "trial evidence", "sentencing"] },
+  "Criminal Law & Practice": { weight: 0.20, highYield: 4, groups: ["Litigation"], subtopics: ["homicide and non-fatal offences", "theft and fraud", "PACE and police powers", "bail and first hearings", "trial evidence", "sentencing"] },
+  "Dispute Resolution": { weight: 0.13, highYield: 5, groups: ["Litigation"], subtopics: ["pre-action and ADR", "starting claims, jurisdiction and limitation", "statements of case", "interim applications", "disclosure and evidence", "trial and costs", "enforcement"] },
+  "Wills & Estates": { weight: 0.10, highYield: 4, groups: ["Private Client"], subtopics: ["validity and execution", "intestacy and family provision", "IHT", "estate administration", "trusts in wills"] },
+  "Solicitors Accounts": { weight: 0.07, highYield: 5, groups: ["Ethics", "Business"], subtopics: ["client vs business account", "SRA Accounts Rules", "double-entry bookkeeping", "interest, disbursements and VAT", "breaches and reconciliations"] },
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
