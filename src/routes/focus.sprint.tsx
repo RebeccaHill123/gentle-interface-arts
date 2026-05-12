@@ -159,7 +159,8 @@ function FocusPage() {
 
   const handleEnd = () => {
     if (!sprint) return;
-    // If they're ending mid-focus, still log partial time (>= 2 min) so effort counts.
+    let loggedMins = 0;
+    let endedEarly = false;
     if (sprint.phase === "focus") {
       const mins = Math.round(elapsedMs(sprint, Date.now()) / 60000);
       if (mins >= 2) {
@@ -173,10 +174,21 @@ function FocusPage() {
             : `Focus sprint (ended early) · ${mins}m`,
         });
         toast.success(`Logged ${mins}m of focus.`);
+        loggedMins = mins;
+        endedEarly = true;
       }
     }
+    const blocksToday = countFocusBlocksToday();
+    saveSummary({
+      focusMin: loggedMins || (completed?.focusMin ?? 0),
+      blocksToday,
+      module: sprint.module,
+      topic: sprint.topic,
+      endedEarly,
+      finishedAt: Date.now(),
+    });
     saveActiveSprint(null);
-    navigate({ to: "/dashboard" });
+    navigate({ to: "/focus/summary" });
   };
 
   const handleStartBreak = () => {
@@ -195,7 +207,7 @@ function FocusPage() {
 
   const handleSkipBreak = () => {
     saveActiveSprint(null);
-    navigate({ to: "/dashboard" });
+    navigate({ to: "/focus/summary" });
   };
 
   if (!sprint) return null;
