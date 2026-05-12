@@ -430,10 +430,11 @@ Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names th
     }
 
     const data = await response.json();
-    const plan = extractStructuredPlan(data) ?? buildDeterministicPlan(body);
+    const structuredPlan = extractStructuredPlan(data);
+    const plan = structuredPlan ?? buildDeterministicPlan(body);
 
     return new Response(
-      JSON.stringify({ plan, daysUntilExam, fallback: !extractStructuredPlan(data) }),
+      JSON.stringify({ plan, daysUntilExam, fallback: !structuredPlan }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
