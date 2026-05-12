@@ -179,22 +179,17 @@ function CoachPage() {
   }, [streak]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      <BackgroundBlobs />
-      <div className="relative z-10 mx-auto flex min-h-screen max-w-5xl flex-col px-4 py-6">
-        {/* Header */}
-        <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Button asChild variant="ghost" size="sm" className="rounded-full">
-              <Link to="/dashboard"><ArrowLeft className="h-4 w-4" /> Back</Link>
-            </Button>
-            <BrandMark />
-          </div>
-          <div className="flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs backdrop-blur">
-            <Sparkles className="h-3.5 w-3.5 text-pink" />
-            <span className="font-semibold">Tentra Coach</span>
-          </div>
-        </header>
+    <AppShell
+      title="Tentra Coach"
+      subtitle="Your AI study coach"
+      actions={
+        <span className="hidden items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs backdrop-blur sm:inline-flex">
+          <Sparkles className="h-3.5 w-3.5 text-pink" />
+          <span className="font-semibold">AI Coach</span>
+        </span>
+      }
+    >
+      <div className="flex flex-col">
 
         {/* Orb + greeting */}
         <section className="mt-6 flex flex-col items-center text-center">
