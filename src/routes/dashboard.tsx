@@ -28,7 +28,20 @@ import {
   Circle,
   Plus,
   Loader2,
+  Check,
+  X,
 } from "lucide-react";
+import {
+  loadPlan,
+  clearPlan,
+  pullPlanFromCloud,
+  toggleTaskCompletion,
+  addStudySession,
+  adjustModuleConfidence,
+  computeStreak,
+  todayKey,
+  type StoredPlan,
+} from "@/lib/plan-store";
 import {
   loadPlan,
   pullPlanFromCloud,
