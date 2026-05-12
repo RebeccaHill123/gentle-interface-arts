@@ -21,6 +21,7 @@ import { Route as CoachRouteImport } from './routes/coach'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FocusSummaryRouteImport } from './routes/focus.summary'
 import { Route as FocusSprintRouteImport } from './routes/focus.sprint'
 import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
@@ -88,6 +89,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FocusSummaryRoute = FocusSummaryRouteImport.update({
+  id: '/summary',
+  path: '/summary',
+  getParentRoute: () => FocusRoute,
+} as any)
 const FocusSprintRoute = FocusSprintRouteImport.update({
   id: '/sprint',
   path: '/sprint',
@@ -136,6 +142,7 @@ export interface FileRoutesByFullPath {
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
+  '/focus/summary': typeof FocusSummaryRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -156,6 +163,7 @@ export interface FileRoutesByTo {
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
+  '/focus/summary': typeof FocusSummaryRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -177,6 +185,7 @@ export interface FileRoutesById {
   '/api/coach': typeof ApiCoachRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
+  '/focus/summary': typeof FocusSummaryRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -199,6 +208,7 @@ export interface FileRouteTypes {
     | '/api/coach'
     | '/auth/callback'
     | '/focus/sprint'
+    | '/focus/summary'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -219,6 +229,7 @@ export interface FileRouteTypes {
     | '/api/coach'
     | '/auth/callback'
     | '/focus/sprint'
+    | '/focus/summary'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -239,6 +250,7 @@ export interface FileRouteTypes {
     | '/api/coach'
     | '/auth_/callback'
     | '/focus/sprint'
+    | '/focus/summary'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -350,6 +362,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/focus/summary': {
+      id: '/focus/summary'
+      path: '/summary'
+      fullPath: '/focus/summary'
+      preLoaderRoute: typeof FocusSummaryRouteImport
+      parentRoute: typeof FocusRoute
+    }
     '/focus/sprint': {
       id: '/focus/sprint'
       path: '/sprint'
@@ -397,10 +416,12 @@ declare module '@tanstack/react-router' {
 
 interface FocusRouteChildren {
   FocusSprintRoute: typeof FocusSprintRoute
+  FocusSummaryRoute: typeof FocusSummaryRoute
 }
 
 const FocusRouteChildren: FocusRouteChildren = {
   FocusSprintRoute: FocusSprintRoute,
+  FocusSummaryRoute: FocusSummaryRoute,
 }
 
 const FocusRouteWithChildren = FocusRoute._addFileChildren(FocusRouteChildren)
