@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProRouteImport } from './routes/pro'
+import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
 import { Route as FocusRouteImport } from './routes/focus'
@@ -36,6 +37,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ProRoute = ProRouteImport.update({
   id: '/pro',
   path: '/pro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PracticeRoute = PracticeRouteImport.update({
+  id: '/practice',
+  path: '/practice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/focus': typeof FocusRouteWithChildren
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
+  '/practice': typeof PracticeRoute
   '/pro': typeof ProRoute
   '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/focus': typeof FocusRouteWithChildren
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
+  '/practice': typeof PracticeRoute
   '/pro': typeof ProRoute
   '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/focus': typeof FocusRouteWithChildren
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
+  '/practice': typeof PracticeRoute
   '/pro': typeof ProRoute
   '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/focus'
     | '/mocks'
     | '/onboarding'
+    | '/practice'
     | '/pro'
     | '/settings'
     | '/api/coach'
@@ -213,6 +223,7 @@ export interface FileRouteTypes {
     | '/focus'
     | '/mocks'
     | '/onboarding'
+    | '/practice'
     | '/pro'
     | '/settings'
     | '/api/coach'
@@ -233,6 +244,7 @@ export interface FileRouteTypes {
     | '/focus'
     | '/mocks'
     | '/onboarding'
+    | '/practice'
     | '/pro'
     | '/settings'
     | '/api/coach'
@@ -254,6 +266,7 @@ export interface RootRouteChildren {
   FocusRoute: typeof FocusRouteWithChildren
   MocksRoute: typeof MocksRoute
   OnboardingRoute: typeof OnboardingRoute
+  PracticeRoute: typeof PracticeRoute
   ProRoute: typeof ProRoute
   SettingsRoute: typeof SettingsRoute
   ApiCoachRoute: typeof ApiCoachRoute
@@ -277,6 +290,13 @@ declare module '@tanstack/react-router' {
       path: '/pro'
       fullPath: '/pro'
       preLoaderRoute: typeof ProRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/practice': {
+      id: '/practice'
+      path: '/practice'
+      fullPath: '/practice'
+      preLoaderRoute: typeof PracticeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -416,6 +436,7 @@ const rootRouteChildren: RootRouteChildren = {
   FocusRoute: FocusRouteWithChildren,
   MocksRoute: MocksRoute,
   OnboardingRoute: OnboardingRoute,
+  PracticeRoute: PracticeRoute,
   ProRoute: ProRoute,
   SettingsRoute: SettingsRoute,
   ApiCoachRoute: ApiCoachRoute,
