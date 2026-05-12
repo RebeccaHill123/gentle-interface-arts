@@ -30,6 +30,7 @@ import { computeFocusInsights } from "@/lib/focus-store";
 
 export const Route = createFileRoute("/pro")({
   beforeLoad: async () => {
+    if (typeof window === "undefined") return;
     const user = await waitForAuthUser();
     if (!user) {
       throw redirect({ to: "/auth", search: { mode: "signin" } });

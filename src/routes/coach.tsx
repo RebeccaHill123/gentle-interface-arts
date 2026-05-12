@@ -36,6 +36,7 @@ const SUGGESTIONS: { icon: typeof Target; label: string; prompt: string }[] = [
 
 export const Route = createFileRoute("/coach")({
   beforeLoad: async () => {
+    if (typeof window === "undefined") return;
     const user = await waitForAuthUser();
     if (!user) throw redirect({ to: "/auth", search: { mode: "signin" } });
   },

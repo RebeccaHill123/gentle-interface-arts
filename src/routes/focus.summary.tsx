@@ -20,6 +20,7 @@ interface FocusSummary {
 
 export const Route = createFileRoute("/focus/summary")({
   beforeLoad: async () => {
+    if (typeof window === "undefined") return;
     const user = await waitForAuthUser();
     if (!user) throw redirect({ to: "/auth", search: { mode: "signin" } });
   },
