@@ -276,7 +276,7 @@ function CoachPage() {
           Study guidance, not legal advice. Coach can make mistakes — verify key citations.
         </p>
       </div>
-    </main>
+    </AppShell>
   );
 }
 
