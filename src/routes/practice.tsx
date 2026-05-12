@@ -231,10 +231,10 @@ function PracticeSessionPage() {
     if (!config) return;
     const totalMs = Date.now() - sessionStart;
     const minutes = Math.max(1, Math.round(totalMs / 60_000));
-    const correct = answers.reduce(
-      (acc, a, i) => (a === questions[i]?.correctIndex ? (acc as number) + 1 : (acc as number)),
+    const correct = answers.reduce<number>(
+      (acc, a, i) => (a === questions[i]?.correctIndex ? acc + 1 : acc),
       0,
-    ) as number;
+    );
     const accuracy = correct / questions.length;
 
     try {
