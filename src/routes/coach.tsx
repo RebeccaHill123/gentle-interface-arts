@@ -10,11 +10,14 @@ import {
   Send,
   Loader2,
   Flame,
-  Brain,
   Target,
   HeartPulse,
-  Wand2,
-  MessageCircleQuestion,
+  TrendingUp,
+  AlertTriangle,
+  Timer,
+  LineChart,
+  Layers,
+  Gauge,
 } from "lucide-react";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,13 +25,13 @@ import { loadPlan, computeStreak } from "@/lib/plan-store";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-const SUGGESTIONS: { icon: typeof Brain; label: string; prompt: string }[] = [
-  { icon: Brain, label: "Explain trusts simply", prompt: "Explain trusts simply, like I'm new to equity." },
-  { icon: Target, label: "Test me on easements", prompt: "Give me 5 SQE-style MCQs on easements with answers and short explanations." },
-  { icon: Wand2, label: "2-week SQE crash plan", prompt: "Build me a 2-week SQE1 crash plan, broken into morning/afternoon/evening blocks." },
-  { icon: MessageCircleQuestion, label: "Why am I struggling with land law?", prompt: "Why might I be struggling with land law, and how do I fix it in a week?" },
-  { icon: Sparkles, label: "Generate 10 MCQs", prompt: "Generate 10 mixed SQE1 MCQs across contract, tort and criminal. Include answers." },
-  { icon: Flame, label: "Motivate me to study", prompt: "I'm exhausted and unmotivated. Give me a short, no-BS pep talk and a 25-minute plan." },
+const SUGGESTIONS: { icon: typeof Target; label: string; prompt: string }[] = [
+  { icon: TrendingUp, label: "Analyse my mock trend", prompt: "Analyse my recent mock performance — what's trending up, what's regressing, and which modules need re-weighting this week?" },
+  { icon: AlertTriangle, label: "Find my weak patterns", prompt: "Identify my weakest patterns across modules and task types. Be specific about timing, accuracy and topic clusters, and tell me what to drill first." },
+  { icon: Layers, label: "Why these priorities?", prompt: "Walk me through why my current top-priority topics were chosen — cite recency gaps, confidence levels and high-yield weighting." },
+  { icon: Timer, label: "Land Law timed drill", prompt: "Build me a 45-minute timed Land Law SBA drill targeting my weakest sub-topics, at SQE pace (~1.7 min/question)." },
+  { icon: LineChart, label: "Re-plan this week", prompt: "Recommend strategic changes to this week's plan based on my recent performance, recency decay and exam proximity. What do I add, drop, or interleave?" },
+  { icon: Gauge, label: "Adjust intensity", prompt: "Given how many hours I've actually completed vs target, my streak and how close the exam is — should I scale intensity up or down, and how?" },
 ];
 
 export const Route = createFileRoute("/coach")({
@@ -201,7 +204,7 @@ function CoachPage() {
           </div>
           <h1 className="mt-4 text-2xl font-semibold tracking-tight md:text-3xl">{greeting}</h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Ask anything. I can explain concepts, build plans, generate quizzes, and keep you accountable.
+            Your SQE tutor and performance strategist. I read your mocks, recency gaps and confidence to tell you exactly what to do next — and why.
           </p>
 
           <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
@@ -260,7 +263,7 @@ function CoachPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
             }}
-            placeholder="Ask Coach anything — concepts, plans, quizzes, motivation…"
+            placeholder="Ask for analysis, priorities, or a strategic re-plan…"
             rows={1}
             className="min-h-[44px] flex-1 resize-none border-0 bg-transparent focus-visible:ring-0"
           />
