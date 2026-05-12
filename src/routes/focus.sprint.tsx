@@ -50,10 +50,10 @@ function FocusPage() {
   } | null>(null);
   const completedFiredRef = useRef(false);
 
-  // If no sprint, send back to dashboard
+  // If no sprint, send back to focus launcher
   useEffect(() => {
     if (!sprint) {
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/focus" });
     }
   }, [sprint, navigate]);
 
