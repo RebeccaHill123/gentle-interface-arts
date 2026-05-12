@@ -10,11 +10,14 @@ import {
   Send,
   Loader2,
   Flame,
-  Brain,
   Target,
   HeartPulse,
-  Wand2,
-  MessageCircleQuestion,
+  TrendingUp,
+  AlertTriangle,
+  Timer,
+  LineChart,
+  Layers,
+  Gauge,
 } from "lucide-react";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
