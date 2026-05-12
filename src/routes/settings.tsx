@@ -60,13 +60,26 @@ function SettingsPage() {
     }
   };
 
-  const handleReplan = () => {
+  const handleReplan = async () => {
     if (!confirm("This will clear your current study plan. Continue?")) return;
     setResetting(true);
-    clearPlan();
-    setTimeout(() => {
+    try {
+      clearPlan();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase
+          .from("user_plans")
+          .delete()
+          .eq("user_id", user.id);
+        if (error) throw error;
+      }
+      toast.success("Plan cleared — let's rebuild it");
       navigate({ to: "/onboarding" });
-    }, 200);
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not reset plan. Please try again.");
+      setResetting(false);
+    }
   };
 
   return (
