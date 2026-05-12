@@ -3,7 +3,12 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Sparkles,
   TrendingUp,
   TrendingDown,
@@ -13,15 +18,21 @@ import {
   ShieldAlert,
   Trophy,
   Clock,
-  Activity,
   Lightbulb,
   Lock,
+  Info,
   Zap,
 } from "lucide-react";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { getProStatus } from "@/lib/pro-store";
-import { loadPlan, computeStreak } from "@/lib/plan-store";
-import type { StoredPlan, StudySession } from "@/lib/plan-store";
+import { loadPlan } from "@/lib/plan-store";
+import {
+  deriveAnalytics,
+  READINESS_LABELS,
+  type AnalyticsBundle,
+  type ReadinessBreakdown,
+  type SubjectStat,
+} from "@/lib/analytics-derive";
 
 export const Route = createFileRoute("/analytics")({
   beforeLoad: async () => {
@@ -32,291 +43,151 @@ export const Route = createFileRoute("/analytics")({
   component: AnalyticsPage,
   head: () => ({
     meta: [
-      { title: "Mock Exam Analytics · Tentra" },
+      { title: "Performance analytics · Tentra" },
       {
         name: "description",
         content:
-          "Premium performance dashboard: readiness, predicted score, weak topics, trend lines and AI recommendations.",
+          "Explainable SQE performance analytics: readiness, predicted score, weak topics and revision trends — all derived from your tracked behaviour.",
       },
     ],
   }),
 });
 
-// -------- Helpers ------------------------------------------------------------
-
-function seedFrom(str: string) {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
-  return () => {
-    h = Math.imul(h ^ (h >>> 15), 2246822507);
-    h = Math.imul(h ^ (h >>> 13), 3266489909);
-    return ((h ^= h >>> 16) >>> 0) / 4294967295;
-  };
-}
-
-interface TopicStat {
-  module: string;
-  confidence: number; // 1-5
-  accuracy: number; // 0-100
-  trend: number; // -20..+20 percentage points week-over-week
-  minutes: number; // total this week
-}
-
-interface Derived {
-  readiness: number;
-  predictedScore: number;
-  predictedBand: "1st quintile" | "2nd quintile" | "3rd quintile" | "4th quintile" | "5th quintile";
-  weeklyMinutes: number[]; // 8 weeks
-  mockTrend: number[]; // 6 mocks
-  heatmap: number[]; // 7x7 = 49 cells (intensity 0..1)
-  topics: TopicStat[];
-  insights: { icon: typeof Sparkles; tone: "good" | "warn" | "info"; text: string }[];
-  morningBoost: number;
-  consistencyScore: number;
-}
-
-function deriveAnalytics(plan: StoredPlan | null): Derived {
-  const rand = seedFrom(plan?.input.name || "guest");
-  const modules = plan?.input.modules ?? [];
-  const sessions: StudySession[] = plan?.sessions ?? [];
-
-  // Topics
-  const topics: TopicStat[] = (modules.length
-    ? modules
-    : ["Land Law", "Trusts", "Contract", "Tort", "Criminal", "Ethics"].map((n, i) => ({
-        id: String(i),
-        name: n,
-        confidence: 3,
-      }))
-  ).map((m) => {
-    const conf = m.confidence ?? 3;
-    const accBase = 35 + conf * 11 + rand() * 14;
-    return {
-      module: m.name,
-      confidence: conf,
-      accuracy: Math.round(Math.max(20, Math.min(96, accBase))),
-      trend: Math.round((rand() - 0.4) * 24),
-      minutes: Math.round(40 + rand() * 240),
-    };
-  });
-
-  const avgAcc = topics.reduce((a, t) => a + t.accuracy, 0) / Math.max(1, topics.length);
-  const consistency = computeStreak(sessions).current;
-  const consistencyScore = Math.min(100, 40 + consistency * 6);
-  const readiness = Math.round(Math.min(96, Math.max(18, avgAcc * 0.7 + consistencyScore * 0.3)));
-  const predictedScore = Math.round(40 + (readiness / 100) * 50); // 40-90
-  const predictedBand: Derived["predictedBand"] =
-    predictedScore >= 78
-      ? "1st quintile"
-      : predictedScore >= 68
-        ? "2nd quintile"
-        : predictedScore >= 58
-          ? "3rd quintile"
-          : predictedScore >= 48
-            ? "4th quintile"
-            : "5th quintile";
-
-  // Weekly minutes (8 weeks)
-  const weeklyMinutes = Array.from({ length: 8 }, (_, i) => {
-    const base = 180 + rand() * 360;
-    const drift = i * 12;
-    return Math.round(base + drift);
-  });
-
-  // Mock trend (6 mocks)
-  const mockTrend = Array.from({ length: 6 }, (_, i) => {
-    const t = avgAcc - 10 + i * 2.5 + (rand() - 0.5) * 8;
-    return Math.round(Math.max(28, Math.min(94, t)));
-  });
-
-  // Heatmap 7 days × 7 cols (last 7 weeks)
-  const heatmap = Array.from({ length: 49 }, () => Math.max(0, rand() - 0.25));
-
-  // Insights
-  const morningBoost = Math.round(8 + rand() * 18);
-  const topGainer = [...topics].sort((a, b) => b.trend - a.trend)[0];
-  const topDecliner = [...topics].sort((a, b) => a.trend - b.trend)[0];
-
-  const insights: Derived["insights"] = [
-    {
-      icon: Zap,
-      tone: "good",
-      text: `You perform ${morningBoost}% better after morning revision sessions.`,
-    },
-    topGainer && topGainer.trend > 0
-      ? {
-          icon: TrendingUp,
-          tone: "good",
-          text: `${topGainer.module} accuracy has increased ${topGainer.trend}% this week.`,
-        }
-      : { icon: Sparkles, tone: "info", text: "Add a 25-minute morning sprint to compound gains." },
-    {
-      icon: Trophy,
-      tone: "info",
-      text: `You are currently on track for a ${predictedBand} result.`,
-    },
-    topDecliner && topDecliner.trend < 0
-      ? {
-          icon: TrendingDown,
-          tone: "warn",
-          text: `${topDecliner.module} revision consistency is declining — schedule a rescue block.`,
-        }
-      : {
-          icon: Lightbulb,
-          tone: "info",
-          text: "Consistency is steady. Try a 90-minute deep block this week.",
-        },
-  ];
-
-  return {
-    readiness,
-    predictedScore,
-    predictedBand,
-    weeklyMinutes,
-    mockTrend,
-    heatmap,
-    topics,
-    insights,
-    morningBoost,
-    consistencyScore,
-  };
-}
-
-// -------- Component ----------------------------------------------------------
-
 function AnalyticsPage() {
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
-  const [data, setData] = useState<Derived | null>(null);
+  const [data, setData] = useState<AnalyticsBundle | null>(null);
 
   useEffect(() => {
     (async () => {
       const status = await getProStatus().catch(() => ({ isPro: false }));
       setIsPro(!!status.isPro);
-      const plan = loadPlan();
-      setData(deriveAnalytics(plan));
+      setData(deriveAnalytics(loadPlan()));
       setLoading(false);
     })();
   }, []);
 
-  const sorted = useMemo(() => {
-    if (!data) return { strong: [], weak: [], risk: [] };
-    const byAcc = [...data.topics].sort((a, b) => b.accuracy - a.accuracy);
-    return {
-      strong: byAcc.slice(0, 3),
-      weak: byAcc.slice(-3).reverse(),
-      risk: data.topics.filter((t) => t.accuracy < 55 || t.trend < -5).slice(0, 4),
-    };
-  }, [data]);
-
   return (
-    <AppShell
-      title="Performance dashboard"
-      subtitle="A live, data-driven view of your readiness — like Strava for the SQE."
-      actions={
-        !isPro ? (
-          <Button
-            asChild
-            size="sm"
-            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
-          >
-            <Link to="/pro">
-              <Sparkles className="h-4 w-4" /> Unlock Pro
-            </Link>
-          </Button>
-        ) : undefined
-      }
-    >
-      <div>
-
+    <TooltipProvider delayDuration={150}>
+      <AppShell
+        title="Performance dashboard"
+        subtitle="Every metric here is derived from your tracked study behaviour. Hover any number to see how it's calculated."
+        actions={
+          !isPro ? (
+            <Button
+              asChild
+              size="sm"
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+            >
+              <Link to="/pro">
+                <Sparkles className="h-4 w-4" /> Unlock Pro
+              </Link>
+            </Button>
+          ) : undefined
+        }
+      >
         {loading || !data ? (
           <div className="mt-12 flex h-64 items-center justify-center text-sm text-muted-foreground">
             Crunching your numbers…
           </div>
         ) : (
-          <div className={!isPro ? "relative mt-8" : "mt-8"}>
+          <div className={!isPro ? "relative mt-2" : "mt-2"}>
             {!isPro && <LockedOverlay />}
             <div className={!isPro ? "pointer-events-none select-none blur-[6px]" : ""}>
-              {/* Top hero metrics */}
-              <section className="grid gap-4 md:grid-cols-3">
-                <ReadinessCard readiness={data.readiness} band={data.predictedBand} />
-                <PredictedScoreCard score={data.predictedScore} band={data.predictedBand} />
-                <PeakCard consistency={data.consistencyScore} morning={data.morningBoost} />
+              <DataBanner data={data} />
+
+              {/* Hero */}
+              <section className="mt-6 grid gap-4 md:grid-cols-3">
+                <ReadinessCard data={data} />
+                <PredictedScoreCard data={data} />
+                <PeakCard data={data} />
               </section>
 
-              {/* Strong / Weak */}
+              {/* Strongest / Weakest */}
               <section className="mt-6 grid gap-4 md:grid-cols-2">
                 <Panel
                   title="Strongest subjects"
                   icon={Trophy}
                   iconClass="text-emerald-400"
-                  subtitle="Top 3 by accuracy"
+                  subtitle="Ranked by mock accuracy, with confidence as a tiebreaker."
                 >
-                  <TopicBars topics={sorted.strong} variant="good" />
+                  <SubjectList subjects={data.strongest} variant="good" />
                 </Panel>
                 <Panel
                   title="Weakest subjects"
                   icon={ShieldAlert}
                   iconClass="text-pink"
-                  subtitle="Where to invest revision hours"
+                  subtitle="Lowest accuracy or untouched high-yield areas."
                 >
-                  <TopicBars topics={sorted.weak} variant="bad" />
+                  <SubjectList subjects={data.weakest} variant="bad" />
                 </Panel>
               </section>
 
-              {/* Mock trend + weekly load */}
+              {/* Mock trend + Weekly load */}
               <section className="mt-6 grid gap-4 lg:grid-cols-3">
                 <div className="lg:col-span-2">
                   <Panel
                     title="Mock test trend"
                     icon={TrendingUp}
-                    subtitle="Last 6 mocks · accuracy %"
+                    subtitle={
+                      data.mockTrend.length
+                        ? `${data.mockTrend.length} mock${data.mockTrend.length === 1 ? "" : "s"} logged · accuracy %`
+                        : "Log mock or quiz sessions to populate this trend."
+                    }
                   >
-                    <Sparkline points={data.mockTrend} />
-                  </Panel>
-                </div>
-                <Panel title="Weekly study load" icon={Clock} subtitle="Minutes per week · 8w">
-                  <BarChart values={data.weeklyMinutes} />
-                </Panel>
-              </section>
-
-              {/* Heatmap + Risk */}
-              <section className="mt-6 grid gap-4 lg:grid-cols-3">
-                <div className="lg:col-span-2">
-                  <Panel
-                    title="Revision consistency"
-                    icon={Flame}
-                    iconClass="text-orange-400"
-                    subtitle="Last 7 weeks"
-                  >
-                    <Heatmap cells={data.heatmap} />
+                    <MockTrendChart points={data.mockTrend} />
                   </Panel>
                 </div>
                 <Panel
-                  title="High-risk topics"
+                  title="Weekly study load"
+                  icon={Clock}
+                  subtitle="Actual minutes per week vs your weekly target."
+                >
+                  <WeeklyLoadChart load={data.weeklyLoad} />
+                </Panel>
+              </section>
+
+              {/* At-risk + Confidence */}
+              <section className="mt-6 grid gap-4 lg:grid-cols-3">
+                <Panel
+                  title="At-risk topics"
                   icon={ShieldAlert}
                   iconClass="text-pink"
-                  subtitle="Needing immediate revision"
+                  subtitle="Risk = confidence gap × high-yield × syllabus weight × recency."
                 >
-                  <RiskList topics={sorted.risk} />
+                  <RiskList subjects={data.atRisk} />
                 </Panel>
+                <div className="lg:col-span-2">
+                  <Panel
+                    title="Confidence vs measured accuracy"
+                    icon={Brain}
+                    subtitle="Where self-rating diverges from observed performance."
+                  >
+                    <ConfidenceMatrix subjects={data.subjects} />
+                  </Panel>
+                </div>
               </section>
 
-              {/* Confidence per topic */}
+              {/* Insights */}
               <section className="mt-6">
-                <Panel title="Confidence by topic" icon={Brain} subtitle="Self-rated vs accuracy">
-                  <ConfidenceMatrix topics={data.topics} />
-                </Panel>
-              </section>
-
-              {/* AI insights */}
-              <section className="mt-6">
-                <Panel title="Smart recommendations" icon={Sparkles} subtitle="AI-generated insights">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    {data.insights.map((i, idx) => (
-                      <InsightCard key={idx} {...i} />
-                    ))}
-                  </div>
+                <Panel
+                  title="Data-driven insights"
+                  icon={Sparkles}
+                  subtitle="Generated only when there's enough behaviour to back the claim."
+                >
+                  {data.insights.length ? (
+                    <div className="grid gap-3 md:grid-cols-2">
+                      {data.insights.map((i, idx) => (
+                        <InsightCard key={idx} {...i} />
+                      ))}
+                    </div>
+                  ) : (
+                    <EmptyState
+                      icon={Lightbulb}
+                      title="No insights yet"
+                      body="Log a few more study, quiz or mock sessions and we'll surface patterns we're confident about."
+                    />
+                  )}
                   <div className="mt-4 flex justify-end">
                     <Button
                       asChild
@@ -331,33 +202,29 @@ function AnalyticsPage() {
                   </div>
                 </Panel>
               </section>
-
-              <section className="mt-6 grid gap-4 md:grid-cols-2">
-                <Panel
-                  title="Time vs performance"
-                  icon={Target}
-                  subtitle="Hours invested correlated to accuracy"
-                >
-                  <CorrelationDots topics={data.topics} />
-                </Panel>
-                <Panel
-                  title="Streak impact"
-                  icon={Flame}
-                  iconClass="text-orange-400"
-                  subtitle="How consistency lifts your score"
-                >
-                  <StreakImpact consistency={data.consistencyScore} readiness={data.readiness} />
-                </Panel>
-              </section>
             </div>
           </div>
         )}
-      </div>
-    </AppShell>
+      </AppShell>
+    </TooltipProvider>
   );
 }
 
-// -------- Sub-components -----------------------------------------------------
+// ---------------- presentation ----------------
+
+function DataBanner({ data }: { data: AnalyticsBundle }) {
+  return (
+    <div className="rounded-2xl border border-border bg-card/40 px-4 py-3 text-xs text-muted-foreground backdrop-blur">
+      Calculated from{" "}
+      <span className="font-semibold text-foreground">{data.totalSessions}</span> tracked
+      session{data.totalSessions === 1 ? "" : "s"} ·{" "}
+      <span className="font-semibold text-foreground">{Math.round(data.totalLoggedMinutes / 60)}h</span>{" "}
+      logged ·{" "}
+      <span className="font-semibold text-foreground">{data.totalMockSessions}</span> mock
+      {data.totalMockSessions === 1 ? "" : "s"}.
+    </div>
+  );
+}
 
 function LockedOverlay() {
   return (
@@ -368,7 +235,7 @@ function LockedOverlay() {
         </div>
         <h3 className="text-lg font-semibold">Analytics is a Tentra Pro feature</h3>
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-          Unlock readiness, predicted scores, heatmaps and AI recommendations.
+          Unlock readiness, predicted scores, weak-topic detection and AI insights.
         </p>
         <Button
           asChild
@@ -412,15 +279,90 @@ function Panel({
   );
 }
 
-function ReadinessCard({ readiness, band }: { readiness: number; band: string }) {
+function EmptyState({
+  icon: Icon,
+  title,
+  body,
+}: {
+  icon: typeof Sparkles;
+  title: string;
+  body: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-dashed border-border bg-background/40 p-4">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-background/60">
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </span>
+      <div>
+        <p className="text-sm font-medium">{title}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{body}</p>
+      </div>
+    </div>
+  );
+}
+
+function InfoTip({ children }: { children: React.ReactNode }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-border text-muted-foreground hover:bg-background/60"
+          aria-label="How is this calculated?"
+        >
+          <Info className="h-3 w-3" />
+        </button>
+      </TooltipTrigger>
+      <TooltipContent className="max-w-xs whitespace-normal text-left leading-snug">
+        {children}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// ---------------- hero cards ----------------
+
+function ReadinessCard({ data }: { data: AnalyticsBundle }) {
   const r = 56;
   const c = 2 * Math.PI * r;
-  const dash = (readiness / 100) * c;
+  const readiness = data.readiness;
+
+  if (!readiness) {
+    return (
+      <HeroShell label="Exam readiness">
+        <EmptyState
+          icon={Target}
+          title="Readiness unlocks after 3 sessions"
+          body="We need a small baseline of study, quiz or mock activity before producing a credible readiness score."
+        />
+      </HeroShell>
+    );
+  }
+
+  const dash = (readiness.score / 100) * c;
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-border bg-card/60 p-6 backdrop-blur">
-      <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-30 blur-3xl" />
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">Exam readiness</p>
-      <div className="mt-3 flex items-center gap-5">
+    <HeroShell
+      label="Exam readiness"
+      tip={
+        <div className="space-y-1">
+          <p className="font-semibold text-primary-foreground">How this is calculated</p>
+          <p>
+            Weighted blend of:
+          </p>
+          <ul className="space-y-0.5">
+            <li>• Mock performance (40%)</li>
+            <li>• Syllabus coverage (20%)</li>
+            <li>• Consistency · last 14 days (15%)</li>
+            <li>• Weak-topic improvement (15%)</li>
+            <li>• Revision recency (10%)</li>
+          </ul>
+          <p className="mt-1 opacity-80">
+            Components without enough data are excluded and remaining weights re-normalised.
+          </p>
+        </div>
+      }
+    >
+      <div className="flex items-center gap-5">
         <svg width="140" height="140" viewBox="0 0 140 140">
           <circle cx="70" cy="70" r={r} stroke="hsl(var(--border))" strokeWidth="10" fill="none" />
           <defs>
@@ -448,114 +390,333 @@ function ReadinessCard({ readiness, band }: { readiness: number; band: string })
             className="fill-foreground"
             style={{ fontSize: 28, fontWeight: 700 }}
           >
-            {readiness}%
+            {readiness.score}%
           </text>
         </svg>
-        <div className="flex-1">
-          <p className="text-sm font-medium">On track for {band}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Blended from accuracy, consistency and weak-topic coverage.
-          </p>
+        <div className="flex-1 space-y-2">
+          {(Object.keys(READINESS_LABELS) as (keyof ReadinessBreakdown)[])
+            .filter((k) => readiness.weights[k] > 0)
+            .map((k) => {
+              const v = readiness.breakdown[k];
+              return (
+                <div key={k} className="text-[11px]">
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">
+                      {READINESS_LABELS[k]} ·{" "}
+                      <span className="opacity-70">
+                        {Math.round(readiness.weights[k] * 100)}%
+                      </span>
+                    </span>
+                    <span className="font-semibold">
+                      {v === null ? "—" : `${v}%`}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1 w-full rounded-full bg-background/60">
+                    <div
+                      className="h-1 rounded-full bg-gradient-pink-blue"
+                      style={{ width: v === null ? "0%" : `${v}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
         </div>
       </div>
-    </div>
+    </HeroShell>
   );
 }
 
-function PredictedScoreCard({ score, band }: { score: number; band: string }) {
+function PredictedScoreCard({ data }: { data: AnalyticsBundle }) {
+  const p = data.predicted;
+  if (!p) {
+    const remaining = Math.max(0, 3 - data.totalMockSessions);
+    return (
+      <HeroShell label="Predicted SQE score">
+        <EmptyState
+          icon={Lock}
+          title={`Complete ${remaining} more mock${remaining === 1 ? "" : "s"} to unlock`}
+          body="Score prediction needs at least 3 mock or timed-quiz sessions so the trajectory and confidence interval are statistically meaningful."
+        />
+      </HeroShell>
+    );
+  }
+
   return (
-    <div className="rounded-3xl border border-border bg-card/60 p-6 backdrop-blur">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">Predicted SQE score</p>
-      <div className="mt-3 flex items-baseline gap-2">
+    <HeroShell
+      label="Predicted SQE score"
+      tip={
+        <div className="space-y-1">
+          <p className="font-semibold text-primary-foreground">How this is calculated</p>
+          <p>
+            Blend of your overall mock average (40%) and your last 3 mocks (60%). The
+            confidence interval narrows as you log more mocks.
+          </p>
+          <p>
+            Pass likelihood is a logistic estimate around the SQE1 effective threshold (~57%).
+            It is <em>not</em> an official cohort percentile.
+          </p>
+        </div>
+      }
+    >
+      <div className="flex items-baseline gap-2">
         <span className="bg-gradient-pink-blue bg-clip-text text-5xl font-bold text-transparent">
-          {score}
+          {p.score}
         </span>
         <span className="text-sm text-muted-foreground">/ 100</span>
       </div>
-      <p className="mt-2 text-sm">Projected band: <span className="font-semibold">{band}</span></p>
-      <div className="mt-4 h-2 w-full rounded-full bg-background/60">
-        <div
-          className="h-2 rounded-full bg-gradient-pink-blue transition-all duration-700"
-          style={{ width: `${score}%` }}
-        />
-      </div>
-      <p className="mt-3 text-xs text-muted-foreground">
-        Updated after each mock, study log and confidence change.
+      <p className="mt-1 text-xs text-muted-foreground">
+        Confidence range: {p.confidenceLow}–{p.confidenceHigh}% · based on {p.basedOnMocks} mocks
       </p>
-    </div>
-  );
-}
-
-function PeakCard({ consistency, morning }: { consistency: number; morning: number }) {
-  return (
-    <div className="rounded-3xl border border-border bg-card/60 p-6 backdrop-blur">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground">Peak performance</p>
-      <div className="mt-3 grid grid-cols-2 gap-4">
+      <div className="mt-4 space-y-3">
         <div>
-          <div className="flex items-center gap-1 text-2xl font-semibold">
-            <Flame className="h-5 w-5 text-orange-400" />
-            {consistency}
-          </div>
-          <p className="text-[11px] text-muted-foreground">Consistency score</p>
-        </div>
-        <div>
-          <div className="flex items-center gap-1 text-2xl font-semibold">
-            <Zap className="h-5 w-5 text-pink" />
-            +{morning}%
-          </div>
-          <p className="text-[11px] text-muted-foreground">Morning boost</p>
-        </div>
-      </div>
-      <p className="mt-4 text-xs text-muted-foreground">
-        You retain best between 7–10am. Schedule deep blocks early.
-      </p>
-    </div>
-  );
-}
-
-function TopicBars({
-  topics,
-  variant,
-}: {
-  topics: TopicStat[];
-  variant: "good" | "bad";
-}) {
-  return (
-    <div className="space-y-3">
-      {topics.map((t) => (
-        <div key={t.module}>
           <div className="flex items-center justify-between text-xs">
-            <span className="font-medium">{t.module}</span>
-            <span className="text-muted-foreground">{t.accuracy}%</span>
+            <span className="text-muted-foreground">Estimated pass likelihood</span>
+            <span className="font-semibold">{p.passLikelihood}%</span>
           </div>
           <div className="mt-1 h-2 w-full rounded-full bg-background/60">
             <div
-              className={`h-2 rounded-full transition-all duration-700 ${
-                variant === "good"
-                  ? "bg-gradient-to-r from-emerald-400 to-blue"
-                  : "bg-gradient-to-r from-pink to-orange-400"
-              }`}
-              style={{ width: `${t.accuracy}%` }}
+              className="h-2 rounded-full bg-gradient-pink-blue transition-all duration-700"
+              style={{ width: `${p.passLikelihood}%` }}
             />
           </div>
         </div>
-      ))}
+        <div className="flex items-center justify-between text-xs">
+          <span className="text-muted-foreground">Projected band</span>
+          <span className="font-semibold">{p.band}</span>
+        </div>
+      </div>
+    </HeroShell>
+  );
+}
+
+function PeakCard({ data }: { data: AnalyticsBundle }) {
+  if (!data.peak) {
+    return (
+      <HeroShell label="Peak performance">
+        <EmptyState
+          icon={Zap}
+          title="We're still learning your study patterns"
+          body="Log around 8 sessions across different times of day and we'll identify when you perform best."
+        />
+      </HeroShell>
+    );
+  }
+  const p = data.peak;
+  return (
+    <HeroShell
+      label="Peak performance"
+      tip={
+        <div className="space-y-1">
+          <p className="font-semibold text-primary-foreground">How this is calculated</p>
+          <p>
+            Sessions are bucketed by start time. We compare average session quality
+            (focus × mood) of your top bucket against the rest. Only buckets with ≥2
+            sessions are eligible.
+          </p>
+        </div>
+      }
+    >
+      <div className="flex items-center gap-2 text-3xl font-semibold">
+        <Flame className="h-6 w-6 text-orange-400" />
+        +{p.uplift}%
+      </div>
+      <p className="mt-2 text-sm">
+        You perform best in <span className="font-semibold">{p.label}</span>.
+      </p>
+      <p className="mt-1 text-[11px] text-muted-foreground">
+        Based on {p.sessionsInBucket} sessions in this window vs your other time blocks.
+      </p>
+    </HeroShell>
+  );
+}
+
+function HeroShell({
+  label,
+  tip,
+  children,
+}: {
+  label: string;
+  tip?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-border bg-card/60 p-6 backdrop-blur">
+      <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-20 blur-3xl" />
+      <div className="flex items-center justify-between">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+        {tip && <InfoTip>{tip}</InfoTip>}
+      </div>
+      <div className="mt-3">{children}</div>
     </div>
   );
 }
 
-function Sparkline({ points }: { points: number[] }) {
+// ---------------- subject lists ----------------
+
+function SubjectList({
+  subjects,
+  variant,
+}: {
+  subjects: SubjectStat[];
+  variant: "good" | "bad";
+}) {
+  if (!subjects.length) {
+    return (
+      <EmptyState
+        icon={Brain}
+        title="Not enough subject data yet"
+        body="Log study or quiz sessions per module to populate rankings."
+      />
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {subjects.map((s) => {
+        const value = s.accuracy ?? s.confidence * 20;
+        const showAcc = s.accuracy !== null;
+        return (
+          <div key={s.module}>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium">{s.module}</span>
+              <span className="text-muted-foreground">
+                {showAcc ? `${s.accuracy}% accuracy` : `Self-rated ${s.confidence}/5`}
+                {s.trend !== null && s.trend !== 0 && (
+                  <span
+                    className={`ml-2 ${s.trend > 0 ? "text-emerald-300" : "text-pink"}`}
+                  >
+                    {s.trend > 0 ? "▲" : "▼"} {Math.abs(s.trend)}%
+                  </span>
+                )}
+              </span>
+            </div>
+            <div className="mt-1 h-2 w-full rounded-full bg-background/60">
+              <div
+                className={`h-2 rounded-full transition-all duration-700 ${
+                  variant === "good"
+                    ? "bg-gradient-to-r from-emerald-400 to-blue"
+                    : "bg-gradient-to-r from-pink to-orange-400"
+                }`}
+                style={{ width: `${Math.min(100, value)}%` }}
+              />
+            </div>
+            <p className="mt-1 text-[10px] text-muted-foreground">
+              {Math.round(s.minutes)} min logged ·{" "}
+              {s.recencyDays === null
+                ? "never revised"
+                : s.recencyDays === 0
+                  ? "revised today"
+                  : `${s.recencyDays}d since last revised`}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RiskList({ subjects }: { subjects: SubjectStat[] }) {
+  if (!subjects.length) {
+    return (
+      <p className="text-xs text-muted-foreground">No subject data — add modules in onboarding.</p>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {subjects.map((s) => (
+        <li
+          key={s.module}
+          className="flex items-center justify-between rounded-2xl border border-pink/30 bg-pink/5 px-3 py-2"
+        >
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{s.module}</p>
+            <p className="text-[11px] text-muted-foreground">
+              HY{s.highYield} · {Math.round(s.syllabusWeight * 100)}% of paper ·{" "}
+              {s.recencyDays === null
+                ? "never revised"
+                : `${s.recencyDays}d ago`}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-semibold text-pink">{s.riskScore}</p>
+            <p className="text-[10px] text-muted-foreground">risk</p>
+          </div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ConfidenceMatrix({ subjects }: { subjects: SubjectStat[] }) {
+  const ranked = subjects.filter((s) => s.accuracy !== null);
+  if (!ranked.length) {
+    return (
+      <EmptyState
+        icon={Brain}
+        title="Awaiting accuracy data"
+        body="Log a few quiz or mock sessions per module to compare your self-rating with measured performance."
+      />
+    );
+  }
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {ranked.map((s) => {
+        const accAsConf = (s.accuracy ?? 0) / 20; // 0..5
+        const gap = accAsConf - s.confidence; // + means overperforming vs self-rating
+        const tag =
+          gap > 0.5 ? "Underrated" : gap < -0.5 ? "Overconfident" : "Aligned";
+        const tagClass =
+          gap > 0.5
+            ? "bg-emerald-400/15 text-emerald-300"
+            : gap < -0.5
+              ? "bg-pink/15 text-pink"
+              : "bg-muted text-muted-foreground";
+        return (
+          <div
+            key={s.module}
+            className="flex items-center justify-between rounded-2xl border border-border bg-background/40 px-4 py-3"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">{s.module}</p>
+              <p className="text-[11px] text-muted-foreground">
+                Self-rated {s.confidence}/5 · Accuracy {s.accuracy}%
+              </p>
+            </div>
+            <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${tagClass}`}>
+              {tag}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ---------------- charts ----------------
+
+function MockTrendChart({ points }: { points: AnalyticsBundle["mockTrend"] }) {
+  if (points.length < 2) {
+    return (
+      <EmptyState
+        icon={TrendingUp}
+        title={
+          points.length === 0
+            ? "No mock sessions yet"
+            : "1 mock logged — need at least 2 to show a trend"
+        }
+        body="Log timed quiz or mock sessions to see accuracy progression, plateaus and improvement streaks."
+      />
+    );
+  }
   const w = 560;
   const h = 160;
   const pad = 16;
-  const min = Math.min(...points) - 5;
-  const max = Math.max(...points) + 5;
+  const values = points.map((p) => p.accuracy);
+  const min = Math.max(0, Math.min(...values) - 5);
+  const max = Math.min(100, Math.max(...values) + 5);
   const xs = (i: number) => pad + (i * (w - pad * 2)) / (points.length - 1);
-  const ys = (v: number) => h - pad - ((v - min) / (max - min)) * (h - pad * 2);
-  const path = points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${xs(i)} ${ys(p)}`)
-    .join(" ");
-  const area = `${path} L ${xs(points.length - 1)} ${h - pad} L ${pad} ${h - pad} Z`;
+  const ys = (v: number) => h - pad - ((v - min) / Math.max(1, max - min)) * (h - pad * 2);
+  const path = values.map((p, i) => `${i === 0 ? "M" : "L"} ${xs(i)} ${ys(p)}`).join(" ");
+  const area = `${path} L ${xs(values.length - 1)} ${h - pad} L ${pad} ${h - pad} Z`;
   return (
     <div className="w-full">
       <svg viewBox={`0 0 ${w} ${h}`} className="h-40 w-full">
@@ -571,127 +732,92 @@ function Sparkline({ points }: { points: number[] }) {
         </defs>
         <path d={area} fill="url(#sparkFill)" />
         <path d={path} fill="none" stroke="url(#sparkStroke)" strokeWidth="3" strokeLinecap="round" />
-        {points.map((p, i) => (
-          <circle key={i} cx={xs(i)} cy={ys(p)} r="4" fill="hsl(var(--background))" stroke="hsl(var(--pink))" strokeWidth="2" />
+        {values.map((p, i) => (
+          <circle
+            key={i}
+            cx={xs(i)}
+            cy={ys(p)}
+            r="4"
+            fill="hsl(var(--background))"
+            stroke="hsl(var(--pink))"
+            strokeWidth="2"
+          />
         ))}
       </svg>
       <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
-        {points.map((p, i) => (
-          <span key={i}>M{i + 1}: {p}%</span>
+        {points.map((p) => (
+          <span key={p.index}>
+            #{p.index} · {p.accuracy}%
+          </span>
         ))}
       </div>
     </div>
   );
 }
 
-function BarChart({ values }: { values: number[] }) {
-  const max = Math.max(...values, 1);
+function WeeklyLoadChart({ load }: { load: AnalyticsBundle["weeklyLoad"] }) {
+  const target = load[0]?.targetMinutes ?? 0;
+  const max = Math.max(target, ...load.map((w) => w.minutes), 60);
+  const recentAvg = Math.round(load.slice(-4).reduce((a, x) => a + x.minutes, 0) / 4);
+  const last = load[load.length - 1]?.minutes ?? 0;
+  const ratio = target > 0 ? last / target : 0;
+  const tone =
+    ratio < 0.6 ? "Under-training" : ratio > 1.4 ? "Over-loading" : "On track";
   return (
-    <div className="flex h-40 items-end gap-1.5">
-      {values.map((v, i) => (
-        <div key={i} className="flex flex-1 flex-col items-center gap-1">
+    <div>
+      <div className="relative flex h-40 items-end gap-1.5">
+        {target > 0 && (
           <div
-            className="w-full rounded-t-md bg-gradient-to-t from-blue to-pink transition-all duration-700"
-            style={{ height: `${(v / max) * 100}%` }}
-            title={`${v} min`}
+            className="absolute left-0 right-0 border-t border-dashed border-blue/60"
+            style={{ bottom: `${(target / max) * 100}%` }}
+            title={`Target ${target} min`}
           />
-          <span className="text-[10px] text-muted-foreground">W{i + 1}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Heatmap({ cells }: { cells: number[] }) {
-  return (
-    <div className="grid grid-cols-7 gap-1.5">
-      {cells.map((v, i) => {
-        const opacity = Math.max(0.08, Math.min(1, v));
-        return (
-          <div
-            key={i}
-            className="aspect-square rounded-md"
-            style={{
-              background:
-                v < 0.05
-                  ? "hsl(var(--muted) / 0.4)"
-                  : `linear-gradient(135deg, hsl(var(--pink) / ${opacity}), hsl(var(--blue) / ${opacity}))`,
-            }}
-            title={`${Math.round(v * 100)}% intensity`}
-          />
-        );
-      })}
-    </div>
-  );
-}
-
-function RiskList({ topics }: { topics: TopicStat[] }) {
-  if (!topics.length) {
-    return <p className="text-xs text-muted-foreground">No high-risk topics. Keep going.</p>;
-  }
-  return (
-    <ul className="space-y-2">
-      {topics.map((t) => (
-        <li
-          key={t.module}
-          className="flex items-center justify-between rounded-2xl border border-pink/30 bg-pink/5 px-3 py-2"
+        )}
+        {load.map((w, i) => (
+          <div key={i} className="flex flex-1 flex-col items-center gap-1">
+            <div
+              className="w-full rounded-t-md bg-gradient-to-t from-blue to-pink transition-all duration-700"
+              style={{ height: `${(w.minutes / max) * 100}%` }}
+              title={`${w.minutes} min · week of ${w.weekStart}`}
+            />
+            <span className="text-[10px] text-muted-foreground">W{i + 1}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
+        <span>
+          Last week: <span className="font-semibold text-foreground">{last} min</span>
+          {target > 0 && <> · target {target}</>}
+        </span>
+        <span>4-week avg: <span className="font-semibold text-foreground">{recentAvg} min</span></span>
+        <span
+          className={
+            tone === "On track"
+              ? "text-emerald-300"
+              : tone === "Under-training"
+                ? "text-pink"
+                : "text-orange-400"
+          }
         >
-          <div>
-            <p className="text-sm font-medium">{t.module}</p>
-            <p className="text-[11px] text-muted-foreground">
-              {t.accuracy}% accuracy · {t.trend >= 0 ? "+" : ""}{t.trend}% this week
-            </p>
-          </div>
-          <ShieldAlert className="h-4 w-4 text-pink" />
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function ConfidenceMatrix({ topics }: { topics: TopicStat[] }) {
-  return (
-    <div className="grid gap-3 md:grid-cols-2">
-      {topics.map((t) => {
-        const gap = t.accuracy / 20 - t.confidence; // negative = overconfident
-        return (
-          <div
-            key={t.module}
-            className="flex items-center justify-between rounded-2xl border border-border bg-background/40 px-4 py-3"
-          >
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{t.module}</p>
-              <p className="text-[11px] text-muted-foreground">
-                Self-rated {t.confidence}/5 · Accuracy {t.accuracy}%
-              </p>
-            </div>
-            <span
-              className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold ${
-                gap > 0.5
-                  ? "bg-emerald-400/15 text-emerald-300"
-                  : gap < -0.5
-                    ? "bg-pink/15 text-pink"
-                    : "bg-muted text-muted-foreground"
-              }`}
-            >
-              {gap > 0.5 ? "Underrated" : gap < -0.5 ? "Overconfident" : "Aligned"}
-            </span>
-          </div>
-        );
-      })}
+          {tone}
+        </span>
+      </div>
     </div>
   );
 }
+
+// ---------------- insights ----------------
 
 function InsightCard({
-  icon: Icon,
   tone,
   text,
+  source,
 }: {
-  icon: typeof Sparkles;
   tone: "good" | "warn" | "info";
   text: string;
+  source: string;
 }) {
+  const Icon = tone === "good" ? TrendingUp : tone === "warn" ? TrendingDown : Lightbulb;
   const toneClass =
     tone === "good"
       ? "border-emerald-400/30 bg-emerald-400/5"
@@ -705,73 +831,10 @@ function InsightCard({
       <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-background/60">
         <Icon className={`h-4 w-4 ${iconColor}`} />
       </span>
-      <p className="text-sm leading-snug">{text}</p>
-    </div>
-  );
-}
-
-function CorrelationDots({ topics }: { topics: TopicStat[] }) {
-  const w = 360;
-  const h = 200;
-  const pad = 28;
-  const maxMin = Math.max(...topics.map((t) => t.minutes), 1);
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="h-48 w-full">
-      <line x1={pad} y1={h - pad} x2={w - pad} y2={h - pad} stroke="hsl(var(--border))" />
-      <line x1={pad} y1={pad} x2={pad} y2={h - pad} stroke="hsl(var(--border))" />
-      {topics.map((t, i) => {
-        const x = pad + (t.minutes / maxMin) * (w - pad * 2);
-        const y = h - pad - (t.accuracy / 100) * (h - pad * 2);
-        return (
-          <g key={i}>
-            <circle cx={x} cy={y} r="7" fill="hsl(var(--pink))" opacity="0.85" />
-            <text x={x + 9} y={y + 3} className="fill-muted-foreground" style={{ fontSize: 9 }}>
-              {t.module}
-            </text>
-          </g>
-        );
-      })}
-      <text x={pad} y={pad - 8} className="fill-muted-foreground" style={{ fontSize: 10 }}>
-        Accuracy %
-      </text>
-      <text x={w - pad - 60} y={h - 8} className="fill-muted-foreground" style={{ fontSize: 10 }}>
-        Minutes invested
-      </text>
-    </svg>
-  );
-}
-
-function StreakImpact({ consistency, readiness }: { consistency: number; readiness: number }) {
-  const lift = Math.max(2, Math.round(consistency / 8));
-  return (
-    <div className="space-y-4">
       <div>
-        <div className="flex items-center justify-between text-xs">
-          <span>With your streak</span>
-          <span className="font-semibold text-foreground">{readiness}%</span>
-        </div>
-        <div className="mt-1 h-2 w-full rounded-full bg-background/60">
-          <div
-            className="h-2 rounded-full bg-gradient-pink-blue transition-all duration-700"
-            style={{ width: `${readiness}%` }}
-          />
-        </div>
+        <p className="text-sm leading-snug">{text}</p>
+        <p className="mt-1 text-[11px] text-muted-foreground">{source}</p>
       </div>
-      <div>
-        <div className="flex items-center justify-between text-xs">
-          <span>Without your streak (est.)</span>
-          <span className="text-muted-foreground">{Math.max(20, readiness - lift)}%</span>
-        </div>
-        <div className="mt-1 h-2 w-full rounded-full bg-background/60">
-          <div
-            className="h-2 rounded-full bg-muted transition-all duration-700"
-            style={{ width: `${Math.max(20, readiness - lift)}%` }}
-          />
-        </div>
-      </div>
-      <p className="text-xs text-muted-foreground">
-        Your consistency adds an estimated <span className="font-semibold text-foreground">+{lift} points</span> to readiness.
-      </p>
     </div>
   );
 }
