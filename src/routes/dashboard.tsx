@@ -69,7 +69,7 @@ export const Route = createFileRoute("/dashboard")({
   }),
 });
 
-type DashboardTab = "week" | "focus" | "activity" | "mastery" | "mocks" | "settings";
+type DashboardTab = "week" | "mastery";
 
 function DashboardPage() {
   const [stored, setStored] = useState<StoredPlan | null>(null);
