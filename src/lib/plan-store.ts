@@ -18,10 +18,48 @@ export interface OnboardingInput {
   modules: ModuleConfidence[];
 }
 
+export type StrategyRationale =
+  | "high-yield"
+  | "weak-area"
+  | "recency-gap"
+  | "mixed-practice"
+  | "mock-prep"
+  | "ethics-cornerstone";
+
+export type StrategyTaskType =
+  | "timed-sba"
+  | "mistake-review"
+  | "scenario-drill"
+  | "active-recall"
+  | "mixed-mock"
+  | "concept-deepdive"
+  | "ethics-application";
+
+export interface WeeklyAllocation {
+  module: string;
+  hours: number;
+  rationale: StrategyRationale;
+  note: string;
+}
+
+export interface StrategyTask {
+  title: string;
+  module: string;
+  minutes: 30 | 45 | 60 | 90 | 120 | number;
+  taskType?: StrategyTaskType;
+  rationale?: StrategyRationale;
+  priority?: "high" | "medium" | "low";
+  why?: string;
+}
+
 export interface StudyPlan {
   overview: string;
+  weeklyStrategy?: {
+    summary: string;
+    allocations: WeeklyAllocation[];
+  };
   weeklyFocus: { week: number; theme: string; modules: string[]; hours: number }[];
-  todayTasks: { title: string; module: string; minutes: number }[];
+  todayTasks: StrategyTask[];
   masteryTargets: {
     module: string;
     targetConfidence: number;
