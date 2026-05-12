@@ -9,20 +9,36 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as SessionsRouteImport } from './routes/sessions'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as MocksRouteImport } from './routes/mocks'
 import { Route as FocusRouteImport } from './routes/focus'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CommunityRouteImport } from './routes/community'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as FocusSummaryRouteImport } from './routes/focus.summary'
+import { Route as FocusSprintRouteImport } from './routes/focus.sprint'
 import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SessionsRoute = SessionsRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProRoute = ProRouteImport.update({
   id: '/pro',
   path: '/pro',
@@ -33,6 +49,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
   path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MocksRoute = MocksRouteImport.update({
+  id: '/mocks',
+  path: '/mocks',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FocusRoute = FocusRouteImport.update({
   id: '/focus',
   path: '/focus',
@@ -41,6 +62,11 @@ const FocusRoute = FocusRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CommunityRoute = CommunityRouteImport.update({
+  id: '/community',
+  path: '/community',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CoachRoute = CoachRouteImport.update({
@@ -62,6 +88,16 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const FocusSummaryRoute = FocusSummaryRouteImport.update({
+  id: '/summary',
+  path: '/summary',
+  getParentRoute: () => FocusRoute,
+} as any)
+const FocusSprintRoute = FocusSprintRouteImport.update({
+  id: '/sprint',
+  path: '/sprint',
+  getParentRoute: () => FocusRoute,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth_/callback',
@@ -95,12 +131,18 @@ export interface FileRoutesByFullPath {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
+  '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
-  '/focus': typeof FocusRoute
+  '/focus': typeof FocusRouteWithChildren
+  '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
+  '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/focus/sprint': typeof FocusSprintRoute
+  '/focus/summary': typeof FocusSummaryRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -110,12 +152,18 @@ export interface FileRoutesByTo {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
+  '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
-  '/focus': typeof FocusRoute
+  '/focus': typeof FocusRouteWithChildren
+  '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
+  '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/focus/sprint': typeof FocusSprintRoute
+  '/focus/summary': typeof FocusSummaryRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -126,12 +174,18 @@ export interface FileRoutesById {
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
+  '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
-  '/focus': typeof FocusRoute
+  '/focus': typeof FocusRouteWithChildren
+  '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
+  '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth_/callback': typeof AuthCallbackRoute
+  '/focus/sprint': typeof FocusSprintRoute
+  '/focus/summary': typeof FocusSummaryRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -143,12 +197,18 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/auth'
     | '/coach'
+    | '/community'
     | '/dashboard'
     | '/focus'
+    | '/mocks'
     | '/onboarding'
     | '/pro'
+    | '/sessions'
+    | '/settings'
     | '/api/coach'
     | '/auth/callback'
+    | '/focus/sprint'
+    | '/focus/summary'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -158,12 +218,18 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/auth'
     | '/coach'
+    | '/community'
     | '/dashboard'
     | '/focus'
+    | '/mocks'
     | '/onboarding'
     | '/pro'
+    | '/sessions'
+    | '/settings'
     | '/api/coach'
     | '/auth/callback'
+    | '/focus/sprint'
+    | '/focus/summary'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -173,12 +239,18 @@ export interface FileRouteTypes {
     | '/analytics'
     | '/auth'
     | '/coach'
+    | '/community'
     | '/dashboard'
     | '/focus'
+    | '/mocks'
     | '/onboarding'
     | '/pro'
+    | '/sessions'
+    | '/settings'
     | '/api/coach'
     | '/auth_/callback'
+    | '/focus/sprint'
+    | '/focus/summary'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -189,10 +261,14 @@ export interface RootRouteChildren {
   AnalyticsRoute: typeof AnalyticsRoute
   AuthRoute: typeof AuthRoute
   CoachRoute: typeof CoachRoute
+  CommunityRoute: typeof CommunityRoute
   DashboardRoute: typeof DashboardRoute
-  FocusRoute: typeof FocusRoute
+  FocusRoute: typeof FocusRouteWithChildren
+  MocksRoute: typeof MocksRoute
   OnboardingRoute: typeof OnboardingRoute
   ProRoute: typeof ProRoute
+  SessionsRoute: typeof SessionsRoute
+  SettingsRoute: typeof SettingsRoute
   ApiCoachRoute: typeof ApiCoachRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -202,6 +278,20 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sessions': {
+      id: '/sessions'
+      path: '/sessions'
+      fullPath: '/sessions'
+      preLoaderRoute: typeof SessionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pro': {
       id: '/pro'
       path: '/pro'
@@ -216,6 +306,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mocks': {
+      id: '/mocks'
+      path: '/mocks'
+      fullPath: '/mocks'
+      preLoaderRoute: typeof MocksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/focus': {
       id: '/focus'
       path: '/focus'
@@ -228,6 +325,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/community': {
+      id: '/community'
+      path: '/community'
+      fullPath: '/community'
+      preLoaderRoute: typeof CommunityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/coach': {
@@ -257,6 +361,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/focus/summary': {
+      id: '/focus/summary'
+      path: '/summary'
+      fullPath: '/focus/summary'
+      preLoaderRoute: typeof FocusSummaryRouteImport
+      parentRoute: typeof FocusRoute
+    }
+    '/focus/sprint': {
+      id: '/focus/sprint'
+      path: '/sprint'
+      fullPath: '/focus/sprint'
+      preLoaderRoute: typeof FocusSprintRouteImport
+      parentRoute: typeof FocusRoute
     }
     '/auth_/callback': {
       id: '/auth_/callback'
@@ -296,15 +414,31 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface FocusRouteChildren {
+  FocusSprintRoute: typeof FocusSprintRoute
+  FocusSummaryRoute: typeof FocusSummaryRoute
+}
+
+const FocusRouteChildren: FocusRouteChildren = {
+  FocusSprintRoute: FocusSprintRoute,
+  FocusSummaryRoute: FocusSummaryRoute,
+}
+
+const FocusRouteWithChildren = FocusRoute._addFileChildren(FocusRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
   AuthRoute: AuthRoute,
   CoachRoute: CoachRoute,
+  CommunityRoute: CommunityRoute,
   DashboardRoute: DashboardRoute,
-  FocusRoute: FocusRoute,
+  FocusRoute: FocusRouteWithChildren,
+  MocksRoute: MocksRoute,
   OnboardingRoute: OnboardingRoute,
   ProRoute: ProRoute,
+  SessionsRoute: SessionsRoute,
+  SettingsRoute: SettingsRoute,
   ApiCoachRoute: ApiCoachRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
