@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import ReactMarkdown from "react-markdown";
-import { BrandMark } from "@/components/brand-mark";
-import { BackgroundBlobs } from "@/components/background-blobs";
+import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
@@ -10,7 +9,6 @@ import {
   Sparkles,
   Send,
   Loader2,
-  ArrowLeft,
   Flame,
   Brain,
   Target,
