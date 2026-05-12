@@ -135,9 +135,7 @@ export function AppShell({
             </div>
             <div className="flex shrink-0 items-center gap-2">
               {actions}
-              <div className="grid h-9 w-9 place-items-center rounded-full bg-gradient-pink-blue text-sm font-semibold text-primary-foreground">
-                {initials}
-              </div>
+              <ProfileMenu />
             </div>
           </header>
 
