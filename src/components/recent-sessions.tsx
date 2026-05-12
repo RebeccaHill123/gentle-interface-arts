@@ -134,7 +134,7 @@ export function RecentSessions({
 
   return (
     <div>
-      <ActivityInsights sessions={sessions} />
+      {showInsights && <ActivityInsights sessions={sessions} />}
 
       {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-background/40 p-8 text-center">
