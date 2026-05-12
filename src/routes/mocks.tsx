@@ -1,4 +1,5 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { useState } from "react";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
   Sparkles,
   Play,
@@ -23,6 +24,8 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { waitForAuthUser } from "@/lib/auth-session";
+import { PracticeLauncherDialog } from "@/components/practice-launcher-dialog";
+import { AIQuizBuilderDialog } from "@/components/ai-quiz-builder-dialog";
 
 export const Route = createFileRoute("/mocks")({
   beforeLoad: async () => {
