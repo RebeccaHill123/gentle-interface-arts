@@ -176,22 +176,41 @@ export function PracticeLauncherDialog({
 
   function launch() {
     setLaunching(true);
-    const subjectLine =
-      subject === "auto" ? `your highest-risk module (${targetSubject})` : targetSubject;
-    const prompt =
-      `Build me a ${duration}-minute ${meta.title} on ${subjectLine}. ` +
-      `Target ~${questionCount} questions at ${difficulty.toLowerCase()} difficulty, ` +
-      `${adaptive ? "prioritising weak/confidence-risk subtopics" : "balanced across the syllabus"}. ` +
-      `Context: ${reasonBits.join(", ") || "general revision"}.\n\n` +
-      `Format the set as: a brief opening rationale, then numbered SBA items with answer + ` +
-      `concise explanation each, and a final 3-bullet debrief on what to focus on next.`;
+    const rationale = reasonBits.length
+      ? `Generated because ${reasonBits.join(", ")}.`
+      : `Generated from a balanced view of your syllabus.`;
+
+    const skillFocus =
+      type === "scenario"
+        ? ["Application", "Issue spotting", "Reasoning"]
+        : type === "flashcards"
+          ? ["Recall", "Definitions", "Procedural rules"]
+          : type === "technique"
+            ? ["Pacing", "Elimination", "Answer hygiene"]
+            : ["Accuracy", "Pattern recognition", "Speed"];
+
+    const config = {
+      source: "practice-launcher" as const,
+      format: type,
+      formatLabel: meta.title,
+      module: targetSubject,
+      topic: meta.title,
+      questions: questionCount,
+      duration,
+      difficulty,
+      timed: true,
+      adaptive,
+      rationale,
+      reasonBits,
+      skillFocus,
+    };
 
     try {
-      sessionStorage.setItem("coach:autosend", prompt);
+      sessionStorage.setItem("practice:config", JSON.stringify(config));
     } catch {}
     setTimeout(() => {
       onOpenChange(false);
-      navigate({ to: "/coach" });
+      navigate({ to: "/practice" });
     }, 350);
   }
 
