@@ -263,7 +263,7 @@ function CoachPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
             }}
-            placeholder="Ask Coach anything — concepts, plans, quizzes, motivation…"
+            placeholder="Ask for analysis, priorities, or a strategic re-plan…"
             rows={1}
             className="min-h-[44px] flex-1 resize-none border-0 bg-transparent focus-visible:ring-0"
           />
