@@ -730,6 +730,107 @@ function TypeChip({ type }: { type: string }) {
   );
 }
 
+function WeeklyProgressPanel({
+  doneMins,
+  targetMins,
+  remainingMins,
+  pct,
+  activeDays,
+  blocksDone,
+  blocksPlanned,
+  plannedMins,
+  completedPlannedMins,
+  streak,
+}: {
+  doneMins: number;
+  targetMins: number;
+  remainingMins: number;
+  pct: number;
+  activeDays: number;
+  blocksDone: number;
+  blocksPlanned: number;
+  plannedMins: number;
+  completedPlannedMins: number;
+  streak: { current: number; longest: number; studiedToday: boolean };
+}) {
+  const fmtH = (m: number) => {
+    const h = m / 60;
+    return h >= 10 ? `${Math.round(h)}h` : `${h.toFixed(1).replace(/\.0$/, "")}h`;
+  };
+  const onTrack = pct >= Math.round(((new Date().getDay() || 7) / 7) * 100) - 10;
+  return (
+    <section className="rounded-3xl border border-border bg-card p-6 shadow-card">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-semibold text-foreground">Weekly progress</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Flexible — study any day. {onTrack ? "You're on track." : "Slight catch-up needed."}
+          </p>
+        </div>
+        <span
+          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
+            onTrack ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
+          }`}
+        >
+          {onTrack ? "On track" : "Catch up"}
+        </span>
+      </div>
+
+      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Stat label="Done" value={fmtH(doneMins)} sub={`of ${fmtH(targetMins)}`} accent />
+        <Stat label="Remaining" value={fmtH(remainingMins)} sub="this week" />
+        <Stat label="Active days" value={`${activeDays}/7`} sub={`streak ${streak.current}d`} />
+        <Stat
+          label="Blocks"
+          value={`${blocksDone}/${blocksPlanned}`}
+          sub={`${fmtH(completedPlannedMins)} of ${fmtH(plannedMins)}`}
+        />
+      </div>
+
+      <div className="mt-5">
+        <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>Hours toward your weekly target</span>
+          <span className="text-foreground">{pct}%</span>
+        </div>
+        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className="h-full rounded-full bg-gradient-pink-blue transition-all"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  sub,
+  accent,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/40 p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+        {label}
+      </div>
+      <div
+        className={`mt-1 font-display text-2xl ${
+          accent ? "text-gradient-tentra" : "text-foreground"
+        }`}
+      >
+        {value}
+      </div>
+      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
+    </div>
+  );
+}
+
 function AllocationBars({
   allocations,
 }: {
