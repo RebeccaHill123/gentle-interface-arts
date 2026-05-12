@@ -693,23 +693,23 @@ function NoPlanState() {
   );
 }
 
-const RATIONALE_META: Record<string, { label: string; cls: string }> = {
-  "high-yield": { label: "High-yield", cls: "bg-pink/15 text-pink" },
-  "weak-area": { label: "Weak area", cls: "bg-destructive/15 text-destructive" },
-  "recency-gap": { label: "Recency gap", cls: "bg-amber-500/15 text-amber-400" },
-  "mixed-practice": { label: "Mixed practice", cls: "bg-cyan/15 text-cyan" },
-  "mock-prep": { label: "Mock prep", cls: "bg-violet-500/15 text-violet-300" },
-  "ethics-cornerstone": { label: "Ethics", cls: "bg-emerald-500/15 text-emerald-400" },
+const RATIONALE_META: Record<string, { label: string; cls: string; dot: string }> = {
+  "high-yield": { label: "High Yield", cls: "bg-pink/15 text-pink", dot: "bg-pink" },
+  "weak-area": { label: "Weak Area", cls: "bg-destructive/15 text-destructive", dot: "bg-destructive" },
+  "recency-gap": { label: "Revision Refresh", cls: "bg-amber-500/15 text-amber-400", dot: "bg-amber-400" },
+  "mixed-practice": { label: "Mixed Practice", cls: "bg-cyan/15 text-cyan", dot: "bg-cyan" },
+  "mock-prep": { label: "Mock Recovery", cls: "bg-violet-500/15 text-violet-300", dot: "bg-violet-400" },
+  "ethics-cornerstone": { label: "Ethics", cls: "bg-emerald-500/15 text-emerald-400", dot: "bg-emerald-400" },
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  "timed-sba": "Timed SBA",
-  "mistake-review": "Mistake review",
-  "scenario-drill": "Scenario drill",
-  "active-recall": "Active recall",
-  "mixed-mock": "Mixed mock",
-  "concept-deepdive": "Deep dive",
-  "ethics-application": "Ethics applied",
+  "timed-sba": "Timed Practice",
+  "mistake-review": "Mistake Review",
+  "scenario-drill": "Scenario Drill",
+  "active-recall": "Active Recall",
+  "mixed-mock": "Mixed Mock",
+  "concept-deepdive": "Deep Dive",
+  "ethics-application": "Exam Technique",
 };
 
 function RationaleChip({ rationale }: { rationale: string }) {
