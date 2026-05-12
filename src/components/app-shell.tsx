@@ -21,7 +21,6 @@ import { ProfileMenu } from "@/components/profile-menu";
 export type AppRoute =
   | "/dashboard"
   | "/focus"
-  | "/sessions"
   | "/coach"
   | "/mocks"
   | "/analytics"
@@ -31,7 +30,6 @@ export type AppRoute =
 const NAV: { to: AppRoute; label: string; icon: typeof LayoutDashboard }[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/focus", label: "Focus", icon: Flame },
-  { to: "/sessions", label: "Sessions", icon: Activity },
   { to: "/coach", label: "AI Coach", icon: Sparkles },
   { to: "/mocks", label: "Mocks & Practice", icon: Scale },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },

@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as SessionsRouteImport } from './routes/sessions'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
@@ -32,11 +31,6 @@ import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/em
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SessionsRoute = SessionsRouteImport.update({
-  id: '/sessions',
-  path: '/sessions',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProRoute = ProRouteImport.update({
@@ -137,7 +131,6 @@ export interface FileRoutesByFullPath {
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
-  '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -158,7 +151,6 @@ export interface FileRoutesByTo {
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
-  '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -180,7 +172,6 @@ export interface FileRoutesById {
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
-  '/sessions': typeof SessionsRoute
   '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth_/callback': typeof AuthCallbackRoute
@@ -203,7 +194,6 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/onboarding'
     | '/pro'
-    | '/sessions'
     | '/settings'
     | '/api/coach'
     | '/auth/callback'
@@ -224,7 +214,6 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/onboarding'
     | '/pro'
-    | '/sessions'
     | '/settings'
     | '/api/coach'
     | '/auth/callback'
@@ -245,7 +234,6 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/onboarding'
     | '/pro'
-    | '/sessions'
     | '/settings'
     | '/api/coach'
     | '/auth_/callback'
@@ -267,7 +255,6 @@ export interface RootRouteChildren {
   MocksRoute: typeof MocksRoute
   OnboardingRoute: typeof OnboardingRoute
   ProRoute: typeof ProRoute
-  SessionsRoute: typeof SessionsRoute
   SettingsRoute: typeof SettingsRoute
   ApiCoachRoute: typeof ApiCoachRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
@@ -283,13 +270,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sessions': {
-      id: '/sessions'
-      path: '/sessions'
-      fullPath: '/sessions'
-      preLoaderRoute: typeof SessionsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pro': {
@@ -437,7 +417,6 @@ const rootRouteChildren: RootRouteChildren = {
   MocksRoute: MocksRoute,
   OnboardingRoute: OnboardingRoute,
   ProRoute: ProRoute,
-  SessionsRoute: SessionsRoute,
   SettingsRoute: SettingsRoute,
   ApiCoachRoute: ApiCoachRoute,
   AuthCallbackRoute: AuthCallbackRoute,
@@ -448,3 +427,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
