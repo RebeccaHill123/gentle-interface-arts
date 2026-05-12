@@ -193,6 +193,9 @@ Deno.serve(async (req) => {
   let daysUntilExam = 1;
   try {
     body = await req.json();
+    if (!body || !Array.isArray(body.modules) || body.modules.length === 0 || !body.examDate || !body.name) {
+      throw new Error("Invalid plan request");
+    }
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     daysUntilExam = Math.max(
