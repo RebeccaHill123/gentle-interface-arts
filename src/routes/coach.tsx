@@ -84,6 +84,16 @@ function CoachPage() {
         }
       }
     })().catch(() => {});
+
+    // Auto-send a prefilled prompt (from Mocks & Practice flows).
+    try {
+      const prefilled = sessionStorage.getItem("coach:autosend");
+      if (prefilled) {
+        sessionStorage.removeItem("coach:autosend");
+        // small delay so the greeting and pills render first
+        setTimeout(() => { void send(prefilled); }, 150);
+      }
+    } catch {}
   }, []);
 
   useEffect(() => {
