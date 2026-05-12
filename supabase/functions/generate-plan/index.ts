@@ -164,7 +164,7 @@ Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names th
                     },
                     todayTasks: {
                       type: "array",
-                      description: "5 academically-specific strategic tasks for THIS WEEK. Each task title must be specific (named topics, format, count). Minutes must be one of 30, 45, 60, 90, 120.",
+                      description: `Strategic study blocks for THIS WEEK. Total minutes across blocks MUST sum to roughly ${body.hoursPerWeek * 60} (±10%) — the user's weekly hour target. Generate as many blocks as needed; do NOT cap at 5. Each title must be academically specific (named topics, format, count). Minutes must be one of 30, 45, 60, 90, 120.`,
                       items: {
                         type: "object",
                         properties: {
