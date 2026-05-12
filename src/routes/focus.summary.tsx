@@ -85,7 +85,7 @@ function FocusSummaryPage() {
               <>Logged your work.</>
             ) : (
               <>
-                Nice <span className="italic text-gradient-tentra">work</span>.
+                Nice <span className="italic text-gradient-tentra font-sans text-2xl">work</span>.
               </>
             )}
           </h1>
