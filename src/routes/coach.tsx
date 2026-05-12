@@ -9,29 +9,31 @@ import {
   Sparkles,
   Send,
   Loader2,
-  Flame,
-  Target,
-  HeartPulse,
+  ArrowUpRight,
   TrendingUp,
+  TrendingDown,
   AlertTriangle,
-  Timer,
-  LineChart,
-  Layers,
-  Gauge,
+  Sun,
+  Flame,
+  Activity,
+  Brain,
 } from "lucide-react";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { loadPlan, computeStreak } from "@/lib/plan-store";
+import { deriveAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
-const SUGGESTIONS: { icon: typeof Target; label: string; prompt: string }[] = [
-  { icon: TrendingUp, label: "Analyse my mock trend", prompt: "Analyse my recent mock performance — what's trending up, what's regressing, and which modules need re-weighting this week?" },
-  { icon: AlertTriangle, label: "Find my weak patterns", prompt: "Identify my weakest patterns across modules and task types. Be specific about timing, accuracy and topic clusters, and tell me what to drill first." },
-  { icon: Layers, label: "Why these priorities?", prompt: "Walk me through why my current top-priority topics were chosen — cite recency gaps, confidence levels and high-yield weighting." },
-  { icon: Timer, label: "Land Law timed drill", prompt: "Build me a 45-minute timed Land Law SBA drill targeting my weakest sub-topics, at SQE pace (~1.7 min/question)." },
-  { icon: LineChart, label: "Re-plan this week", prompt: "Recommend strategic changes to this week's plan based on my recent performance, recency decay and exam proximity. What do I add, drop, or interleave?" },
-  { icon: Gauge, label: "Adjust intensity", prompt: "Given how many hours I've actually completed vs target, my streak and how close the exam is — should I scale intensity up or down, and how?" },
+type Suggestion = { label: string; prompt: string };
+
+const BASE_SUGGESTIONS: Suggestion[] = [
+  { label: "Re-plan my week", prompt: "Re-plan my week strategically based on recent performance, recency gaps and exam proximity. What gets added, dropped or interleaved — and why?" },
+  { label: "What should I prioritise tomorrow?", prompt: "Based on my data, what are the 3 most important things I should do tomorrow, in order, and why each one?" },
+  { label: "Generate a weak-area drill", prompt: "Design a focused drill that targets my weakest patterns. Specify module, format, length, pacing and what success looks like." },
+  { label: "Explain my biggest performance risk", prompt: "What is my single biggest risk to passing right now? Cite the data and tell me how to neutralise it this week." },
+  { label: "Reduce workload this week", prompt: "I'm feeling stretched. Cut my plan back to the essentials this week without losing exam-readiness — and explain the trade-offs." },
+  { label: "Challenge me with hard SBAs", prompt: "Build me a high-difficulty SBA challenge in my weakest module at full SQE pace. Tell me what you're testing and why." },
 ];
 
 export const Route = createFileRoute("/coach")({
@@ -43,8 +45,8 @@ export const Route = createFileRoute("/coach")({
   component: CoachPage,
   head: () => ({
     meta: [
-      { title: "Tentra Coach · Your AI study coach" },
-      { name: "description", content: "An AI coach that explains concepts, builds plans, generates quizzes, and keeps you accountable for the SQE." },
+      { title: "Tentra Coach · Your AI study strategist" },
+      { name: "description", content: "A conversational AI strategist that synthesises your mocks, confidence, recency and consistency into adaptive SQE guidance." },
     ],
   }),
 });
@@ -53,11 +55,13 @@ function CoachPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [greeting, setGreeting] = useState("Hey — ready to lock in?");
-  const [readiness, setReadiness] = useState<number | null>(null);
+  const [firstName, setFirstName] = useState("");
   const [streak, setStreak] = useState(0);
+  const [analytics, setAnalytics] = useState<AnalyticsBundle | null>(null);
+  const [daysToExam, setDaysToExam] = useState<number | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -68,30 +72,27 @@ function CoachPage() {
         .eq("user_id", user!.id)
         .maybeSingle();
       const name = profile?.first_name || profile?.display_name?.split(" ")[0] || "";
-      const hour = new Date().getHours();
-      const part = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-      setGreeting(name ? `${part}, ${name} — what are we tackling?` : `${part} — what are we tackling?`);
+      setFirstName(name);
 
       const plan = loadPlan();
       if (plan) {
         setStreak(computeStreak(plan.sessions).current);
-        const mods = plan.input?.modules ?? [];
-        if (mods.length) {
-          const avg =
-            mods.reduce((a: number, m: { confidence?: number }) => a + (m.confidence ?? 0), 0) /
-            mods.length;
-          setReadiness(Math.round(Math.min(95, Math.max(15, avg * 18 + 25))));
+        setAnalytics(deriveAnalytics(plan));
+        if (plan.input?.examDate) {
+          const d = Math.max(
+            0,
+            Math.round((+new Date(plan.input.examDate) - Date.now()) / 86400000),
+          );
+          setDaysToExam(d);
         }
       }
     })().catch(() => {});
 
-    // Auto-send a prefilled prompt (from Mocks & Practice flows).
     try {
       const prefilled = sessionStorage.getItem("coach:autosend");
       if (prefilled) {
         sessionStorage.removeItem("coach:autosend");
-        // small delay so the greeting and pills render first
-        setTimeout(() => { void send(prefilled); }, 150);
+        setTimeout(() => { void send(prefilled); }, 200);
       }
     } catch {}
   }, []);
@@ -99,6 +100,116 @@ function CoachPage() {
   useEffect(() => {
     scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isStreaming]);
+
+  // Auto-grow textarea
+  useEffect(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    ta.style.height = "auto";
+    ta.style.height = Math.min(ta.scrollHeight, 200) + "px";
+  }, [input]);
+
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours();
+    const part = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+    return firstName ? `${part}, ${firstName}.` : `${part}.`;
+  }, [firstName]);
+
+  // Build dynamic strategic insights from real analytics
+  const strategicInsights = useMemo(() => {
+    if (!analytics) return [];
+    const out: { icon: typeof TrendingUp; tone: "good" | "warn" | "info"; text: string }[] = [];
+
+    const improving = analytics.subjects
+      .filter((s) => s.trend !== null && (s.trend ?? 0) >= 5)
+      .sort((a, b) => (b.trend ?? 0) - (a.trend ?? 0))[0];
+    if (improving) {
+      out.push({
+        icon: TrendingUp,
+        tone: "good",
+        text: `${improving.module} accuracy is up ${improving.trend}% across recent sessions — momentum is yours.`,
+      });
+    }
+
+    const declining = analytics.subjects
+      .filter((s) => s.trend !== null && (s.trend ?? 0) <= -5)
+      .sort((a, b) => (a.trend ?? 0) - (b.trend ?? 0))[0];
+    if (declining) {
+      out.push({
+        icon: TrendingDown,
+        tone: "warn",
+        text: `${declining.module} has dropped ${Math.abs(declining.trend ?? 0)}% — flagging for spaced reinforcement.`,
+      });
+    }
+
+    const stale = analytics.subjects
+      .filter((s) => s.recencyDays !== null && s.recencyDays >= 10 && s.highYield >= 4)
+      .sort((a, b) => (b.recencyDays ?? 0) - (a.recencyDays ?? 0))[0];
+    if (stale) {
+      out.push({
+        icon: AlertTriangle,
+        tone: "warn",
+        text: `${stale.module} hasn't been revised in ${stale.recencyDays} days. Recency decay is starting to bite.`,
+      });
+    }
+
+    if (analytics.peak && out.length < 3) {
+      out.push({
+        icon: Sun,
+        tone: "info",
+        text: `You perform ${analytics.peak.uplift}% better in ${analytics.peak.label} blocks — protect that window.`,
+      });
+    }
+
+    if (daysToExam !== null && analytics.readiness && out.length < 3) {
+      const r = analytics.readiness.score;
+      if (daysToExam <= 30 && r < 65) {
+        out.push({
+          icon: Activity,
+          tone: "warn",
+          text: `${daysToExam} days to exam at ${r}% readiness — scaling mock exposure is the highest-leverage move.`,
+        });
+      } else if (r >= 70) {
+        out.push({
+          icon: Brain,
+          tone: "good",
+          text: `Readiness is tracking at ${r}%. Hold the line and protect weak-area drills.`,
+        });
+      }
+    }
+
+    if (!out.length && streak >= 3) {
+      out.push({
+        icon: Flame,
+        tone: "good",
+        text: `${streak}-day streak. Consistency is the engine — log a session today to keep compounding.`,
+      });
+    }
+
+    return out.slice(0, 3);
+  }, [analytics, daysToExam, streak]);
+
+  // Suggestions adapt to real data
+  const suggestions = useMemo<Suggestion[]>(() => {
+    const dyn: Suggestion[] = [];
+    if (analytics) {
+      const weakest = analytics.weakest[0];
+      if (weakest) {
+        dyn.push({
+          label: `Explain why ${weakest.module} is weak`,
+          prompt: `Diagnose why ${weakest.module} is underperforming for me. Use my recency, confidence, accuracy and trend — and prescribe the next 3 sessions.`,
+        });
+      }
+      const top = analytics.atRisk[0];
+      if (top && top.module !== weakest?.module) {
+        dyn.push({
+          label: `Drill ${top.module} now`,
+          prompt: `Build me a focused ${top.module} drill targeting my weakest sub-topics, sized for one focus block, with timing guidance.`,
+        });
+      }
+    }
+    return [...dyn, ...BASE_SUGGESTIONS].slice(0, 7);
+  }, [analytics]);
 
   const canSend = input.trim().length > 0 && !isStreaming;
 
@@ -186,143 +297,162 @@ function CoachPage() {
     }
   }
 
-  const burnoutNote = useMemo(() => {
-    if (streak >= 14) return "You're on a serious run — sleep is part of the plan.";
-    if (streak >= 5) return "Strong momentum. Keep sessions to 90 min max with breaks.";
-    return "Small reps. One focus block today beats a perfect plan tomorrow.";
-  }, [streak]);
+  const isEmpty = messages.length === 0;
 
   return (
     <AppShell
       title="Tentra Coach"
-      subtitle="Your AI study coach"
+      subtitle="Your AI study strategist"
       actions={
         <span className="hidden items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs backdrop-blur sm:inline-flex">
-          <Sparkles className="h-3.5 w-3.5 text-pink" />
-          <span className="font-semibold">AI Coach</span>
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pink opacity-60" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-pink" />
+          </span>
+          <span className="font-medium text-muted-foreground">Synthesising your data</span>
         </span>
       }
     >
-      <div className="flex flex-col">
-
-        {/* Orb + greeting */}
-        <section className="mt-6 flex flex-col items-center text-center">
-          <div className="relative">
-            <div className="absolute inset-0 -z-10 animate-pulse rounded-full bg-gradient-pink-blue opacity-40 blur-2xl" />
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-pink-blue shadow-glow">
-              <Sparkles className="h-9 w-9 text-primary-foreground" />
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+        {/* SECTION 1 — Strategic insight strip */}
+        {isEmpty && (
+          <section className="flex flex-col gap-4 pt-2">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Strategic read</p>
+              <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-[28px]">
+                {greeting}{" "}
+                <span className="text-muted-foreground">
+                  {analytics?.hasAnyData
+                    ? "Here's what your data is telling me."
+                    : "Log a few sessions and I'll start synthesising your strategy."}
+                </span>
+              </h1>
             </div>
-          </div>
-          <h1 className="mt-4 text-2xl font-semibold tracking-tight md:text-3xl">{greeting}</h1>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Your SQE tutor and performance strategist. I read your mocks, recency gaps and confidence to tell you exactly what to do next — and why.
-          </p>
 
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
-            <Pill icon={Flame} label={`${streak}-day streak`} />
-            {readiness !== null && <Pill icon={Target} label={`Readiness ~${readiness}%`} />}
-            <Pill icon={HeartPulse} label={burnoutNote} subtle />
-          </div>
-        </section>
+            {strategicInsights.length > 0 && (
+              <div className="grid gap-2">
+                {strategicInsights.map((ins, i) => {
+                  const Icon = ins.icon;
+                  const tone =
+                    ins.tone === "good"
+                      ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-300"
+                      : ins.tone === "warn"
+                        ? "border-amber-400/30 bg-amber-400/5 text-amber-300"
+                        : "border-pink/30 bg-pink/5 text-pink";
+                  return (
+                    <div
+                      key={i}
+                      className="group flex items-start gap-3 rounded-2xl border border-border bg-card/40 p-3.5 backdrop-blur transition-colors hover:bg-card/60"
+                    >
+                      <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${tone}`}>
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <p className="flex-1 text-sm leading-relaxed text-foreground">{ins.text}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
-        {/* Chat */}
-        <section
-          ref={scrollerRef}
-          className="mt-6 flex-1 overflow-y-auto rounded-3xl border border-border bg-card/40 p-4 backdrop-blur md:p-6"
-          style={{ maxHeight: "60vh" }}
-        >
-          {messages.length === 0 ? (
-            <div className="grid gap-2 md:grid-cols-2">
-              {SUGGESTIONS.map((s) => {
-                const Icon = s.icon;
-                return (
-                  <button
-                    key={s.label}
-                    onClick={() => send(s.prompt)}
-                    className="group flex items-center gap-3 rounded-2xl border border-border bg-background/40 px-4 py-3 text-left text-sm transition-all hover:border-pink/50 hover:bg-background/70"
-                  >
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-pink-blue/20 text-pink">
-                      <Icon className="h-4 w-4" />
-                    </span>
-                    <span className="font-medium">{s.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
+        {/* SECTION 2 — Conversation */}
+        {!isEmpty && (
+          <section
+            ref={scrollerRef}
+            className="-mx-2 flex-1 overflow-y-auto px-2 pt-4"
+            style={{ maxHeight: "calc(100vh - 280px)" }}
+          >
+            <div className="flex flex-col gap-6">
               {messages.map((m, i) => (
-                <Bubble key={i} role={m.role} content={m.content} />
+                <Message key={i} role={m.role} content={m.content} firstName={firstName} />
               ))}
               {isStreaming && messages[messages.length - 1]?.role === "user" && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" /> Coach is thinking…
+                <div className="flex items-center gap-2 pl-11 text-xs text-muted-foreground">
+                  <span className="flex gap-1">
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-pink [animation-delay:-0.3s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-pink [animation-delay:-0.15s]" />
+                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-pink" />
+                  </span>
+                  Reading your data…
                 </div>
               )}
             </div>
-          )}
-        </section>
+          </section>
+        )}
 
-        {/* Input */}
-        <form
-          onSubmit={(e) => { e.preventDefault(); void send(); }}
-          className="mt-4 flex items-end gap-2 rounded-3xl border border-border bg-card/60 p-2 backdrop-blur"
-        >
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
-            }}
-            placeholder="Ask for analysis, priorities, or a strategic re-plan…"
-            rows={1}
-            className="min-h-[44px] flex-1 resize-none border-0 bg-transparent focus-visible:ring-0"
-          />
-          <Button
-            type="submit"
-            disabled={!canSend}
-            className="h-11 rounded-2xl bg-gradient-pink-blue px-4 text-primary-foreground shadow-glow hover:opacity-95"
+        {/* SECTION 3 + 4 — Composer with suggestion chips */}
+        <section className="sticky bottom-4 z-10 flex flex-col gap-3">
+          {/* Suggestion chips */}
+          <div className="flex flex-wrap gap-2">
+            {suggestions.map((s) => (
+              <button
+                key={s.label}
+                onClick={() => send(s.prompt)}
+                disabled={isStreaming}
+                className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur transition-all hover:border-pink/40 hover:bg-card hover:text-foreground disabled:opacity-50"
+              >
+                {s.label}
+                <ArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
+            ))}
+          </div>
+
+          <form
+            onSubmit={(e) => { e.preventDefault(); void send(); }}
+            className="relative flex items-end gap-2 rounded-3xl border border-border bg-card/80 p-2 shadow-lg shadow-black/10 backdrop-blur-xl focus-within:border-pink/40"
           >
-            {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
-        </form>
-        <p className="mt-2 text-center text-[11px] text-muted-foreground">
-          Study guidance, not legal advice. Coach can make mistakes — verify key citations.
-        </p>
+            <Textarea
+              ref={taRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
+              }}
+              placeholder="Ask for analysis, a re-plan, or push back on a recommendation…"
+              rows={1}
+              className="min-h-[44px] flex-1 resize-none border-0 bg-transparent text-[15px] focus-visible:ring-0"
+            />
+            <Button
+              type="submit"
+              disabled={!canSend}
+              className="h-10 w-10 shrink-0 rounded-2xl bg-gradient-pink-blue p-0 text-primary-foreground shadow-glow hover:opacity-95 disabled:opacity-40"
+            >
+              {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+          </form>
+          <p className="text-center text-[11px] text-muted-foreground">
+            Synthesising mocks, confidence, recency and consistency. Study guidance, not legal advice.
+          </p>
+        </section>
       </div>
     </AppShell>
   );
 }
 
-function Pill({ icon: Icon, label, subtle }: { icon: typeof Flame; label: string; subtle?: boolean }) {
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs ${
-        subtle
-          ? "border-border bg-background/40 text-muted-foreground"
-          : "border-pink/30 bg-pink/10 text-foreground"
-      }`}
-    >
-      <Icon className="h-3.5 w-3.5 text-pink" /> {label}
-    </span>
-  );
-}
-
-function Bubble({ role, content }: { role: "user" | "assistant"; content: string }) {
+function Message({ role, content, firstName }: { role: "user" | "assistant"; content: string; firstName: string }) {
   const isUser = role === "user";
+  const initial = (firstName?.[0] || "Y").toUpperCase();
+
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className="flex gap-3">
       <div
-        className={`max-w-[88%] rounded-3xl px-4 py-3 text-sm leading-relaxed shadow-sm ${
+        className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-semibold ${
           isUser
-            ? "bg-gradient-pink-blue text-primary-foreground"
-            : "border border-border bg-background/70 text-foreground"
+            ? "border border-border bg-background/60 text-muted-foreground"
+            : "bg-gradient-pink-blue text-primary-foreground shadow-glow"
         }`}
       >
+        {isUser ? initial : <Sparkles className="h-4 w-4" />}
+      </div>
+      <div className="min-w-0 flex-1 pt-1">
+        <div className="mb-1 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+          {isUser ? "You" : "Tentra Coach"}
+        </div>
         {isUser ? (
-          <p className="whitespace-pre-wrap">{content}</p>
+          <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">{content}</p>
         ) : (
-          <div className="prose prose-sm prose-invert max-w-none [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_strong]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5">
+          <div className="prose prose-sm prose-invert max-w-none text-[15px] leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_strong]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5">
             <ReactMarkdown>{content}</ReactMarkdown>
           </div>
         )}
