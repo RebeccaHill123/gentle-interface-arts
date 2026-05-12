@@ -85,7 +85,7 @@ function LandingPage() {
             </span>
             <h1 className="mt-6 text-[2.5rem] font-light leading-[1.05] tracking-tight text-foreground/85 md:text-[4rem] lg:text-[4.75rem]">
               Study{" "}
-              <span className="italic text-gradient-tentra inline-flex items-center px-2.5 py-1.5 font-light leading-none text-[0.92em] border-2 border-transparent outline outline-1 outline-border rounded-sm">
+              <span className="italic text-gradient-tentra inline-flex items-center px-2.5 py-1.5 font-light leading-none text-[0.92em] border-8 border-transparent outline outline-1 outline-border rounded-sm">
                 smarter
               </span>
               .
