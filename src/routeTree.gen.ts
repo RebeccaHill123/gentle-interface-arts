@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SessionsRouteImport } from './routes/sessions'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
@@ -26,6 +27,11 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SessionsRoute = SessionsRouteImport.update({
   id: '/sessions',
   path: '/sessions',
@@ -120,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
   '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -138,6 +145,7 @@ export interface FileRoutesByTo {
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
   '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -157,6 +165,7 @@ export interface FileRoutesById {
   '/onboarding': typeof OnboardingRoute
   '/pro': typeof ProRoute
   '/sessions': typeof SessionsRoute
+  '/settings': typeof SettingsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -177,6 +186,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/pro'
     | '/sessions'
+    | '/settings'
     | '/api/coach'
     | '/auth/callback'
     | '/lovable/email/auth/preview'
@@ -195,6 +205,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/pro'
     | '/sessions'
+    | '/settings'
     | '/api/coach'
     | '/auth/callback'
     | '/lovable/email/auth/preview'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/onboarding'
     | '/pro'
     | '/sessions'
+    | '/settings'
     | '/api/coach'
     | '/auth_/callback'
     | '/lovable/email/auth/preview'
@@ -232,6 +244,7 @@ export interface RootRouteChildren {
   OnboardingRoute: typeof OnboardingRoute
   ProRoute: typeof ProRoute
   SessionsRoute: typeof SessionsRoute
+  SettingsRoute: typeof SettingsRoute
   ApiCoachRoute: typeof ApiCoachRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -241,6 +254,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sessions': {
       id: '/sessions'
       path: '/sessions'
@@ -368,6 +388,7 @@ const rootRouteChildren: RootRouteChildren = {
   OnboardingRoute: OnboardingRoute,
   ProRoute: ProRoute,
   SessionsRoute: SessionsRoute,
+  SettingsRoute: SettingsRoute,
   ApiCoachRoute: ApiCoachRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
