@@ -88,15 +88,21 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
             return (
               <button
                 key={p.id}
-                onClick={() => setPresetId(p.id)}
+                onClick={() => {
+                  setPresetId(p.id);
+                  startSprint(p.id);
+                }}
                 className={`group relative overflow-hidden rounded-2xl border p-4 text-left transition-all ${
                   active
                     ? "border-pink/60 bg-gradient-pink-blue/10 shadow-glow"
                     : "border-border bg-background/40 hover:border-pink/40 hover:bg-card"
                 }`}
               >
-                <div className="text-xs font-semibold uppercase tracking-wider text-pink">
-                  {p.label.split(" ")[0]}
+                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-pink">
+                  <span>{p.label.split(" ")[0]}</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] text-pink/80 opacity-0 transition-opacity group-hover:opacity-100">
+                    Start <Play className="h-2.5 w-2.5" />
+                  </span>
                 </div>
                 <div className="mt-1 font-display text-2xl text-foreground">
                   {p.focusMin}
