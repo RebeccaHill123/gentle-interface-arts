@@ -66,7 +66,7 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
         </div>
         <h3 className="mt-2 text-2xl font-normal text-foreground">
           Ready for some{" "}
-          <span className="italic text-gradient-tentra font-sans text-2xl">deep work?</span>
+          <span className="italic text-gradient-tentra font-sans inline-block pr-1">deep work</span>?
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Pick a preset, name your topic, and we'll do the rest.
