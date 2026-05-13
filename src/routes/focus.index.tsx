@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarRange, Flame, Loader2, Sparkles, Tag, TrendingUp } from "lucide-react";
+import { CalendarRange, Flame, Sparkles, Tag, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { FocusLauncher } from "@/components/focus-launcher";
 import { FocusInsights } from "@/components/focus-insights";
@@ -22,17 +22,14 @@ export const Route = createFileRoute("/focus/")({
 });
 
 function FocusLauncherPage() {
-  const [stored, setStored] = useState<StoredPlan | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [stored, setStored] = useState<StoredPlan | null>(() => loadPlan());
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let active = true;
     (async () => {
       const cloud = await pullPlanFromCloud();
-      if (!active) return;
-      setStored(cloud ?? loadPlan());
-      setLoading(false);
+      if (active && cloud) setStored(cloud);
     })();
     return () => {
       active = false;
@@ -49,12 +46,7 @@ function FocusLauncherPage() {
 
   return (
     <AppShell title="Focus" subtitle="The place where studying happens.">
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        </div>
-      ) : (
-        <div className="space-y-8">
+      <div className="space-y-8">
           <section>
             <SectionHeader
               eyebrow="Start a session"
@@ -121,8 +113,7 @@ function FocusLauncherPage() {
               <FuturePill icon={Flame} label="Personal records" />
             </div>
           </section>
-        </div>
-      )}
+      </div>
     </AppShell>
   );
 }
