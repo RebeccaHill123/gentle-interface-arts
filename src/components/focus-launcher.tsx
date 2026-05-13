@@ -35,27 +35,37 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
     ? Math.max(0, Math.min(60, customBreak || 5))
     : FOCUS_PRESETS.find((p) => p.id === presetId)?.breakMin ?? 5;
 
-  const handleStart = () => {
+  const startSprint = (overridePresetId?: string) => {
+    const effectivePresetId = overridePresetId ?? presetId;
+    const isCustomRun = effectivePresetId === "custom";
+    const fMin = isCustomRun
+      ? Math.max(1, Math.min(180, customFocus || 25))
+      : FOCUS_PRESETS.find((p) => p.id === effectivePresetId)?.focusMin ?? 25;
+    const bMin = isCustomRun
+      ? Math.max(0, Math.min(60, customBreak || 5))
+      : FOCUS_PRESETS.find((p) => p.id === effectivePresetId)?.breakMin ?? 5;
     const now = Date.now();
     saveActiveSprint({
       startedAt: now,
-      focusMs: focusMin * 60 * 1000,
-      breakMs: breakMin * 60 * 1000,
+      focusMs: fMin * 60 * 1000,
+      breakMs: bMin * 60 * 1000,
       module: module || undefined,
       topic: topic.trim() || undefined,
-      presetId,
+      presetId: effectivePresetId,
       pausedTotalMs: 0,
       phase: "focus",
       phaseStartedAt: now,
     });
     saveFocusPrefs({
-      lastPresetId: presetId,
+      lastPresetId: effectivePresetId,
       lastModule: module || undefined,
       customFocusMin: customFocus,
       customBreakMin: customBreak,
     });
     navigate({ to: "/focus/sprint" });
   };
+
+  const handleStart = () => startSprint();
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-card">
@@ -78,15 +88,21 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
             return (
               <button
                 key={p.id}
-                onClick={() => setPresetId(p.id)}
+                onClick={() => {
+                  setPresetId(p.id);
+                  startSprint(p.id);
+                }}
                 className={`group relative overflow-hidden rounded-2xl border p-4 text-left transition-all ${
                   active
                     ? "border-pink/60 bg-gradient-pink-blue/10 shadow-glow"
                     : "border-border bg-background/40 hover:border-pink/40 hover:bg-card"
                 }`}
               >
-                <div className="text-xs font-semibold uppercase tracking-wider text-pink">
-                  {p.label.split(" ")[0]}
+                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-pink">
+                  <span>{p.label.split(" ")[0]}</span>
+                  <span className="inline-flex items-center gap-1 text-[10px] text-pink/80 opacity-0 transition-opacity group-hover:opacity-100">
+                    Start <Play className="h-2.5 w-2.5" />
+                  </span>
                 </div>
                 <div className="mt-1 font-display text-2xl text-foreground">
                   {p.focusMin}
