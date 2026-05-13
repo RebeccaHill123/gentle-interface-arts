@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
 import { CalendarRange, Flame, Loader2, Sparkles, Tag, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { FocusLauncher } from "@/components/focus-launcher";
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/focus")({
     const user = await waitForAuthUser();
     if (!user) throw redirect({ to: "/auth", search: { mode: "signin" } });
   },
-  component: FocusLauncherPage,
+  component: FocusRouteComponent,
   head: () => ({
     meta: [
       { title: "Focus · Tentra" },
@@ -26,6 +26,12 @@ export const Route = createFileRoute("/focus")({
     ],
   }),
 });
+
+function FocusRouteComponent() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (pathname !== "/focus") return <Outlet />;
+  return <FocusLauncherPage />;
+}
 
 function FocusLauncherPage() {
   const [stored, setStored] = useState<StoredPlan | null>(null);
