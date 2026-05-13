@@ -35,27 +35,37 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
     ? Math.max(0, Math.min(60, customBreak || 5))
     : FOCUS_PRESETS.find((p) => p.id === presetId)?.breakMin ?? 5;
 
-  const handleStart = () => {
+  const startSprint = (overridePresetId?: string) => {
+    const effectivePresetId = overridePresetId ?? presetId;
+    const isCustomRun = effectivePresetId === "custom";
+    const fMin = isCustomRun
+      ? Math.max(1, Math.min(180, customFocus || 25))
+      : FOCUS_PRESETS.find((p) => p.id === effectivePresetId)?.focusMin ?? 25;
+    const bMin = isCustomRun
+      ? Math.max(0, Math.min(60, customBreak || 5))
+      : FOCUS_PRESETS.find((p) => p.id === effectivePresetId)?.breakMin ?? 5;
     const now = Date.now();
     saveActiveSprint({
       startedAt: now,
-      focusMs: focusMin * 60 * 1000,
-      breakMs: breakMin * 60 * 1000,
+      focusMs: fMin * 60 * 1000,
+      breakMs: bMin * 60 * 1000,
       module: module || undefined,
       topic: topic.trim() || undefined,
-      presetId,
+      presetId: effectivePresetId,
       pausedTotalMs: 0,
       phase: "focus",
       phaseStartedAt: now,
     });
     saveFocusPrefs({
-      lastPresetId: presetId,
+      lastPresetId: effectivePresetId,
       lastModule: module || undefined,
       customFocusMin: customFocus,
       customBreakMin: customBreak,
     });
     navigate({ to: "/focus/sprint" });
   };
+
+  const handleStart = () => startSprint();
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-card">
