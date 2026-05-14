@@ -196,6 +196,9 @@ const RESOURCES: Resource[] = [
 function MocksPage() {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
+  const [practicePreset, setPracticePreset] = useState<
+    { type: "mini-flk"; paper: "FLK1" | "FLK2" } | undefined
+  >(undefined);
 
   return (
     <AppShell title="Mocks & Practice" subtitle="Exam simulation & targeted practice.">
