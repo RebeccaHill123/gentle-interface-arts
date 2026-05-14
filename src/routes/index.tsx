@@ -85,7 +85,7 @@ function LandingPage() {
             </span>
             <h1 className="mt-6 text-[2.5rem] font-light leading-[1.05] tracking-tight text-foreground/85 md:text-[4rem] lg:text-[4.75rem]">
               Study{" "}
-              <span className="italic text-gradient-tentra font-light">
+              <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">
                 smarter
               </span>
               .
@@ -174,7 +174,7 @@ function LandingPage() {
                 <Scale className="h-8 w-8 text-gradient-tentra" />
                 <h2 className="mt-4 text-3xl font-normal text-foreground md:text-5xl">
                   Built around the
-                  <span className="italic text-gradient-tentra font-light">SQE syllabus</span>.
+                  <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">SQE syllabus</span>.
                 </h2>
                 <p className="mt-4 text-muted-foreground">
                   Tentra knows the FLK1 & FLK2 papers, the SQE2 skills assessments,
