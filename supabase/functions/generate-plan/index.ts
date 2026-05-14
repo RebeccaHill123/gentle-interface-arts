@@ -143,21 +143,24 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   const rationales: StudyTask["rationale"][] = ["weak-area", "high-yield", "mixed-practice", "recency-gap", "ethics-cornerstone", "mock-prep"];
   const todayTasks = durations.map((minutes, index): StudyTask => {
     const module = focusModules[index % focusModules.length] ?? scoredModules[0];
-    const subtopics = module.subject.subtopics;
+    const weak = module.weakSubtopics ?? [];
+    const subtopics = weak.length > 0 ? weak : module.subject.subtopics;
     const topicA = subtopics[index % subtopics.length];
     const topicB = subtopics[(index + 2) % subtopics.length] ?? topicA;
-    const isWeak = module.confidence <= 2;
+    const isWeak = module.confidence <= 2 || weak.length > 0;
     const isStale = (module.recencyDays ?? 99) > 10;
     const rationale = isStale ? "recency-gap" : isWeak ? "weak-area" : rationales[index % rationales.length];
-    const taskType = module.name.includes("Ethics") || rationale === "ethics-cornerstone" ? "ethics-application" : taskTypes[index % taskTypes.length];
+    const isResitter = intensity === "resitter";
+    const baseTaskType = isResitter && index % 3 === 2 ? "mixed-mock" : isWeak && intensity === "beginner" ? "concept-deepdive" : taskTypes[index % taskTypes.length];
+    const taskType = module.name.includes("Ethics") || rationale === "ethics-cornerstone" ? "ethics-application" : baseTaskType;
     return {
-      title: `${taskType === "timed-sba" || taskType === "mixed-mock" ? "Timed mixed SBA set" : taskType === "active-recall" ? "Active recall drill" : taskType === "mistake-review" ? "Mistake-log review" : "Scenario drill"} on ${topicA}${topicB !== topicA ? ` and ${topicB}` : ""}`,
+      title: `${taskType === "timed-sba" || taskType === "mixed-mock" ? "Timed mixed SBA set" : taskType === "active-recall" ? "Active recall drill" : taskType === "mistake-review" ? "Mistake-log review" : taskType === "concept-deepdive" ? "Concept deep-dive" : "Scenario drill"} on ${topicA}${topicB !== topicA ? ` and ${topicB}` : ""}`,
       module: module.name,
       minutes,
       taskType,
       rationale,
       priority: module.score >= 0.55 ? "high" : module.score >= 0.42 ? "medium" : "low",
-      why: `${module.name} is prioritised for ${isWeak ? "low confidence" : module.subject.highYield >= 4 ? "high-yield coverage" : "balanced interleaving"}${isStale ? " and revision staleness" : ""}.`,
+      why: `${module.name} is prioritised for ${weak.length > 0 ? `flagged weak subtopics (${weak.slice(0, 2).join(", ")})` : isWeak ? "low confidence" : module.subject.highYield >= 4 ? "high-yield coverage" : "balanced interleaving"}${isStale ? " and revision staleness" : ""}.`,
     };
   });
 
