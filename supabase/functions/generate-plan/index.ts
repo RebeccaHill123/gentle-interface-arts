@@ -269,13 +269,33 @@ Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
       ? `\nLast revised (days ago):\n${body.recentlyStudied.map((m) => `- ${m.module}: ${m.daysAgo}d`).join("\n")}`
       : "";
 
-    const userPrompt = `Design ${body.name}'s ${body.examType} weekly strategy.
+    const examPath = body.examPath ?? (body.examType === "SQE2" ? "SQE2" : "SQE1_FULL");
+    const intensity = body.intensity ?? "intermediate";
+    const coverageMode = body.coverageMode ?? "even";
+    const intensityGuidance: Record<string, string> = {
+      beginner: "Lead with concept-deepdive and active-recall. Limit timed mocks to 15-20% of weekly minutes. Build foundations before pace.",
+      intermediate: "Balanced mix: ~40% SBA practice, 30% scenario/active recall, 20% deepdive, 10% mock. Standard interleaving.",
+      advanced: "Heavy SBA + mock exposure (≥40% mocks/timed-sba). Surgical weak-area drills. Minimal concept time unless gaps exist.",
+      resitter: "RESITTER MODE — assume prior coverage. ≥50% timed-sba/mixed-mock. Aggressive spaced repetition (1d/3d/7d/14d) on every flagged weak subtopic. Treat low-confidence + flagged subtopics as the entire revision spine.",
+    };
+    const weakSubtopicSummary = body.modules
+      .filter((m) => (m.weakSubtopics?.length ?? 0) > 0)
+      .map((m) => `  - ${m.name}: ${m.weakSubtopics!.join("; ")}`)
+      .join("\n");
+    const weakSubtopicBlock = weakSubtopicSummary
+      ? `\nUSER-FLAGGED WEAK SUBTOPICS (give these noticeably more sessions, drills, mocks and spaced-repetition reps; reference by name in task titles):\n${weakSubtopicSummary}`
+      : "";
+
+    const userPrompt = `Design ${body.name}'s ${examPath} weekly strategy.
+Exam path: ${examPath} (${body.examType})
+Intensity tier: ${intensity.toUpperCase()} — ${intensityGuidance[intensity]}
+Coverage mode: ${coverageMode === "advanced" ? "ADVANCED PERSONALISATION — bias hard toward flagged weak subtopics" : "EVEN — balanced coverage tuned by HY weighting"}
 Exam date: ${body.examDate} (${daysUntilExam} days away)
 Available study time: ${body.hoursPerWeek} hours/week
 Confidence per module (1=weak, 5=strong):
-${body.modules.map((m) => `- ${m.name}: ${m.confidence}/5`).join("\n")}${mockSummary}${recencySummary}
+${body.modules.map((m) => `- ${m.name}: ${m.confidence}/5`).join("\n")}${weakSubtopicBlock}${mockSummary}${recencySummary}
 
-Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names the highest-priority subjects + reasoning, (b) a weekly allocation across modules with rationale tags + plain-English notes (tilt toward high-yield + weak-area + recency-gap, suppress HY≤2 niche topics), (c) academically-specific strategic study blocks for THIS WEEK using interleaving + spaced repetition (mix timed-sba, mistake-review, scenario-drill, active-recall, mixed-mock), each task referencing canonical subtopic names. CRITICAL: the SUM of block minutes MUST equal ${body.hoursPerWeek * 60} (±10%) — i.e. ${body.hoursPerWeek} hours total. Generate as many blocks as needed (typically ${Math.max(4, Math.ceil(body.hoursPerWeek * 60 / 75))}–${Math.ceil(body.hoursPerWeek * 60 / 45)} blocks) using the allowed durations 30/45/60/90/120, and keep the per-module hour split aligned with the weekly allocation in (b). (d) up to 12 weeks of forward-looking weekly themes built around topic clusters, (e) mastery targets per module by exam day weighted by HY + paper weight.`;
+Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names the highest-priority subjects + reasoning (mention the intensity tier and any weak subtopics by name), (b) a weekly allocation across modules with rationale tags + plain-English notes (tilt toward high-yield + weak-area + recency-gap, suppress HY≤2 niche topics; if user flagged weak subtopics, give those parent modules a noticeably larger share), (c) academically-specific strategic study blocks for THIS WEEK using interleaving + spaced repetition (mix timed-sba, mistake-review, scenario-drill, active-recall, mixed-mock, concept-deepdive). Task titles MUST name flagged weak subtopics where applicable. CRITICAL: the SUM of block minutes MUST equal ${body.hoursPerWeek * 60} (±10%) — i.e. ${body.hoursPerWeek} hours total. Generate as many blocks as needed (typically ${Math.max(4, Math.ceil(body.hoursPerWeek * 60 / 75))}–${Math.ceil(body.hoursPerWeek * 60 / 45)} blocks) using the allowed durations 30/45/60/90/120, and keep the per-module hour split aligned with the weekly allocation in (b). (d) up to 12 weeks of forward-looking weekly themes built around topic clusters, with explicit spaced-repetition re-touches of weak subtopics at week+1, week+2, week+3 from first introduction, (e) mastery targets per module by exam day weighted by HY + paper weight + flagged weakness.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
