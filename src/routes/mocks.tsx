@@ -254,8 +254,15 @@ function MocksPage() {
             const interactive = !m.comingSoon && !!m.to;
             const handleClick = () => {
               if (!interactive) return;
-              if (m.to === "quiz") setQuizOpen(true);
-              else setPracticeOpen(true);
+              if (m.to === "quiz") {
+                setQuizOpen(true);
+              } else if (m.to === "mini-flk" && m.paper) {
+                setPracticePreset({ type: "mini-flk", paper: m.paper });
+                setPracticeOpen(true);
+              } else {
+                setPracticePreset(undefined);
+                setPracticeOpen(true);
+              }
             };
             const Wrapper: any = interactive ? "button" : "div";
             const wrapperProps = interactive
