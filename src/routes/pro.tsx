@@ -238,7 +238,7 @@ function ProUpgrade({
           Ready to study like an athlete?
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
-          Join Tentra Pro and turn 12 weeks of revision into your best performance under pressure.
+          Pro features are currently free during Tentra Early Access ✨ — unlock the full intelligence layer in one tap.
         </p>
         <Button
           size="lg"
@@ -246,7 +246,7 @@ function ProUpgrade({
           onClick={onUpgrade}
           className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Start 7-day free trial"}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Unlock Pro free"}
         </Button>
       </section>
     </div>
