@@ -5,12 +5,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+type ExamPath = "SQE1_FULL" | "FLK1" | "FLK2" | "SQE2" | "CUSTOM";
+type IntensityTier = "beginner" | "intermediate" | "advanced" | "resitter";
+type CoverageMode = "even" | "advanced";
+
 interface PlanRequest {
   name: string;
   examDate: string; // ISO date
   hoursPerWeek: number;
-  modules: { id: string; name: string; confidence: number }[]; // confidence 1-5
+  modules: { id: string; name: string; confidence: number; weakSubtopics?: string[] }[]; // confidence 1-5
   examType: "SQE1" | "SQE2";
+  examPath?: ExamPath;
+  intensity?: IntensityTier;
+  coverageMode?: CoverageMode;
   recentMockAccuracy?: { module: string; accuracy: number }[];
   recentlyStudied?: { module: string; daysAgo: number }[];
 }
