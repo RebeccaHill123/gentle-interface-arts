@@ -172,7 +172,7 @@ export function ProfileMenu() {
           {!info.isPro && (
             <Item
               icon={Sparkles}
-              label="Upgrade to Pro"
+              label="Unlock Pro — free in Early Access"
               accent
               onSelect={() => go("/pro")}
             />
