@@ -179,7 +179,7 @@ export function ProfileMenu() {
           )}
           <Item
             icon={CreditCard}
-            label="Billing & subscription"
+            label="Membership"
             onSelect={() => go("/pro")}
           />
           <Item
