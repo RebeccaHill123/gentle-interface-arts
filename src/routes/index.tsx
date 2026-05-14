@@ -205,33 +205,24 @@ function LandingPage() {
           </div>
         </section>
 
-        <footer className="mt-12 bg-[#1a1a2e] text-neutral-300">
-          <div className="mx-auto max-w-6xl px-6 py-14">
-            <div className="grid gap-10 md:grid-cols-2 md:items-start">
-              <div>
-                <div className="text-2xl font-semibold tracking-tight text-white">
-                  Tentra
-                </div>
-                <p className="mt-3 max-w-sm text-sm text-neutral-400">
-                  For the next generation of solicitors.
-                </p>
-              </div>
-              <nav className="flex flex-wrap gap-x-8 gap-y-3 text-sm font-medium md:justify-end">
-                <Link to="/" className="text-neutral-300 hover:text-white transition-colors">
-                  About
-                </Link>
-                <Link to="/" className="text-neutral-300 hover:text-white transition-colors">
-                  Privacy Policy
-                </Link>
-                <Link to="/" className="text-neutral-300 hover:text-white transition-colors">
-                  Terms of Service
-                </Link>
-              </nav>
+        <footer className="mt-8 border-t border-border/60">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 md:flex-row">
+            <div className="flex items-center gap-2.5">
+              <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-pink-blue">
+                <span className="font-display text-sm font-bold text-primary-foreground">T</span>
+              </span>
+              <span className="text-sm font-semibold tracking-tight text-foreground">Tentra</span>
+              <span className="hidden text-sm text-muted-foreground sm:inline">
+                · Built for the next generation of solicitors.
+              </span>
             </div>
-            <div className="mt-10 border-t border-white/10 pt-6 text-xs text-neutral-500">
-              © {new Date().getFullYear()} Tentra. All rights reserved.
+            <div className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} Tentra
             </div>
           </div>
+          <p className="px-6 pb-6 text-center text-xs text-muted-foreground sm:hidden">
+            Built for the next generation of solicitors.
+          </p>
         </footer>
       </div>
     </div>
