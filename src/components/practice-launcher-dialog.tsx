@@ -35,14 +35,15 @@ type PracticeType =
   | "timed-mini"
   | "scenario"
   | "flashcards"
-  | "technique";
+  | "technique"
+  | "mini-flk";
 
 const PRACTICE_TYPES: {
   id: PracticeType;
   title: string;
   desc: string;
   icon: typeof Target;
-  defaultMinutes: 10 | 20 | 45 | 90;
+  defaultMinutes: 10 | 20 | 30 | 45 | 90;
   defaultQuestions: number;
 }[] = [
   {
@@ -60,6 +61,14 @@ const PRACTICE_TYPES: {
     icon: Timer,
     defaultMinutes: 45,
     defaultQuestions: 26,
+  },
+  {
+    id: "mini-flk",
+    title: "Mini FLK Mock",
+    desc: "Exam-style sample drawn from a single FLK paper.",
+    icon: Scale,
+    defaultMinutes: 30,
+    defaultQuestions: 20,
   },
   {
     id: "scenario",
