@@ -355,7 +355,7 @@ function ProDashboard({
           <div>
             <ProBadge active />
             <h1 className="mt-4 text-3xl font-light tracking-tight text-foreground md:text-5xl">
-              Welcome back to <span className="italic text-gradient-tentra font-sans text-2xl inline-block pr-1">Pro</span>.
+              Welcome back to <span className="italic text-gradient-tentra font-sans inline-block pr-2">Pro</span>.
             </h1>
             <p className="mt-2 max-w-lg text-sm text-muted-foreground md:text-base">
               Your intelligence layer is live. Insights refresh in real time as you study.
