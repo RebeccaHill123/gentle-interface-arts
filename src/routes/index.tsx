@@ -85,7 +85,7 @@ function LandingPage() {
           </div>
         </header>
 
-        <section className="mx-auto max-w-6xl px-6 pt-12 pb-20 md:pt-24">
+        <section className="mx-auto max-w-6xl px-6 pt-12 pb-12 md:pt-20 md:pb-16">
           <div className="mx-auto max-w-3xl text-center">
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur">
               <Sparkles className="h-3.5 w-3.5 text-gradient-tentra" />
@@ -139,9 +139,6 @@ function LandingPage() {
             </div>
           </div>
 
-          <div className="mt-20">
-            <HeroPreview />
-          </div>
         </section>
 
         <section id="how" className="mx-auto max-w-6xl px-6 pb-24">
@@ -230,129 +227,6 @@ function StepCard({
   );
 }
 
-function HeroPreview() {
-  const days = 84;
-  const modules = [
-    { name: "Contract", c: 4 },
-    { name: "Tort", c: 3 },
-    { name: "Criminal", c: 2 },
-    { name: "Land Law", c: 2 },
-    { name: "Trusts", c: 1 },
-    { name: "Business", c: 3 },
-    { name: "Dispute", c: 4 },
-    { name: "Ethics", c: 5 },
-  ];
-  return (
-    <div className="relative mx-auto max-w-5xl">
-      <div className="absolute -inset-x-10 -top-10 -bottom-20 -z-10 rounded-[3rem] bg-gradient-tentra opacity-20 blur-3xl" />
-      {/* Browser frame */}
-      <div className="overflow-hidden rounded-2xl border border-border bg-card/90 shadow-[0_40px_120px_-30px_oklch(0.5_0.2_320/0.45)] backdrop-blur">
-        {/* Title bar */}
-        <div className="flex items-center gap-2 border-b border-border bg-background/60 px-4 py-3">
-          <span className="h-3 w-3 rounded-full bg-[oklch(0.72_0.18_25)]" />
-          <span className="h-3 w-3 rounded-full bg-[oklch(0.82_0.15_85)]" />
-          <span className="h-3 w-3 rounded-full bg-[oklch(0.75_0.18_145)]" />
-          <div className="mx-auto flex items-center gap-2 rounded-md bg-card/70 px-3 py-1 text-[11px] text-muted-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            app.tentra.co/dashboard
-          </div>
-          <span className="w-12" />
-        </div>
-
-        {/* Dashboard content */}
-        <div className="bg-white p-6 md:p-8">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                SQE1 · January sitting
-              </div>
-              <div className="mt-1 text-2xl font-semibold text-foreground">
-                Hi Amelia 👋
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-2xl border border-border bg-background/70 px-4 py-3">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Days to exam
-                </div>
-                <div className="font-display text-3xl text-gradient-tentra">
-                  {days}
-                </div>
-              </div>
-              <div className="h-12 w-px bg-border" />
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Streak
-                </div>
-                <div className="flex items-center gap-1 text-lg font-semibold text-foreground">
-                  🔥 14 days
-                </div>
-              </div>
-              <div className="h-12 w-px bg-border" />
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  This week
-                </div>
-                <div className="text-lg font-semibold text-foreground">12 hrs</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-border bg-background/60 p-5">
-              <div className="flex items-center justify-between">
-                <div className="text-xs font-semibold uppercase tracking-wider text-gradient-tentra">
-                  Today's plan
-                </div>
-                <div className="text-[10px] font-medium text-muted-foreground">
-                  3 of 5 done
-                </div>
-              </div>
-              <ul className="mt-3 space-y-2">
-                {[
-                  { t: "Read: Negligence — duty of care", m: "45m" },
-                  { t: "Practice MCQs: Misrepresentation", m: "30m" },
-                  { t: "Flashcards: Trust formalities", m: "20m" },
-                ].map((x, i) => (
-                  <li
-                    key={i}
-                    className="flex items-center justify-between gap-3 rounded-xl bg-card/70 p-3 text-sm"
-                  >
-                    <span className="flex items-center gap-3 text-foreground">
-                      <span className="h-2 w-2 rounded-full bg-gradient-pink-blue" />
-                      {x.t}
-                    </span>
-                    <span className="text-xs text-muted-foreground">{x.m}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="rounded-2xl border border-border bg-background/60 p-5">
-              <div className="text-xs font-semibold uppercase tracking-wider text-cyan">
-                Topic mastery
-              </div>
-              <div className="mt-3 grid grid-cols-4 gap-2">
-                {modules.map((m) => (
-                  <div key={m.name} className="space-y-1.5">
-                    <div
-                      className="h-14 rounded-lg ring-1 ring-border/60"
-                      style={{
-                        background: `linear-gradient(180deg, oklch(0.72 0.24 350 / ${0.25 + (m.c / 5) * 0.5}), oklch(0.62 0.22 250 / ${0.25 + (m.c / 5) * 0.5}))`,
-                      }}
-                    />
-                    <div className="truncate text-[10px] font-medium text-muted-foreground">
-                      {m.name}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 type ShowcaseTab = {
   id: string;
