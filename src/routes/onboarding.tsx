@@ -23,7 +23,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { waitForAuthUser } from "@/lib/auth-session";
 import {
   savePlan,
   pullPlanFromCloud,
