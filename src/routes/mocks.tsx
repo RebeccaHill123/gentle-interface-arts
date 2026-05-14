@@ -56,6 +56,7 @@ type Mode = {
   comingSoon?: boolean;
   icon: typeof Play;
   to?: string;
+  paper?: "FLK1" | "FLK2";
   accent: string;
 };
 
@@ -68,6 +69,26 @@ const PRACTICE_MODES: Mode[] = [
     icon: Scale,
     comingSoon: true,
     accent: "from-pink/30 to-blue/30",
+  },
+  {
+    title: "Mini FLK1 Mock",
+    desc: "Exam-style mini paper drawn from FLK1 subjects: Contract, Tort, Business, Dispute Resolution, Public Law, Ethics.",
+    duration: "20 Q · 30 min",
+    focus: "Pacing · breadth",
+    icon: Scale,
+    to: "mini-flk",
+    paper: "FLK1",
+    accent: "from-pink/30 to-blue/20",
+  },
+  {
+    title: "Mini FLK2 Mock",
+    desc: "Exam-style mini paper drawn from FLK2 subjects: Property, Wills, Trusts, Criminal, Solicitors' Accounts, Ethics.",
+    duration: "20 Q · 30 min",
+    focus: "Pacing · breadth",
+    icon: Scale,
+    to: "mini-flk",
+    paper: "FLK2",
+    accent: "from-blue/30 to-pink/20",
   },
   {
     title: "Timed Mini Mock",
