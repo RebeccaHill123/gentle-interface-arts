@@ -202,6 +202,15 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Require an authenticated user — defence in depth (verify_jwt is also true).
+  const authHeader = req.headers.get("authorization") || "";
+  if (!authHeader.startsWith("Bearer ") || authHeader.replace("Bearer ", "").trim().length === 0) {
+    return new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
   let body: PlanRequest | null = null;
   let daysUntilExam = 1;
   try {
