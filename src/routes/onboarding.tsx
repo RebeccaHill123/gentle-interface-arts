@@ -304,7 +304,18 @@ function OnboardingPage() {
         sessions: [],
       };
       savePlan(stored);
-      navigate({ to: "/dashboard" });
+      // If signed in, savePlan already pushed to cloud → straight to dashboard.
+      // Otherwise, the plan lives in localStorage and we route to signup so
+      // the user can claim/save it. Auth callback + signin/up will sync it.
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user?.id) {
+        navigate({ to: "/dashboard" });
+      } else {
+        navigate({
+          to: "/auth",
+          search: { mode: "signup", from: "onboarding" },
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
