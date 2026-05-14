@@ -503,17 +503,13 @@ function ProDashboard({
         <div>
           <div className="text-sm font-semibold text-foreground">Tentra Pro membership</div>
           <div className="text-xs text-muted-foreground">
-            £9/month · cancel anytime
+            Free during Tentra Early Access ✨
           </div>
         </div>
-        <Button
-          variant="outline"
-          className="rounded-full"
-          disabled={busy}
-          onClick={onCancel}
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel Pro"}
-        </Button>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-pink-blue px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-glow">
+          <Sparkles className="h-3 w-3" />
+          Unlocked
+        </span>
       </section>
 
       {/* FAB */}
