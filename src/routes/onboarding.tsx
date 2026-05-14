@@ -42,13 +42,8 @@ import {
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/onboarding")({
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const user = await waitForAuthUser();
-    if (!user) {
-      throw redirect({ to: "/auth", search: { mode: "signin" } });
-    }
-  },
+  // No auth gate — onboarding runs for anonymous visitors so they can
+  // experience the personalised plan BEFORE being asked to sign up.
   component: OnboardingPage,
   head: () => ({
     meta: [
