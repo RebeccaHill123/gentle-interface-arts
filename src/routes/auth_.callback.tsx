@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { markAuthCallbackComplete, waitForAuthSession } from "@/lib/auth-session";
+import { getAuthRedirectURL } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/auth_/callback")({
   component: AuthCallbackPage,
