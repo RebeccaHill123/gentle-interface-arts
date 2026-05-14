@@ -91,15 +91,6 @@ const PRACTICE_MODES: Mode[] = [
     accent: "from-blue/30 to-pink/20",
   },
   {
-    title: "Timed Mini Mock",
-    desc: "Compact, timed SBA set drawn from across the syllabus to simulate exam pacing.",
-    duration: "30 Q · 45 min",
-    focus: "Pacing · accuracy",
-    icon: Timer,
-    comingSoon: true,
-    accent: "from-blue/30 to-pink/20",
-  },
-  {
     title: "Weak Area Drill",
     desc: "Targeted SBAs focused on your lowest-confidence and most-missed topics.",
     duration: "10 Q · 15 min",
