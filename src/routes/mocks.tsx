@@ -371,7 +371,14 @@ function MocksPage() {
         </p>
       </section>
 
-      <PracticeLauncherDialog open={practiceOpen} onOpenChange={setPracticeOpen} />
+      <PracticeLauncherDialog
+        open={practiceOpen}
+        onOpenChange={(v) => {
+          setPracticeOpen(v);
+          if (!v) setPracticePreset(undefined);
+        }}
+        preset={practicePreset}
+      />
       <AIQuizBuilderDialog open={quizOpen} onOpenChange={setQuizOpen} />
     </AppShell>
   );
