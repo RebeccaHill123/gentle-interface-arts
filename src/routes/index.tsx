@@ -176,41 +176,7 @@ function LandingPage() {
         </section>
 
         <section id="features" className="mx-auto max-w-6xl px-6 pb-28">
-          <div className="rounded-[2rem] border border-border bg-card/60 p-10 backdrop-blur md:p-16">
-            <div className="grid items-center gap-10 md:grid-cols-2">
-              <div>
-                <Scale className="h-8 w-8 text-gradient-tentra" />
-                <h2 className="mt-4 text-3xl font-normal text-foreground md:text-5xl">
-                  Built around the
-                  <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">SQE syllabus</span>.
-                </h2>
-                <p className="mt-4 text-muted-foreground">
-                  Tentra knows the FLK1 & FLK2 papers, the SQE2 skills assessments,
-                  and weighting of each topic. Your plan reflects what actually
-                  matters on exam day.
-                </p>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  "Contract",
-                  "Tort",
-                  "Land Law",
-                  "Trusts",
-                  "Criminal Practice",
-                  "Dispute Resolution",
-                  "Business Law",
-                  "Ethics",
-                ].map((m) => (
-                  <div
-                    key={m}
-                    className="rounded-2xl border border-border bg-background/40 p-4 text-sm font-medium text-foreground"
-                  >
-                    {m}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <FeatureShowcase />
         </section>
 
         <footer className="mt-8 border-t border-border/60">
