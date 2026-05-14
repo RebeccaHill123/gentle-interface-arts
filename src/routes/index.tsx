@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
@@ -8,8 +9,15 @@ import {
   Calendar,
   Target,
   Brain,
-  Scale,
   LayoutDashboard,
+  MessageSquareText,
+  BarChart3,
+  Flame,
+  ClipboardCheck,
+  TrendingUp,
+  Zap,
+  CheckCircle2,
+  Activity,
 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
