@@ -9,6 +9,7 @@ import { BackgroundBlobs } from "@/components/background-blobs";
 import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getRememberMe, setRememberMe } from "@/lib/remember-me";
+import { getAuthRedirectURL } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -68,7 +69,7 @@ function AuthPage() {
       const { error: rErr } = await supabase.auth.resend({
         type: "signup",
         email: target,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: { emailRedirectTo: getAuthRedirectURL() },
       });
       if (rErr) {
         setResendErr(rErr.message);
@@ -97,7 +98,7 @@ function AuthPage() {
           email: parsed.data.email,
           password: parsed.data.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: getAuthRedirectURL(),
             data: {
               first_name: parsed.data.firstName,
               last_name: parsed.data.lastName,

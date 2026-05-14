@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { markAuthCallbackComplete, waitForAuthSession } from "@/lib/auth-session";
+import { getAuthRedirectURL } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/auth_/callback")({
   component: AuthCallbackPage,
@@ -41,7 +42,7 @@ function AuthCallbackPage() {
       const { error: rErr } = await supabase.auth.resend({
         type: "signup",
         email,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: { emailRedirectTo: getAuthRedirectURL() },
       });
       if (rErr) setResendErr(rErr.message);
       else setResendMsg("Verification email sent — check your inbox.");
