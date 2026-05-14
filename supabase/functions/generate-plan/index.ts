@@ -114,6 +114,8 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   const targetMinutes = Math.max(30, Math.round(body.hoursPerWeek * 60));
   const studiedByModule = new Map((body.recentlyStudied ?? []).map((m) => [m.module, m.daysAgo]));
   const mockByModule = new Map((body.recentMockAccuracy ?? []).map((m) => [m.module, m.accuracy]));
+  const intensity: IntensityTier = body.intensity ?? "intermediate";
+  const intensityWeakBoost = intensity === "resitter" ? 0.25 : intensity === "advanced" ? 0.15 : intensity === "beginner" ? 0.05 : 0.1;
   const scoredModules = body.modules
     .map((module) => {
       const subject = SQE_FALLBACK_SUBJECTS[module.name] ?? { weight: 0.08, highYield: 3, groups: [body.examType], subtopics: [module.name] };
@@ -122,7 +124,8 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
       const recencyBoost = recencyDays === undefined ? 0.2 : Math.min(1, recencyDays / 14) * 0.3;
       const mockAccuracy = mockByModule.get(module.name);
       const mockWeakness = mockAccuracy === undefined ? 0 : Math.max(0, 0.7 - mockAccuracy);
-      const score = subject.weight * 0.4 + (subject.highYield / 5) * 0.3 + confidenceGap * 0.2 + recencyBoost * 0.1 + mockWeakness * 0.15;
+      const subtopicBoost = (module.weakSubtopics?.length ?? 0) > 0 ? intensityWeakBoost : 0;
+      const score = subject.weight * 0.4 + (subject.highYield / 5) * 0.3 + confidenceGap * 0.2 + recencyBoost * 0.1 + mockWeakness * 0.15 + subtopicBoost;
       return { ...module, subject, score, recencyDays, mockAccuracy };
     })
     .sort((a, b) => b.score - a.score);
