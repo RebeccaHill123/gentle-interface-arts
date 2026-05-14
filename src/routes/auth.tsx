@@ -69,7 +69,7 @@ function AuthPage() {
       const { error: rErr } = await supabase.auth.resend({
         type: "signup",
         email: target,
-        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        options: { emailRedirectTo: getAuthRedirectURL() },
       });
       if (rErr) {
         setResendErr(rErr.message);
