@@ -14,6 +14,7 @@ import { getAuthRedirectURL } from "@/lib/auth-redirect";
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
     mode: search.mode === "signin" ? ("signin" as const) : ("signup" as const),
+    from: search.from === "onboarding" ? ("onboarding" as const) : undefined,
   }),
   component: AuthPage,
   head: () => ({
