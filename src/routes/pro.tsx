@@ -169,11 +169,10 @@ function ProUpgrade({
           <div className="mt-8 flex flex-wrap items-end gap-6">
             <div>
               <div className="font-display text-5xl font-light text-gradient-tentra md:text-6xl">
-                £9
-                <span className="text-2xl text-muted-foreground">/mo</span>
+                Free
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
-                Cancel anytime · 7-day free trial
+                Included free during Tentra Early Access ✨
               </div>
             </div>
             <Button
@@ -186,7 +185,7 @@ function ProUpgrade({
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  Start free trial <ArrowRight className="ml-1 h-4 w-4" />
+                  Unlock Pro free <ArrowRight className="ml-1 h-4 w-4" />
                 </>
               )}
             </Button>
@@ -239,7 +238,7 @@ function ProUpgrade({
           Ready to study like an athlete?
         </h2>
         <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
-          Join Tentra Pro and turn 12 weeks of revision into your best performance under pressure.
+          Pro features are currently free during Tentra Early Access ✨ — unlock the full intelligence layer in one tap.
         </p>
         <Button
           size="lg"
@@ -247,7 +246,7 @@ function ProUpgrade({
           onClick={onUpgrade}
           className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Start 7-day free trial"}
+          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Unlock Pro free"}
         </Button>
       </section>
     </div>
@@ -504,17 +503,13 @@ function ProDashboard({
         <div>
           <div className="text-sm font-semibold text-foreground">Tentra Pro membership</div>
           <div className="text-xs text-muted-foreground">
-            £9/month · cancel anytime
+            Free during Tentra Early Access ✨
           </div>
         </div>
-        <Button
-          variant="outline"
-          className="rounded-full"
-          disabled={busy}
-          onClick={onCancel}
-        >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cancel Pro"}
-        </Button>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-pink-blue px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary-foreground shadow-glow">
+          <Sparkles className="h-3 w-3" />
+          Unlocked
+        </span>
       </section>
 
       {/* FAB */}
