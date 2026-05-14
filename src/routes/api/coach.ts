@@ -151,15 +151,21 @@ export const Route = createFileRoute("/api/coach")({
           }
           const token = authHeader.replace("Bearer ", "");
 
+          if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+            return new Response(JSON.stringify({ error: "Auth not configured" }), { status: 500 });
+          }
+          const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            global: { headers: { Authorization: `Bearer ${token}` } },
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+          const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
+          if (claimsError || !claims?.claims?.sub) {
+            return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+          }
+          const userId = claims.claims.sub as string;
           let userContext = "";
-          if (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY) {
-            const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-              global: { headers: { Authorization: `Bearer ${token}` } },
-              auth: { persistSession: false, autoRefreshToken: false },
-            });
-            const { data: claims } = await supabase.auth.getClaims(token);
-            if (claims?.claims?.sub) {
-              const userId = claims.claims.sub as string;
+          {
+            {
               const { data: profile } = await supabase
                 .from("profiles")
                 .select("first_name, display_name, is_pro")
