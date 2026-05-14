@@ -24,6 +24,7 @@ import {
   Gauge,
   Activity,
   Flame,
+  Scale,
 } from "lucide-react";
 import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
