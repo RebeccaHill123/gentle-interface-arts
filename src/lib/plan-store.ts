@@ -4,15 +4,34 @@ import { hasRecentAuthCallback, waitForAuthUser } from "@/lib/auth-session";
 
 export type ExamType = "SQE1" | "SQE2";
 
+export type ExamPath =
+  | "SQE1_FULL"
+  | "FLK1"
+  | "FLK2"
+  | "SQE2"
+  | "CUSTOM";
+
+export type IntensityTier =
+  | "beginner"
+  | "intermediate"
+  | "advanced"
+  | "resitter";
+
+export type CoverageMode = "even" | "advanced";
+
 export interface ModuleConfidence {
   id: string;
   name: string;
   confidence: number; // 1-5
+  weakSubtopics?: string[]; // names of subtopics user flagged as weak
 }
 
 export interface OnboardingInput {
   name: string;
-  examType: ExamType;
+  examType: ExamType; // derived from examPath; kept for back-compat
+  examPath?: ExamPath;
+  intensity?: IntensityTier;
+  coverageMode?: CoverageMode;
   examDate: string; // ISO
   hoursPerWeek: number;
   modules: ModuleConfidence[];
