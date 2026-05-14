@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
   Sparkles,
   Play,
-  Timer,
+  
   Target,
   Brain,
   Layers,
@@ -56,6 +56,7 @@ type Mode = {
   comingSoon?: boolean;
   icon: typeof Play;
   to?: string;
+  paper?: "FLK1" | "FLK2";
   accent: string;
 };
 
@@ -70,12 +71,23 @@ const PRACTICE_MODES: Mode[] = [
     accent: "from-pink/30 to-blue/30",
   },
   {
-    title: "Timed Mini Mock",
-    desc: "Compact, timed SBA set drawn from across the syllabus to simulate exam pacing.",
-    duration: "30 Q · 45 min",
-    focus: "Pacing · accuracy",
-    icon: Timer,
-    comingSoon: true,
+    title: "Mini FLK1 Mock",
+    desc: "Exam-style mini paper drawn from FLK1 subjects: Contract, Tort, Business, Dispute Resolution, Public Law, Ethics.",
+    duration: "20 Q · 30 min",
+    focus: "Pacing · breadth",
+    icon: Scale,
+    to: "mini-flk",
+    paper: "FLK1",
+    accent: "from-pink/30 to-blue/20",
+  },
+  {
+    title: "Mini FLK2 Mock",
+    desc: "Exam-style mini paper drawn from FLK2 subjects: Property, Wills, Trusts, Criminal, Solicitors' Accounts, Ethics.",
+    duration: "20 Q · 30 min",
+    focus: "Pacing · breadth",
+    icon: Scale,
+    to: "mini-flk",
+    paper: "FLK2",
     accent: "from-blue/30 to-pink/20",
   },
   {
@@ -184,6 +196,9 @@ const RESOURCES: Resource[] = [
 function MocksPage() {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
+  const [practicePreset, setPracticePreset] = useState<
+    { type: "mini-flk"; paper: "FLK1" | "FLK2" } | undefined
+  >(undefined);
 
   return (
     <AppShell title="Mocks & Practice" subtitle="Exam simulation & targeted practice.">
@@ -239,8 +254,15 @@ function MocksPage() {
             const interactive = !m.comingSoon && !!m.to;
             const handleClick = () => {
               if (!interactive) return;
-              if (m.to === "quiz") setQuizOpen(true);
-              else setPracticeOpen(true);
+              if (m.to === "quiz") {
+                setQuizOpen(true);
+              } else if (m.to === "mini-flk" && m.paper) {
+                setPracticePreset({ type: "mini-flk", paper: m.paper });
+                setPracticeOpen(true);
+              } else {
+                setPracticePreset(undefined);
+                setPracticeOpen(true);
+              }
             };
             const Wrapper: any = interactive ? "button" : "div";
             const wrapperProps = interactive
@@ -349,7 +371,14 @@ function MocksPage() {
         </p>
       </section>
 
-      <PracticeLauncherDialog open={practiceOpen} onOpenChange={setPracticeOpen} />
+      <PracticeLauncherDialog
+        open={practiceOpen}
+        onOpenChange={(v) => {
+          setPracticeOpen(v);
+          if (!v) setPracticePreset(undefined);
+        }}
+        preset={practicePreset}
+      />
       <AIQuizBuilderDialog open={quizOpen} onOpenChange={setQuizOpen} />
     </AppShell>
   );

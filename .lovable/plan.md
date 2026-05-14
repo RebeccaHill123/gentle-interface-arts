@@ -1,30 +1,41 @@
-## Problem
+## Goal
 
-On `/pro`, the headline reads:
+Add a way for users to launch a **Mini FLK1** or **Mini FLK2** practice assessment from `/mocks`. Each one is a timed, exam-style mini-mock drawing questions only from the subjects belonging to that FLK paper.
 
-> Welcome back to *Pro*.
+## Where it slots in
 
-The word "Pro" uses `italic` + `text-gradient-tentra` (which sets `background-clip: text` and a transparent fill). Italic glyphs slant past their normal bounding box on the right, and `background-clip: text` is rendered against that tighter box — so the right edge of the "o" gets sliced off. The trailing period sitting flush against it makes the clip more obvious.
+The Mocks page already has a "Practice modes" grid. Today it has a generic "Timed Mini Mock" card marked Coming Soon. We'll replace that single placeholder with **two live cards**:
 
-## Fix
+- **Mini FLK1** — 20 SBAs · 30 min · drawn from FLK1 subjects (Contract, Tort, Business Law, Dispute Resolution, Constitutional, Legal System, Ethics).
+- **Mini FLK2** — 20 SBAs · 30 min · drawn from FLK2 subjects (Property, Wills & Estates, Trusts, Criminal Law/Practice, Solicitors' Accounts, Ethics).
 
-In `src/routes/pro.tsx` (line 359), wrap the gradient word so it has room to breathe:
+Both are exam-style: timed, mixed across the paper's subjects, weighted by syllabus `weight` and `highYield` from `src/lib/sqe-syllabus.ts`.
 
-- Add `inline-block` so it gets its own box.
-- Add a touch of right padding (e.g. `pr-1`) so the italic overhang is inside the painted area.
-- Keep the period outside the span so the spacing still looks right.
+## How clicking one launches the session
 
-Resulting markup:
+Reuse the existing `PracticeLauncherDialog` flow rather than adding a parallel UI. Two small extensions:
 
-```tsx
-Welcome back to{" "}
-<span className="italic text-gradient-tentra inline-block pr-1">Pro</span>.
-```
+1. **New practice type** `"mini-flk"` with a `paper: "FLK1" | "FLK2"` field on the launch config.
+2. When the user clicks Mini FLK1/2 on `/mocks`, skip the format step and open the dialog **pre-configured** at the review step with:
+   - format: `mini-flk`
+   - paper: FLK1 or FLK2
+   - subject: `"Mixed (FLK1)"` / `"Mixed (FLK2)"` (not auto, not a single subject)
+   - duration: 30 min, questions: 20, timed: true, difficulty: Standard (Adaptive if user has analytics signal).
+   - rationale: "Exam-style sample of FLK1 weighted by syllabus share."
+3. On Begin, write `practice:config` to sessionStorage with `paper` included and navigate to `/practice` — same as today.
 
-## Why not change the font/style
+## Practice page changes
 
-The italic + gradient combo is a deliberate brand treatment used elsewhere (landing page "smarter", "SQE syllabus"). Padding the inline-block keeps the look consistent and only fixes the clipping.
+`/practice` already reads `practice:config`. Update its question generation so when `format === "mini-flk"`, it filters the syllabus pool by `paper` before sampling. No UI change needed beyond the header showing "Mini FLK1" / "Mini FLK2".
 
-## Optional follow-up
+## Files to touch
 
-The same pattern (`italic text-gradient-tentra` without `inline-block`/padding) exists in a few other places. If you want, I can sweep the codebase and apply the same fix anywhere the italic gradient text could clip — say the word and I'll include it.
+- `src/routes/mocks.tsx` — replace the single "Timed Mini Mock" entry with two entries (Mini FLK1, Mini FLK2). Wire their `onClick` to open `PracticeLauncherDialog` with a new prop `preset={{ type: "mini-flk", paper: "FLK1" | "FLK2" }}`.
+- `src/components/practice-launcher-dialog.tsx` — accept optional `preset` prop. When present on open, jump straight to step 3 with the values prefilled and the `paper` carried through into the `practice:config`. Add `mini-flk` to the `PracticeType` union with its own icon (Scale) and skill focus (`["Pacing", "Breadth", "Application"]`).
+- `src/routes/practice.tsx` — when `config.format === "mini-flk"`, filter the syllabus pool by `config.paper` before building the question set; show the paper label in the header.
+
+## Out of scope
+
+- Full 180-question mock (kept as Coming Soon).
+- Per-subject FLK breakdowns or separate FLK landing pages.
+- Saving FLK results as a distinct entity — they flow through the existing practice/session storage.
