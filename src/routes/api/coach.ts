@@ -151,29 +151,30 @@ export const Route = createFileRoute("/api/coach")({
           }
           const token = authHeader.replace("Bearer ", "");
 
-          let userContext = "";
-          if (SUPABASE_URL && SUPABASE_PUBLISHABLE_KEY) {
-            const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-              global: { headers: { Authorization: `Bearer ${token}` } },
-              auth: { persistSession: false, autoRefreshToken: false },
-            });
-            const { data: claims } = await supabase.auth.getClaims(token);
-            if (claims?.claims?.sub) {
-              const userId = claims.claims.sub as string;
-              const { data: profile } = await supabase
-                .from("profiles")
-                .select("first_name, display_name, is_pro")
-                .eq("user_id", userId)
-                .maybeSingle();
-              const { data: planRow } = await supabase
-                .from("user_plans")
-                .select("plan")
-                .eq("user_id", userId)
-                .maybeSingle();
-              const name = profile?.first_name || profile?.display_name || "there";
-              userContext = buildInsights(planRow?.plan as Record<string, unknown> | null, name);
-            }
+          if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+            return new Response(JSON.stringify({ error: "Auth not configured" }), { status: 500 });
           }
+          const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            global: { headers: { Authorization: `Bearer ${token}` } },
+            auth: { persistSession: false, autoRefreshToken: false },
+          });
+          const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
+          if (claimsError || !claims?.claims?.sub) {
+            return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+          }
+          const userId = claims.claims.sub as string;
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name, display_name, is_pro")
+            .eq("user_id", userId)
+            .maybeSingle();
+          const { data: planRow } = await supabase
+            .from("user_plans")
+            .select("plan")
+            .eq("user_id", userId)
+            .maybeSingle();
+          const name = profile?.first_name || profile?.display_name || "there";
+          const userContext = buildInsights(planRow?.plan as Record<string, unknown> | null, name);
 
           const body = await request.json().catch(() => ({}));
           const messages = Array.isArray(body?.messages) ? body.messages.slice(-20) : [];
