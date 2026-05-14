@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { waitForAuthUser } from "@/lib/auth-session";
 import {
   savePlan,
   pullPlanFromCloud,
@@ -42,13 +41,8 @@ import {
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/onboarding")({
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const user = await waitForAuthUser();
-    if (!user) {
-      throw redirect({ to: "/auth", search: { mode: "signin" } });
-    }
-  },
+  // No auth gate — onboarding runs for anonymous visitors so they can
+  // experience the personalised plan BEFORE being asked to sign up.
   component: OnboardingPage,
   head: () => ({
     meta: [
@@ -167,24 +161,29 @@ function OnboardingPage() {
   const [modules, setModules] = useState<ModuleConfidence[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Skip if already onboarded; prefill name from profile
+  // Prefill name from profile if signed-in. If a plan already exists in the
+  // cloud (signed-in returning user), jump straight to dashboard.
   useEffect(() => {
     (async () => {
-      const existing = await pullPlanFromCloud();
-      if (existing) {
-        navigate({ to: "/dashboard" });
-        return;
-      }
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user?.id;
-      if (uid) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("first_name, display_name")
-          .eq("user_id", uid)
-          .maybeSingle();
-        if (profile?.first_name) setName(profile.first_name);
-        else if (profile?.display_name) setName(profile.display_name);
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user?.id;
+        if (uid) {
+          const existing = await pullPlanFromCloud();
+          if (existing) {
+            navigate({ to: "/dashboard" });
+            return;
+          }
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name, display_name")
+            .eq("user_id", uid)
+            .maybeSingle();
+          if (profile?.first_name) setName(profile.first_name);
+          else if (profile?.display_name) setName(profile.display_name);
+        }
+      } catch {
+        // Anonymous visitor — that's fine, continue onboarding.
       }
       setChecking(false);
     })();
@@ -305,7 +304,18 @@ function OnboardingPage() {
         sessions: [],
       };
       savePlan(stored);
-      navigate({ to: "/dashboard" });
+      // If signed in, savePlan already pushed to cloud → straight to dashboard.
+      // Otherwise, the plan lives in localStorage and we route to signup so
+      // the user can claim/save it. Auth callback + signin/up will sync it.
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user?.id) {
+        navigate({ to: "/dashboard" });
+      } else {
+        navigate({
+          to: "/auth",
+          search: { mode: "signup", from: "onboarding" },
+        });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {

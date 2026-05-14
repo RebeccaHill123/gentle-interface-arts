@@ -112,6 +112,18 @@ function AuthCallbackPage() {
         window.history.replaceState({}, document.title, "/auth/callback");
         markAuthCallbackComplete();
 
+        // If a plan was built before signup, sync it to the user's account.
+        try {
+          const { loadPlan, pushPlanToCloud } = await import("@/lib/plan-store");
+          const local = loadPlan();
+          if (local) {
+            await pushPlanToCloud(local);
+            navigate({ to: "/dashboard", replace: true });
+            return;
+          }
+        } catch {
+          // ignore — fall through to onboarding
+        }
         // /onboarding handles redirect to /dashboard if a plan already exists.
         navigate({ to: "/onboarding", replace: true });
       } catch (err) {

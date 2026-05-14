@@ -47,7 +47,9 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   const { isAuthenticated, loading } = useAuth();
-  const ctaTo = isAuthenticated ? "/dashboard" : "/auth";
+  // Anonymous visitors go straight into the plan builder — they experience
+  // the personalised "aha moment" before being asked to create an account.
+  const ctaTo = isAuthenticated ? "/dashboard" : "/onboarding";
   const ctaLabel = isAuthenticated ? "Go to Dashboard" : "Start Revising Free";
 
   return (
@@ -86,7 +88,7 @@ function LandingPage() {
                   size="sm"
                   className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
                 >
-                  <Link to="/auth" search={{ mode: "signup" }}>Get started</Link>
+                  <Link to="/onboarding">Get started</Link>
                 </Button>
               </>
             )}
@@ -124,7 +126,7 @@ function LandingPage() {
                   size="lg"
                   className="h-14 w-full rounded-full bg-gradient-pink-blue px-8 text-base font-semibold text-primary-foreground shadow-glow hover:opacity-95 md:w-auto"
                 >
-                  <Link to={ctaTo} search={isAuthenticated ? undefined : { mode: "signup" }}>
+                  <Link to={ctaTo}>
                     {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
                   </Link>
                 </Button>
@@ -283,7 +285,7 @@ function LandingPage() {
             asChild
             className="h-12 w-full rounded-full bg-gradient-pink-blue text-base font-semibold text-primary-foreground shadow-glow hover:opacity-95"
           >
-            <Link to="/auth" search={{ mode: "signup" }}>
+            <Link to="/onboarding">
               Start Revising Free <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
           </Button>

@@ -10,10 +10,12 @@ import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getRememberMe, setRememberMe } from "@/lib/remember-me";
 import { getAuthRedirectURL } from "@/lib/auth-redirect";
+import { loadPlan, pushPlanToCloud } from "@/lib/plan-store";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
     mode: search.mode === "signin" ? ("signin" as const) : ("signup" as const),
+    from: search.from === "onboarding" ? ("onboarding" as const) : undefined,
   }),
   component: AuthPage,
   head: () => ({
@@ -44,8 +46,9 @@ const signInSchema = z.object({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { mode: initialMode } = Route.useSearch();
+  const { mode: initialMode, from } = Route.useSearch();
   const [mode, setMode] = useState<"signup" | "signin">(initialMode);
+  const fromOnboarding = from === "onboarding";
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -130,7 +133,14 @@ function AuthPage() {
           setVerifySent(parsed.data.email);
           return;
         }
-        navigate({ to: "/onboarding" });
+        // If they built a plan before signing up, push it to cloud now.
+        const local = loadPlan();
+        if (local) {
+          await pushPlanToCloud(local);
+          navigate({ to: "/dashboard" });
+        } else {
+          navigate({ to: "/onboarding" });
+        }
       } else {
         const parsed = signInSchema.safeParse({ email, password });
         if (!parsed.success) {
@@ -152,6 +162,11 @@ function AuthPage() {
             setError(signInErr.message);
           }
           return;
+        }
+        // Sync any locally-built plan to the user's account.
+        const local = loadPlan();
+        if (local) {
+          await pushPlanToCloud(local);
         }
         navigate({ to: "/dashboard" });
       }
@@ -234,6 +249,17 @@ function AuthPage() {
               <>Sign in to <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">Tentra</span></>
             )}
           </h1>
+
+          {fromOnboarding && isSignup && (
+            <div className="mt-4 rounded-2xl border border-pink/30 bg-gradient-pink-blue/10 p-4 text-sm">
+              <div className="font-semibold text-foreground">
+                Your personalised plan is ready ✨
+              </div>
+              <p className="mt-1 text-muted-foreground">
+                Create a free account to save it, track your streak, and unlock your dashboard. Free during early access.
+              </p>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="mt-7 space-y-4" noValidate>
             {isSignup && (
