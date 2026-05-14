@@ -17,6 +17,17 @@ import {
   Flame,
   Activity,
   Brain,
+  GraduationCap,
+  ClipboardList,
+  LineChart,
+  MessageSquare,
+  BookOpen,
+  Layers,
+  Target,
+  ListChecks,
+  Lightbulb,
+  History,
+  RefreshCw,
 } from "lucide-react";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
@@ -24,17 +35,87 @@ import { loadPlan, computeStreak } from "@/lib/plan-store";
 import { deriveAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
 
 type Msg = { role: "user" | "assistant"; content: string };
+type Suggestion = { label: string; prompt: string; icon?: typeof Sparkles };
+type Mode = "coach" | "tutor" | "practice" | "analyse";
 
-type Suggestion = { label: string; prompt: string };
-
-const BASE_SUGGESTIONS: Suggestion[] = [
-  { label: "Re-plan my week", prompt: "Re-plan my week strategically based on recent performance, recency gaps and exam proximity. What gets added, dropped or interleaved — and why?" },
-  { label: "What should I prioritise tomorrow?", prompt: "Based on my data, what are the 3 most important things I should do tomorrow, in order, and why each one?" },
-  { label: "Generate a weak-area drill", prompt: "Design a focused drill that targets my weakest patterns. Specify module, format, length, pacing and what success looks like." },
-  { label: "Explain my biggest performance risk", prompt: "What is my single biggest risk to passing right now? Cite the data and tell me how to neutralise it this week." },
-  { label: "Reduce workload this week", prompt: "I'm feeling stretched. Cut my plan back to the essentials this week without losing exam-readiness — and explain the trade-offs." },
-  { label: "Challenge me with hard SBAs", prompt: "Build me a high-difficulty SBA challenge in my weakest module at full SQE pace. Tell me what you're testing and why." },
+const MODES: {
+  id: Mode;
+  label: string;
+  icon: typeof Sparkles;
+  blurb: string;
+  systemHint: string;
+}[] = [
+  {
+    id: "coach",
+    label: "Coach",
+    icon: Sparkles,
+    blurb: "Strategy, planning and what to do next.",
+    systemHint:
+      "Reply as a strategic study coach. Prioritise planning, sequencing and trade-offs.",
+  },
+  {
+    id: "tutor",
+    label: "Tutor",
+    icon: GraduationCap,
+    blurb: "Explain a topic, walk through a rule, teach me.",
+    systemHint:
+      "Reply as a 1:1 SQE tutor. Explain the law clearly, with structure, key cases/statutes only when certain, and a worked example.",
+  },
+  {
+    id: "practice",
+    label: "Practice",
+    icon: ClipboardList,
+    blurb: "Quiz me, generate SBAs, drill weak areas.",
+    systemHint:
+      "Reply as an SQE assessment author. Generate exam-style SBA questions with 4 options, mark the correct answer, and give a one-line explanation per question.",
+  },
+  {
+    id: "analyse",
+    label: "Analyse",
+    icon: LineChart,
+    blurb: "Read my data, surface risks and patterns.",
+    systemHint:
+      "Reply as a performance analyst. Cite the user's snapshot data explicitly, identify patterns, name the single highest-leverage move.",
+  },
 ];
+
+const SUGGESTIONS_BY_MODE: Record<Mode, Suggestion[]> = {
+  coach: [
+    { label: "Build tonight's revision session", prompt: "Build me tonight's revision session — 60 minutes, structured, prioritised by what my data says I need most.", icon: ListChecks },
+    { label: "Re-plan my week", prompt: "Re-plan my week strategically based on recent performance, recency gaps and exam proximity. What gets added, dropped or interleaved — and why?", icon: RefreshCw },
+    { label: "What should I prioritise tomorrow?", prompt: "Based on my data, what are the 3 most important things I should do tomorrow, in order, and why each one?", icon: Target },
+    { label: "Reduce workload this week", prompt: "I'm feeling stretched. Cut my plan back to the essentials this week without losing exam-readiness — and explain the trade-offs.", icon: Activity },
+  ],
+  tutor: [
+    { label: "Explain easements simply", prompt: "Explain easements simply, like I'm a beginner. Cover creation, scope and termination, with one short worked example.", icon: BookOpen },
+    { label: "Summarise negligence in 2 mins", prompt: "Summarise negligence in 2 minutes — the four elements, the key tests, and the 2 most-tested traps in SQE1.", icon: Lightbulb },
+    { label: "Explain consideration like I'm new", prompt: "Explain the doctrine of consideration like I'm completely new to it. Cover past consideration, sufficiency vs adequacy, and the practical exception in Williams v Roffey.", icon: BookOpen },
+    { label: "Walk me through trust formalities", prompt: "Walk me through the formalities for creating an express trust over land vs personalty, with the section references and one common SQE trap.", icon: GraduationCap },
+  ],
+  practice: [
+    { label: "Quiz me on consideration", prompt: "Quiz me on consideration. Ask one SBA at a time, wait for my answer, then mark it and explain.", icon: MessageSquare },
+    { label: "Generate 5 SBA questions on trusts", prompt: "Generate 5 SQE1-style SBA questions on trusts. Provide 4 options each (A–D), mark the correct answer, and add a one-line explanation per question.", icon: ClipboardList },
+    { label: "Test me on criminal law", prompt: "Test me on criminal law with 5 mixed SBAs across non-fatal offences, theft and homicide. Show the answers and explanations after I answer.", icon: Target },
+    { label: "Give me a mini mock", prompt: "Give me a 10-question mini mock from across FLK1 subjects, exam-style, with mark scheme at the end.", icon: Layers },
+    { label: "Create a flashcard set", prompt: "Create a 10-card flashcard set on the most-tested rules in land law. Format as 'Q: …' / 'A: …' pairs.", icon: Layers },
+  ],
+  analyse: [
+    { label: "What am I weakest at?", prompt: "Based on my snapshot, what am I weakest at right now? Be specific, cite the data, and tell me the single highest-leverage move this week.", icon: AlertTriangle },
+    { label: "Review my mock feedback", prompt: "Look at my recent mock performance and give me feedback: what's improving, what's regressing, and what to drill next.", icon: LineChart },
+    { label: "Explain my biggest performance risk", prompt: "What is my single biggest risk to passing right now? Cite the data and tell me how to neutralise it this week.", icon: AlertTriangle },
+    { label: "Where are my recency gaps?", prompt: "Which subjects have the worst recency decay right now and how should I sequence them back into my plan over the next 7 days?", icon: History },
+  ],
+};
+
+const THINKING_LINES = [
+  "Reading your performance snapshot…",
+  "Pulling syllabus weighting…",
+  "Cross-referencing recent sessions…",
+  "Calibrating to your confidence map…",
+  "Drafting the response…",
+];
+
+const HISTORY_KEY = "coach:lastConversation";
 
 export const Route = createFileRoute("/coach")({
   beforeLoad: async () => {
@@ -45,8 +126,8 @@ export const Route = createFileRoute("/coach")({
   component: CoachPage,
   head: () => ({
     meta: [
-      { title: "Tentra Coach · Your AI study strategist" },
-      { name: "description", content: "A conversational AI strategist that synthesises your mocks, confidence, recency and consistency into adaptive SQE guidance." },
+      { title: "Tentra Coach · Your AI SQE tutor & strategist" },
+      { name: "description", content: "A conversational AI SQE tutor and study strategist. Ask legal questions, generate practice, drill weak areas and get adaptive plans." },
     ],
   }),
 });
@@ -59,10 +140,14 @@ function CoachPage() {
   const [streak, setStreak] = useState(0);
   const [analytics, setAnalytics] = useState<AnalyticsBundle | null>(null);
   const [daysToExam, setDaysToExam] = useState<number | null>(null);
+  const [mode, setMode] = useState<Mode>("coach");
+  const [thinkingIdx, setThinkingIdx] = useState(0);
+  const [hasPrior, setHasPrior] = useState(false);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
+  // Bootstrap: profile + analytics + last conversation flag
   useEffect(() => {
     (async () => {
       const user = await waitForAuthUser();
@@ -79,16 +164,18 @@ function CoachPage() {
         setStreak(computeStreak(plan.sessions).current);
         setAnalytics(deriveAnalytics(plan));
         if (plan.input?.examDate) {
-          const d = Math.max(
-            0,
-            Math.round((+new Date(plan.input.examDate) - Date.now()) / 86400000),
-          );
+          const d = Math.max(0, Math.round((+new Date(plan.input.examDate) - Date.now()) / 86400000));
           setDaysToExam(d);
         }
       }
     })().catch(() => {});
 
     try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { messages?: Msg[] };
+        if (Array.isArray(parsed.messages) && parsed.messages.length > 0) setHasPrior(true);
+      }
       const prefilled = sessionStorage.getItem("coach:autosend");
       if (prefilled) {
         sessionStorage.removeItem("coach:autosend");
@@ -97,11 +184,32 @@ function CoachPage() {
     } catch {}
   }, []);
 
+  // Persist conversation
+  useEffect(() => {
+    if (messages.length === 0) return;
+    try {
+      localStorage.setItem(
+        HISTORY_KEY,
+        JSON.stringify({ messages: messages.slice(-30), savedAt: Date.now() }),
+      );
+      setHasPrior(true);
+    } catch {}
+  }, [messages]);
+
+  // Animated thinking text
+  useEffect(() => {
+    if (!isStreaming) return;
+    setThinkingIdx(0);
+    const id = setInterval(() => {
+      setThinkingIdx((i) => (i + 1) % THINKING_LINES.length);
+    }, 1100);
+    return () => clearInterval(id);
+  }, [isStreaming]);
+
   useEffect(() => {
     scrollerRef.current?.scrollTo({ top: scrollerRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, isStreaming]);
 
-  // Auto-grow textarea
   useEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
@@ -115,10 +223,21 @@ function CoachPage() {
     return firstName ? `${part}, ${firstName}.` : `${part}.`;
   }, [firstName]);
 
-  // Build dynamic strategic insights from real analytics
+  const contextualHook = useMemo(() => {
+    if (!analytics) return "Ask me anything — I'll teach, plan, quiz or analyse.";
+    const weakest = analytics.weakest[0];
+    const trend = analytics.subjects.find((s) => s.trend !== null);
+    if (weakest && trend) {
+      return `Based on your recent ${weakest.module} scores, I'd start there — but ask me anything.`;
+    }
+    if (weakest) return `${weakest.module} is your softest module right now. Want me to drill or explain it?`;
+    if (daysToExam !== null && daysToExam < 60) return `${daysToExam} days to exam. Let's make every session count.`;
+    return "Ask me anything — I'll teach, plan, quiz or analyse.";
+  }, [analytics, daysToExam]);
+
   const strategicInsights = useMemo(() => {
     if (!analytics) return [];
-    const out: { icon: typeof TrendingUp; tone: "good" | "warn" | "info"; text: string }[] = [];
+    const out: { icon: typeof TrendingUp; tone: "good" | "warn" | "info"; text: string; prompt: string }[] = [];
 
     const improving = analytics.subjects
       .filter((s) => s.trend !== null && (s.trend ?? 0) >= 5)
@@ -127,7 +246,8 @@ function CoachPage() {
       out.push({
         icon: TrendingUp,
         tone: "good",
-        text: `${improving.module} accuracy is up ${improving.trend}% across recent sessions — momentum is yours.`,
+        text: `${improving.module} accuracy is up ${improving.trend}% — momentum is yours.`,
+        prompt: `${improving.module} is improving — what should I do to lock in the gains?`,
       });
     }
 
@@ -138,7 +258,8 @@ function CoachPage() {
       out.push({
         icon: TrendingDown,
         tone: "warn",
-        text: `${declining.module} has dropped ${Math.abs(declining.trend ?? 0)}% — flagging for spaced reinforcement.`,
+        text: `${declining.module} has dropped ${Math.abs(declining.trend ?? 0)}% — flagging for reinforcement.`,
+        prompt: `Diagnose why ${declining.module} is regressing and prescribe the next 3 sessions.`,
       });
     }
 
@@ -149,7 +270,8 @@ function CoachPage() {
       out.push({
         icon: AlertTriangle,
         tone: "warn",
-        text: `${stale.module} hasn't been revised in ${stale.recencyDays} days. Recency decay is starting to bite.`,
+        text: `${stale.module} hasn't been revised in ${stale.recencyDays} days.`,
+        prompt: `Build a 45-minute refresher for ${stale.module} that targets the highest-yield gaps.`,
       });
     }
 
@@ -157,7 +279,8 @@ function CoachPage() {
       out.push({
         icon: Sun,
         tone: "info",
-        text: `You perform ${analytics.peak.uplift}% better in ${analytics.peak.label} blocks — protect that window.`,
+        text: `You perform ${analytics.peak.uplift}% better in ${analytics.peak.label} blocks.`,
+        prompt: `How should I structure my ${analytics.peak.label} blocks for maximum yield?`,
       });
     }
 
@@ -167,13 +290,15 @@ function CoachPage() {
         out.push({
           icon: Activity,
           tone: "warn",
-          text: `${daysToExam} days to exam at ${r}% readiness — scaling mock exposure is the highest-leverage move.`,
+          text: `${daysToExam} days to exam at ${r}% readiness — scale mock exposure now.`,
+          prompt: `${daysToExam} days to exam at ${r}% readiness — what's the highest-leverage 7-day plan?`,
         });
       } else if (r >= 70) {
         out.push({
           icon: Brain,
           tone: "good",
-          text: `Readiness is tracking at ${r}%. Hold the line and protect weak-area drills.`,
+          text: `Readiness is tracking at ${r}%. Hold the line.`,
+          prompt: `Readiness is ${r}% — how do I protect the gains over the next 2 weeks?`,
         });
       }
     }
@@ -182,43 +307,70 @@ function CoachPage() {
       out.push({
         icon: Flame,
         tone: "good",
-        text: `${streak}-day streak. Consistency is the engine — log a session today to keep compounding.`,
+        text: `${streak}-day streak. Consistency is the engine.`,
+        prompt: `I'm on a ${streak}-day streak. How do I get the most from today's session?`,
       });
     }
 
     return out.slice(0, 3);
   }, [analytics, daysToExam, streak]);
 
-  // Suggestions adapt to real data
   const suggestions = useMemo<Suggestion[]>(() => {
     const dyn: Suggestion[] = [];
-    if (analytics) {
+    if (analytics && (mode === "coach" || mode === "analyse" || mode === "practice")) {
       const weakest = analytics.weakest[0];
       if (weakest) {
         dyn.push({
-          label: `Explain why ${weakest.module} is weak`,
-          prompt: `Diagnose why ${weakest.module} is underperforming for me. Use my recency, confidence, accuracy and trend — and prescribe the next 3 sessions.`,
-        });
-      }
-      const top = analytics.atRisk[0];
-      if (top && top.module !== weakest?.module) {
-        dyn.push({
-          label: `Drill ${top.module} now`,
-          prompt: `Build me a focused ${top.module} drill targeting my weakest sub-topics, sized for one focus block, with timing guidance.`,
+          label: mode === "practice" ? `Drill ${weakest.module}` : `Why is ${weakest.module} weak?`,
+          prompt:
+            mode === "practice"
+              ? `Build me a 10-question SBA drill on ${weakest.module}, targeting my weakest sub-topics, with answers and explanations.`
+              : `Diagnose why ${weakest.module} is underperforming for me. Use my recency, confidence, accuracy and trend — and prescribe the next 3 sessions.`,
+          icon: Target,
         });
       }
     }
-    return [...dyn, ...BASE_SUGGESTIONS].slice(0, 7);
-  }, [analytics]);
+    return [...dyn, ...SUGGESTIONS_BY_MODE[mode]].slice(0, 7);
+  }, [mode, analytics]);
 
   const canSend = input.trim().length > 0 && !isStreaming;
+
+  function resumePrior() {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { messages?: Msg[] };
+      if (Array.isArray(parsed.messages) && parsed.messages.length > 0) {
+        setMessages(parsed.messages);
+        toast.success("Picked up where you left off");
+      }
+    } catch {}
+  }
+
+  function newConversation() {
+    setMessages([]);
+    try { localStorage.removeItem(HISTORY_KEY); } catch {}
+    setHasPrior(false);
+  }
 
   async function send(textOverride?: string) {
     const text = (textOverride ?? input).trim();
     if (!text || isStreaming) return;
     setInput("");
-    const next: Msg[] = [...messages, { role: "user", content: text }];
-    setMessages(next);
+
+    // Inject a lightweight mode hint as a leading system-style user note,
+    // only on the first message of a fresh conversation, so the assistant
+    // adopts the right register without bloating long threads.
+    const modeHint = MODES.find((m) => m.id === mode)?.systemHint ?? "";
+    const userMsg: Msg = { role: "user", content: text };
+    const next: Msg[] =
+      messages.length === 0 && modeHint
+        ? [{ role: "user", content: `[${MODES.find((m) => m.id === mode)?.label} mode] ${modeHint}` }, { role: "assistant", content: "Understood." }, ...messages, userMsg]
+        : [...messages, userMsg];
+
+    // Show the user's actual message in the UI (skip the hidden hint pair if present)
+    const visible: Msg[] = [...messages, userMsg];
+    setMessages(visible);
     setIsStreaming(true);
 
     try {
@@ -298,104 +450,180 @@ function CoachPage() {
   }
 
   const isEmpty = messages.length === 0;
+  const activeMode = MODES.find((m) => m.id === mode)!;
 
   return (
     <AppShell
       title="Tentra Coach"
-      subtitle="Your AI study strategist"
+      subtitle="Your AI SQE tutor & strategist"
       actions={
-        <span className="hidden items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs backdrop-blur sm:inline-flex">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-pink opacity-60" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-pink" />
-          </span>
-          <span className="font-medium text-muted-foreground">Synthesising your data</span>
-        </span>
+        !isEmpty ? (
+          <button
+            onClick={newConversation}
+            className="hidden items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur transition hover:border-pink/40 hover:text-foreground sm:inline-flex"
+          >
+            <RefreshCw className="h-3 w-3" /> New conversation
+          </button>
+        ) : null
       }
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        {/* SECTION 1 — Strategic insight strip */}
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+        {/* MODE TABS */}
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-border bg-card/40 p-1 backdrop-blur">
+            {MODES.map((m) => {
+              const Icon = m.icon;
+              const active = mode === m.id;
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => setMode(m.id)}
+                  className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                    active
+                      ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
+                      : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+                  }`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {m.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="px-1 text-xs text-muted-foreground">{activeMode.blurb}</p>
+        </div>
+
+        {/* EMPTY STATE */}
         {isEmpty && (
-          <section className="flex flex-col gap-4 pt-2">
+          <section className="flex flex-col gap-5 animate-fade-in">
             <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Strategic read</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Tentra Coach</p>
               <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-[28px]">
                 {greeting}{" "}
-                <span className="text-muted-foreground">
-                  {analytics?.hasAnyData
-                    ? "Here's what your data is telling me."
-                    : "Log a few sessions and I'll start synthesising your strategy."}
-                </span>
+                <span className="text-muted-foreground">{contextualHook}</span>
               </h1>
             </div>
 
-            {strategicInsights.length > 0 && (
-              <div className="grid gap-2">
-                {strategicInsights.map((ins, i) => {
-                  const Icon = ins.icon;
-                  const tone =
-                    ins.tone === "good"
-                      ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-300"
-                      : ins.tone === "warn"
-                        ? "border-amber-400/30 bg-amber-400/5 text-amber-300"
-                        : "border-pink/30 bg-pink/5 text-pink";
-                  return (
-                    <div
-                      key={i}
-                      className="group flex items-start gap-3 rounded-2xl border border-border bg-card/40 p-3.5 backdrop-blur transition-colors hover:bg-card/60"
-                    >
-                      <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${tone}`}>
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      <p className="flex-1 text-sm leading-relaxed text-foreground">{ins.text}</p>
-                    </div>
-                  );
-                })}
+            {/* Capability grid */}
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              {[
+                { icon: BookOpen, label: "Ask legal questions" },
+                { icon: GraduationCap, label: "Topic explanations" },
+                { icon: ClipboardList, label: "Generate practice" },
+                { icon: ListChecks, label: "Personalised plans" },
+                { icon: Target, label: "Review weak areas" },
+                { icon: LineChart, label: "Mock feedback" },
+              ].map((c) => {
+                const Icon = c.icon;
+                return (
+                  <div
+                    key={c.label}
+                    className="flex items-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs text-muted-foreground backdrop-blur"
+                  >
+                    <Icon className="h-3.5 w-3.5 text-pink" />
+                    {c.label}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Strategic insights — only on Coach/Analyse modes */}
+            {(mode === "coach" || mode === "analyse") && strategicInsights.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Based on your recent data
+                </p>
+                <div className="grid gap-2">
+                  {strategicInsights.map((ins, i) => {
+                    const Icon = ins.icon;
+                    const tone =
+                      ins.tone === "good"
+                        ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-300"
+                        : ins.tone === "warn"
+                          ? "border-amber-400/30 bg-amber-400/5 text-amber-300"
+                          : "border-pink/30 bg-pink/5 text-pink";
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => send(ins.prompt)}
+                        className="group flex items-start gap-3 rounded-2xl border border-border bg-card/40 p-3.5 text-left backdrop-blur transition-colors hover:border-pink/40 hover:bg-card/60"
+                      >
+                        <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${tone}`}>
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <p className="flex-1 text-sm leading-relaxed text-foreground">{ins.text}</p>
+                        <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
+            )}
+
+            {/* Resume prior conversation */}
+            {hasPrior && (
+              <button
+                onClick={resumePrior}
+                className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card/40 p-3 text-left backdrop-blur transition hover:border-pink/40 hover:bg-card/60"
+              >
+                <span className="flex items-center gap-2.5">
+                  <span className="grid h-8 w-8 place-items-center rounded-xl border border-border bg-background/60 text-muted-foreground">
+                    <History className="h-4 w-4" />
+                  </span>
+                  <span className="text-sm">
+                    <span className="font-medium text-foreground">Resume last conversation</span>
+                    <span className="ml-1 text-muted-foreground">— pick up where you left off</span>
+                  </span>
+                </span>
+                <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+              </button>
             )}
           </section>
         )}
 
-        {/* SECTION 2 — Conversation */}
+        {/* CONVERSATION */}
         {!isEmpty && (
           <section
             ref={scrollerRef}
-            className="-mx-2 flex-1 overflow-y-auto px-2 pt-4"
-            style={{ maxHeight: "calc(100vh - 280px)" }}
+            className="-mx-2 flex-1 overflow-y-auto px-2"
+            style={{ maxHeight: "calc(100vh - 320px)" }}
           >
             <div className="flex flex-col gap-6">
               {messages.map((m, i) => (
                 <Message key={i} role={m.role} content={m.content} firstName={firstName} />
               ))}
               {isStreaming && messages[messages.length - 1]?.role === "user" && (
-                <div className="flex items-center gap-2 pl-11 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2 pl-11 text-xs text-muted-foreground animate-fade-in">
                   <span className="flex gap-1">
                     <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-pink [animation-delay:-0.3s]" />
                     <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-pink [animation-delay:-0.15s]" />
                     <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-pink" />
                   </span>
-                  Reading your data…
+                  <span key={thinkingIdx} className="animate-fade-in">{THINKING_LINES[thinkingIdx]}</span>
                 </div>
               )}
             </div>
           </section>
         )}
 
-        {/* SECTION 3 + 4 — Composer with suggestion chips */}
+        {/* COMPOSER */}
         <section className="sticky bottom-4 z-10 flex flex-col gap-3">
-          {/* Suggestion chips */}
           <div className="flex flex-wrap gap-2">
-            {suggestions.map((s) => (
-              <button
-                key={s.label}
-                onClick={() => send(s.prompt)}
-                disabled={isStreaming}
-                className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur transition-all hover:border-pink/40 hover:bg-card hover:text-foreground disabled:opacity-50"
-              >
-                {s.label}
-                <ArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
-              </button>
-            ))}
+            {suggestions.map((s) => {
+              const Icon = s.icon ?? Sparkles;
+              return (
+                <button
+                  key={s.label}
+                  onClick={() => send(s.prompt)}
+                  disabled={isStreaming}
+                  className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur transition-all hover:border-pink/40 hover:bg-card hover:text-foreground disabled:opacity-50"
+                >
+                  <Icon className="h-3 w-3 text-pink" />
+                  {s.label}
+                  <ArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+                </button>
+              );
+            })}
           </div>
 
           <form
@@ -409,7 +637,15 @@ function CoachPage() {
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
               }}
-              placeholder="Ask for analysis, a re-plan, or push back on a recommendation…"
+              placeholder={
+                mode === "tutor"
+                  ? "Ask me to explain a topic, walk through a rule, teach you something…"
+                  : mode === "practice"
+                    ? "Ask me to quiz you, generate SBAs, or run a mini mock…"
+                    : mode === "analyse"
+                      ? "Ask me to read your data, surface risks, or review a mock…"
+                      : "Ask for a re-plan, prioritisation, or push back on a recommendation…"
+              }
               rows={1}
               className="min-h-[44px] flex-1 resize-none border-0 bg-transparent text-[15px] focus-visible:ring-0"
             />
@@ -422,7 +658,7 @@ function CoachPage() {
             </Button>
           </form>
           <p className="text-center text-[11px] text-muted-foreground">
-            Synthesising mocks, confidence, recency and consistency. Study guidance, not legal advice.
+            Tutoring, planning, practice and analysis. Study guidance, not legal advice.
           </p>
         </section>
       </div>
@@ -435,7 +671,7 @@ function Message({ role, content, firstName }: { role: "user" | "assistant"; con
   const initial = (firstName?.[0] || "Y").toUpperCase();
 
   return (
-    <div className="flex gap-3">
+    <div className="flex gap-3 animate-fade-in">
       <div
         className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-semibold ${
           isUser
