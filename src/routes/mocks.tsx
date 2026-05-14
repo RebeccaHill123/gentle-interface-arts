@@ -3,7 +3,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
   Sparkles,
   Play,
-  Timer,
+  
   Target,
   Brain,
   Layers,
