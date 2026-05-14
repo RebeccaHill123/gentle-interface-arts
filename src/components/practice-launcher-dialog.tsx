@@ -99,6 +99,7 @@ const PRACTICE_TYPES: {
 const DURATIONS: { v: 10 | 20 | 30 | 45 | 90; label: string }[] = [
   { v: 10, label: "10 min" },
   { v: 20, label: "20 min" },
+  { v: 30, label: "30 min" },
   { v: 45, label: "45 min" },
   { v: 90, label: "90 min" },
 ];
