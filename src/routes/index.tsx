@@ -88,7 +88,7 @@ function LandingPage() {
                   size="sm"
                   className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
                 >
-                  <Link to="/auth" search={{ mode: "signup" }}>Get started</Link>
+                  <Link to="/onboarding">Get started</Link>
                 </Button>
               </>
             )}
