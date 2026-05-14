@@ -104,12 +104,24 @@ const DURATIONS: { v: 10 | 20 | 30 | 45 | 90; label: string }[] = [
   { v: 90, label: "90 min" },
 ];
 
+export type PracticeLauncherPreset = {
+  type: PracticeType;
+  paper?: "FLK1" | "FLK2";
+};
+
+const FLK_SUBJECT_LIST: Record<"FLK1" | "FLK2", string> = {
+  FLK1: "Contract, Tort, Business Law, Dispute Resolution, Constitutional & Administrative, Legal System, Ethics",
+  FLK2: "Property Practice, Wills & Estates, Trusts, Land Law, Criminal Law, Criminal Practice, Solicitors' Accounts, Ethics",
+};
+
 export function PracticeLauncherDialog({
   open,
   onOpenChange,
+  preset,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
+  preset?: PracticeLauncherPreset;
 }) {
   const navigate = useNavigate();
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -118,6 +130,7 @@ export function PracticeLauncherDialog({
   const [duration, setDuration] = useState<10 | 20 | 30 | 45 | 90>(20);
   const [adaptive, setAdaptive] = useState(true);
   const [launching, setLaunching] = useState(false);
+  const [paper, setPaper] = useState<"FLK1" | "FLK2" | undefined>(undefined);
 
   const analytics = useMemo(() => deriveAnalytics(loadPlan()), [open]);
   const subjects: SubjectStat[] = analytics.subjects;
@@ -128,22 +141,38 @@ export function PracticeLauncherDialog({
 
   // Reset on open
   useEffect(() => {
-    if (open) {
-      setStep(1);
-      setType("weak-area");
-      setSubject("auto");
-      setDuration(20);
+    if (!open) return;
+    if (preset?.type === "mini-flk" && preset.paper) {
+      setType("mini-flk");
+      setPaper(preset.paper);
+      setSubject(`Mixed (${preset.paper})`);
+      setDuration(30);
       setAdaptive(true);
       setLaunching(false);
+      setStep(3);
+    } else {
+      setStep(1);
+      setType(preset?.type ?? "weak-area");
+      setSubject("auto");
+      setDuration(
+        (PRACTICE_TYPES.find((p) => p.id === (preset?.type ?? "weak-area"))?.defaultMinutes ?? 20) as 10 | 20 | 30 | 45 | 90,
+      );
+      setAdaptive(true);
+      setLaunching(false);
+      setPaper(undefined);
     }
-  }, [open]);
+  }, [open, preset]);
 
   const meta = PRACTICE_TYPES.find((p) => p.id === type)!;
 
   // Recommended subject = highest risk, or chosen one
   const recommended = subjects.slice().sort((a, b) => b.riskScore - a.riskScore)[0];
   const targetSubject =
-    subject === "auto" ? recommended?.module ?? "Mixed" : subject;
+    type === "mini-flk" && paper
+      ? `Mixed (${paper})`
+      : subject === "auto"
+        ? recommended?.module ?? "Mixed"
+        : subject;
   const targetStat = subjects.find((s) => s.module === targetSubject);
 
   // Question count scales with duration ratio
@@ -166,7 +195,13 @@ export function PracticeLauncherDialog({
           : "Standard";
 
   const reasonBits: string[] = [];
-  if (subject === "auto" && recommended) {
+  if (type === "mini-flk" && paper) {
+    reasonBits.push(
+      `Exam-style ${paper} mini mock — questions sampled across ${paper} subjects`,
+    );
+    if (daysToExam !== null && daysToExam < 90)
+      reasonBits.push(`${daysToExam} days to exam`);
+  } else if (subject === "auto" && recommended) {
     reasonBits.push(
       `${recommended.module} is your highest-risk module right now (risk ${recommended.riskScore}/100)`,
     );
@@ -182,30 +217,46 @@ export function PracticeLauncherDialog({
     if (targetStat.recencyDays != null)
       reasonBits.push(`last touched ${targetStat.recencyDays}d ago`);
   }
-  if (daysToExam !== null && daysToExam < 60)
+  if (
+    type !== "mini-flk" &&
+    daysToExam !== null &&
+    daysToExam < 60
+  )
     reasonBits.push(`${daysToExam} days to exam`);
 
   function launch() {
     setLaunching(true);
-    const rationale = reasonBits.length
-      ? `Generated because ${reasonBits.join(", ")}.`
-      : `Generated from a balanced view of your syllabus.`;
+    const rationale =
+      type === "mini-flk" && paper
+        ? `Mini ${paper} mock — 20 SBAs sampled across ${FLK_SUBJECT_LIST[paper]}, weighted by syllabus share.`
+        : reasonBits.length
+          ? `Generated because ${reasonBits.join(", ")}.`
+          : `Generated from a balanced view of your syllabus.`;
 
     const skillFocus =
-      type === "scenario"
-        ? ["Application", "Issue spotting", "Reasoning"]
-        : type === "flashcards"
-          ? ["Recall", "Definitions", "Procedural rules"]
-          : type === "technique"
-            ? ["Pacing", "Elimination", "Answer hygiene"]
-            : ["Accuracy", "Pattern recognition", "Speed"];
+      type === "mini-flk"
+        ? ["Pacing", "Breadth", "Application"]
+        : type === "scenario"
+          ? ["Application", "Issue spotting", "Reasoning"]
+          : type === "flashcards"
+            ? ["Recall", "Definitions", "Procedural rules"]
+            : type === "technique"
+              ? ["Pacing", "Elimination", "Answer hygiene"]
+              : ["Accuracy", "Pattern recognition", "Speed"];
+
+    // For mini-flk, send a descriptive module string so the AI generates
+    // mixed-subject questions covering the whole paper.
+    const moduleForGen =
+      type === "mini-flk" && paper
+        ? `${paper} mixed paper (${FLK_SUBJECT_LIST[paper]})`
+        : targetSubject;
 
     const config = {
       source: "practice-launcher" as const,
       format: type,
-      formatLabel: meta.title,
-      module: targetSubject,
-      topic: meta.title,
+      formatLabel: type === "mini-flk" && paper ? `Mini ${paper} Mock` : meta.title,
+      module: moduleForGen,
+      topic: type === "mini-flk" && paper ? `Mixed ${paper} mini mock` : meta.title,
       questions: questionCount,
       duration,
       difficulty,
@@ -214,6 +265,7 @@ export function PracticeLauncherDialog({
       rationale,
       reasonBits,
       skillFocus,
+      paper: type === "mini-flk" ? paper : undefined,
     };
 
     try {
