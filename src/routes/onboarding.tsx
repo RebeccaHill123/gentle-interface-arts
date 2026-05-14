@@ -161,24 +161,29 @@ function OnboardingPage() {
   const [modules, setModules] = useState<ModuleConfidence[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  // Skip if already onboarded; prefill name from profile
+  // Prefill name from profile if signed-in. If a plan already exists in the
+  // cloud (signed-in returning user), jump straight to dashboard.
   useEffect(() => {
     (async () => {
-      const existing = await pullPlanFromCloud();
-      if (existing) {
-        navigate({ to: "/dashboard" });
-        return;
-      }
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user?.id;
-      if (uid) {
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("first_name, display_name")
-          .eq("user_id", uid)
-          .maybeSingle();
-        if (profile?.first_name) setName(profile.first_name);
-        else if (profile?.display_name) setName(profile.display_name);
+      try {
+        const { data: userData } = await supabase.auth.getUser();
+        const uid = userData.user?.id;
+        if (uid) {
+          const existing = await pullPlanFromCloud();
+          if (existing) {
+            navigate({ to: "/dashboard" });
+            return;
+          }
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name, display_name")
+            .eq("user_id", uid)
+            .maybeSingle();
+          if (profile?.first_name) setName(profile.first_name);
+          else if (profile?.display_name) setName(profile.display_name);
+        }
+      } catch {
+        // Anonymous visitor — that's fine, continue onboarding.
       }
       setChecking(false);
     })();
