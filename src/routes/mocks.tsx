@@ -2,11 +2,10 @@ import { useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import {
   Sparkles,
-  Play,
   Target,
   Scale,
   ArrowRight,
-  Zap,
+  Lock,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -60,8 +59,8 @@ function MocksPage() {
 
         <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div className="max-w-xl">
-            <Badge className="rounded-full bg-pink/15 text-pink hover:bg-pink/15">
-              <Zap className="mr-1 h-3 w-3" /> Featured
+            <Badge variant="outline" className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground">
+              <Lock className="mr-1 h-3 w-3" /> Coming soon
             </Badge>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
               Full Mock
@@ -75,16 +74,16 @@ function MocksPage() {
 
             <div className="mt-6 flex flex-wrap gap-3">
               <Button
-                onClick={openPractice}
                 size="lg"
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                disabled
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow opacity-60"
               >
-                <Play className="mr-1.5 h-4 w-4" /> Start full mock
+                <Lock className="mr-1.5 h-4 w-4" /> Coming soon
               </Button>
             </div>
           </div>
 
-          <div className="hidden h-32 w-32 shrink-0 place-items-center rounded-3xl bg-gradient-pink-blue text-primary-foreground shadow-glow md:grid">
+          <div className="hidden h-32 w-32 shrink-0 place-items-center rounded-3xl bg-gradient-pink-blue text-primary-foreground opacity-70 shadow-glow md:grid">
             <Scale className="h-14 w-14" />
           </div>
         </div>
