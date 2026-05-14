@@ -169,11 +169,10 @@ function ProUpgrade({
           <div className="mt-8 flex flex-wrap items-end gap-6">
             <div>
               <div className="font-display text-5xl font-light text-gradient-tentra md:text-6xl">
-                £9
-                <span className="text-2xl text-muted-foreground">/mo</span>
+                Free
               </div>
               <div className="mt-1 text-xs text-muted-foreground">
-                Cancel anytime · 7-day free trial
+                Included free during Tentra Early Access ✨
               </div>
             </div>
             <Button
@@ -186,7 +185,7 @@ function ProUpgrade({
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  Start free trial <ArrowRight className="ml-1 h-4 w-4" />
+                  Unlock Pro free <ArrowRight className="ml-1 h-4 w-4" />
                 </>
               )}
             </Button>
