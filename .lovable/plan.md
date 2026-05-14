@@ -1,41 +1,61 @@
 ## Goal
+Turn the single-page onboarding into a premium, multi-step flow that produces a deeply personalised SQE plan — especially for resitters and users targeting only one paper.
 
-Add a way for users to launch a **Mini FLK1** or **Mini FLK2** practice assessment from `/mocks`. Each one is a timed, exam-style mini-mock drawing questions only from the subjects belonging to that FLK paper.
+## New onboarding flow (`/onboarding`)
+A 5-step wizard with progress bar, smooth transitions (framer-motion), glassy cards, mobile-first.
 
-## Where it slots in
+**Step 1 — Exam Path**
+Card grid: SQE1 Full · FLK1 Only · FLK2 Only · SQE2 · Custom. Drives which subjects appear later.
 
-The Mocks page already has a "Practice modes" grid. Today it has a generic "Timed Mini Mock" card marked Coming Soon. We'll replace that single placeholder with **two live cards**:
+**Step 2 — Your Story (intensity)**
+- Exam date (date picker)
+- Hours/week (slider with live "session shape" preview)
+- Confidence level: Beginner · Intermediate · Advanced · Resitter (cards with descriptions)
 
-- **Mini FLK1** — 20 SBAs · 30 min · drawn from FLK1 subjects (Contract, Tort, Business Law, Dispute Resolution, Constitutional, Legal System, Ethics).
-- **Mini FLK2** — 20 SBAs · 30 min · drawn from FLK2 subjects (Property, Wills & Estates, Trusts, Criminal Law/Practice, Solicitors' Accounts, Ethics).
+**Step 3 — Coverage Mode**
+Two big choice cards:
+- **Cover Everything** — even weighting across all selected subjects
+- **Advanced Personalisation** — pick weak modules + drill into weak subtopics
 
-Both are exam-style: timed, mixed across the paper's subjects, weighted by syllabus `weight` and `highYield` from `src/lib/sqe-syllabus.ts`.
+**Step 4 — Module + Subtopic weighting** (shown for both modes; collapsed in Cover-Everything)
+- Show subjects for the chosen path, sourced from `src/lib/sqe-syllabus.ts`
+- Confidence 1–5 per subject (existing UX, polished)
+- In Advanced mode: expand a subject to multi-select weak subtopics (chip selector). Selected subtopics get extra weight.
 
-## How clicking one launches the session
+**Step 5 — Review & Generate**
+Summary card: path, exam date, hrs/wk, confidence tier, weak focus list. CTA "Build my adaptive plan" with loader.
 
-Reuse the existing `PracticeLauncherDialog` flow rather than adding a parallel UI. Two small extensions:
+## Data model changes
+Extend `OnboardingInput` in `src/lib/plan-store.ts`:
+```ts
+examPath: "SQE1_FULL" | "FLK1" | "FLK2" | "SQE2" | "CUSTOM"
+intensity: "beginner" | "intermediate" | "advanced" | "resitter"
+coverageMode: "even" | "advanced"
+modules: ModuleConfidence[]  // now includes weakSubtopics: string[]
+```
+`ExamType` stays for backwards compat (derived from `examPath`).
 
-1. **New practice type** `"mini-flk"` with a `paper: "FLK1" | "FLK2"` field on the launch config.
-2. When the user clicks Mini FLK1/2 on `/mocks`, skip the format step and open the dialog **pre-configured** at the review step with:
-   - format: `mini-flk`
-   - paper: FLK1 or FLK2
-   - subject: `"Mixed (FLK1)"` / `"Mixed (FLK2)"` (not auto, not a single subject)
-   - duration: 30 min, questions: 20, timed: true, difficulty: Standard (Adaptive if user has analytics signal).
-   - rationale: "Exam-style sample of FLK1 weighted by syllabus share."
-3. On Begin, write `practice:config` to sessionStorage with `paper` included and navigate to `/practice` — same as today.
+## Plan engine changes (`supabase/functions/generate-plan/index.ts`)
+- Accept new fields; default-fill for legacy callers.
+- Subject set = derived from `examPath` (FLK1 only / FLK2 only / both / SQE2 list / user-picked).
+- Weighted score: existing PRIORITY SCORE + intensity multiplier + subtopic-weakness boost. Resitter tier shifts pacing toward mocks + targeted refresh; Beginner tier favours concept-deepdive + active-recall.
+- Spaced repetition: explicitly schedule re-touches at 1/3/7/14d for weak subtopics in `weeklyFocus`.
+- Update system prompt: include weak subtopics list, intensity tier, and instruction to bias tasks toward those subtopics by name.
+- Deterministic fallback updated to honour the same inputs.
 
-## Practice page changes
+## UI direction
+- Stepper component (5 dots + labels) at top.
+- Each step in a glass card with the existing gradient pink-blue accents.
+- Framer-motion fade/slide between steps.
+- Sticky bottom action bar on mobile (Back / Continue).
+- Reuse existing tokens — no new colors.
 
-`/practice` already reads `practice:config`. Update its question generation so when `format === "mini-flk"`, it filters the syllabus pool by `paper` before sampling. No UI change needed beyond the header showing "Mini FLK1" / "Mini FLK2".
+## Files to change
+- `src/routes/onboarding.tsx` — full rewrite into wizard
+- `src/lib/plan-store.ts` — extend types + persist new fields
+- `supabase/functions/generate-plan/index.ts` — accept + use new inputs, update prompt + fallback
+- `src/lib/sqe-syllabus.ts` — add helper `getSubjectsForPath(examPath)`
 
-## Files to touch
-
-- `src/routes/mocks.tsx` — replace the single "Timed Mini Mock" entry with two entries (Mini FLK1, Mini FLK2). Wire their `onClick` to open `PracticeLauncherDialog` with a new prop `preset={{ type: "mini-flk", paper: "FLK1" | "FLK2" }}`.
-- `src/components/practice-launcher-dialog.tsx` — accept optional `preset` prop. When present on open, jump straight to step 3 with the values prefilled and the `paper` carried through into the `practice:config`. Add `mini-flk` to the `PracticeType` union with its own icon (Scale) and skill focus (`["Pacing", "Breadth", "Application"]`).
-- `src/routes/practice.tsx` — when `config.format === "mini-flk"`, filter the syllabus pool by `config.paper` before building the question set; show the paper label in the header.
-
-## Out of scope
-
-- Full 180-question mock (kept as Coming Soon).
-- Per-subject FLK breakdowns or separate FLK landing pages.
-- Saving FLK results as a distinct entity — they flow through the existing practice/session storage.
+## Out of scope (this turn)
+- Live re-weighting from quiz/mock results (the engine already accepts `recentMockAccuracy` + `adjustModuleConfidence` exists). We'll keep that pipeline as-is; the new inputs make it more meaningful.
+- Dashboard UI changes — plan rendering already supports the existing schema.
