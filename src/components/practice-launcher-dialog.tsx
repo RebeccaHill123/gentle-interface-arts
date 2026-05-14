@@ -453,13 +453,15 @@ export function PracticeLauncherDialog({
                   Targeted skills
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {(type === "scenario"
-                    ? ["Application", "Issue spotting", "Reasoning"]
-                    : type === "flashcards"
-                      ? ["Recall", "Definitions", "Procedural rules"]
-                      : type === "technique"
-                        ? ["Pacing", "Elimination", "Answer hygiene"]
-                        : ["Accuracy", "Pattern recognition", "Speed"]
+                  {(type === "mini-flk"
+                    ? ["Pacing", "Breadth", "Application"]
+                    : type === "scenario"
+                      ? ["Application", "Issue spotting", "Reasoning"]
+                      : type === "flashcards"
+                        ? ["Recall", "Definitions", "Procedural rules"]
+                        : type === "technique"
+                          ? ["Pacing", "Elimination", "Answer hygiene"]
+                          : ["Accuracy", "Pattern recognition", "Speed"]
                   ).map((s) => (
                     <span
                       key={s}
