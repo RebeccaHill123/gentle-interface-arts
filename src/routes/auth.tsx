@@ -9,6 +9,7 @@ import { BackgroundBlobs } from "@/components/background-blobs";
 import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { getRememberMe, setRememberMe } from "@/lib/remember-me";
+import { getAuthRedirectURL } from "@/lib/auth-redirect";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
