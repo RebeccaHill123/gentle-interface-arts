@@ -96,7 +96,7 @@ const PRACTICE_TYPES: {
   },
 ];
 
-const DURATIONS: { v: 10 | 20 | 45 | 90; label: string }[] = [
+const DURATIONS: { v: 10 | 20 | 30 | 45 | 90; label: string }[] = [
   { v: 10, label: "10 min" },
   { v: 20, label: "20 min" },
   { v: 45, label: "45 min" },
@@ -114,7 +114,7 @@ export function PracticeLauncherDialog({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [type, setType] = useState<PracticeType>("weak-area");
   const [subject, setSubject] = useState<string>("auto");
-  const [duration, setDuration] = useState<10 | 20 | 45 | 90>(20);
+  const [duration, setDuration] = useState<10 | 20 | 30 | 45 | 90>(20);
   const [adaptive, setAdaptive] = useState(true);
   const [launching, setLaunching] = useState(false);
 
