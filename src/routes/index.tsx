@@ -47,7 +47,9 @@ export const Route = createFileRoute("/")({
 
 function LandingPage() {
   const { isAuthenticated, loading } = useAuth();
-  const ctaTo = isAuthenticated ? "/dashboard" : "/auth";
+  // Anonymous visitors go straight into the plan builder — they experience
+  // the personalised "aha moment" before being asked to create an account.
+  const ctaTo = isAuthenticated ? "/dashboard" : "/onboarding";
   const ctaLabel = isAuthenticated ? "Go to Dashboard" : "Start Revising Free";
 
   return (
