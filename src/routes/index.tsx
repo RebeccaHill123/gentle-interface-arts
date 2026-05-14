@@ -85,7 +85,7 @@ function LandingPage() {
           </div>
         </header>
 
-        <section className="mx-auto max-w-6xl px-6 pt-12 pb-20 md:pt-24">
+        <section className="mx-auto max-w-6xl px-6 pt-12 pb-12 md:pt-20 md:pb-16">
           <div className="mx-auto max-w-3xl text-center">
             <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-4 py-1.5 text-xs font-semibold text-muted-foreground backdrop-blur">
               <Sparkles className="h-3.5 w-3.5 text-gradient-tentra" />
