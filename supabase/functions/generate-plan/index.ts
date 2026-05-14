@@ -5,12 +5,19 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+type ExamPath = "SQE1_FULL" | "FLK1" | "FLK2" | "SQE2" | "CUSTOM";
+type IntensityTier = "beginner" | "intermediate" | "advanced" | "resitter";
+type CoverageMode = "even" | "advanced";
+
 interface PlanRequest {
   name: string;
   examDate: string; // ISO date
   hoursPerWeek: number;
-  modules: { id: string; name: string; confidence: number }[]; // confidence 1-5
+  modules: { id: string; name: string; confidence: number; weakSubtopics?: string[] }[]; // confidence 1-5
   examType: "SQE1" | "SQE2";
+  examPath?: ExamPath;
+  intensity?: IntensityTier;
+  coverageMode?: CoverageMode;
   recentMockAccuracy?: { module: string; accuracy: number }[];
   recentlyStudied?: { module: string; daysAgo: number }[];
 }
@@ -107,6 +114,8 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   const targetMinutes = Math.max(30, Math.round(body.hoursPerWeek * 60));
   const studiedByModule = new Map((body.recentlyStudied ?? []).map((m) => [m.module, m.daysAgo]));
   const mockByModule = new Map((body.recentMockAccuracy ?? []).map((m) => [m.module, m.accuracy]));
+  const intensity: IntensityTier = body.intensity ?? "intermediate";
+  const intensityWeakBoost = intensity === "resitter" ? 0.25 : intensity === "advanced" ? 0.15 : intensity === "beginner" ? 0.05 : 0.1;
   const scoredModules = body.modules
     .map((module) => {
       const subject = SQE_FALLBACK_SUBJECTS[module.name] ?? { weight: 0.08, highYield: 3, groups: [body.examType], subtopics: [module.name] };
@@ -115,7 +124,8 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
       const recencyBoost = recencyDays === undefined ? 0.2 : Math.min(1, recencyDays / 14) * 0.3;
       const mockAccuracy = mockByModule.get(module.name);
       const mockWeakness = mockAccuracy === undefined ? 0 : Math.max(0, 0.7 - mockAccuracy);
-      const score = subject.weight * 0.4 + (subject.highYield / 5) * 0.3 + confidenceGap * 0.2 + recencyBoost * 0.1 + mockWeakness * 0.15;
+      const subtopicBoost = (module.weakSubtopics?.length ?? 0) > 0 ? intensityWeakBoost : 0;
+      const score = subject.weight * 0.4 + (subject.highYield / 5) * 0.3 + confidenceGap * 0.2 + recencyBoost * 0.1 + mockWeakness * 0.15 + subtopicBoost;
       return { ...module, subject, score, recencyDays, mockAccuracy };
     })
     .sort((a, b) => b.score - a.score);
@@ -133,21 +143,24 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   const rationales: StudyTask["rationale"][] = ["weak-area", "high-yield", "mixed-practice", "recency-gap", "ethics-cornerstone", "mock-prep"];
   const todayTasks = durations.map((minutes, index): StudyTask => {
     const module = focusModules[index % focusModules.length] ?? scoredModules[0];
-    const subtopics = module.subject.subtopics;
+    const weak = module.weakSubtopics ?? [];
+    const subtopics = weak.length > 0 ? weak : module.subject.subtopics;
     const topicA = subtopics[index % subtopics.length];
     const topicB = subtopics[(index + 2) % subtopics.length] ?? topicA;
-    const isWeak = module.confidence <= 2;
+    const isWeak = module.confidence <= 2 || weak.length > 0;
     const isStale = (module.recencyDays ?? 99) > 10;
     const rationale = isStale ? "recency-gap" : isWeak ? "weak-area" : rationales[index % rationales.length];
-    const taskType = module.name.includes("Ethics") || rationale === "ethics-cornerstone" ? "ethics-application" : taskTypes[index % taskTypes.length];
+    const isResitter = intensity === "resitter";
+    const baseTaskType = isResitter && index % 3 === 2 ? "mixed-mock" : isWeak && intensity === "beginner" ? "concept-deepdive" : taskTypes[index % taskTypes.length];
+    const taskType = module.name.includes("Ethics") || rationale === "ethics-cornerstone" ? "ethics-application" : baseTaskType;
     return {
-      title: `${taskType === "timed-sba" || taskType === "mixed-mock" ? "Timed mixed SBA set" : taskType === "active-recall" ? "Active recall drill" : taskType === "mistake-review" ? "Mistake-log review" : "Scenario drill"} on ${topicA}${topicB !== topicA ? ` and ${topicB}` : ""}`,
+      title: `${taskType === "timed-sba" || taskType === "mixed-mock" ? "Timed mixed SBA set" : taskType === "active-recall" ? "Active recall drill" : taskType === "mistake-review" ? "Mistake-log review" : taskType === "concept-deepdive" ? "Concept deep-dive" : "Scenario drill"} on ${topicA}${topicB !== topicA ? ` and ${topicB}` : ""}`,
       module: module.name,
       minutes,
       taskType,
       rationale,
       priority: module.score >= 0.55 ? "high" : module.score >= 0.42 ? "medium" : "low",
-      why: `${module.name} is prioritised for ${isWeak ? "low confidence" : module.subject.highYield >= 4 ? "high-yield coverage" : "balanced interleaving"}${isStale ? " and revision staleness" : ""}.`,
+      why: `${module.name} is prioritised for ${weak.length > 0 ? `flagged weak subtopics (${weak.slice(0, 2).join(", ")})` : isWeak ? "low confidence" : module.subject.highYield >= 4 ? "high-yield coverage" : "balanced interleaving"}${isStale ? " and revision staleness" : ""}.`,
     };
   });
 
@@ -256,13 +269,33 @@ Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
       ? `\nLast revised (days ago):\n${body.recentlyStudied.map((m) => `- ${m.module}: ${m.daysAgo}d`).join("\n")}`
       : "";
 
-    const userPrompt = `Design ${body.name}'s ${body.examType} weekly strategy.
+    const examPath = body.examPath ?? (body.examType === "SQE2" ? "SQE2" : "SQE1_FULL");
+    const intensity = body.intensity ?? "intermediate";
+    const coverageMode = body.coverageMode ?? "even";
+    const intensityGuidance: Record<string, string> = {
+      beginner: "Lead with concept-deepdive and active-recall. Limit timed mocks to 15-20% of weekly minutes. Build foundations before pace.",
+      intermediate: "Balanced mix: ~40% SBA practice, 30% scenario/active recall, 20% deepdive, 10% mock. Standard interleaving.",
+      advanced: "Heavy SBA + mock exposure (≥40% mocks/timed-sba). Surgical weak-area drills. Minimal concept time unless gaps exist.",
+      resitter: "RESITTER MODE — assume prior coverage. ≥50% timed-sba/mixed-mock. Aggressive spaced repetition (1d/3d/7d/14d) on every flagged weak subtopic. Treat low-confidence + flagged subtopics as the entire revision spine.",
+    };
+    const weakSubtopicSummary = body.modules
+      .filter((m) => (m.weakSubtopics?.length ?? 0) > 0)
+      .map((m) => `  - ${m.name}: ${m.weakSubtopics!.join("; ")}`)
+      .join("\n");
+    const weakSubtopicBlock = weakSubtopicSummary
+      ? `\nUSER-FLAGGED WEAK SUBTOPICS (give these noticeably more sessions, drills, mocks and spaced-repetition reps; reference by name in task titles):\n${weakSubtopicSummary}`
+      : "";
+
+    const userPrompt = `Design ${body.name}'s ${examPath} weekly strategy.
+Exam path: ${examPath} (${body.examType})
+Intensity tier: ${intensity.toUpperCase()} — ${intensityGuidance[intensity]}
+Coverage mode: ${coverageMode === "advanced" ? "ADVANCED PERSONALISATION — bias hard toward flagged weak subtopics" : "EVEN — balanced coverage tuned by HY weighting"}
 Exam date: ${body.examDate} (${daysUntilExam} days away)
 Available study time: ${body.hoursPerWeek} hours/week
 Confidence per module (1=weak, 5=strong):
-${body.modules.map((m) => `- ${m.name}: ${m.confidence}/5`).join("\n")}${mockSummary}${recencySummary}
+${body.modules.map((m) => `- ${m.name}: ${m.confidence}/5`).join("\n")}${weakSubtopicBlock}${mockSummary}${recencySummary}
 
-Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names the highest-priority subjects + reasoning, (b) a weekly allocation across modules with rationale tags + plain-English notes (tilt toward high-yield + weak-area + recency-gap, suppress HY≤2 niche topics), (c) academically-specific strategic study blocks for THIS WEEK using interleaving + spaced repetition (mix timed-sba, mistake-review, scenario-drill, active-recall, mixed-mock), each task referencing canonical subtopic names. CRITICAL: the SUM of block minutes MUST equal ${body.hoursPerWeek * 60} (±10%) — i.e. ${body.hoursPerWeek} hours total. Generate as many blocks as needed (typically ${Math.max(4, Math.ceil(body.hoursPerWeek * 60 / 75))}–${Math.ceil(body.hoursPerWeek * 60 / 45)} blocks) using the allowed durations 30/45/60/90/120, and keep the per-module hour split aligned with the weekly allocation in (b). (d) up to 12 weeks of forward-looking weekly themes built around topic clusters, (e) mastery targets per module by exam day weighted by HY + paper weight.`;
+Apply the planner doctrine. Produce: (a) a 1–2 sentence overview that names the highest-priority subjects + reasoning (mention the intensity tier and any weak subtopics by name), (b) a weekly allocation across modules with rationale tags + plain-English notes (tilt toward high-yield + weak-area + recency-gap, suppress HY≤2 niche topics; if user flagged weak subtopics, give those parent modules a noticeably larger share), (c) academically-specific strategic study blocks for THIS WEEK using interleaving + spaced repetition (mix timed-sba, mistake-review, scenario-drill, active-recall, mixed-mock, concept-deepdive). Task titles MUST name flagged weak subtopics where applicable. CRITICAL: the SUM of block minutes MUST equal ${body.hoursPerWeek * 60} (±10%) — i.e. ${body.hoursPerWeek} hours total. Generate as many blocks as needed (typically ${Math.max(4, Math.ceil(body.hoursPerWeek * 60 / 75))}–${Math.ceil(body.hoursPerWeek * 60 / 45)} blocks) using the allowed durations 30/45/60/90/120, and keep the per-module hour split aligned with the weekly allocation in (b). (d) up to 12 weeks of forward-looking weekly themes built around topic clusters, with explicit spaced-repetition re-touches of weak subtopics at week+1, week+2, week+3 from first introduction, (e) mastery targets per module by exam day weighted by HY + paper weight + flagged weakness.`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",

@@ -291,6 +291,43 @@ export function getSubjectsForPaper(paper: FLKPaper): SQESubject[] {
   return SQE_SYLLABUS.filter((s) => s.paper === paper);
 }
 
+export type ExamPath =
+  | "SQE1_FULL"
+  | "FLK1"
+  | "FLK2"
+  | "SQE2"
+  | "CUSTOM";
+
+export const SQE2_SKILL_MODULES = [
+  "Client Interviewing & Attendance Note",
+  "Advocacy",
+  "Case & Matter Analysis",
+  "Legal Research",
+  "Legal Writing",
+  "Legal Drafting",
+];
+
+/**
+ * Returns the canonical subject name list for a given exam path.
+ * For CUSTOM, returns all SQE1 subjects as a default starter set —
+ * the UI lets the user prune from there.
+ */
+export function getSubjectsForPath(path: ExamPath): { name: string; paper?: FLKPaper }[] {
+  switch (path) {
+    case "FLK1":
+      return getSubjectsForPaper("FLK1").map((s) => ({ name: s.name, paper: "FLK1" }));
+    case "FLK2":
+      return getSubjectsForPaper("FLK2").map((s) => ({ name: s.name, paper: "FLK2" }));
+    case "SQE1_FULL":
+      return SQE_SYLLABUS.map((s) => ({ name: s.name, paper: s.paper }));
+    case "SQE2":
+      return SQE2_SKILL_MODULES.map((name) => ({ name }));
+    case "CUSTOM":
+    default:
+      return SQE_SYLLABUS.map((s) => ({ name: s.name, paper: s.paper }));
+  }
+}
+
 export function getRelatedSubjects(id: string): SQESubject[] {
   const subj = getSubject(id);
   if (!subj) return [];
