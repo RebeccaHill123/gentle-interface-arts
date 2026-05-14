@@ -250,6 +250,17 @@ function AuthPage() {
             )}
           </h1>
 
+          {fromOnboarding && isSignup && (
+            <div className="mt-4 rounded-2xl border border-pink/30 bg-gradient-pink-blue/10 p-4 text-sm">
+              <div className="font-semibold text-foreground">
+                Your personalised plan is ready ✨
+              </div>
+              <p className="mt-1 text-muted-foreground">
+                Create a free account to save it, track your streak, and unlock your dashboard. Free during early access.
+              </p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="mt-7 space-y-4" noValidate>
             {isSignup && (
               <div className="grid grid-cols-2 gap-3">
