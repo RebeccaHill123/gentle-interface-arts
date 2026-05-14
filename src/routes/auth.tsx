@@ -133,7 +133,14 @@ function AuthPage() {
           setVerifySent(parsed.data.email);
           return;
         }
-        navigate({ to: "/onboarding" });
+        // If they built a plan before signing up, push it to cloud now.
+        const local = loadPlan();
+        if (local) {
+          await pushPlanToCloud(local);
+          navigate({ to: "/dashboard" });
+        } else {
+          navigate({ to: "/onboarding" });
+        }
       } else {
         const parsed = signInSchema.safeParse({ email, password });
         if (!parsed.success) {
@@ -155,6 +162,11 @@ function AuthPage() {
             setError(signInErr.message);
           }
           return;
+        }
+        // Sync any locally-built plan to the user's account.
+        const local = loadPlan();
+        if (local) {
+          await pushPlanToCloud(local);
         }
         navigate({ to: "/dashboard" });
       }
