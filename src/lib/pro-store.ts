@@ -18,22 +18,23 @@ export async function getProStatus(): Promise<ProStatus> {
   return { isPro: !!data.is_pro, proSince: data.pro_since ?? null };
 }
 
-// SECURITY: Pro status MUST only be granted server-side after a verified
-// payment event (e.g. Stripe webhook). The database enforces this with a
-// trigger that blocks any client-side mutation of `is_pro` / `pro_since`,
-// so calling this from the browser will always fail.
-//
-// To wire payments: create a server route under `app/routes/api/public/`
-// that verifies the payment provider's webhook signature, then uses
-// `supabaseAdmin` (service role) to set `is_pro = true` on the user's row.
+// Early Access flag — Pro is free. When this flips to false, swap the
+// upgrade flow back to the secure payment route under `/api/public/`.
+export const PRO_EARLY_ACCESS_FREE = true;
+
+import { activateEarlyAccessPro } from "@/lib/pro.functions";
+
 export async function upgradeToPro(): Promise<ProStatus> {
-  throw new Error(
-    "Pro upgrades must go through the secure payment flow. Please complete checkout to activate Pro.",
-  );
+  if (!PRO_EARLY_ACCESS_FREE) {
+    throw new Error(
+      "Pro upgrades require checkout. Please complete payment to activate Pro.",
+    );
+  }
+  const result = await activateEarlyAccessPro();
+  return { isPro: result.isPro, proSince: result.proSince };
 }
 
 export async function cancelPro(): Promise<ProStatus> {
-  throw new Error(
-    "Pro cancellation must go through the secure payment flow. Please contact support.",
-  );
+  // No-op during Early Access — Pro is free, nothing to cancel.
+  return { isPro: true, proSince: null };
 }
