@@ -194,16 +194,6 @@ export function ProfileMenu() {
             onSelect={() => go("/pro")}
           />
           <Item
-            icon={GraduationCap}
-            label="Switch exam"
-            onSelect={() => soon("Exam switching")}
-          />
-          <Item
-            icon={BookOpen}
-            label="Study preferences"
-            onSelect={() => go("/settings")}
-          />
-          <Item
             icon={Keyboard}
             label="Keyboard shortcuts"
             trailing={<Kbd>?</Kbd>}
