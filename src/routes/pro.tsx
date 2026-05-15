@@ -186,7 +186,9 @@ function ProUpgrade({
               className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
             >
               {busy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Activating…
+                </>
               ) : (
                 <>
                   Unlock Pro free <ArrowRight className="ml-1 h-4 w-4" />
