@@ -65,13 +65,18 @@ function ProPage() {
   }, []);
 
   async function handleUpgrade() {
+    if (busy || isPro) return;
     setBusy(true);
     try {
-      await upgradeToPro();
+      const result = await upgradeToPro();
+      if (!result.isPro) throw new Error("not activated");
       setIsPro(true);
-      toast.success("Welcome to Tentra Pro 🔥");
-    } catch (e) {
-      toast.error("Upgrade failed. Try again.");
+      toast.success("Pro unlocked ✨");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("tentra:pro-changed", { detail: { isPro: true } }));
+      }
+    } catch {
+      toast.error("Couldn't activate Pro right now. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -82,7 +87,6 @@ function ProPage() {
     try {
       await cancelPro();
       setIsPro(false);
-      toast("Pro cancelled. You can re-upgrade any time.");
     } finally {
       setBusy(false);
     }
