@@ -252,7 +252,13 @@ function ProUpgrade({
           onClick={onUpgrade}
           className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Unlock Pro free"}
+          {busy ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Activating…
+            </>
+          ) : (
+            "Unlock Pro free"
+          )}
         </Button>
       </section>
     </div>
