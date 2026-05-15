@@ -45,7 +45,7 @@ export function ProfileMenu() {
 
   useEffect(() => {
     let active = true;
-    (async () => {
+    const load = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!active || !user) return;
       const [{ data: profile }, pro] = await Promise.all([
@@ -69,9 +69,20 @@ export function ProfileMenu() {
         initial: (name[0] || email[0] || "?").toUpperCase(),
         isPro: pro.isPro,
       });
-    })();
+    };
+    load();
+    const onProChanged = (e: Event) => {
+      const detail = (e as CustomEvent<{ isPro: boolean }>).detail;
+      if (detail && typeof detail.isPro === "boolean") {
+        setInfo((prev) => ({ ...prev, isPro: detail.isPro }));
+      } else {
+        load();
+      }
+    };
+    window.addEventListener("tentra:pro-changed", onProChanged);
     return () => {
       active = false;
+      window.removeEventListener("tentra:pro-changed", onProChanged);
     };
   }, []);
 
