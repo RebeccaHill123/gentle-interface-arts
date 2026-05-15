@@ -65,13 +65,18 @@ function ProPage() {
   }, []);
 
   async function handleUpgrade() {
+    if (busy || isPro) return;
     setBusy(true);
     try {
-      await upgradeToPro();
+      const result = await upgradeToPro();
+      if (!result.isPro) throw new Error("not activated");
       setIsPro(true);
-      toast.success("Welcome to Tentra Pro 🔥");
-    } catch (e) {
-      toast.error("Upgrade failed. Try again.");
+      toast.success("Pro unlocked ✨");
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("tentra:pro-changed", { detail: { isPro: true } }));
+      }
+    } catch {
+      toast.error("Couldn't activate Pro right now. Please try again.");
     } finally {
       setBusy(false);
     }
@@ -82,7 +87,6 @@ function ProPage() {
     try {
       await cancelPro();
       setIsPro(false);
-      toast("Pro cancelled. You can re-upgrade any time.");
     } finally {
       setBusy(false);
     }
@@ -182,7 +186,9 @@ function ProUpgrade({
               className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
             >
               {busy ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Activating…
+                </>
               ) : (
                 <>
                   Unlock Pro free <ArrowRight className="ml-1 h-4 w-4" />
@@ -246,7 +252,13 @@ function ProUpgrade({
           onClick={onUpgrade}
           className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
         >
-          {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Unlock Pro free"}
+          {busy ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" /> Activating…
+            </>
+          ) : (
+            "Unlock Pro free"
+          )}
         </Button>
       </section>
     </div>
