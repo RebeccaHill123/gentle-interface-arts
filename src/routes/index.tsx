@@ -104,7 +104,7 @@ function LandingPage() {
                   <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-primary opacity-75" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
                 </span>
-                Early access · Launching summer 2026
+                Early access
               </span>
 
               <h1 className="mt-4 text-[2.4rem] font-light leading-[1.02] tracking-tight text-foreground md:text-[3.6rem] lg:text-[4.25rem]">
