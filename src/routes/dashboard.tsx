@@ -224,8 +224,8 @@ function DashboardPage() {
         </div>
 
         {tab === "week" && (
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="space-y-6 lg:col-span-2">
+          <div className="grid gap-8 lg:grid-cols-3">
+            <div className="space-y-8 lg:col-span-2">
               <WeeklyProgressPanel
                 doneMins={weeklyDoneMins}
                 targetMins={weeklyTargetMins}
