@@ -309,8 +309,8 @@ function DashboardPage() {
                               )}
                               {t.taskType && <TypeChip type={t.taskType} />}
                               {t.priority === "high" && !done && (
-                                <span className="rounded-full bg-pink/20 px-2 py-0.5 text-[10px] font-semibold text-pink">
-                                  high priority
+                                <span className="rounded-full bg-pink/10 px-2 py-0.5 text-[10px] font-medium text-pink/90">
+                                  priority
                                 </span>
                               )}
                             </div>
