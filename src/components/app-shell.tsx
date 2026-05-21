@@ -202,8 +202,8 @@ function MobileBottomNav() {
                 }`}
               >
                 <span
-                  className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${
-                    active ? "bg-gradient-pink-blue text-primary-foreground shadow-glow" : ""
+                  className={`grid h-8 w-8 place-items-center rounded-xl transition-colors ${
+                    active ? "bg-pink/10 text-pink/90" : ""
                   }`}
                 >
                   <Icon className="h-4 w-4" />
