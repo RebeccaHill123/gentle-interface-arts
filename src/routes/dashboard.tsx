@@ -259,10 +259,10 @@ function DashboardPage() {
                       return (
                         <li
                           key={i}
-                          className={`group flex items-start gap-4 rounded-2xl border p-4 transition-all ${
+                          className={`group flex items-start gap-4 rounded-2xl p-5 transition-colors ${
                             done
-                              ? "border-emerald-400/30 bg-emerald-400/5"
-                              : "border-border bg-background/40 hover:border-pink/40 hover:bg-card"
+                              ? "bg-emerald-400/[0.04]"
+                              : "bg-foreground/[0.015] hover:bg-foreground/[0.035]"
                           }`}
                         >
                           <Tooltip>
