@@ -246,13 +246,13 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                 key={item.to}
                 to={item.to}
                 onClick={onClose}
-                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors ${
                   active
-                    ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                    : "text-muted-foreground hover:bg-card hover:text-foreground"
+                    ? "bg-foreground/[0.06] text-foreground font-medium"
+                    : "text-muted-foreground/80 font-normal hover:bg-foreground/[0.03] hover:text-foreground"
                 }`}
               >
-                <Icon className="h-4 w-4" /> {item.label}
+                <Icon className={`h-4 w-4 ${active ? "text-pink/90" : ""}`} /> {item.label}
               </Link>
             );
           })}
