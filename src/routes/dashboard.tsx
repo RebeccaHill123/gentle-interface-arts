@@ -783,40 +783,35 @@ function WeeklyProgressPanel({
   };
   const onTrack = pct >= Math.round(((new Date().getDay() || 7) / 7) * 100) - 10;
   return (
-    <section className="rounded-3xl border border-border bg-card p-6 shadow-card">
+    <section className="rounded-3xl bg-card p-8 shadow-card">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">Weekly progress</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <h2 className="text-lg font-medium text-foreground">Weekly progress</h2>
+          <p className="mt-1 text-xs text-muted-foreground/80">
             Flexible — study any day. {onTrack ? "You're on track." : "Slight catch-up needed."}
           </p>
         </div>
         <span
-          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-            onTrack ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
+          className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${
+            onTrack ? "bg-emerald-500/8 text-emerald-500/85" : "bg-amber-500/8 text-amber-500/85"
           }`}
         >
           {onTrack ? "On track" : "Catch up"}
         </span>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-7 grid grid-cols-3 gap-6">
         <Stat label="Done" value={fmtH(doneMins)} sub={`of ${fmtH(targetMins)}`} accent />
         <Stat label="Remaining" value={fmtH(remainingMins)} sub="this week" />
-        <Stat label="Active days" value={`${activeDays}/7`} sub={`streak ${streak.current}d`} />
-        <Stat
-          label="Blocks"
-          value={`${blocksDone}/${blocksPlanned}`}
-          sub={`${fmtH(completedPlannedMins)} of ${fmtH(plannedMins)}`}
-        />
+        <Stat label="Active days" value={`${activeDays}/7`} sub={`${streak.current}d streak`} />
       </div>
 
-      <div className="mt-5">
-        <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>Hours toward your weekly target</span>
+      <div className="mt-7">
+        <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground/80">
+          <span>Hours toward weekly target</span>
           <span className="text-foreground">{pct}%</span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-1 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
           <div
             className="h-full rounded-full bg-gradient-pink-blue transition-all"
             style={{ width: `${pct}%` }}
