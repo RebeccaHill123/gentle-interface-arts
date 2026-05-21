@@ -192,7 +192,7 @@ function DashboardPage() {
         />
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-10">
         <HeroBanner
           name={input.name}
           examType={input.examType}
@@ -204,18 +204,18 @@ function DashboardPage() {
           weeklyPct={weeklyPct}
         />
 
-        <div className="flex gap-2 rounded-2xl border border-border bg-card/40 p-1.5 backdrop-blur w-fit">
+        <div className="flex gap-1 w-fit">
           {([
-            { id: "week", label: "This Week" },
+            { id: "week", label: "This week" },
             { id: "mastery", label: "Mastery" },
           ] as const).map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-all ${
+              className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
                 tab === t.id
-                  ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-foreground/[0.06] text-foreground"
+                  : "text-muted-foreground/70 hover:text-foreground"
               }`}
             >
               {t.label}
