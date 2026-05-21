@@ -504,30 +504,28 @@ function StreakCard({
   const active = streak.studiedToday;
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border p-5 backdrop-blur ${
-        active
-          ? "border-pink/40 bg-gradient-pink-blue/10"
-          : "border-border bg-background/60"
+      className={`relative overflow-hidden rounded-2xl p-5 ${
+        active ? "bg-pink/[0.06]" : "bg-foreground/[0.025]"
       }`}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
         Streak
       </div>
-      <div className="mt-1 flex items-baseline gap-2">
+      <div className="mt-2 flex items-baseline gap-2">
         <div className="flex items-center gap-1.5">
           <Flame
-            className={`h-7 w-7 ${active ? "text-pink" : "text-muted-foreground"}`}
+            className={`h-6 w-6 ${active ? "text-pink/90" : "text-muted-foreground/60"}`}
             fill={active ? "currentColor" : "none"}
           />
           <span className="font-display text-4xl text-foreground">
             {streak.current}
           </span>
         </div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground/80">
           {streak.current === 1 ? "day" : "days"}
         </span>
       </div>
-      <div className="mt-2 text-[11px] text-muted-foreground">
+      <div className="mt-2 text-[11px] text-muted-foreground/80">
         {active
           ? `${streak.totalMinutesToday}m logged today`
           : streak.current > 0
@@ -535,7 +533,7 @@ function StreakCard({
             : "Log a session to start"}
       </div>
       {streak.longest > streak.current && (
-        <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+        <div className="mt-1 text-[10px] text-muted-foreground/70">
           Best: {streak.longest}
         </div>
       )}
