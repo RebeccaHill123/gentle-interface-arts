@@ -331,40 +331,37 @@ function DashboardPage() {
               </Panel>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-8">
               <Panel title="Weekly focus" subtitle="Your plan, week by week.">
-                <ol className="space-y-3">
+                <ol className="divide-y divide-border/40">
                   {plan.weeklyFocus.slice(0, 6).map((w, i) => (
-                    <li
-                      key={w.week}
-                      className="rounded-2xl border border-border bg-background/40 p-4"
-                    >
+                    <li key={w.week} className="py-4 first:pt-0 last:pb-0">
                       <div className="flex items-center justify-between">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-pink">
+                        <div className="text-[11px] font-medium text-muted-foreground/80">
                           Week {w.week}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-[11px] text-muted-foreground/70">
                           {w.hours}h
                         </div>
                       </div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
+                      <div className="mt-1.5 text-sm font-medium text-foreground">
                         {w.theme}
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="mt-2.5 flex flex-wrap gap-1.5">
                         {w.modules.slice(0, 3).map((m) => (
                           <span
                             key={m}
-                            className="rounded-full bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                            className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
                           >
                             {m}
                           </span>
                         ))}
+                        {i === 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-pink/10 px-2 py-0.5 text-[10px] font-medium text-pink/90">
+                            <Flame className="h-2.5 w-2.5" /> this week
+                          </span>
+                        )}
                       </div>
-                      {i === 0 && (
-                        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-pink-blue px-2.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                          <Flame className="h-3 w-3" /> This week
-                        </div>
-                      )}
                     </li>
                   ))}
                 </ol>
