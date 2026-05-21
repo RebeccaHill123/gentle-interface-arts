@@ -29,17 +29,17 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
     meta: [
-      { title: "Tentra — the revision app built for SQE students" },
+      { title: "Tentra — SQE1 & SQE2 revision app with personalised study plan" },
       {
         name: "description",
         content:
-          "Track revision like athletes track training. Streaks, analytics, AI coach and a personalised SQE plan — built for ambitious UK law students.",
+          "The SQE revision app for SQE1, FLK1, FLK2 and SQE2. Personalised study planner, MCQ practice, mock exams, AI coach and progress tracking for UK law students.",
       },
-      { property: "og:title", content: "Tentra — track revision like athletes track training" },
+      { property: "og:title", content: "Tentra — SQE1 & SQE2 revision app with personalised study plan" },
       {
         property: "og:description",
         content:
-          "The revision app built for SQE students. Streaks, analytics, AI coach. Free during early access.",
+          "Personalised SQE study schedule, MCQ practice and mock exams. Built for SQE1, FLK1, FLK2 and SQE2 candidates.",
       },
     ],
   }),
