@@ -371,7 +371,7 @@ function DashboardPage() {
         )}
 
         {tab === "mastery" && (
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <Panel
                 title="Topic mastery"
