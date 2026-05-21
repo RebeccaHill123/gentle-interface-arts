@@ -162,18 +162,19 @@ function DesktopSidebar() {
           );
         })}
       </nav>
-      <div className="mt-4 rounded-2xl border border-border bg-background/40 p-4">
+      <div className="mt-4 rounded-2xl bg-foreground/[0.025] p-4">
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-pink" />
-          <div className="text-xs font-semibold text-foreground">Tentra Pro</div>
+          <TrendingUp className="h-3.5 w-3.5 text-pink/90" />
+          <div className="text-xs font-medium text-foreground">Tentra Pro</div>
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-[11px] text-muted-foreground/80">
           Mock exams, AI feedback & smart re-planning.
         </p>
         <Button
           asChild
           size="sm"
-          className="mt-3 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+          variant="ghost"
+          className="mt-3 w-full rounded-full border border-border/60 text-foreground hover:bg-foreground/[0.04]"
         >
           <Link to="/pro">Upgrade</Link>
         </Button>
