@@ -857,13 +857,13 @@ function AllocationBars({
 }) {
   const total = Math.max(1, allocations.reduce((acc, a) => acc + a.hours, 0));
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground/80">
           {allocations.length} modules · {total}h allocated this week
         </div>
       </div>
-      <div className="flex h-3 w-full overflow-hidden rounded-full border border-border bg-background/40">
+      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
         {allocations.map((a) => {
           const pct = (a.hours / total) * 100;
           const colour = RATIONALE_META[a.rationale]?.cls ?? "bg-muted";
@@ -877,24 +877,24 @@ function AllocationBars({
           );
         })}
       </div>
-      <ul className="space-y-2">
+      <ul className="divide-y divide-border/40">
         {allocations.map((a) => {
           const pct = Math.round((a.hours / total) * 100);
           return (
             <li
               key={a.module}
-              className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/40 p-3"
+              className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-foreground">{a.module}</span>
                   <RationaleChip rationale={a.rationale} />
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">{a.note}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground/80">{a.note}</p>
               </div>
               <div className="shrink-0 text-right">
-                <div className="text-sm font-semibold text-foreground">{a.hours}h</div>
-                <div className="text-[10px] text-muted-foreground">{pct}%</div>
+                <div className="text-sm font-medium text-foreground">{a.hours}h</div>
+                <div className="text-[10px] text-muted-foreground/70">{pct}%</div>
               </div>
             </li>
           );
