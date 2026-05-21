@@ -151,29 +151,30 @@ function DesktopSidebar() {
             <Link
               key={item.to}
               to={item.to}
-              className={`flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium transition-all ${
+              className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors ${
                 active
-                  ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:bg-card hover:text-foreground"
+                  ? "bg-foreground/[0.06] text-foreground font-medium"
+                  : "text-muted-foreground/80 font-normal hover:bg-foreground/[0.03] hover:text-foreground"
               }`}
             >
-              <Icon className="h-4 w-4" /> {item.label}
+              <Icon className={`h-4 w-4 ${active ? "text-pink/90" : ""}`} /> {item.label}
             </Link>
           );
         })}
       </nav>
-      <div className="mt-4 rounded-2xl border border-border bg-background/40 p-4">
+      <div className="mt-4 rounded-2xl bg-foreground/[0.025] p-4">
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-pink" />
-          <div className="text-xs font-semibold text-foreground">Tentra Pro</div>
+          <TrendingUp className="h-3.5 w-3.5 text-pink/90" />
+          <div className="text-xs font-medium text-foreground">Tentra Pro</div>
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1 text-[11px] text-muted-foreground/80">
           Mock exams, AI feedback & smart re-planning.
         </p>
         <Button
           asChild
           size="sm"
-          className="mt-3 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+          variant="ghost"
+          className="mt-3 w-full rounded-full border border-border/60 text-foreground hover:bg-foreground/[0.04]"
         >
           <Link to="/pro">Upgrade</Link>
         </Button>
@@ -201,8 +202,8 @@ function MobileBottomNav() {
                 }`}
               >
                 <span
-                  className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${
-                    active ? "bg-gradient-pink-blue text-primary-foreground shadow-glow" : ""
+                  className={`grid h-8 w-8 place-items-center rounded-xl transition-colors ${
+                    active ? "bg-pink/10 text-pink/90" : ""
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -245,13 +246,13 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                 key={item.to}
                 to={item.to}
                 onClick={onClose}
-                className={`flex w-full items-center gap-3 rounded-2xl px-4 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm transition-colors ${
                   active
-                    ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                    : "text-muted-foreground hover:bg-card hover:text-foreground"
+                    ? "bg-foreground/[0.06] text-foreground font-medium"
+                    : "text-muted-foreground/80 font-normal hover:bg-foreground/[0.03] hover:text-foreground"
                 }`}
               >
-                <Icon className="h-4 w-4" /> {item.label}
+                <Icon className={`h-4 w-4 ${active ? "text-pink/90" : ""}`} /> {item.label}
               </Link>
             );
           })}

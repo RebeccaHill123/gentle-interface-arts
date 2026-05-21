@@ -133,7 +133,7 @@
 
   --shadow-glow: 0 20px 60px -20px oklch(0.68 0.23 340 / 0.35);
   --shadow-blue: 0 20px 60px -20px oklch(0.62 0.22 260 / 0.35);
-  --shadow-card: 0 4px 24px -8px oklch(0.5 0.1 285 / 0.15);
+  --shadow-card: 0 1px 2px -1px oklch(0.5 0.08 285 / 0.06), 0 8px 24px -16px oklch(0.5 0.08 285 / 0.12);
 
   --chart-1: oklch(0.72 0.24 350);
   --chart-2: oklch(0.65 0.22 260);

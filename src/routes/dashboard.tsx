@@ -192,7 +192,7 @@ function DashboardPage() {
         />
       }
     >
-      <div className="space-y-6">
+      <div className="space-y-10">
         <HeroBanner
           name={input.name}
           examType={input.examType}
@@ -204,18 +204,18 @@ function DashboardPage() {
           weeklyPct={weeklyPct}
         />
 
-        <div className="flex gap-2 rounded-2xl border border-border bg-card/40 p-1.5 backdrop-blur w-fit">
+        <div className="flex gap-1 w-fit">
           {([
-            { id: "week", label: "This Week" },
+            { id: "week", label: "This week" },
             { id: "mastery", label: "Mastery" },
           ] as const).map((t) => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
-              className={`rounded-xl px-4 py-1.5 text-xs font-semibold transition-all ${
+              className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
                 tab === t.id
-                  ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-foreground/[0.06] text-foreground"
+                  : "text-muted-foreground/70 hover:text-foreground"
               }`}
             >
               {t.label}
@@ -224,8 +224,8 @@ function DashboardPage() {
         </div>
 
         {tab === "week" && (
-          <div className="grid gap-6 lg:grid-cols-3">
-            <div className="space-y-6 lg:col-span-2">
+          <div className="grid gap-8 lg:grid-cols-3">
+            <div className="space-y-8 lg:col-span-2">
               <WeeklyProgressPanel
                 doneMins={weeklyDoneMins}
                 targetMins={weeklyTargetMins}
@@ -259,10 +259,10 @@ function DashboardPage() {
                       return (
                         <li
                           key={i}
-                          className={`group flex items-start gap-4 rounded-2xl border p-4 transition-all ${
+                          className={`group flex items-start gap-4 rounded-2xl p-5 transition-colors ${
                             done
-                              ? "border-emerald-400/30 bg-emerald-400/5"
-                              : "border-border bg-background/40 hover:border-pink/40 hover:bg-card"
+                              ? "bg-emerald-400/[0.04]"
+                              : "bg-foreground/[0.015] hover:bg-foreground/[0.035]"
                           }`}
                         >
                           <Tooltip>
@@ -309,8 +309,8 @@ function DashboardPage() {
                               )}
                               {t.taskType && <TypeChip type={t.taskType} />}
                               {t.priority === "high" && !done && (
-                                <span className="rounded-full bg-pink/20 px-2 py-0.5 text-[10px] font-semibold text-pink">
-                                  high priority
+                                <span className="rounded-full bg-pink/10 px-2 py-0.5 text-[10px] font-medium text-pink/90">
+                                  priority
                                 </span>
                               )}
                             </div>
@@ -331,40 +331,37 @@ function DashboardPage() {
               </Panel>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-8">
               <Panel title="Weekly focus" subtitle="Your plan, week by week.">
-                <ol className="space-y-3">
+                <ol className="divide-y divide-border/40">
                   {plan.weeklyFocus.slice(0, 6).map((w, i) => (
-                    <li
-                      key={w.week}
-                      className="rounded-2xl border border-border bg-background/40 p-4"
-                    >
+                    <li key={w.week} className="py-4 first:pt-0 last:pb-0">
                       <div className="flex items-center justify-between">
-                        <div className="text-xs font-semibold uppercase tracking-wider text-pink">
+                        <div className="text-[11px] font-medium text-muted-foreground/80">
                           Week {w.week}
                         </div>
-                        <div className="text-xs text-muted-foreground">
+                        <div className="text-[11px] text-muted-foreground/70">
                           {w.hours}h
                         </div>
                       </div>
-                      <div className="mt-1 text-sm font-semibold text-foreground">
+                      <div className="mt-1.5 text-sm font-medium text-foreground">
                         {w.theme}
                       </div>
-                      <div className="mt-2 flex flex-wrap gap-1.5">
+                      <div className="mt-2.5 flex flex-wrap gap-1.5">
                         {w.modules.slice(0, 3).map((m) => (
                           <span
                             key={m}
-                            className="rounded-full bg-card px-2 py-0.5 text-[10px] font-medium text-muted-foreground"
+                            className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
                           >
                             {m}
                           </span>
                         ))}
+                        {i === 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-pink/10 px-2 py-0.5 text-[10px] font-medium text-pink/90">
+                            <Flame className="h-2.5 w-2.5" /> this week
+                          </span>
+                        )}
                       </div>
-                      {i === 0 && (
-                        <div className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-gradient-pink-blue px-2.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                          <Flame className="h-3 w-3" /> This week
-                        </div>
-                      )}
                     </li>
                   ))}
                 </ol>
@@ -374,7 +371,7 @@ function DashboardPage() {
         )}
 
         {tab === "mastery" && (
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-8 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <Panel
                 title="Topic mastery"
@@ -385,27 +382,27 @@ function DashboardPage() {
             </div>
             <div>
               <Panel title="Mastery targets">
-                <ul className="space-y-2">
+                <ul className="divide-y divide-border/40">
                   {plan.masteryTargets.slice(0, 8).map((t) => (
                     <li
                       key={t.module}
-                      className="flex items-center justify-between gap-3 rounded-xl bg-background/40 p-3"
+                      className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium text-foreground">
                           {t.module}
                         </div>
-                        <div className="text-[11px] text-muted-foreground">
+                        <div className="text-[11px] text-muted-foreground/80">
                           target {t.targetConfidence}/5
                         </div>
                       </div>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                           t.priority === "high"
-                            ? "bg-pink/20 text-pink"
+                            ? "bg-pink/10 text-pink/90"
                             : t.priority === "medium"
-                              ? "bg-cyan/20 text-cyan"
-                              : "bg-muted text-muted-foreground"
+                              ? "bg-cyan/10 text-cyan/90"
+                              : "bg-foreground/[0.04] text-muted-foreground"
                         }`}
                       >
                         {t.priority}
@@ -456,37 +453,37 @@ function HeroBanner({
   const doneH = (weeklyDoneMins / 60).toFixed(1).replace(/\.0$/, "");
   const targetH = Math.round(weeklyTargetMins / 60);
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-8 md:p-10">
-      <div className="absolute inset-0 bg-gradient-hero opacity-80" />
-      <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+    <section className="relative overflow-hidden rounded-[2rem] bg-card p-8 md:p-12">
+      <div className="absolute inset-0 bg-gradient-hero opacity-40" />
+      <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
         <div className="max-w-xl">
-          <div className="text-xs font-semibold uppercase tracking-wider text-pink">
-            {examType} · adaptive weekly plan
+          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
+            {examType} · adaptive plan
           </div>
-          <h1 className="mt-2 text-4xl font-normal text-foreground md:text-5xl">
+          <h1 className="mt-3 text-4xl font-normal text-foreground md:text-5xl">
             Welcome back,{" "}
             <span className="text-gradient-tentra inline-block italic pr-2">
               {name}
             </span>
           </h1>
-          <p className="mt-3 text-sm text-muted-foreground md:text-base">{overview}</p>
+          <p className="mt-3 text-sm text-muted-foreground md:text-[15px]">{overview}</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <CountdownRing days={daysUntilExam} />
           <StreakCard streak={streak} />
-          <div className="rounded-2xl border border-border bg-background/60 p-5 backdrop-blur">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="rounded-2xl bg-foreground/[0.025] p-5">
+            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
               This week
             </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <div className="font-display text-4xl text-gradient-tentra">
+            <div className="mt-2 flex items-baseline gap-2">
+              <div className="font-display text-4xl text-foreground">
                 {weeklyPct}%
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground/80">
                 {doneH}/{targetH}h
               </div>
             </div>
-            <div className="mt-3 h-1.5 w-32 overflow-hidden rounded-full bg-muted">
+            <div className="mt-3 h-1 w-32 overflow-hidden rounded-full bg-foreground/[0.06]">
               <div
                 className="h-full rounded-full bg-gradient-pink-blue transition-all"
                 style={{ width: `${weeklyPct}%` }}
@@ -507,30 +504,28 @@ function StreakCard({
   const active = streak.studiedToday;
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border p-5 backdrop-blur ${
-        active
-          ? "border-pink/40 bg-gradient-pink-blue/10"
-          : "border-border bg-background/60"
+      className={`relative overflow-hidden rounded-2xl p-5 ${
+        active ? "bg-pink/[0.06]" : "bg-foreground/[0.025]"
       }`}
     >
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
         Streak
       </div>
-      <div className="mt-1 flex items-baseline gap-2">
+      <div className="mt-2 flex items-baseline gap-2">
         <div className="flex items-center gap-1.5">
           <Flame
-            className={`h-7 w-7 ${active ? "text-pink" : "text-muted-foreground"}`}
+            className={`h-6 w-6 ${active ? "text-pink/90" : "text-muted-foreground/60"}`}
             fill={active ? "currentColor" : "none"}
           />
           <span className="font-display text-4xl text-foreground">
             {streak.current}
           </span>
         </div>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-xs text-muted-foreground/80">
           {streak.current === 1 ? "day" : "days"}
         </span>
       </div>
-      <div className="mt-2 text-[11px] text-muted-foreground">
+      <div className="mt-2 text-[11px] text-muted-foreground/80">
         {active
           ? `${streak.totalMinutesToday}m logged today`
           : streak.current > 0
@@ -538,7 +533,7 @@ function StreakCard({
             : "Log a session to start"}
       </div>
       {streak.longest > streak.current && (
-        <div className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+        <div className="mt-1 text-[10px] text-muted-foreground/70">
           Best: {streak.longest}
         </div>
       )}
@@ -552,11 +547,11 @@ function CountdownRing({ days }: { days: number }) {
   const circumference = 2 * Math.PI * 32;
   const dash = circumference * pct;
   return (
-    <div className="rounded-2xl border border-border bg-background/60 p-5 backdrop-blur">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-2xl bg-foreground/[0.025] p-5">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
         Exam in
       </div>
-      <div className="relative mt-1 grid h-20 w-20 place-items-center">
+      <div className="relative mt-2 grid h-20 w-20 place-items-center">
         <svg className="absolute inset-0 -rotate-90" viewBox="0 0 80 80">
           <defs>
             <linearGradient id="ring" x1="0" x2="1" y1="0" y2="1">
@@ -569,8 +564,8 @@ function CountdownRing({ days }: { days: number }) {
             cy="40"
             r="32"
             fill="none"
-            stroke="oklch(1 0 0 / 0.1)"
-            strokeWidth="6"
+            stroke="oklch(0.5 0.05 285 / 0.12)"
+            strokeWidth="4"
           />
           <circle
             cx="40"
@@ -578,14 +573,14 @@ function CountdownRing({ days }: { days: number }) {
             r="32"
             fill="none"
             stroke="url(#ring)"
-            strokeWidth="6"
+            strokeWidth="4"
             strokeLinecap="round"
             strokeDasharray={`${dash} ${circumference}`}
           />
         </svg>
         <div className="text-center">
           <div className="font-display text-2xl text-foreground">{days}</div>
-          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[9px] tracking-wider text-muted-foreground/80">
             days
           </div>
         </div>
@@ -723,28 +718,28 @@ function NoPlanState() {
 }
 
 const RATIONALE_META: Record<string, { label: string; cls: string; dot: string }> = {
-  "high-yield": { label: "High Yield", cls: "bg-pink/15 text-pink", dot: "bg-pink" },
-  "weak-area": { label: "Weak Area", cls: "bg-destructive/15 text-destructive", dot: "bg-destructive" },
-  "recency-gap": { label: "Revision Refresh", cls: "bg-amber-500/15 text-amber-400", dot: "bg-amber-400" },
-  "mixed-practice": { label: "Mixed Practice", cls: "bg-cyan/15 text-cyan", dot: "bg-cyan" },
-  "mock-prep": { label: "Mock Recovery", cls: "bg-violet-500/15 text-violet-300", dot: "bg-violet-400" },
-  "ethics-cornerstone": { label: "Ethics", cls: "bg-emerald-500/15 text-emerald-400", dot: "bg-emerald-400" },
+  "high-yield": { label: "High yield", cls: "bg-pink/8 text-pink/85", dot: "bg-pink" },
+  "weak-area": { label: "Weak area", cls: "bg-destructive/8 text-destructive/85", dot: "bg-destructive" },
+  "recency-gap": { label: "Refresh", cls: "bg-amber-500/8 text-amber-500/85", dot: "bg-amber-400" },
+  "mixed-practice": { label: "Mixed practice", cls: "bg-cyan/8 text-cyan/85", dot: "bg-cyan" },
+  "mock-prep": { label: "Mock recovery", cls: "bg-violet-500/8 text-violet-400/85", dot: "bg-violet-400" },
+  "ethics-cornerstone": { label: "Ethics", cls: "bg-emerald-500/8 text-emerald-500/85", dot: "bg-emerald-400" },
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  "timed-sba": "Timed Practice",
-  "mistake-review": "Mistake Review",
-  "scenario-drill": "Scenario Drill",
-  "active-recall": "Active Recall",
-  "mixed-mock": "Mixed Mock",
-  "concept-deepdive": "Deep Dive",
-  "ethics-application": "Exam Technique",
+  "timed-sba": "Timed practice",
+  "mistake-review": "Mistake review",
+  "scenario-drill": "Scenario drill",
+  "active-recall": "Active recall",
+  "mixed-mock": "Mixed mock",
+  "concept-deepdive": "Deep dive",
+  "ethics-application": "Exam technique",
 };
 
 function RationaleChip({ rationale }: { rationale: string }) {
   const meta = RATIONALE_META[rationale] ?? { label: rationale, cls: "bg-muted text-muted-foreground" };
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.cls}`}>
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.cls}`}>
       {meta.label}
     </span>
   );
@@ -753,7 +748,7 @@ function RationaleChip({ rationale }: { rationale: string }) {
 function TypeChip({ type }: { type: string }) {
   const label = TYPE_LABELS[type] ?? type;
   return (
-    <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+    <span className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground">
       {label}
     </span>
   );
@@ -788,40 +783,35 @@ function WeeklyProgressPanel({
   };
   const onTrack = pct >= Math.round(((new Date().getDay() || 7) / 7) * 100) - 10;
   return (
-    <section className="rounded-3xl border border-border bg-card p-6 shadow-card">
+    <section className="rounded-3xl bg-card p-8 shadow-card">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-xl font-semibold text-foreground">Weekly progress</h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <h2 className="text-lg font-medium text-foreground">Weekly progress</h2>
+          <p className="mt-1 text-xs text-muted-foreground/80">
             Flexible — study any day. {onTrack ? "You're on track." : "Slight catch-up needed."}
           </p>
         </div>
         <span
-          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold ${
-            onTrack ? "bg-emerald-500/15 text-emerald-400" : "bg-amber-500/15 text-amber-400"
+          className={`rounded-full px-2.5 py-1 text-[10px] font-medium ${
+            onTrack ? "bg-emerald-500/8 text-emerald-500/85" : "bg-amber-500/8 text-amber-500/85"
           }`}
         >
           {onTrack ? "On track" : "Catch up"}
         </span>
       </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="mt-7 grid grid-cols-3 gap-6">
         <Stat label="Done" value={fmtH(doneMins)} sub={`of ${fmtH(targetMins)}`} accent />
         <Stat label="Remaining" value={fmtH(remainingMins)} sub="this week" />
-        <Stat label="Active days" value={`${activeDays}/7`} sub={`streak ${streak.current}d`} />
-        <Stat
-          label="Blocks"
-          value={`${blocksDone}/${blocksPlanned}`}
-          sub={`${fmtH(completedPlannedMins)} of ${fmtH(plannedMins)}`}
-        />
+        <Stat label="Active days" value={`${activeDays}/7`} sub={`${streak.current}d streak`} />
       </div>
 
-      <div className="mt-5">
-        <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>Hours toward your weekly target</span>
+      <div className="mt-7">
+        <div className="mb-2 flex items-center justify-between text-[11px] text-muted-foreground/80">
+          <span>Hours toward weekly target</span>
           <span className="text-foreground">{pct}%</span>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+        <div className="h-1 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
           <div
             className="h-full rounded-full bg-gradient-pink-blue transition-all"
             style={{ width: `${pct}%` }}
@@ -844,18 +834,18 @@ function Stat({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-background/40 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div>
+      <div className="text-[11px] font-medium text-muted-foreground/80">
         {label}
       </div>
       <div
-        className={`mt-1 font-display text-2xl ${
+        className={`mt-1.5 font-display text-2xl ${
           accent ? "text-gradient-tentra" : "text-foreground"
         }`}
       >
         {value}
       </div>
-      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="mt-0.5 text-[11px] text-muted-foreground/70">{sub}</div>}
     </div>
   );
 }
@@ -867,13 +857,13 @@ function AllocationBars({
 }) {
   const total = Math.max(1, allocations.reduce((acc, a) => acc + a.hours, 0));
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-baseline justify-between">
-        <div className="text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground/80">
           {allocations.length} modules · {total}h allocated this week
         </div>
       </div>
-      <div className="flex h-3 w-full overflow-hidden rounded-full border border-border bg-background/40">
+      <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
         {allocations.map((a) => {
           const pct = (a.hours / total) * 100;
           const colour = RATIONALE_META[a.rationale]?.cls ?? "bg-muted";
@@ -887,24 +877,24 @@ function AllocationBars({
           );
         })}
       </div>
-      <ul className="space-y-2">
+      <ul className="divide-y divide-border/40">
         {allocations.map((a) => {
           const pct = Math.round((a.hours / total) * 100);
           return (
             <li
               key={a.module}
-              className="flex items-start gap-3 rounded-xl border border-border/60 bg-background/40 p-3"
+              className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-foreground">{a.module}</span>
                   <RationaleChip rationale={a.rationale} />
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground">{a.note}</p>
+                <p className="mt-1 text-[11px] text-muted-foreground/80">{a.note}</p>
               </div>
               <div className="shrink-0 text-right">
-                <div className="text-sm font-semibold text-foreground">{a.hours}h</div>
-                <div className="text-[10px] text-muted-foreground">{pct}%</div>
+                <div className="text-sm font-medium text-foreground">{a.hours}h</div>
+                <div className="text-[10px] text-muted-foreground/70">{pct}%</div>
               </div>
             </li>
           );
@@ -924,11 +914,11 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-3xl border border-border bg-card p-6 shadow-card">
-      <div className="mb-4">
-        <h2 className="text-xl font-semibold text-foreground">{title}</h2>
+    <section className="rounded-3xl bg-card p-8 shadow-card">
+      <div className="mb-6">
+        <h2 className="text-lg font-medium text-foreground">{title}</h2>
         {subtitle && (
-          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
+          <p className="mt-1 text-xs text-muted-foreground/80">{subtitle}</p>
         )}
       </div>
       {children}
