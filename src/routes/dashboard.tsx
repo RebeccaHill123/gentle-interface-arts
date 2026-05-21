@@ -718,28 +718,28 @@ function NoPlanState() {
 }
 
 const RATIONALE_META: Record<string, { label: string; cls: string; dot: string }> = {
-  "high-yield": { label: "High Yield", cls: "bg-pink/15 text-pink", dot: "bg-pink" },
-  "weak-area": { label: "Weak Area", cls: "bg-destructive/15 text-destructive", dot: "bg-destructive" },
-  "recency-gap": { label: "Revision Refresh", cls: "bg-amber-500/15 text-amber-400", dot: "bg-amber-400" },
-  "mixed-practice": { label: "Mixed Practice", cls: "bg-cyan/15 text-cyan", dot: "bg-cyan" },
-  "mock-prep": { label: "Mock Recovery", cls: "bg-violet-500/15 text-violet-300", dot: "bg-violet-400" },
-  "ethics-cornerstone": { label: "Ethics", cls: "bg-emerald-500/15 text-emerald-400", dot: "bg-emerald-400" },
+  "high-yield": { label: "High yield", cls: "bg-pink/8 text-pink/85", dot: "bg-pink" },
+  "weak-area": { label: "Weak area", cls: "bg-destructive/8 text-destructive/85", dot: "bg-destructive" },
+  "recency-gap": { label: "Refresh", cls: "bg-amber-500/8 text-amber-500/85", dot: "bg-amber-400" },
+  "mixed-practice": { label: "Mixed practice", cls: "bg-cyan/8 text-cyan/85", dot: "bg-cyan" },
+  "mock-prep": { label: "Mock recovery", cls: "bg-violet-500/8 text-violet-400/85", dot: "bg-violet-400" },
+  "ethics-cornerstone": { label: "Ethics", cls: "bg-emerald-500/8 text-emerald-500/85", dot: "bg-emerald-400" },
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  "timed-sba": "Timed Practice",
-  "mistake-review": "Mistake Review",
-  "scenario-drill": "Scenario Drill",
-  "active-recall": "Active Recall",
-  "mixed-mock": "Mixed Mock",
-  "concept-deepdive": "Deep Dive",
-  "ethics-application": "Exam Technique",
+  "timed-sba": "Timed practice",
+  "mistake-review": "Mistake review",
+  "scenario-drill": "Scenario drill",
+  "active-recall": "Active recall",
+  "mixed-mock": "Mixed mock",
+  "concept-deepdive": "Deep dive",
+  "ethics-application": "Exam technique",
 };
 
 function RationaleChip({ rationale }: { rationale: string }) {
   const meta = RATIONALE_META[rationale] ?? { label: rationale, cls: "bg-muted text-muted-foreground" };
   return (
-    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${meta.cls}`}>
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.cls}`}>
       {meta.label}
     </span>
   );
@@ -748,7 +748,7 @@ function RationaleChip({ rationale }: { rationale: string }) {
 function TypeChip({ type }: { type: string }) {
   const label = TYPE_LABELS[type] ?? type;
   return (
-    <span className="rounded-full border border-border bg-background/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+    <span className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground">
       {label}
     </span>
   );
