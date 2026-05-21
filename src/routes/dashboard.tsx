@@ -834,18 +834,18 @@ function Stat({
   accent?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border/60 bg-background/40 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div>
+      <div className="text-[11px] font-medium text-muted-foreground/80">
         {label}
       </div>
       <div
-        className={`mt-1 font-display text-2xl ${
+        className={`mt-1.5 font-display text-2xl ${
           accent ? "text-gradient-tentra" : "text-foreground"
         }`}
       >
         {value}
       </div>
-      {sub && <div className="text-[10px] text-muted-foreground">{sub}</div>}
+      {sub && <div className="mt-0.5 text-[11px] text-muted-foreground/70">{sub}</div>}
     </div>
   );
 }
