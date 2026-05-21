@@ -453,37 +453,37 @@ function HeroBanner({
   const doneH = (weeklyDoneMins / 60).toFixed(1).replace(/\.0$/, "");
   const targetH = Math.round(weeklyTargetMins / 60);
   return (
-    <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card p-8 md:p-10">
-      <div className="absolute inset-0 bg-gradient-hero opacity-80" />
-      <div className="relative flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+    <section className="relative overflow-hidden rounded-[2rem] bg-card p-8 md:p-12">
+      <div className="absolute inset-0 bg-gradient-hero opacity-40" />
+      <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
         <div className="max-w-xl">
-          <div className="text-xs font-semibold uppercase tracking-wider text-pink">
-            {examType} · adaptive weekly plan
+          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
+            {examType} · adaptive plan
           </div>
-          <h1 className="mt-2 text-4xl font-normal text-foreground md:text-5xl">
+          <h1 className="mt-3 text-4xl font-normal text-foreground md:text-5xl">
             Welcome back,{" "}
             <span className="text-gradient-tentra inline-block italic pr-2">
               {name}
             </span>
           </h1>
-          <p className="mt-3 text-sm text-muted-foreground md:text-base">{overview}</p>
+          <p className="mt-3 text-sm text-muted-foreground md:text-[15px]">{overview}</p>
         </div>
         <div className="flex flex-wrap gap-3">
           <CountdownRing days={daysUntilExam} />
           <StreakCard streak={streak} />
-          <div className="rounded-2xl border border-border bg-background/60 p-5 backdrop-blur">
-            <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="rounded-2xl bg-foreground/[0.025] p-5">
+            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
               This week
             </div>
-            <div className="mt-1 flex items-baseline gap-2">
-              <div className="font-display text-4xl text-gradient-tentra">
+            <div className="mt-2 flex items-baseline gap-2">
+              <div className="font-display text-4xl text-foreground">
                 {weeklyPct}%
               </div>
-              <div className="text-xs text-muted-foreground">
+              <div className="text-xs text-muted-foreground/80">
                 {doneH}/{targetH}h
               </div>
             </div>
-            <div className="mt-3 h-1.5 w-32 overflow-hidden rounded-full bg-muted">
+            <div className="mt-3 h-1 w-32 overflow-hidden rounded-full bg-foreground/[0.06]">
               <div
                 className="h-full rounded-full bg-gradient-pink-blue transition-all"
                 style={{ width: `${weeklyPct}%` }}
