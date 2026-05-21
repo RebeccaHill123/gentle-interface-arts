@@ -547,11 +547,11 @@ function CountdownRing({ days }: { days: number }) {
   const circumference = 2 * Math.PI * 32;
   const dash = circumference * pct;
   return (
-    <div className="rounded-2xl border border-border bg-background/60 p-5 backdrop-blur">
-      <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-2xl bg-foreground/[0.025] p-5">
+      <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
         Exam in
       </div>
-      <div className="relative mt-1 grid h-20 w-20 place-items-center">
+      <div className="relative mt-2 grid h-20 w-20 place-items-center">
         <svg className="absolute inset-0 -rotate-90" viewBox="0 0 80 80">
           <defs>
             <linearGradient id="ring" x1="0" x2="1" y1="0" y2="1">
@@ -564,8 +564,8 @@ function CountdownRing({ days }: { days: number }) {
             cy="40"
             r="32"
             fill="none"
-            stroke="oklch(1 0 0 / 0.1)"
-            strokeWidth="6"
+            stroke="oklch(0.5 0.05 285 / 0.12)"
+            strokeWidth="4"
           />
           <circle
             cx="40"
@@ -573,14 +573,14 @@ function CountdownRing({ days }: { days: number }) {
             r="32"
             fill="none"
             stroke="url(#ring)"
-            strokeWidth="6"
+            strokeWidth="4"
             strokeLinecap="round"
             strokeDasharray={`${dash} ${circumference}`}
           />
         </svg>
         <div className="text-center">
           <div className="font-display text-2xl text-foreground">{days}</div>
-          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">
+          <div className="text-[9px] tracking-wider text-muted-foreground/80">
             days
           </div>
         </div>
