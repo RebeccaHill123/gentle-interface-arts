@@ -382,27 +382,27 @@ function DashboardPage() {
             </div>
             <div>
               <Panel title="Mastery targets">
-                <ul className="space-y-2">
+                <ul className="divide-y divide-border/40">
                   {plan.masteryTargets.slice(0, 8).map((t) => (
                     <li
                       key={t.module}
-                      className="flex items-center justify-between gap-3 rounded-xl bg-background/40 p-3"
+                      className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium text-foreground">
                           {t.module}
                         </div>
-                        <div className="text-[11px] text-muted-foreground">
+                        <div className="text-[11px] text-muted-foreground/80">
                           target {t.targetConfidence}/5
                         </div>
                       </div>
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
                           t.priority === "high"
-                            ? "bg-pink/20 text-pink"
+                            ? "bg-pink/10 text-pink/90"
                             : t.priority === "medium"
-                              ? "bg-cyan/20 text-cyan"
-                              : "bg-muted text-muted-foreground"
+                              ? "bg-cyan/10 text-cyan/90"
+                              : "bg-foreground/[0.04] text-muted-foreground"
                         }`}
                       >
                         {t.priority}
