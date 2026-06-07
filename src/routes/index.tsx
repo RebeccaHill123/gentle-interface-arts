@@ -114,6 +114,7 @@ function LandingPage() {
           </div>
         </header>
 
+        <main>
         {/* HERO — mobile-first, above-the-fold value prop */}
         <section className="mx-auto max-w-6xl px-5 pt-4 pb-10 md:px-6 md:pt-12 md:pb-16">
           <div className="grid items-center gap-10 md:grid-cols-[1.1fr_1fr] md:gap-12">
@@ -279,6 +280,8 @@ function LandingPage() {
             </Button>
           </div>
         </section>
+
+        </main>
 
         {/* FOOTER */}
         <footer className="border-t border-border/60">
