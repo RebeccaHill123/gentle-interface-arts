@@ -20,9 +20,20 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
   head: () => ({
     meta: [
-      { title: "Sign in or sign up · Tentra" },
-      { name: "description", content: "Access your Tentra account." },
+      { title: "Sign in to Tentra — your SQE revision dashboard" },
+      {
+        name: "description",
+        content:
+          "Sign in or create your free Tentra account to access your personalised SQE study plan, MCQ practice and mock exams.",
+      },
+      { property: "og:title", content: "Sign in to Tentra — your SQE revision dashboard" },
+      {
+        property: "og:description",
+        content: "Access your personalised SQE study plan, practice and mock exams.",
+      },
+      { property: "og:url", content: "https://tentraapp.com/auth" },
     ],
+    links: [{ rel: "canonical", href: "https://tentraapp.com/auth" }],
   }),
 });
 

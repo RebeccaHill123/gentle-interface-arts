@@ -41,6 +41,25 @@ export const Route = createFileRoute("/")({
         content:
           "Personalised SQE study schedule, MCQ practice and mock exams. Built for SQE1, FLK1, FLK2 and SQE2 candidates.",
       },
+      { property: "og:url", content: "https://tentraapp.com/" },
+      { property: "og:type", content: "website" },
+    ],
+    links: [{ rel: "canonical", href: "https://tentraapp.com/" }],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "SoftwareApplication",
+          name: "Tentra",
+          applicationCategory: "EducationApplication",
+          operatingSystem: "Web",
+          url: "https://tentraapp.com/",
+          description:
+            "Personalised SQE revision app with study planner, MCQ practice, mock exams and AI coach for SQE1, FLK1, FLK2 and SQE2.",
+          offers: { "@type": "Offer", price: "0", priceCurrency: "GBP" },
+        }),
+      },
     ],
   }),
 });
@@ -95,6 +114,7 @@ function LandingPage() {
           </div>
         </header>
 
+        <main>
         {/* HERO — mobile-first, above-the-fold value prop */}
         <section className="mx-auto max-w-6xl px-5 pt-4 pb-10 md:px-6 md:pt-12 md:pb-16">
           <div className="grid items-center gap-10 md:grid-cols-[1.1fr_1fr] md:gap-12">
@@ -260,6 +280,8 @@ function LandingPage() {
             </Button>
           </div>
         </section>
+
+        </main>
 
         {/* FOOTER */}
         <footer className="border-t border-border/60">

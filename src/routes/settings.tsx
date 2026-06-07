@@ -18,9 +18,16 @@ export const Route = createFileRoute("/settings")({
   component: SettingsPage,
   head: () => ({
     meta: [
-      { title: "Settings · Tentra" },
-      { name: "description", content: "Manage your Tentra account." },
+      { title: "Account settings — manage your Tentra profile" },
+      {
+        name: "description",
+        content: "Manage your Tentra account, study preferences and data.",
+      },
+      { property: "og:title", content: "Account settings | Tentra" },
+      { property: "og:description", content: "Manage your Tentra account and study preferences." },
+      { property: "og:url", content: "https://tentraapp.com/settings" },
     ],
+    links: [{ rel: "canonical", href: "https://tentraapp.com/settings" }],
   }),
 });
 
