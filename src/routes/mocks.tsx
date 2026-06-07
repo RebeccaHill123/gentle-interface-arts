@@ -23,13 +23,20 @@ export const Route = createFileRoute("/mocks")({
   component: MocksPage,
   head: () => ({
     meta: [
-      { title: "Mocks & Practice · Tentra" },
+      { title: "SQE Mocks & Practice — timed mocks and adaptive drills | Tentra" },
       {
         name: "description",
         content:
-          "Exam simulation and targeted practice for the SQE — timed mocks and adaptive drills.",
+          "Timed SQE mock exams and adaptive MCQ drills covering FLK1 and FLK2. Build exam stamina and target weak topics with Tentra.",
       },
+      { property: "og:title", content: "SQE Mocks & Practice | Tentra" },
+      {
+        property: "og:description",
+        content: "Timed SQE mock exams and adaptive MCQ drills for FLK1 and FLK2.",
+      },
+      { property: "og:url", content: "https://tentraapp.com/mocks" },
     ],
+    links: [{ rel: "canonical", href: "https://tentraapp.com/mocks" }],
   }),
 });
 

@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as PracticeRouteImport } from './routes/practice'
@@ -30,6 +31,11 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/practice': typeof PracticeRoute
   '/pro': typeof ProRoute
   '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
@@ -166,6 +173,7 @@ export interface FileRoutesByTo {
   '/practice': typeof PracticeRoute
   '/pro': typeof ProRoute
   '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
@@ -189,6 +197,7 @@ export interface FileRoutesById {
   '/practice': typeof PracticeRoute
   '/pro': typeof ProRoute
   '/settings': typeof SettingsRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
@@ -213,6 +222,7 @@ export interface FileRouteTypes {
     | '/practice'
     | '/pro'
     | '/settings'
+    | '/sitemap.xml'
     | '/api/coach'
     | '/auth/callback'
     | '/focus/sprint'
@@ -234,6 +244,7 @@ export interface FileRouteTypes {
     | '/practice'
     | '/pro'
     | '/settings'
+    | '/sitemap.xml'
     | '/api/coach'
     | '/auth/callback'
     | '/focus/sprint'
@@ -256,6 +267,7 @@ export interface FileRouteTypes {
     | '/practice'
     | '/pro'
     | '/settings'
+    | '/sitemap.xml'
     | '/api/coach'
     | '/auth_/callback'
     | '/focus/sprint'
@@ -279,6 +291,7 @@ export interface RootRouteChildren {
   PracticeRoute: typeof PracticeRoute
   ProRoute: typeof ProRoute
   SettingsRoute: typeof SettingsRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiCoachRoute: typeof ApiCoachRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -288,6 +301,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -458,6 +478,7 @@ const rootRouteChildren: RootRouteChildren = {
   PracticeRoute: PracticeRoute,
   ProRoute: ProRoute,
   SettingsRoute: SettingsRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiCoachRoute: ApiCoachRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
@@ -467,3 +488,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}

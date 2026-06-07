@@ -1,0 +1,8 @@
+# Tentra
+
+> Tentra is a personalised revision app for UK SQE (Solicitors Qualifying Exam) candidates — study planner, MCQ practice, mock exams, AI coach and progress analytics for SQE1, FLK1, FLK2 and SQE2.
+
+## Pages
+
+- [Home](/): Overview of Tentra's personalised SQE revision app, features and pricing.
+- [Tentra Pro](/pro): Premium plan with mock exam forecasts, smart re-planning and deeper AI insights.

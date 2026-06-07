@@ -1,0 +1,16 @@
+User-agent: *
+Allow: /
+Disallow: /auth
+Disallow: /auth/
+Disallow: /onboarding
+Disallow: /dashboard
+Disallow: /focus
+Disallow: /coach
+Disallow: /mocks
+Disallow: /analytics
+Disallow: /community
+Disallow: /settings
+Disallow: /practice
+Disallow: /lovable/
+
+Sitemap: https://tentraapp.com/sitemap.xml
