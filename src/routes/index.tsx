@@ -197,31 +197,30 @@ function LandingPage() {
         </section>
 
         {/* SOCIAL PROOF STRIP */}
-        <section className="mx-auto max-w-6xl px-5 pb-12 md:px-6">
+        <section className="mx-auto max-w-6xl px-5 pb-16 md:px-6 md:pb-20">
           <div className="grid grid-cols-2 gap-2 rounded-3xl border border-border bg-card/60 p-4 backdrop-blur md:grid-cols-4 md:gap-6 md:p-6">
-            <TrustPill icon={<Target className="h-3.5 w-3.5" />} label="Designed specifically for SQE candidates" />
-            <TrustPill icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive AI study planning" />
-            <TrustPill icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance tracking & analytics" />
-            <TrustPill icon={<Sparkles className="h-3.5 w-3.5" />} label="Built by future solicitors" />
+            <TrustPill icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE1 & SQE2" />
+            <TrustPill icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive study planning" />
+            <TrustPill icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance analytics" />
+            <TrustPill icon={<Sparkles className="h-3.5 w-3.5" />} label="Crafted for future solicitors" />
           </div>
         </section>
 
         {/* FEATURES — phone carousel */}
-        <section id="features" className="mx-auto max-w-6xl px-5 pb-20 md:px-6 md:pb-28">
-          <div className="mx-auto mb-10 max-w-2xl text-center md:mb-14">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gradient-tentra">
+        <section id="features" className="mx-auto max-w-6xl px-5 pb-24 md:px-6 md:pb-32">
+          <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
               The platform
             </div>
-            <h2 className="mt-3 text-[2rem] font-normal leading-tight text-foreground md:text-5xl">
-              Everything you need to{" "}
+            <h2 className="mt-4 text-[2rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground md:text-5xl">
+              Engineered to{" "}
               <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">
-                lock in
+                perform
               </span>
               .
             </h2>
-            <p className="mt-3 text-sm text-muted-foreground md:text-base">
-              Coaching, adaptive practice, mocks, focus sprints and analytics —
-              one beautifully calm workflow.
+            <p className="mt-4 text-[15px] leading-[1.7] text-muted-foreground md:text-base">
+              One disciplined workflow. Five tools designed to compound.
             </p>
           </div>
 
@@ -229,19 +228,19 @@ function LandingPage() {
         </section>
 
         {/* HOW IT WORKS */}
-        <section id="how" className="mx-auto max-w-6xl px-5 pb-20 md:px-6 md:pb-28">
-          <div className="mb-10 text-center md:mb-14">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gradient-tentra">
+        <section id="how" className="mx-auto max-w-6xl px-5 pb-24 md:px-6 md:pb-32">
+          <div className="mb-12 text-center md:mb-16">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
               How it works
             </div>
-            <h2 className="mt-3 text-[2rem] font-normal leading-tight text-foreground md:text-5xl">
-              Set up in under a minute.
+            <h2 className="mt-4 text-[2rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground md:text-5xl">
+              Ready in under a minute.
             </h2>
           </div>
           <div className="grid gap-3 md:grid-cols-3 md:gap-6">
-            <StepCard num="01" icon={<Calendar className="h-5 w-5" />} title="Set your exam date" body="Tell us when you're sitting SQE1 or SQE2." />
-            <StepCard num="02" icon={<Brain className="h-5 w-5" />} title="Rate your confidence" body="Score each module so we know where to focus." />
-            <StepCard num="03" icon={<Target className="h-5 w-5" />} title="Start your streak" body="A clear daily plan, tuned as you go." />
+            <StepCard num="01" icon={<Calendar className="h-5 w-5" />} title="Set your exam date" body="Anchor the plan to your SQE1 or SQE2 sitting." />
+            <StepCard num="02" icon={<Brain className="h-5 w-5" />} title="Map your confidence" body="A quick diagnostic across every module." />
+            <StepCard num="03" icon={<Target className="h-5 w-5" />} title="Execute daily" body="A precise schedule that adapts as you progress." />
           </div>
         </section>
 
