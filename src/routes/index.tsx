@@ -541,27 +541,27 @@ function DashboardPanel() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             SQE1 · January
           </div>
-          <div className="mt-0.5 text-base font-semibold text-foreground">Hi Amelia 👋</div>
+          <div className="mt-0.5 text-[15px] font-semibold tracking-tight text-foreground">Good morning, Amelia</div>
         </div>
-        <div className="flex items-center gap-2 rounded-xl border border-border bg-card/70 px-2.5 py-1.5">
+        <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card/70 px-2.5 py-1.5">
           <div className="text-center">
-            <div className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">Days</div>
-            <div className="font-display text-lg leading-none text-gradient-tentra">84</div>
+            <div className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Days</div>
+            <div className="font-display text-base leading-none text-gradient-tentra">84</div>
           </div>
           <div className="h-7 w-px bg-border" />
           <div className="text-center">
-            <div className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground">Streak</div>
-            <div className="text-xs font-semibold text-foreground">🔥 14</div>
+            <div className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Streak</div>
+            <div className="text-[13px] font-semibold leading-none text-foreground">14</div>
           </div>
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-border bg-card/60 p-2.5">
         <div className="flex items-center justify-between">
-          <div className="text-[9px] font-semibold uppercase tracking-wider text-gradient-tentra">Today</div>
-          <div className="text-[8px] text-muted-foreground">3 of 5 done</div>
+          <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-gradient-tentra">Today</div>
+          <div className="text-[8px] tracking-[0.05em] text-muted-foreground">3 of 5 complete</div>
         </div>
         <ul className="mt-2 space-y-1.5">
           {[
