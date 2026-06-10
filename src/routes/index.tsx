@@ -135,13 +135,12 @@ function LandingPage() {
                 .
               </h1>
 
-              <p className="mx-auto mt-5 max-w-md text-[15px] leading-[1.65] text-muted-foreground md:mx-0 md:max-w-[34rem] md:text-[17px]">
-                Adaptive study plans, performance analytics and AI-powered
-                coaching that evolve with your progress — from day one through
-                to exam day.
+              <p className="mx-auto mt-6 max-w-md text-[15px] leading-[1.7] text-muted-foreground md:mx-0 md:max-w-[32rem] md:text-[17px]">
+                Adaptive plans, performance analytics and AI coaching —
+                engineered for the demands of qualification.
               </p>
 
-              <div className="mt-8 flex flex-col items-center gap-2.5 md:flex-row md:items-start md:justify-start">
+              <div className="mt-9 flex flex-col items-center gap-2.5 md:flex-row md:items-start md:justify-start">
                 <Button
                   asChild
                   size="lg"
@@ -158,17 +157,17 @@ function LandingPage() {
                     variant="ghost"
                     className="h-14 rounded-full text-sm text-muted-foreground hover:text-foreground"
                   >
-                    <Link to="/auth" search={{ mode: "signin" }}>I already have an account</Link>
+                    <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
                   </Button>
                 )}
               </div>
 
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] tracking-[0.02em] text-muted-foreground md:justify-start">
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] tracking-[0.04em] uppercase text-muted-foreground md:justify-start">
                 <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Free during early access
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Free in early access
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5 text-primary" /> 30-second sign-up
+                  <Lock className="h-3.5 w-3.5 text-primary" /> 30-second setup
                 </span>
               </div>
             </div>
