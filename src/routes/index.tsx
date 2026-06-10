@@ -69,7 +69,7 @@ function LandingPage() {
   // Anonymous visitors go straight into the plan builder — they experience
   // the personalised "aha moment" before being asked to create an account.
   const ctaTo = isAuthenticated ? "/dashboard" : "/onboarding";
-  const ctaLabel = isAuthenticated ? "Go to Dashboard" : "Start Revising Free";
+  const ctaLabel = isAuthenticated ? "View Dashboard" : "Build My Plan";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
@@ -135,13 +135,12 @@ function LandingPage() {
                 .
               </h1>
 
-              <p className="mx-auto mt-5 max-w-md text-[15px] leading-[1.65] text-muted-foreground md:mx-0 md:max-w-[34rem] md:text-[17px]">
-                Adaptive study plans, performance analytics and AI-powered
-                coaching that evolve with your progress — from day one through
-                to exam day.
+              <p className="mx-auto mt-6 max-w-md text-[15px] leading-[1.7] text-muted-foreground md:mx-0 md:max-w-[32rem] md:text-[17px]">
+                Adaptive plans, performance analytics and AI coaching —
+                engineered for the demands of qualification.
               </p>
 
-              <div className="mt-8 flex flex-col items-center gap-2.5 md:flex-row md:items-start md:justify-start">
+              <div className="mt-9 flex flex-col items-center gap-2.5 md:flex-row md:items-start md:justify-start">
                 <Button
                   asChild
                   size="lg"
@@ -158,17 +157,17 @@ function LandingPage() {
                     variant="ghost"
                     className="h-14 rounded-full text-sm text-muted-foreground hover:text-foreground"
                   >
-                    <Link to="/auth" search={{ mode: "signin" }}>I already have an account</Link>
+                    <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
                   </Button>
                 )}
               </div>
 
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] tracking-[0.02em] text-muted-foreground md:justify-start">
+              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] tracking-[0.04em] uppercase text-muted-foreground md:justify-start">
                 <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Free during early access
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Free in early access
                 </span>
                 <span className="inline-flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5 text-primary" /> 30-second sign-up
+                  <Lock className="h-3.5 w-3.5 text-primary" /> 30-second setup
                 </span>
               </div>
             </div>
@@ -198,31 +197,30 @@ function LandingPage() {
         </section>
 
         {/* SOCIAL PROOF STRIP */}
-        <section className="mx-auto max-w-6xl px-5 pb-12 md:px-6">
+        <section className="mx-auto max-w-6xl px-5 pb-16 md:px-6 md:pb-20">
           <div className="grid grid-cols-2 gap-2 rounded-3xl border border-border bg-card/60 p-4 backdrop-blur md:grid-cols-4 md:gap-6 md:p-6">
-            <TrustPill icon={<Target className="h-3.5 w-3.5" />} label="Designed specifically for SQE candidates" />
-            <TrustPill icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive AI study planning" />
-            <TrustPill icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance tracking & analytics" />
-            <TrustPill icon={<Sparkles className="h-3.5 w-3.5" />} label="Built by future solicitors" />
+            <TrustPill icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE1 & SQE2" />
+            <TrustPill icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive study planning" />
+            <TrustPill icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance analytics" />
+            <TrustPill icon={<Sparkles className="h-3.5 w-3.5" />} label="Crafted for future solicitors" />
           </div>
         </section>
 
         {/* FEATURES — phone carousel */}
-        <section id="features" className="mx-auto max-w-6xl px-5 pb-20 md:px-6 md:pb-28">
-          <div className="mx-auto mb-10 max-w-2xl text-center md:mb-14">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gradient-tentra">
+        <section id="features" className="mx-auto max-w-6xl px-5 pb-24 md:px-6 md:pb-32">
+          <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
               The platform
             </div>
-            <h2 className="mt-3 text-[2rem] font-normal leading-tight text-foreground md:text-5xl">
-              Everything you need to{" "}
+            <h2 className="mt-4 text-[2rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground md:text-5xl">
+              Engineered to{" "}
               <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">
-                lock in
+                perform
               </span>
               .
             </h2>
-            <p className="mt-3 text-sm text-muted-foreground md:text-base">
-              Coaching, adaptive practice, mocks, focus sprints and analytics —
-              one beautifully calm workflow.
+            <p className="mt-4 text-[15px] leading-[1.7] text-muted-foreground md:text-base">
+              One disciplined workflow. Five tools designed to compound.
             </p>
           </div>
 
@@ -230,59 +228,58 @@ function LandingPage() {
         </section>
 
         {/* HOW IT WORKS */}
-        <section id="how" className="mx-auto max-w-6xl px-5 pb-20 md:px-6 md:pb-28">
-          <div className="mb-10 text-center md:mb-14">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gradient-tentra">
+        <section id="how" className="mx-auto max-w-6xl px-5 pb-24 md:px-6 md:pb-32">
+          <div className="mb-12 text-center md:mb-16">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
               How it works
             </div>
-            <h2 className="mt-3 text-[2rem] font-normal leading-tight text-foreground md:text-5xl">
-              Set up in under a minute.
+            <h2 className="mt-4 text-[2rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground md:text-5xl">
+              Ready in under a minute.
             </h2>
           </div>
           <div className="grid gap-3 md:grid-cols-3 md:gap-6">
-            <StepCard num="01" icon={<Calendar className="h-5 w-5" />} title="Set your exam date" body="Tell us when you're sitting SQE1 or SQE2." />
-            <StepCard num="02" icon={<Brain className="h-5 w-5" />} title="Rate your confidence" body="Score each module so we know where to focus." />
-            <StepCard num="03" icon={<Target className="h-5 w-5" />} title="Start your streak" body="A clear daily plan, tuned as you go." />
+            <StepCard num="01" icon={<Calendar className="h-5 w-5" />} title="Set your exam date" body="Anchor the plan to your SQE1 or SQE2 sitting." />
+            <StepCard num="02" icon={<Brain className="h-5 w-5" />} title="Map your confidence" body="A quick diagnostic across every module." />
+            <StepCard num="03" icon={<Target className="h-5 w-5" />} title="Execute daily" body="A precise schedule that adapts as you progress." />
           </div>
         </section>
 
         {/* TESTIMONIAL / VIBE */}
-        <section className="mx-auto max-w-3xl px-5 pb-20 md:px-6 md:pb-24">
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-8 text-center backdrop-blur md:p-12">
+        <section className="mx-auto max-w-3xl px-5 pb-24 md:px-6 md:pb-28">
+          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-10 text-center backdrop-blur md:p-14">
             <div className="absolute -inset-x-10 -top-10 -z-10 h-40 bg-gradient-tentra opacity-20 blur-3xl" />
             <Sparkles className="mx-auto h-5 w-5 text-pink" />
-            <p className="mt-4 text-xl font-light leading-snug text-foreground md:text-2xl">
-              "Like Strava, but for SQE prep. The streaks make me actually want
-              to open my notes."
+            <p className="mt-5 text-xl font-light leading-[1.4] tracking-[-0.01em] text-foreground md:text-2xl">
+              "Tentra turned my preparation into something measurable. I knew,
+              every day, that I was getting closer."
             </p>
-            <p className="mt-4 text-xs uppercase tracking-wider text-muted-foreground">
-              Designed for ambitious UK law students
+            <p className="mt-5 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+              Built for the next generation of solicitors
             </p>
           </div>
         </section>
 
         {/* PRICING / EARLY ACCESS */}
-        <section id="pricing" className="mx-auto max-w-3xl px-5 pb-24 md:px-6 md:pb-28">
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-8 text-center backdrop-blur md:p-12">
+        <section id="pricing" className="mx-auto max-w-3xl px-5 pb-28 md:px-6 md:pb-32">
+          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-10 text-center backdrop-blur md:p-14">
             <div className="absolute inset-0 -z-10 bg-gradient-tentra opacity-10" />
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-foreground">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground">
               <Trophy className="h-3 w-3 text-pink" /> Early access
             </div>
-            <h2 className="mt-4 text-[2rem] font-normal leading-tight text-foreground md:text-5xl">
-              Free during{" "}
+            <h2 className="mt-5 text-[2rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground md:text-5xl">
+              Free, while we{" "}
               <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">
-                Tentra
-              </span>{" "}
-              early access ✨
+                build
+              </span>
+              .
             </h2>
-            <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground md:text-base">
-              Every Pro feature unlocked for everyone right now. No card. No
-              checkout. Just sign up and start your streak.
+            <p className="mx-auto mt-4 max-w-md text-[15px] leading-[1.7] text-muted-foreground md:text-base">
+              Every feature unlocked for early candidates. No card required.
             </p>
             <Button
               asChild
               size="lg"
-              className="mt-7 h-14 w-full max-w-xs rounded-full bg-gradient-pink-blue px-8 text-base font-semibold text-primary-foreground shadow-glow hover:opacity-95"
+              className="mt-8 h-14 w-full max-w-xs rounded-full bg-gradient-pink-blue px-8 text-[15px] font-semibold tracking-[0.01em] text-primary-foreground shadow-glow hover:opacity-95"
             >
               <Link to={ctaTo} search={isAuthenticated ? undefined : { mode: "signup" }}>
                 {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -302,7 +299,7 @@ function LandingPage() {
               </span>
               <span className="text-sm font-semibold tracking-tight text-foreground">Tentra</span>
               <span className="hidden text-sm text-muted-foreground sm:inline">
-                · Built for the next generation of solicitors.
+                · For the next generation of solicitors.
               </span>
             </div>
             <div className="text-xs text-muted-foreground">© {new Date().getFullYear()} Tentra</div>
@@ -318,7 +315,7 @@ function LandingPage() {
             className="h-12 w-full rounded-full bg-gradient-pink-blue text-base font-semibold text-primary-foreground shadow-glow hover:opacity-95"
           >
             <Link to="/onboarding">
-              Start Revising Free <ArrowRight className="ml-1.5 h-4 w-4" />
+              Build My Plan <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
           </Button>
         </div>
@@ -397,45 +394,45 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
     id: "dashboard",
     label: "Plan",
     icon: <LayoutDashboard className="h-4 w-4" />,
-    eyebrow: "Your daily plan",
-    title: "Every day, planned for you.",
-    body: "A live snapshot of your countdown, streak, weekly hours and the exact tasks to ship today.",
+    eyebrow: "Daily plan",
+    title: "A plan that thinks ahead.",
+    body: "Your countdown, streak and the precise work to ship today — at a glance.",
     render: () => <DashboardPanel />,
   },
   {
     id: "focus",
     label: "Focus",
     icon: <Timer className="h-4 w-4" />,
-    eyebrow: "Lock-in mode",
-    title: "Focus sprints that build the streak.",
-    body: "Strava-style sessions. Set a timer, log the work, watch the streak climb.",
+    eyebrow: "Deep work",
+    title: "Sessions that compound.",
+    body: "Time your work, log the discipline, watch the consistency build.",
     render: () => <FocusPanel />,
   },
   {
     id: "coach",
     label: "Coach",
     icon: <MessageSquareText className="h-4 w-4" />,
-    eyebrow: "Always-on tutor",
-    title: "An SQE coach that actually knows you.",
-    body: "Ask anything. Get explanations and quizzes tuned to your latest results.",
+    eyebrow: "AI coach",
+    title: "A tutor that knows your gaps.",
+    body: "Tailored explanations and quizzes shaped by your latest results.",
     render: () => <CoachPanel />,
   },
   {
     id: "practice",
     label: "Mocks",
     icon: <ClipboardCheck className="h-4 w-4" />,
-    eyebrow: "Built for FLK1 & FLK2",
-    title: "Mocks tuned to your weak spots.",
-    body: "Adaptive MCQs that get harder where you're soft and reinforce what's stuck.",
+    eyebrow: "FLK1 & FLK2",
+    title: "Practice, sharpened to your weak spots.",
+    body: "Adaptive MCQs that pressure-test what you don't know yet.",
     render: () => <PracticePanel />,
   },
   {
     id: "analytics",
     label: "Analytics",
     icon: <BarChart3 className="h-4 w-4" />,
-    eyebrow: "See your edge",
-    title: "Confidence, mapped to the syllabus.",
-    body: "Track accuracy, mastery and time per topic. Watch weak areas turn into strengths.",
+    eyebrow: "Performance",
+    title: "Mastery, mapped to the syllabus.",
+    body: "Accuracy, depth and pace across every module — turned into signal.",
     render: () => <AnalyticsPanel />,
   },
 ];
@@ -486,11 +483,11 @@ function FeatureShowcase() {
 
           {/* Copy */}
           <div key={tab.id + "-copy"} className="order-1 animate-fade-in text-center md:order-2 md:text-left">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gradient-tentra">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
               {tab.eyebrow}
             </div>
-            <h3 className="mt-3 text-2xl font-normal text-foreground md:text-4xl">{tab.title}</h3>
-            <p className="mt-3 text-sm text-muted-foreground md:text-base">{tab.body}</p>
+            <h3 className="mt-4 text-2xl font-light leading-[1.15] tracking-[-0.02em] text-foreground md:text-4xl">{tab.title}</h3>
+            <p className="mt-4 text-[15px] leading-[1.7] text-muted-foreground md:text-base">{tab.body}</p>
           </div>
         </div>
       </div>
@@ -498,8 +495,8 @@ function FeatureShowcase() {
       {/* Quick feature pills */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          { icon: <Flame className="h-4 w-4" />, title: "Study streaks" },
-          { icon: <Activity className="h-4 w-4" />, title: "Heatmaps" },
+          { icon: <Flame className="h-4 w-4" />, title: "Consistency streaks" },
+          { icon: <Activity className="h-4 w-4" />, title: "Effort heatmaps" },
           { icon: <Target className="h-4 w-4" />, title: "Weak-area focus" },
           { icon: <TrendingUp className="h-4 w-4" />, title: "Mastery tracking" },
         ].map((f) => (
