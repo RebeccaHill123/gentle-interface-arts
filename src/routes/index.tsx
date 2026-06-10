@@ -483,11 +483,11 @@ function FeatureShowcase() {
 
           {/* Copy */}
           <div key={tab.id + "-copy"} className="order-1 animate-fade-in text-center md:order-2 md:text-left">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-gradient-tentra">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
               {tab.eyebrow}
             </div>
-            <h3 className="mt-3 text-2xl font-normal text-foreground md:text-4xl">{tab.title}</h3>
-            <p className="mt-3 text-sm text-muted-foreground md:text-base">{tab.body}</p>
+            <h3 className="mt-4 text-2xl font-light leading-[1.15] tracking-[-0.02em] text-foreground md:text-4xl">{tab.title}</h3>
+            <p className="mt-4 text-[15px] leading-[1.7] text-muted-foreground md:text-base">{tab.body}</p>
           </div>
         </div>
       </div>
