@@ -69,7 +69,7 @@ function LandingPage() {
   // Anonymous visitors go straight into the plan builder — they experience
   // the personalised "aha moment" before being asked to create an account.
   const ctaTo = isAuthenticated ? "/dashboard" : "/onboarding";
-  const ctaLabel = isAuthenticated ? "Go to Dashboard" : "Start Revising Free";
+  const ctaLabel = isAuthenticated ? "View Dashboard" : "Build My Plan";
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
