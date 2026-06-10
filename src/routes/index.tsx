@@ -119,7 +119,7 @@ function LandingPage() {
         <section className="mx-auto max-w-6xl px-5 pt-4 pb-10 md:px-6 md:pt-12 md:pb-16">
           <div className="grid items-center gap-10 md:grid-cols-[1.1fr_1fr] md:gap-12">
             <div className="text-center md:text-left">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-foreground/80 backdrop-blur">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground/80 backdrop-blur">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-primary opacity-75" />
                   <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
@@ -127,24 +127,25 @@ function LandingPage() {
                 Early access
               </span>
 
-              <h1 className="mt-4 text-[2.4rem] font-light leading-[1.02] tracking-tight text-foreground md:text-[3.6rem] lg:text-[4.25rem]">
-                The revision app built for{" "}
-                <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">
-                  SQE students
+              <h1 className="mt-5 text-[2.1rem] font-light leading-[1.08] tracking-[-0.02em] text-foreground md:text-[3.1rem] lg:text-[3.6rem]">
+                The performance platform for{" "}
+                <span className="italic text-gradient-tentra font-light inline-block pr-[0.12em]">
+                  SQE candidates
                 </span>
                 .
               </h1>
 
-              <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed text-muted-foreground md:mx-0 md:max-w-lg md:text-lg">
-                Track revision like athletes track training. Streaks, analytics
-                and an AI coach — all wrapped in a plan that adapts to you.
+              <p className="mx-auto mt-5 max-w-md text-[15px] leading-[1.65] text-muted-foreground md:mx-0 md:max-w-[34rem] md:text-[17px]">
+                Adaptive study plans, performance analytics and AI-powered
+                coaching that evolve with your progress — from day one through
+                to exam day.
               </p>
 
-              <div className="mt-7 flex flex-col items-center gap-2.5 md:flex-row md:items-start md:justify-start">
+              <div className="mt-8 flex flex-col items-center gap-2.5 md:flex-row md:items-start md:justify-start">
                 <Button
                   asChild
                   size="lg"
-                  className="h-14 w-full rounded-full bg-gradient-pink-blue px-8 text-base font-semibold text-primary-foreground shadow-glow hover:opacity-95 md:w-auto"
+                  className="h-14 w-full rounded-full bg-gradient-pink-blue px-8 text-[15px] font-semibold tracking-[0.01em] text-primary-foreground shadow-glow hover:opacity-95 md:w-auto"
                 >
                   <Link to={ctaTo}>
                     {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -162,9 +163,9 @@ function LandingPage() {
                 )}
               </div>
 
-              <div className="mt-5 flex items-center justify-center gap-4 text-[11px] text-muted-foreground md:justify-start">
+              <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[11px] tracking-[0.02em] text-muted-foreground md:justify-start">
                 <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Free in early access
+                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Free during early access
                 </span>
                 <span className="inline-flex items-center gap-1.5">
                   <Lock className="h-3.5 w-3.5 text-primary" /> 30-second sign-up
@@ -178,11 +179,19 @@ function LandingPage() {
               <PhoneFrame>
                 <DashboardPanel />
               </PhoneFrame>
-              <FloatingChip className="-right-2 top-12 hidden sm:flex">
-                <Flame className="h-3.5 w-3.5 text-primary" /> 14-day streak
+              <FloatingChip className="-right-3 top-16 hidden sm:flex">
+                <Flame className="h-3.5 w-3.5 text-primary" />
+                <span className="flex flex-col leading-tight">
+                  <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Streak</span>
+                  <span className="text-[12px] font-semibold text-foreground">14 days</span>
+                </span>
               </FloatingChip>
-              <FloatingChip className="-left-3 bottom-16 hidden sm:flex">
-                <Zap className="h-3.5 w-3.5 text-primary" /> +2h Tort added
+              <FloatingChip className="-left-4 bottom-20 hidden sm:flex">
+                <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                <span className="flex flex-col leading-tight">
+                  <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Weekly consistency</span>
+                  <span className="text-[12px] font-semibold text-foreground">+12%</span>
+                </span>
               </FloatingChip>
             </div>
           </div>
