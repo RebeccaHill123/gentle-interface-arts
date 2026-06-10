@@ -495,8 +495,8 @@ function FeatureShowcase() {
       {/* Quick feature pills */}
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          { icon: <Flame className="h-4 w-4" />, title: "Study streaks" },
-          { icon: <Activity className="h-4 w-4" />, title: "Heatmaps" },
+          { icon: <Flame className="h-4 w-4" />, title: "Consistency streaks" },
+          { icon: <Activity className="h-4 w-4" />, title: "Effort heatmaps" },
           { icon: <Target className="h-4 w-4" />, title: "Weak-area focus" },
           { icon: <TrendingUp className="h-4 w-4" />, title: "Mastery tracking" },
         ].map((f) => (
