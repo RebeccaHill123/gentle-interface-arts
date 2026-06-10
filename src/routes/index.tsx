@@ -299,7 +299,7 @@ function LandingPage() {
               </span>
               <span className="text-sm font-semibold tracking-tight text-foreground">Tentra</span>
               <span className="hidden text-sm text-muted-foreground sm:inline">
-                · Built for the next generation of solicitors.
+                · For the next generation of solicitors.
               </span>
             </div>
             <div className="text-xs text-muted-foreground">© {new Date().getFullYear()} Tentra</div>
