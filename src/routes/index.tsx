@@ -199,10 +199,11 @@ function LandingPage() {
 
         {/* SOCIAL PROOF STRIP */}
         <section className="mx-auto max-w-6xl px-5 pb-12 md:px-6">
-          <div className="grid grid-cols-3 gap-2 rounded-3xl border border-border bg-card/60 p-4 backdrop-blur md:gap-6 md:p-6">
-            <ProofStat top="Built for" big="SQE1 + 2" sub="UK law students" />
-            <ProofStat top="Designed by" big="Top-tier" sub="future solicitors" />
-            <ProofStat top="Status" big="Early access" sub="join the beta" />
+          <div className="grid grid-cols-2 gap-2 rounded-3xl border border-border bg-card/60 p-4 backdrop-blur md:grid-cols-4 md:gap-6 md:p-6">
+            <TrustPill icon={<Target className="h-3.5 w-3.5" />} label="Designed specifically for SQE candidates" />
+            <TrustPill icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive AI study planning" />
+            <TrustPill icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance tracking & analytics" />
+            <TrustPill icon={<Sparkles className="h-3.5 w-3.5" />} label="Built by future solicitors" />
           </div>
         </section>
 
