@@ -327,14 +327,15 @@ function LandingPage() {
   );
 }
 
-function ProofStat({ top, big, sub }: { top: string; big: string; sub: string }) {
+function TrustPill({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="text-center">
-      <div className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground md:text-[10px]">
-        {top}
-      </div>
-      <div className="mt-1 text-sm font-semibold text-gradient-tentra md:text-lg">{big}</div>
-      <div className="text-[10px] text-muted-foreground md:text-xs">{sub}</div>
+    <div className="flex items-center gap-2.5 rounded-2xl border border-border/70 bg-background/40 px-3 py-2.5 md:px-4 md:py-3">
+      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-pink-blue text-primary-foreground shadow-glow">
+        {icon}
+      </span>
+      <span className="text-[11px] font-medium leading-snug tracking-[0.01em] text-foreground md:text-[12.5px]">
+        {label}
+      </span>
     </div>
   );
 }
