@@ -315,7 +315,7 @@ function LandingPage() {
             className="h-12 w-full rounded-full bg-gradient-pink-blue text-base font-semibold text-primary-foreground shadow-glow hover:opacity-95"
           >
             <Link to="/onboarding">
-              Start Revising Free <ArrowRight className="ml-1.5 h-4 w-4" />
+              Build My Plan <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
           </Button>
         </div>
