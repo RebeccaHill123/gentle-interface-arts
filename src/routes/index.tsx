@@ -245,42 +245,41 @@ function LandingPage() {
         </section>
 
         {/* TESTIMONIAL / VIBE */}
-        <section className="mx-auto max-w-3xl px-5 pb-20 md:px-6 md:pb-24">
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-8 text-center backdrop-blur md:p-12">
+        <section className="mx-auto max-w-3xl px-5 pb-24 md:px-6 md:pb-28">
+          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-10 text-center backdrop-blur md:p-14">
             <div className="absolute -inset-x-10 -top-10 -z-10 h-40 bg-gradient-tentra opacity-20 blur-3xl" />
             <Sparkles className="mx-auto h-5 w-5 text-pink" />
-            <p className="mt-4 text-xl font-light leading-snug text-foreground md:text-2xl">
-              "Like Strava, but for SQE prep. The streaks make me actually want
-              to open my notes."
+            <p className="mt-5 text-xl font-light leading-[1.4] tracking-[-0.01em] text-foreground md:text-2xl">
+              "Tentra turned my preparation into something measurable. I knew,
+              every day, that I was getting closer."
             </p>
-            <p className="mt-4 text-xs uppercase tracking-wider text-muted-foreground">
-              Designed for ambitious UK law students
+            <p className="mt-5 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+              Built for the next generation of solicitors
             </p>
           </div>
         </section>
 
         {/* PRICING / EARLY ACCESS */}
-        <section id="pricing" className="mx-auto max-w-3xl px-5 pb-24 md:px-6 md:pb-28">
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-8 text-center backdrop-blur md:p-12">
+        <section id="pricing" className="mx-auto max-w-3xl px-5 pb-28 md:px-6 md:pb-32">
+          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-10 text-center backdrop-blur md:p-14">
             <div className="absolute inset-0 -z-10 bg-gradient-tentra opacity-10" />
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-foreground">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground">
               <Trophy className="h-3 w-3 text-pink" /> Early access
             </div>
-            <h2 className="mt-4 text-[2rem] font-normal leading-tight text-foreground md:text-5xl">
-              Free during{" "}
+            <h2 className="mt-5 text-[2rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground md:text-5xl">
+              Free, while we{" "}
               <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">
-                Tentra
-              </span>{" "}
-              early access ✨
+                build
+              </span>
+              .
             </h2>
-            <p className="mx-auto mt-3 max-w-md text-sm text-muted-foreground md:text-base">
-              Every Pro feature unlocked for everyone right now. No card. No
-              checkout. Just sign up and start your streak.
+            <p className="mx-auto mt-4 max-w-md text-[15px] leading-[1.7] text-muted-foreground md:text-base">
+              Every feature unlocked for early candidates. No card required.
             </p>
             <Button
               asChild
               size="lg"
-              className="mt-7 h-14 w-full max-w-xs rounded-full bg-gradient-pink-blue px-8 text-base font-semibold text-primary-foreground shadow-glow hover:opacity-95"
+              className="mt-8 h-14 w-full max-w-xs rounded-full bg-gradient-pink-blue px-8 text-[15px] font-semibold tracking-[0.01em] text-primary-foreground shadow-glow hover:opacity-95"
             >
               <Link to={ctaTo} search={isAuthenticated ? undefined : { mode: "signup" }}>
                 {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
