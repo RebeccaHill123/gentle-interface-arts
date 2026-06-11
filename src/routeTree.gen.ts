@@ -9,9 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ProRouteImport } from './routes/pro'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
@@ -32,6 +34,11 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -45,6 +52,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const ProRoute = ProRouteImport.update({
   id: '/pro',
   path: '/pro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PracticeRoute = PracticeRouteImport.update({
@@ -156,9 +168,11 @@ export interface FileRoutesByFullPath {
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
+  '/privacy': typeof PrivacyRoute
   '/pro': typeof ProRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
@@ -179,9 +193,11 @@ export interface FileRoutesByTo {
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
+  '/privacy': typeof PrivacyRoute
   '/pro': typeof ProRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
@@ -204,9 +220,11 @@ export interface FileRoutesById {
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
+  '/privacy': typeof PrivacyRoute
   '/pro': typeof ProRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/terms': typeof TermsRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
@@ -230,9 +248,11 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/onboarding'
     | '/practice'
+    | '/privacy'
     | '/pro'
     | '/settings'
     | '/sitemap.xml'
+    | '/terms'
     | '/api/coach'
     | '/auth/callback'
     | '/focus/sprint'
@@ -253,9 +273,11 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/onboarding'
     | '/practice'
+    | '/privacy'
     | '/pro'
     | '/settings'
     | '/sitemap.xml'
+    | '/terms'
     | '/api/coach'
     | '/auth/callback'
     | '/focus/sprint'
@@ -277,9 +299,11 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/onboarding'
     | '/practice'
+    | '/privacy'
     | '/pro'
     | '/settings'
     | '/sitemap.xml'
+    | '/terms'
     | '/api/coach'
     | '/auth_/callback'
     | '/focus/sprint'
@@ -302,9 +326,11 @@ export interface RootRouteChildren {
   MocksRoute: typeof MocksRoute
   OnboardingRoute: typeof OnboardingRoute
   PracticeRoute: typeof PracticeRoute
+  PrivacyRoute: typeof PrivacyRoute
   ProRoute: typeof ProRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  TermsRoute: typeof TermsRoute
   ApiCoachRoute: typeof ApiCoachRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -314,6 +340,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sitemap.xml': {
       id: '/sitemap.xml'
       path: '/sitemap.xml'
@@ -333,6 +366,13 @@ declare module '@tanstack/react-router' {
       path: '/pro'
       fullPath: '/pro'
       preLoaderRoute: typeof ProRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/practice': {
@@ -497,9 +537,11 @@ const rootRouteChildren: RootRouteChildren = {
   MocksRoute: MocksRoute,
   OnboardingRoute: OnboardingRoute,
   PracticeRoute: PracticeRoute,
+  PrivacyRoute: PrivacyRoute,
   ProRoute: ProRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  TermsRoute: TermsRoute,
   ApiCoachRoute: ApiCoachRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
