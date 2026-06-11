@@ -571,13 +571,16 @@ function FeatureShowcase() {
 
 function FloatingChip({
   className = "",
+  style,
   children,
 }: {
   className?: string;
+  style?: React.CSSProperties;
   children: React.ReactNode;
 }) {
   return (
     <div
+      style={style}
       className={`absolute items-center gap-2 rounded-xl border border-border/70 bg-card/95 px-2.5 py-2 text-xs font-normal text-foreground shadow-[0_12px_30px_-12px_oklch(0.25_0.05_280/0.25)] backdrop-blur animate-float ${className}`}
     >
       {children}
