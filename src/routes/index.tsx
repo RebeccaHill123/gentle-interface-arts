@@ -249,7 +249,7 @@ function LandingPage() {
           <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-7 text-center backdrop-blur md:p-14">
             <div className="absolute -inset-x-10 -top-10 -z-10 h-40 bg-gradient-tentra opacity-20 blur-3xl" />
             <Sparkles className="mx-auto h-5 w-5 text-pink" />
-            <p className="mt-5 text-xl font-light leading-[1.4] tracking-[-0.01em] text-foreground md:text-2xl">
+            <p className="mt-5 text-lg font-light leading-[1.45] tracking-[-0.01em] text-foreground md:text-2xl">
               "Tentra turned my preparation into something measurable. I knew,
               every day, that I was getting closer."
             </p>
