@@ -90,7 +90,7 @@ function PremiumCta({
           "0 1px 0 0 oklch(1 0 0 / 0.25) inset, 0 12px 30px -12px oklch(0.55 0.20 320 / 0.45)",
       }}
     >
-      <Link to={to} search={search as never}>
+      <Link to={to as never} search={search as never}>
         {children}
       </Link>
     </Button>
