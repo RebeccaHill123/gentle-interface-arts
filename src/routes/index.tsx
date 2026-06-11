@@ -140,11 +140,11 @@ function LandingPage() {
                 engineered for the demands of qualification.
               </p>
 
-              <div className="mt-9 flex flex-col items-center gap-2.5 md:flex-row md:items-start md:justify-start">
+              <div className="mt-7 flex flex-col items-center gap-2 md:mt-9 md:flex-row md:items-start md:justify-start md:gap-2.5">
                 <Button
                   asChild
                   size="lg"
-                  className="h-14 w-full rounded-full bg-gradient-pink-blue px-8 text-[15px] font-semibold tracking-[0.01em] text-primary-foreground shadow-glow hover:opacity-95 md:w-auto"
+                  className="h-13 w-full rounded-full bg-gradient-pink-blue px-8 text-[15px] font-semibold tracking-[0.01em] text-primary-foreground shadow-glow hover:opacity-95 md:h-14 md:w-auto"
                 >
                   <Link to={ctaTo}>
                     {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -155,7 +155,7 @@ function LandingPage() {
                     asChild
                     size="lg"
                     variant="ghost"
-                    className="h-14 rounded-full text-sm text-muted-foreground hover:text-foreground"
+                    className="h-11 rounded-full text-sm text-muted-foreground hover:text-foreground md:h-14"
                   >
                     <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
                   </Button>
