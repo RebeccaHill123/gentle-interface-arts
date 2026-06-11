@@ -197,8 +197,8 @@ function LandingPage() {
         </section>
 
         {/* SOCIAL PROOF STRIP */}
-        <section className="mx-auto max-w-6xl px-5 pb-16 md:px-6 md:pb-20">
-          <div className="grid grid-cols-2 gap-2 rounded-3xl border border-border bg-card/60 p-4 backdrop-blur md:grid-cols-4 md:gap-6 md:p-6">
+        <section className="mx-auto max-w-6xl px-5 pb-12 md:px-6 md:pb-20">
+          <div className="grid grid-cols-2 gap-2 rounded-3xl border border-border bg-card/60 p-3 backdrop-blur md:grid-cols-4 md:gap-6 md:p-6">
             <TrustPill icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE1 & SQE2" />
             <TrustPill icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive study planning" />
             <TrustPill icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance analytics" />
@@ -207,8 +207,8 @@ function LandingPage() {
         </section>
 
         {/* FEATURES — phone carousel */}
-        <section id="features" className="mx-auto max-w-6xl px-5 pb-24 md:px-6 md:pb-32">
-          <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
+        <section id="features" className="mx-auto max-w-6xl px-5 pb-16 md:px-6 md:pb-32">
+          <div className="mx-auto mb-8 max-w-2xl text-center md:mb-16">
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
               The platform
             </div>
