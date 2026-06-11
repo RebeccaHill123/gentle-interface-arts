@@ -127,30 +127,52 @@ function MocksPage() {
         ))}
       </section>
 
-      {/* WEAK AREA DRILL — adaptive secondary */}
-      <section className="mt-4">
+      {/* WEAK AREA DRILL + FLASHCARDS — secondary pair */}
+      <section className="mt-4 grid gap-4 md:grid-cols-2">
         <button
           type="button"
           onClick={openPractice}
-          className="group relative flex w-full flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 text-left backdrop-blur transition hover:border-pink/40 hover:shadow-glow md:flex-row md:items-center md:gap-6"
+          className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 text-left backdrop-blur transition hover:border-pink/40 hover:shadow-glow"
         >
           <div className="pointer-events-none absolute -left-16 -bottom-16 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-10 blur-2xl" />
-          <div className="relative grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
-            <Target className="h-5 w-5" />
-          </div>
-          <div className="relative mt-4 flex-1 md:mt-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="text-lg font-semibold text-foreground">Weak Area Drill</div>
-              <span className="rounded-full bg-pink/15 px-2 py-0.5 text-[11px] font-medium text-pink">
-                Adaptive
-              </span>
+          <div className="relative flex items-start justify-between">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+              <Target className="h-5 w-5" />
             </div>
+            <span className="rounded-full bg-pink/15 px-2 py-0.5 text-[11px] font-medium text-pink">
+              Adaptive
+            </span>
+          </div>
+          <div className="relative mt-6">
+            <div className="text-lg font-semibold text-foreground">Weak Area Drill</div>
             <p className="mt-1 text-sm text-muted-foreground">
               Targeted SBAs on your weakest topics.
             </p>
           </div>
-          <ArrowRight className="relative mt-4 h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground md:mt-0" />
+          <ArrowRight className="relative mt-4 h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
         </button>
+
+        <Link
+          to="/flashcards"
+          className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 text-left backdrop-blur transition hover:border-pink/40 hover:shadow-glow"
+        >
+          <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-10 blur-2xl" />
+          <div className="relative flex items-start justify-between">
+            <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+              <Layers className="h-5 w-5" />
+            </div>
+            <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+          </div>
+          <div className="relative mt-6">
+            <div className="text-lg font-semibold text-foreground">Flashcards</div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Review key rules, definitions and high-yield legal principles.
+            </p>
+            <div className="mt-3 text-xs text-muted-foreground/80">
+              Adaptive recall · FLK1 & FLK2
+            </div>
+          </div>
+        </Link>
       </section>
 
       {/* MORE PRACTICE TOOLS — secondary */}
