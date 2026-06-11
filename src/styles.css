@@ -185,13 +185,6 @@
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-
-  h1,
-  h2,
-  h3 {
-    font-family: var(--font-display);
-    letter-spacing: -0.03em;
-    font-weight: 500;
   }
 }
 
