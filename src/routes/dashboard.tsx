@@ -124,7 +124,11 @@ function DashboardPage() {
     );
   }
 
-  const { input, plan, daysUntilExam, completedTaskIds, sessions } = stored;
+  const { input, plan, completedTaskIds, sessions } = stored;
+  // Compute live so it stays in sync with the AI coach (stored value is a snapshot from onboarding).
+  const daysUntilExam = input.examDate
+    ? Math.max(0, Math.round((new Date(input.examDate).getTime() - Date.now()) / 86_400_000))
+    : stored.daysUntilExam;
   const completed = completedTaskIds.length;
   const totalToday = plan.todayTasks.length;
   const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
