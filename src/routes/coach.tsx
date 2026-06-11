@@ -652,7 +652,7 @@ function CoachPage() {
             <Button
               type="submit"
               disabled={!canSend}
-              className="h-10 w-10 shrink-0 rounded-2xl bg-gradient-pink-blue p-0 text-primary-foreground shadow-glow hover:opacity-95 disabled:opacity-40"
+              className="h-10 w-10 shrink-0 rounded-2xl bg-gradient-pink-blue p-0 text-primary-foreground shadow-glow transition-all hover:brightness-[1.06] disabled:opacity-40"
             >
               {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>

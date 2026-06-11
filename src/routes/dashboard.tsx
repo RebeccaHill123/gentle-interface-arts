@@ -708,7 +708,7 @@ function NoPlanState() {
         </p>
         <Button
           asChild
-          className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+          className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
         >
           <Link to="/">Back to home</Link>
         </Button>
@@ -977,7 +977,7 @@ function RecordSessionDialog({
       <DialogTrigger asChild>
         <Button
           size="sm"
-          className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+          className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
         >
           <Plus className="h-4 w-4" /> Record session
         </Button>
@@ -1065,7 +1065,7 @@ function RecordSessionDialog({
             </Button>
             <Button
               type="submit"
-              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
             >
               Save session
             </Button>
@@ -1271,7 +1271,7 @@ function QuizDialog({
               <Button
                 onClick={handleNext}
                 disabled={!revealed}
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 {current < questions.length - 1 ? "Next" : "See results"}
               </Button>
@@ -1302,7 +1302,7 @@ function QuizDialog({
             <DialogFooter>
               <Button
                 onClick={handleFinish}
-                className="w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                className="w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 Mark task complete
               </Button>

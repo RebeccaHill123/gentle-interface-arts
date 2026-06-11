@@ -85,7 +85,7 @@ function FocusSummaryPage() {
               <>Logged your work.</>
             ) : (
               <>
-                Nice <span className="italic text-gradient-tentra font-sans text-2xl">work</span>.
+                Nice <span className="text-gradient-pink-violet font-sans text-2xl">work</span>.
               </>
             )}
           </h1>
@@ -108,7 +108,7 @@ function FocusSummaryPage() {
             <Button
               onClick={() => navigate({ to: "/focus" })}
               size="lg"
-              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
             >
               <Play className="mr-1.5 h-4 w-4" /> Start another sprint
             </Button>

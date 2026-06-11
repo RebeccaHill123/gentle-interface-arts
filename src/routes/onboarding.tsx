@@ -370,7 +370,7 @@ function OnboardingPage() {
       </div>
 
       <div className="relative mx-auto w-full max-w-2xl px-6 pt-6">
-        <div className="rounded-[2rem] border border-border bg-card/70 p-6 backdrop-blur md:p-10">
+        <div className="rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur md:p-10">
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -448,7 +448,7 @@ function OnboardingPage() {
                 type="button"
                 onClick={next}
                 size="lg"
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 Continue <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
@@ -458,7 +458,7 @@ function OnboardingPage() {
                 onClick={handleGenerate}
                 size="lg"
                 disabled={submitting}
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 {submitting ? (
                   <>
@@ -524,7 +524,7 @@ function OnboardingPage() {
 function StepHeader({ kicker, title, sub }: { kicker: string; title: React.ReactNode; sub: string }) {
   return (
     <div>
-      <div className="text-xs font-semibold uppercase tracking-wider text-pink">
+      <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
         {kicker}
       </div>
       <h1 className="mt-2 text-2xl font-normal text-foreground md:text-3xl">
@@ -615,7 +615,7 @@ function StepIntensity({
     <div className="space-y-6">
       <StepHeader
         kicker="Step 2"
-        title={<>Tell us about <span className="italic text-gradient-tentra">you</span></>}
+        title={<>Tell us about <span className="text-gradient-pink-violet">you</span></>}
         sub="We'll calibrate the plan's intensity, pacing and task mix to match."
       />
 
@@ -977,7 +977,7 @@ function StepReview({
         kicker="Step 5"
         title={
           <>
-            Ready to build your <span className="italic text-gradient-tentra">plan</span>
+            Ready to build your <span className="text-gradient-pink-violet">plan</span>
           </>
         }
         sub="The engine weights high-yield + your weak areas, schedules spaced repetition, and adapts as you study."
@@ -998,7 +998,7 @@ function StepReview({
 
       {weakModules.length > 0 && (
         <div className="rounded-2xl border border-pink/40 bg-gradient-pink-blue/10 p-4">
-          <div className="text-xs font-semibold uppercase tracking-wider text-pink">
+          <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
             Weak focus
           </div>
           <p className="mt-1 text-xs text-muted-foreground">

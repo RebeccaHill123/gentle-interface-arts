@@ -121,7 +121,7 @@ function SettingsPage() {
             </div>
             <Button
               onClick={() => navigate({ to: "/pro" })}
-              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
             >
               <Sparkles className="mr-1.5 h-4 w-4" /> Manage Pro
             </Button>
