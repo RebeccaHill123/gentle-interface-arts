@@ -196,8 +196,17 @@ function LandingPage() {
                 <PhoneFrame>
                   <DashboardPanel />
                 </PhoneFrame>
-                <FloatingChip className="-right-2 top-20 hidden sm:flex">
-                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                <FloatingChip className="-right-4 top-10 hidden sm:flex" style={{ animationDelay: "-1s" }}>
+                  <TrendingUp className="h-3.5 w-3.5 text-pink" />
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                      Plan adherence
+                    </span>
+                    <span className="text-[12.5px] font-medium text-foreground">92%</span>
+                  </span>
+                </FloatingChip>
+                <FloatingChip className="-left-5 top-1/3 hidden sm:flex" style={{ animationDelay: "-2.5s" }}>
+                  <Flame className="h-3.5 w-3.5 text-pink" />
                   <span className="flex flex-col leading-tight">
                     <span className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
                       Streak
@@ -205,13 +214,22 @@ function LandingPage() {
                     <span className="text-[12.5px] font-medium text-foreground">14 days</span>
                   </span>
                 </FloatingChip>
-                <FloatingChip className="-left-3 bottom-24 hidden sm:flex">
-                  <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                <FloatingChip className="-right-6 bottom-32 hidden sm:flex" style={{ animationDelay: "-4s" }}>
+                  <Target className="h-3.5 w-3.5 text-pink" />
                   <span className="flex flex-col leading-tight">
                     <span className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                      Consistency
+                      Predicted readiness
                     </span>
-                    <span className="text-[12.5px] font-medium text-foreground">+12%</span>
+                    <span className="text-[12.5px] font-medium text-foreground">78%</span>
+                  </span>
+                </FloatingChip>
+                <FloatingChip className="-left-3 bottom-16 hidden sm:flex" style={{ animationDelay: "-5.5s" }}>
+                  <Sparkles className="h-3.5 w-3.5 text-pink" />
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                      Schedule
+                    </span>
+                    <span className="text-[12.5px] font-medium text-foreground">+2.1h ahead</span>
                   </span>
                 </FloatingChip>
               </div>
