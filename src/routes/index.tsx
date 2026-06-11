@@ -245,8 +245,8 @@ function LandingPage() {
         </section>
 
         {/* TESTIMONIAL / VIBE */}
-        <section className="mx-auto max-w-3xl px-5 pb-24 md:px-6 md:pb-28">
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-10 text-center backdrop-blur md:p-14">
+        <section className="mx-auto max-w-3xl px-5 pb-16 md:px-6 md:pb-28">
+          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-7 text-center backdrop-blur md:p-14">
             <div className="absolute -inset-x-10 -top-10 -z-10 h-40 bg-gradient-tentra opacity-20 blur-3xl" />
             <Sparkles className="mx-auto h-5 w-5 text-pink" />
             <p className="mt-5 text-xl font-light leading-[1.4] tracking-[-0.01em] text-foreground md:text-2xl">
