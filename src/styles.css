@@ -167,7 +167,24 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.025em;
+    font-weight: 400;
+  }
+}
+
+@layer utilities {
+  .text-gradient-pink-violet {
+    background-image: var(--gradient-pink-violet);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
 
   h1,
   h2,
