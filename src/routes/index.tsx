@@ -116,8 +116,8 @@ function LandingPage() {
 
         <main>
         {/* HERO — mobile-first, above-the-fold value prop */}
-        <section className="mx-auto max-w-6xl px-5 pt-4 pb-10 md:px-6 md:pt-12 md:pb-16">
-          <div className="grid items-center gap-10 md:grid-cols-[1.1fr_1fr] md:gap-12">
+        <section className="mx-auto max-w-6xl px-5 pt-2 pb-8 md:px-6 md:pt-12 md:pb-16">
+          <div className="grid items-center gap-8 md:grid-cols-[1.1fr_1fr] md:gap-12">
             <div className="text-center md:text-left">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground/80 backdrop-blur">
                 <span className="relative flex h-1.5 w-1.5">
