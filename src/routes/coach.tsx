@@ -640,7 +640,7 @@ function CoachPage() {
         )}
 
         {/* COMPOSER */}
-        <section className="sticky bottom-4 z-10 flex flex-col gap-3">
+        <section className="mt-2 flex flex-col gap-4">
           {/* Curated suggested prompts */}
           <div className="flex flex-wrap gap-2">
             {suggestions.map((s) => (
