@@ -349,8 +349,8 @@ function StepCard({
   body: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-6 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-lg md:p-7">
-      <div className="absolute right-5 top-3 font-display text-5xl leading-none text-gradient-tentra opacity-20">
+    <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-5 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-lg md:p-7">
+      <div className="pointer-events-none absolute right-4 top-2 font-display text-4xl leading-none text-gradient-tentra opacity-15 md:text-5xl md:opacity-20">
         {num}
       </div>
       <div className="relative">
