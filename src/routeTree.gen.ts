@@ -16,6 +16,7 @@ import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
 import { Route as FocusRouteImport } from './routes/focus'
+import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as CoachRouteImport } from './routes/coach'
@@ -64,6 +65,11 @@ const MocksRoute = MocksRouteImport.update({
 const FocusRoute = FocusRouteImport.update({
   id: '/focus',
   path: '/focus',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FlashcardsRoute = FlashcardsRouteImport.update({
+  id: '/flashcards',
+  path: '/flashcards',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/coach': typeof CoachRoute
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
+  '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/coach': typeof CoachRoute
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
+  '/flashcards': typeof FlashcardsRoute
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/coach': typeof CoachRoute
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
+  '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
@@ -216,6 +225,7 @@ export interface FileRouteTypes {
     | '/coach'
     | '/community'
     | '/dashboard'
+    | '/flashcards'
     | '/focus'
     | '/mocks'
     | '/onboarding'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/coach'
     | '/community'
     | '/dashboard'
+    | '/flashcards'
     | '/mocks'
     | '/onboarding'
     | '/practice'
@@ -261,6 +272,7 @@ export interface FileRouteTypes {
     | '/coach'
     | '/community'
     | '/dashboard'
+    | '/flashcards'
     | '/focus'
     | '/mocks'
     | '/onboarding'
@@ -285,6 +297,7 @@ export interface RootRouteChildren {
   CoachRoute: typeof CoachRoute
   CommunityRoute: typeof CommunityRoute
   DashboardRoute: typeof DashboardRoute
+  FlashcardsRoute: typeof FlashcardsRoute
   FocusRoute: typeof FocusRouteWithChildren
   MocksRoute: typeof MocksRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -348,6 +361,13 @@ declare module '@tanstack/react-router' {
       path: '/focus'
       fullPath: '/focus'
       preLoaderRoute: typeof FocusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/flashcards': {
+      id: '/flashcards'
+      path: '/flashcards'
+      fullPath: '/flashcards'
+      preLoaderRoute: typeof FlashcardsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -472,6 +492,7 @@ const rootRouteChildren: RootRouteChildren = {
   CoachRoute: CoachRoute,
   CommunityRoute: CommunityRoute,
   DashboardRoute: DashboardRoute,
+  FlashcardsRoute: FlashcardsRoute,
   FocusRoute: FocusRouteWithChildren,
   MocksRoute: MocksRoute,
   OnboardingRoute: OnboardingRoute,
@@ -488,3 +509,12 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
