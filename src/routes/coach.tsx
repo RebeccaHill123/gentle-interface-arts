@@ -10,24 +10,16 @@ import {
   Send,
   Loader2,
   ArrowUpRight,
-  TrendingUp,
-  TrendingDown,
   AlertTriangle,
-  Sun,
-  Flame,
-  Activity,
   Brain,
   GraduationCap,
-  ClipboardList,
-  LineChart,
-  MessageSquare,
-  BookOpen,
-  Layers,
   Target,
-  ListChecks,
-  Lightbulb,
   History,
   RefreshCw,
+  Compass,
+  ShieldAlert,
+  CalendarClock,
+  BookOpenCheck,
 } from "lucide-react";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,81 +27,50 @@ import { loadPlan, computeStreak } from "@/lib/plan-store";
 import { deriveAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
 
 type Msg = { role: "user" | "assistant"; content: string };
-type Suggestion = { label: string; prompt: string; icon?: typeof Sparkles };
-type Mode = "coach" | "tutor" | "practice" | "analyse";
+type Suggestion = { label: string; prompt: string };
+type Mode = "coach" | "tutor";
 
 const MODES: {
   id: Mode;
   label: string;
-  icon: typeof Sparkles;
   blurb: string;
   systemHint: string;
 }[] = [
   {
     id: "coach",
     label: "Coach",
-    icon: Sparkles,
-    blurb: "Strategy, planning and what to do next.",
+    blurb: "Strategy, planning and exam readiness.",
     systemHint:
-      "Reply as a strategic study coach. Prioritise planning, sequencing and trade-offs.",
+      "Reply as a senior SQE study strategist. Prioritise sequencing, trade-offs, mock performance, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused.",
   },
   {
     id: "tutor",
     label: "Tutor",
-    icon: GraduationCap,
-    blurb: "Explain a topic, walk through a rule, teach me.",
+    blurb: "Legal concepts, worked examples and SBA practice.",
     systemHint:
-      "Reply as a 1:1 SQE tutor. Explain the law clearly, with structure, key cases/statutes only when certain, and a worked example.",
-  },
-  {
-    id: "practice",
-    label: "Practice",
-    icon: ClipboardList,
-    blurb: "Quiz me, generate SBAs, drill weak areas.",
-    systemHint:
-      "Reply as an SQE assessment author. Generate exam-style SBA questions with 4 options, mark the correct answer, and give a one-line explanation per question.",
-  },
-  {
-    id: "analyse",
-    label: "Analyse",
-    icon: LineChart,
-    blurb: "Read my data, surface risks and patterns.",
-    systemHint:
-      "Reply as a performance analyst. Cite the user's snapshot data explicitly, identify patterns, name the single highest-leverage move.",
+      "Reply as a private SQE1 tutor (FLK1/FLK2). Explain the law with academic precision, structured headings, worked examples and key authorities only when certain. Where useful, offer to test understanding with SBA-style questions.",
   },
 ];
 
 const SUGGESTIONS_BY_MODE: Record<Mode, Suggestion[]> = {
   coach: [
-    { label: "Build tonight's revision session", prompt: "Build me tonight's revision session — 60 minutes, structured, prioritised by what my data says I need most.", icon: ListChecks },
-    { label: "Re-plan my week", prompt: "Re-plan my week strategically based on recent performance, recency gaps and exam proximity. What gets added, dropped or interleaved — and why?", icon: RefreshCw },
-    { label: "What should I prioritise tomorrow?", prompt: "Based on my data, what are the 3 most important things I should do tomorrow, in order, and why each one?", icon: Target },
-    { label: "Reduce workload this week", prompt: "I'm feeling stretched. Cut my plan back to the essentials this week without losing exam-readiness — and explain the trade-offs.", icon: Activity },
+    { label: "Prioritise this week", prompt: "What should I prioritise this week based on my weak areas, recency decay and exam proximity? Give me a 3-step ordered plan with the reasoning behind each step." },
+    { label: "Review my mocks", prompt: "Review my recent mock performance and identify the highest-risk topics I need to drill before the exam. Tell me what's improving, what's regressing, and the next 3 sessions." },
+    { label: "Build a 7-day catch-up", prompt: "Build me a focused 7-day catch-up plan. Use my available hours, prioritise the highest-leverage modules, and tell me exactly what to do each day." },
+    { label: "Am I on track?", prompt: "Given my exam date, readiness and recent activity — am I on track? Be honest. If I'm not, prescribe what changes this week." },
+    { label: "Highest mark-impact today", prompt: "What should I revise today for the single highest mark impact? Cite the data — recency, accuracy, syllabus weight — and give me a 60-minute session structure." },
   ],
   tutor: [
-    { label: "Explain easements simply", prompt: "Explain easements simply, like I'm a beginner. Cover creation, scope and termination, with one short worked example.", icon: BookOpen },
-    { label: "Summarise negligence in 2 mins", prompt: "Summarise negligence in 2 minutes — the four elements, the key tests, and the 2 most-tested traps in SQE1.", icon: Lightbulb },
-    { label: "Explain consideration like I'm new", prompt: "Explain the doctrine of consideration like I'm completely new to it. Cover past consideration, sufficiency vs adequacy, and the practical exception in Williams v Roffey.", icon: BookOpen },
-    { label: "Walk me through trust formalities", prompt: "Walk me through the formalities for creating an express trust over land vs personalty, with the section references and one common SQE trap.", icon: GraduationCap },
-  ],
-  practice: [
-    { label: "Quiz me on consideration", prompt: "Quiz me on consideration. Ask one SBA at a time, wait for my answer, then mark it and explain.", icon: MessageSquare },
-    { label: "Generate 5 SBA questions on trusts", prompt: "Generate 5 SQE1-style SBA questions on trusts. Provide 4 options each (A–D), mark the correct answer, and add a one-line explanation per question.", icon: ClipboardList },
-    { label: "Test me on criminal law", prompt: "Test me on criminal law with 5 mixed SBAs across non-fatal offences, theft and homicide. Show the answers and explanations after I answer.", icon: Target },
-    { label: "Give me a mini mock", prompt: "Give me a 10-question mini mock from across FLK1 subjects, exam-style, with mark scheme at the end.", icon: Layers },
-    { label: "Create a flashcard set", prompt: "Create a 10-card flashcard set on the most-tested rules in land law. Format as 'Q: …' / 'A: …' pairs.", icon: Layers },
-  ],
-  analyse: [
-    { label: "What am I weakest at?", prompt: "Based on my snapshot, what am I weakest at right now? Be specific, cite the data, and tell me the single highest-leverage move this week.", icon: AlertTriangle },
-    { label: "Review my mock feedback", prompt: "Look at my recent mock performance and give me feedback: what's improving, what's regressing, and what to drill next.", icon: LineChart },
-    { label: "Explain my biggest performance risk", prompt: "What is my single biggest risk to passing right now? Cite the data and tell me how to neutralise it this week.", icon: AlertTriangle },
-    { label: "Where are my recency gaps?", prompt: "Which subjects have the worst recency decay right now and how should I sequence them back into my plan over the next 7 days?", icon: History },
+    { label: "Explain consideration", prompt: "Explain the doctrine of consideration using SQE-style examples. Cover past consideration, sufficiency vs adequacy, and the Williams v Roffey exception. Finish with one SBA to test me." },
+    { label: "Test me on easements", prompt: "Test me on easements. Ask one SQE1-style SBA at a time, wait for my answer, mark it, then explain. Cover creation, scope and termination across the set." },
+    { label: "5 SBAs on negligence", prompt: "Give me 5 SQE1-style single best answer questions on negligence — duty, breach, causation, remoteness. Four options each (A–D), correct answer marked, one-line explanation per question." },
+    { label: "Mark my reasoning", prompt: "I'll give you my answer and reasoning to a problem question. Mark it as an SQE examiner would, explain exactly where the reasoning is wrong, and show the model answer structure." },
+    { label: "Compare resulting & constructive trusts", prompt: "Compare resulting and constructive trusts: when each arises, the leading authorities, and the most-tested SQE traps. Finish with two contrasting worked examples." },
   ],
 };
 
 const THINKING_LINES = [
   "Reading your performance snapshot…",
-  "Pulling syllabus weighting…",
   "Cross-referencing recent sessions…",
   "Calibrating to your confidence map…",
   "Drafting the response…",
@@ -126,8 +87,8 @@ export const Route = createFileRoute("/coach")({
   component: CoachPage,
   head: () => ({
     meta: [
-      { title: "Tentra Coach · Your AI SQE tutor & strategist" },
-      { name: "description", content: "A conversational AI SQE tutor and study strategist. Ask legal questions, generate practice, drill weak areas and get adaptive plans." },
+      { title: "Tentra Coach · Your SQE strategist & private tutor" },
+      { name: "description", content: "An intelligent SQE study coach and private tutor. Plan strategically, drill weak areas, test understanding and stay on track for qualification." },
     ],
   }),
 });
@@ -164,7 +125,7 @@ function CoachPage() {
         setStreak(computeStreak(plan.sessions).current);
         setAnalytics(deriveAnalytics(plan));
         if (plan.input?.examDate) {
-          const d = Math.max(0, Math.round((+new Date(plan.input.examDate) - Date.now()) / 86400000));
+          const d = Math.max(0, Math.round((+new Date(plan.input.examDate) - Date.now()) / 86_400_000));
           setDaysToExam(d);
         }
       }
@@ -223,114 +184,154 @@ function CoachPage() {
     return firstName ? `${part}, ${firstName}.` : `${part}.`;
   }, [firstName]);
 
-  const contextualHook = useMemo(() => {
-    if (!analytics) return "Ask me anything — I'll teach, plan, quiz or analyse.";
-    const weakest = analytics.weakest[0];
-    const trend = analytics.subjects.find((s) => s.trend !== null);
-    if (weakest && trend) {
-      return `Based on your recent ${weakest.module} scores, I'd start there — but ask me anything.`;
+  // Intelligent contextual insight derived from exam distance + readiness
+  const heroInsight = useMemo(() => {
+    if (daysToExam === null) {
+      return "Set an exam date in onboarding to unlock strategic guidance tailored to your timeline.";
     }
-    if (weakest) return `${weakest.module} is your softest module right now. Want me to drill or explain it?`;
-    if (daysToExam !== null && daysToExam < 60) return `${daysToExam} days to exam. Let's make every session count.`;
-    return "Ask me anything — I'll teach, plan, quiz or analyse.";
-  }, [analytics, daysToExam]);
+    if (daysToExam === 0) return "Exam day. Trust your preparation — review high-yield rules only.";
+    const r = analytics?.readiness?.score ?? null;
+    if (daysToExam <= 7) {
+      return `You're ${daysToExam} days out — protect sleep, taper volume, and run timed SBAs only on your weakest two modules.`;
+    }
+    if (daysToExam <= 21) {
+      if (r !== null && r < 65) return `${daysToExam} days out at ${r}% readiness — scale mock exposure now and cut anything that isn't moving the score.`;
+      return `${daysToExam} days out — today should be about consolidation and timed practice, not new volume.`;
+    }
+    if (daysToExam <= 45) {
+      return `You're ${daysToExam} days out — the window where strategy outperforms effort. Prioritise weak areas before broad coverage.`;
+    }
+    if (daysToExam <= 90) {
+      return `${daysToExam} days out — build depth on your weakest modules now while there's still time for spaced repetition to compound.`;
+    }
+    return `${daysToExam} days out — establish the cadence and breadth now; tactical drills come later.`;
+  }, [daysToExam, analytics]);
 
-  const strategicInsights = useMemo(() => {
-    if (!analytics) return [];
-    const out: { icon: typeof TrendingUp; tone: "good" | "warn" | "info"; text: string; prompt: string }[] = [];
+  // Three curated premium insight cards
+  const insightCards = useMemo(() => {
+    type Card = {
+      eyebrow: string;
+      icon: typeof Target;
+      title: string;
+      body: string;
+      prompt: string;
+    };
+    const cards: Card[] = [];
 
-    const improving = analytics.subjects
-      .filter((s) => s.trend !== null && (s.trend ?? 0) >= 5)
-      .sort((a, b) => (b.trend ?? 0) - (a.trend ?? 0))[0];
-    if (improving) {
-      out.push({
-        icon: TrendingUp,
-        tone: "good",
-        text: `${improving.module} accuracy is up ${improving.trend}% — momentum is yours.`,
-        prompt: `${improving.module} is improving — what should I do to lock in the gains?`,
+    // 1. Today's focus
+    const weakest = analytics?.weakest?.[0];
+    if (weakest) {
+      cards.push({
+        eyebrow: "Today's focus",
+        icon: Target,
+        title: weakest.module,
+        body: `Your lowest-confidence module — a focused 45-minute block here will move the needle furthest today.`,
+        prompt: `Build me a 45-minute high-yield session on ${weakest.module}, structured around my weakest sub-topics, with a short SBA set at the end.`,
+      });
+    } else {
+      cards.push({
+        eyebrow: "Today's focus",
+        icon: Target,
+        title: "Set the day's priority",
+        body: "Tell me what you've got today and I'll shape it into the single highest-impact session.",
+        prompt: "I have 60 minutes today. What's the single highest-impact session I should run, and how should I structure it?",
       });
     }
 
-    const declining = analytics.subjects
-      .filter((s) => s.trend !== null && (s.trend ?? 0) <= -5)
+    // 2. Highest-risk area
+    const declining = analytics?.subjects
+      ?.filter((s) => s.trend !== null && (s.trend ?? 0) <= -5)
       .sort((a, b) => (a.trend ?? 0) - (b.trend ?? 0))[0];
-    if (declining) {
-      out.push({
-        icon: TrendingDown,
-        tone: "warn",
-        text: `${declining.module} has dropped ${Math.abs(declining.trend ?? 0)}% — flagging for reinforcement.`,
-        prompt: `Diagnose why ${declining.module} is regressing and prescribe the next 3 sessions.`,
-      });
-    }
-
-    const stale = analytics.subjects
-      .filter((s) => s.recencyDays !== null && s.recencyDays >= 10 && s.highYield >= 4)
+    const stale = analytics?.subjects
+      ?.filter((s) => s.recencyDays !== null && s.recencyDays >= 10 && s.highYield >= 4)
       .sort((a, b) => (b.recencyDays ?? 0) - (a.recencyDays ?? 0))[0];
-    if (stale) {
-      out.push({
-        icon: AlertTriangle,
-        tone: "warn",
-        text: `${stale.module} hasn't been revised in ${stale.recencyDays} days.`,
-        prompt: `Build a 45-minute refresher for ${stale.module} that targets the highest-yield gaps.`,
+
+    if (declining) {
+      cards.push({
+        eyebrow: "Highest risk",
+        icon: ShieldAlert,
+        title: `${declining.module} regressing`,
+        body: `Accuracy down ${Math.abs(declining.trend ?? 0)}% on recent sessions — left unaddressed this becomes an exam-day liability.`,
+        prompt: `Diagnose why ${declining.module} is regressing and prescribe the next three sessions to reverse the trend.`,
+      });
+    } else if (stale) {
+      cards.push({
+        eyebrow: "Highest risk",
+        icon: ShieldAlert,
+        title: `${stale.module} going stale`,
+        body: `${stale.recencyDays} days since last revision on a high-yield module. Recency decay compounds quickly this close to exam.`,
+        prompt: `Build a 45-minute refresher for ${stale.module} that targets the highest-yield gaps and reverses recency decay.`,
+      });
+    } else if (daysToExam !== null && (analytics?.readiness?.score ?? 100) < 65) {
+      cards.push({
+        eyebrow: "Highest risk",
+        icon: ShieldAlert,
+        title: "Readiness below threshold",
+        body: `Readiness at ${analytics?.readiness?.score}% with ${daysToExam} days remaining — mock exposure needs to scale this week.`,
+        prompt: `My readiness is ${analytics?.readiness?.score}% with ${daysToExam} days to exam. What's the highest-leverage 7-day plan?`,
+      });
+    } else {
+      cards.push({
+        eyebrow: "Highest risk",
+        icon: ShieldAlert,
+        title: "Audit my exam risk",
+        body: "Run a diagnostic across my data and surface the single biggest threat to passing — before it becomes one.",
+        prompt: "What is my single biggest risk to passing right now? Cite the data and tell me how to neutralise it this week.",
       });
     }
 
-    if (analytics.peak && out.length < 3) {
-      out.push({
-        icon: Sun,
-        tone: "info",
-        text: `You perform ${analytics.peak.uplift}% better in ${analytics.peak.label} blocks.`,
-        prompt: `How should I structure my ${analytics.peak.label} blocks for maximum yield?`,
+    // 3. Recommended session
+    const peak = analytics?.peak;
+    if (peak) {
+      cards.push({
+        eyebrow: "Recommended session",
+        icon: CalendarClock,
+        title: `${peak.label} block`,
+        body: `You perform ${peak.uplift}% better in ${peak.label.toLowerCase()} blocks. Pair it with active recall on your weakest module.`,
+        prompt: `Design my next ${peak.label.toLowerCase()} block — 60 minutes, structured around my weakest module with active recall and one SBA set.`,
+      });
+    } else if (streak >= 3) {
+      cards.push({
+        eyebrow: "Recommended session",
+        icon: CalendarClock,
+        title: `Keep the ${streak}-day streak`,
+        body: "Momentum is compounding. A short, focused block today is worth more than a heavy session tomorrow.",
+        prompt: `I'm on a ${streak}-day streak. Design a 30-minute session that maintains momentum without burnout.`,
+      });
+    } else {
+      cards.push({
+        eyebrow: "Recommended session",
+        icon: CalendarClock,
+        title: "Design tonight's session",
+        body: "Tell me your available time and energy level — I'll structure the highest-value block around your current data.",
+        prompt: "Design tonight's revision session — 60 minutes, structured, prioritised by what my data says I need most.",
       });
     }
 
-    if (daysToExam !== null && analytics.readiness && out.length < 3) {
-      const r = analytics.readiness.score;
-      if (daysToExam <= 30 && r < 65) {
-        out.push({
-          icon: Activity,
-          tone: "warn",
-          text: `${daysToExam} days to exam at ${r}% readiness — scale mock exposure now.`,
-          prompt: `${daysToExam} days to exam at ${r}% readiness — what's the highest-leverage 7-day plan?`,
-        });
-      } else if (r >= 70) {
-        out.push({
-          icon: Brain,
-          tone: "good",
-          text: `Readiness is tracking at ${r}%. Hold the line.`,
-          prompt: `Readiness is ${r}% — how do I protect the gains over the next 2 weeks?`,
-        });
-      }
-    }
-
-    if (!out.length && streak >= 3) {
-      out.push({
-        icon: Flame,
-        tone: "good",
-        text: `${streak}-day streak. Consistency is the engine.`,
-        prompt: `I'm on a ${streak}-day streak. How do I get the most from today's session?`,
-      });
-    }
-
-    return out.slice(0, 3);
+    return cards;
   }, [analytics, daysToExam, streak]);
 
   const suggestions = useMemo<Suggestion[]>(() => {
     const dyn: Suggestion[] = [];
-    if (analytics && (mode === "coach" || mode === "analyse" || mode === "practice")) {
+    if (analytics && mode === "coach") {
       const weakest = analytics.weakest[0];
       if (weakest) {
         dyn.push({
-          label: mode === "practice" ? `Drill ${weakest.module}` : `Why is ${weakest.module} weak?`,
-          prompt:
-            mode === "practice"
-              ? `Build me a 10-question SBA drill on ${weakest.module}, targeting my weakest sub-topics, with answers and explanations.`
-              : `Diagnose why ${weakest.module} is underperforming for me. Use my recency, confidence, accuracy and trend — and prescribe the next 3 sessions.`,
-          icon: Target,
+          label: `Why is ${weakest.module} weak?`,
+          prompt: `Diagnose why ${weakest.module} is underperforming for me. Use my recency, confidence, accuracy and trend — and prescribe the next 3 sessions.`,
         });
       }
     }
-    return [...dyn, ...SUGGESTIONS_BY_MODE[mode]].slice(0, 7);
+    if (analytics && mode === "tutor") {
+      const weakest = analytics.weakest[0];
+      if (weakest) {
+        dyn.push({
+          label: `Drill ${weakest.module}`,
+          prompt: `Build me a 10-question SBA drill on ${weakest.module}, targeting my weakest sub-topics, with answers and explanations.`,
+        });
+      }
+    }
+    return [...dyn, ...SUGGESTIONS_BY_MODE[mode]].slice(0, 5);
   }, [mode, analytics]);
 
   const canSend = input.trim().length > 0 && !isStreaming;
@@ -358,9 +359,6 @@ function CoachPage() {
     if (!text || isStreaming) return;
     setInput("");
 
-    // Inject a lightweight mode hint as a leading system-style user note,
-    // only on the first message of a fresh conversation, so the assistant
-    // adopts the right register without bloating long threads.
     const modeHint = MODES.find((m) => m.id === mode)?.systemHint ?? "";
     const userMsg: Msg = { role: "user", content: text };
     const next: Msg[] =
@@ -368,7 +366,6 @@ function CoachPage() {
         ? [{ role: "user", content: `[${MODES.find((m) => m.id === mode)?.label} mode] ${modeHint}` }, { role: "assistant", content: "Understood." }, ...messages, userMsg]
         : [...messages, userMsg];
 
-    // Show the user's actual message in the UI (skip the hidden hint pair if present)
     const visible: Msg[] = [...messages, userMsg];
     setMessages(visible);
     setIsStreaming(true);
@@ -450,12 +447,11 @@ function CoachPage() {
   }
 
   const isEmpty = messages.length === 0;
-  const activeMode = MODES.find((m) => m.id === mode)!;
 
   return (
     <AppShell
       title="Tentra Coach"
-      subtitle="Your AI SQE tutor & strategist"
+      subtitle="Your SQE strategist and private tutor."
       actions={
         !isEmpty ? (
           <button
@@ -467,96 +463,133 @@ function CoachPage() {
         ) : null
       }
     >
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
-        {/* MODE TABS */}
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-wrap items-center gap-1.5 rounded-2xl border border-border bg-card/40 p-1 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-8">
+        {/* MODE TOGGLE — Coach | Tutor only */}
+        <div className="flex flex-col gap-3">
+          <div className="inline-flex w-full items-center gap-1 rounded-2xl border border-border bg-card/40 p-1 backdrop-blur sm:w-auto sm:self-start">
             {MODES.map((m) => {
-              const Icon = m.icon;
               const active = mode === m.id;
               return (
                 <button
                   key={m.id}
                   onClick={() => setMode(m.id)}
-                  className={`relative flex flex-1 items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition ${
+                  className={`relative flex-1 rounded-xl px-5 py-2 text-sm font-medium tracking-tight transition sm:flex-none ${
                     active
-                      ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                      : "text-muted-foreground hover:bg-background/40 hover:text-foreground"
+                      ? "bg-gradient-pink-violet text-primary-foreground shadow-[0_8px_24px_-12px_rgba(236,72,153,0.4)]"
+                      : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <Icon className="h-3.5 w-3.5" />
                   {m.label}
                 </button>
               );
             })}
           </div>
-          <p className="px-1 text-xs text-muted-foreground">{activeMode.blurb}</p>
+          <p className="text-xs text-muted-foreground">{MODES.find((m) => m.id === mode)!.blurb}</p>
         </div>
 
-        {/* EMPTY STATE */}
+        {/* EMPTY STATE — Insight panel + curated cards */}
         {isEmpty && (
-          <section className="flex flex-col gap-5 animate-fade-in">
-            <div>
-              <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Tentra Coach</p>
-              <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-[28px]">
+          <section className="flex flex-col gap-8 animate-fade-in">
+            {/* Hero insight panel */}
+            <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-pink/[0.04] via-card/40 to-blue/[0.04] p-7 backdrop-blur sm:p-9">
+              <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-gradient-pink-violet opacity-[0.08] blur-3xl" />
+              <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                {mode === "coach" ? "Strategy briefing" : "Tutor session"}
+              </p>
+              <h2 className="mt-3 font-display text-2xl font-light leading-[1.25] tracking-[-0.02em] text-foreground sm:text-[28px]">
                 {greeting}{" "}
-                <span className="text-muted-foreground">{contextualHook}</span>
-              </h1>
-            </div>
-
-            {/* Capability grid */}
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {[
-                { icon: BookOpen, label: "Ask legal questions" },
-                { icon: GraduationCap, label: "Topic explanations" },
-                { icon: ClipboardList, label: "Generate practice" },
-                { icon: ListChecks, label: "Personalised plans" },
-                { icon: Target, label: "Review weak areas" },
-                { icon: LineChart, label: "Mock feedback" },
-              ].map((c) => {
-                const Icon = c.icon;
-                return (
-                  <div
-                    key={c.label}
-                    className="flex items-center gap-2 rounded-xl border border-border bg-card/40 px-3 py-2 text-xs text-muted-foreground backdrop-blur"
-                  >
-                    <Icon className="h-3.5 w-3.5 text-pink" />
-                    {c.label}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Strategic insights — only on Coach/Analyse modes */}
-            {(mode === "coach" || mode === "analyse") && strategicInsights.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  Based on your recent data
+                <span className="text-muted-foreground">{heroInsight}</span>
+              </h2>
+              {streak >= 3 && (
+                <p className="mt-4 inline-flex items-center gap-2 text-xs text-muted-foreground">
+                  <Brain className="h-3.5 w-3.5 text-pink" />
+                  {streak}-day study streak — consistency compounds.
                 </p>
-                <div className="grid gap-2">
-                  {strategicInsights.map((ins, i) => {
-                    const Icon = ins.icon;
-                    const tone =
-                      ins.tone === "good"
-                        ? "border-emerald-400/30 bg-emerald-400/5 text-emerald-300"
-                        : ins.tone === "warn"
-                          ? "border-amber-400/30 bg-amber-400/5 text-amber-300"
-                          : "border-pink/30 bg-pink/5 text-pink";
-                    return (
-                      <button
-                        key={i}
-                        onClick={() => send(ins.prompt)}
-                        className="group flex items-start gap-3 rounded-2xl border border-border bg-card/40 p-3.5 text-left backdrop-blur transition-colors hover:border-pink/40 hover:bg-card/60"
-                      >
-                        <span className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border ${tone}`}>
+              )}
+            </div>
+
+            {/* Three curated insight cards */}
+            {mode === "coach" && (
+              <div className="grid gap-3 sm:grid-cols-3">
+                {insightCards.map((card, i) => {
+                  const Icon = card.icon;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => send(card.prompt)}
+                      className="group flex flex-col gap-3 rounded-2xl border border-border bg-card/50 p-5 text-left backdrop-blur transition-all hover:border-pink/40 hover:bg-card/80 hover:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.12)]"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="grid h-9 w-9 place-items-center rounded-xl border border-border/70 bg-background/60 text-pink">
                           <Icon className="h-4 w-4" />
                         </span>
-                        <p className="flex-1 text-sm leading-relaxed text-foreground">{ins.text}</p>
-                        <ArrowUpRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                      </button>
-                    );
-                  })}
-                </div>
+                        <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                          {card.eyebrow}
+                        </p>
+                        <h3 className="mt-1.5 font-display text-[15px] font-medium leading-snug tracking-tight text-foreground">
+                          {card.title}
+                        </h3>
+                      </div>
+                      <p className="text-[13px] leading-relaxed text-muted-foreground">{card.body}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {mode === "tutor" && (
+              <div className="grid gap-3 sm:grid-cols-3">
+                {[
+                  {
+                    eyebrow: "Explain",
+                    icon: BookOpenCheck,
+                    title: "A concept, clearly",
+                    body: "Pick any topic — I'll teach it with structure, authority and a worked example.",
+                    prompt: "Explain a tricky SQE concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?",
+                  },
+                  {
+                    eyebrow: "Test",
+                    icon: Compass,
+                    title: "My understanding",
+                    body: "I'll generate SBA-style questions and mark your reasoning as an examiner would.",
+                    prompt: "Test my understanding with 5 SQE1-style SBA questions on a topic of my choice. Mark each answer and explain the reasoning.",
+                  },
+                  {
+                    eyebrow: "Review",
+                    icon: AlertTriangle,
+                    title: "A wrong answer",
+                    body: "Show me where your reasoning broke down — I'll diagnose it and rebuild the structure.",
+                    prompt: "I got a question wrong. I'll share my reasoning — diagnose where I went wrong, explain the correct analysis, and show the model structure.",
+                  },
+                ].map((card, i) => {
+                  const Icon = card.icon;
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => send(card.prompt)}
+                      className="group flex flex-col gap-3 rounded-2xl border border-border bg-card/50 p-5 text-left backdrop-blur transition-all hover:border-pink/40 hover:bg-card/80 hover:shadow-[0_12px_32px_-16px_rgba(0,0,0,0.12)]"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="grid h-9 w-9 place-items-center rounded-xl border border-border/70 bg-background/60 text-pink">
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <ArrowUpRight className="h-4 w-4 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
+                          {card.eyebrow}
+                        </p>
+                        <h3 className="mt-1.5 font-display text-[15px] font-medium leading-snug tracking-tight text-foreground">
+                          {card.title}
+                        </h3>
+                      </div>
+                      <p className="text-[13px] leading-relaxed text-muted-foreground">{card.body}</p>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -564,15 +597,15 @@ function CoachPage() {
             {hasPrior && (
               <button
                 onClick={resumePrior}
-                className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card/40 p-3 text-left backdrop-blur transition hover:border-pink/40 hover:bg-card/60"
+                className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-card/40 px-4 py-3 text-left backdrop-blur transition hover:border-pink/40 hover:bg-card/60"
               >
-                <span className="flex items-center gap-2.5">
+                <span className="flex items-center gap-3">
                   <span className="grid h-8 w-8 place-items-center rounded-xl border border-border bg-background/60 text-muted-foreground">
                     <History className="h-4 w-4" />
                   </span>
                   <span className="text-sm">
                     <span className="font-medium text-foreground">Resume last conversation</span>
-                    <span className="ml-1 text-muted-foreground">— pick up where you left off</span>
+                    <span className="ml-1.5 text-muted-foreground">— pick up where you left off</span>
                   </span>
                 </span>
                 <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
@@ -608,27 +641,24 @@ function CoachPage() {
 
         {/* COMPOSER */}
         <section className="sticky bottom-4 z-10 flex flex-col gap-3">
+          {/* Curated suggested prompts */}
           <div className="flex flex-wrap gap-2">
-            {suggestions.map((s) => {
-              const Icon = s.icon ?? Sparkles;
-              return (
-                <button
-                  key={s.label}
-                  onClick={() => send(s.prompt)}
-                  disabled={isStreaming}
-                  className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs text-muted-foreground backdrop-blur transition-all hover:border-pink/40 hover:bg-card hover:text-foreground disabled:opacity-50"
-                >
-                  <Icon className="h-3 w-3 text-pink" />
-                  {s.label}
-                  <ArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
-                </button>
-              );
-            })}
+            {suggestions.map((s) => (
+              <button
+                key={s.label}
+                onClick={() => send(s.prompt)}
+                disabled={isStreaming}
+                className="group inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-3.5 py-1.5 text-xs text-muted-foreground backdrop-blur transition-all hover:border-pink/40 hover:bg-card hover:text-foreground disabled:opacity-50"
+              >
+                {s.label}
+                <ArrowUpRight className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-100" />
+              </button>
+            ))}
           </div>
 
           <form
             onSubmit={(e) => { e.preventDefault(); void send(); }}
-            className="relative flex items-end gap-2 rounded-3xl border border-border bg-card/80 p-2 shadow-lg shadow-black/10 backdrop-blur-xl focus-within:border-pink/40"
+            className="relative flex items-end gap-2 rounded-3xl border border-border bg-card/80 p-2 shadow-lg shadow-black/[0.06] backdrop-blur-xl focus-within:border-pink/40"
           >
             <Textarea
               ref={taRef}
@@ -639,12 +669,8 @@ function CoachPage() {
               }}
               placeholder={
                 mode === "tutor"
-                  ? "Ask me to explain a topic, walk through a rule, teach you something…"
-                  : mode === "practice"
-                    ? "Ask me to quiz you, generate SBAs, or run a mini mock…"
-                    : mode === "analyse"
-                      ? "Ask me to read your data, surface risks, or review a mock…"
-                      : "Ask for a re-plan, prioritisation, or push back on a recommendation…"
+                  ? "Ask your tutor to explain a topic, test you, or mark your reasoning…"
+                  : "Ask your coach to re-plan, prioritise, or pressure-test your strategy…"
               }
               rows={1}
               className="min-h-[44px] flex-1 resize-none border-0 bg-transparent text-[15px] focus-visible:ring-0"
@@ -652,13 +678,13 @@ function CoachPage() {
             <Button
               type="submit"
               disabled={!canSend}
-              className="h-10 w-10 shrink-0 rounded-2xl bg-gradient-pink-blue p-0 text-primary-foreground shadow-glow transition-all hover:brightness-[1.06] disabled:opacity-40"
+              className="h-10 w-10 shrink-0 rounded-2xl bg-gradient-pink-violet p-0 text-primary-foreground shadow-glow transition-all hover:brightness-[1.06] disabled:opacity-40"
             >
               {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </Button>
           </form>
-          <p className="text-center text-[11px] text-muted-foreground">
-            Tutoring, planning, practice and analysis. Study guidance, not legal advice.
+          <p className="text-center text-[11px] tracking-wide text-muted-foreground/70">
+            Study guidance, not legal advice.
           </p>
         </section>
       </div>
@@ -676,7 +702,7 @@ function Message({ role, content, firstName }: { role: "user" | "assistant"; con
         className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-semibold ${
           isUser
             ? "border border-border bg-background/60 text-muted-foreground"
-            : "bg-gradient-pink-blue text-primary-foreground shadow-glow"
+            : "bg-gradient-pink-violet text-primary-foreground shadow-glow"
         }`}
       >
         {isUser ? initial : <Sparkles className="h-4 w-4" />}
@@ -688,7 +714,7 @@ function Message({ role, content, firstName }: { role: "user" | "assistant"; con
         {isUser ? (
           <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">{content}</p>
         ) : (
-          <div className="prose prose-sm prose-invert max-w-none text-[15px] leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_strong]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5">
+          <div className="prose prose-sm max-w-none text-[15px] leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_strong]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5">
             <ReactMarkdown>{content}</ReactMarkdown>
           </div>
         )}
