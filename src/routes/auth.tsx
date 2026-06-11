@@ -231,7 +231,7 @@ function AuthPage() {
               type="button"
               onClick={() => handleResend(verifySent)}
               disabled={resending}
-              className="mt-6 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+              className="mt-7 h-11 w-full rounded-full bg-gradient-pink-blue text-[14px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
             >
               {resending ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resending…</>
@@ -242,31 +242,31 @@ function AuthPage() {
             <Button
               type="button"
               onClick={() => { setVerifySent(null); setMode("signin"); }}
-              className="mt-3 w-full rounded-full"
-              variant="outline"
+              className="mt-3 h-11 w-full rounded-full border border-border/60 bg-transparent text-[13.5px] font-normal text-muted-foreground hover:bg-foreground/[0.03] hover:text-foreground"
+              variant="ghost"
             >
               Back to sign in
             </Button>
           </div>
         ) : (
-        <div className="rounded-[2rem] border border-border bg-card/70 p-8 backdrop-blur md:p-10">
-          <div className="text-xs font-semibold uppercase tracking-wider text-pink">
+        <div className="rounded-2xl border border-border/60 bg-card/60 p-8 backdrop-blur md:p-10">
+          <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
             {isSignup ? "Get started" : "Welcome back"}
           </div>
-          <h1 className="mt-2 text-3xl font-normal text-foreground">
+          <h1 className="mt-4 text-[1.9rem] font-light leading-[1.1] tracking-[-0.025em] text-foreground">
             {isSignup ? (
-              <>Create your <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">Tentra</span> account</>
+              <>Create your <span className="text-gradient-pink-violet font-light">Tentra</span> account</>
             ) : (
-              <>Sign in to <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">Tentra</span></>
+              <>Sign in to <span className="text-gradient-pink-violet font-light">Tentra</span></>
             )}
           </h1>
 
           {fromOnboarding && isSignup && (
-            <div className="mt-4 rounded-2xl border border-pink/30 bg-gradient-pink-blue/10 p-4 text-sm">
-              <div className="font-semibold text-foreground">
-                Your personalised plan is ready ✨
+            <div className="mt-5 rounded-xl border border-pink/25 bg-pink/[0.05] p-4 text-[13.5px]">
+              <div className="font-medium text-foreground">
+                Your personalised plan is ready
               </div>
-              <p className="mt-1 text-muted-foreground">
+              <p className="mt-1 leading-[1.55] text-muted-foreground">
                 Create a free account to save it, track your streak, and unlock your dashboard. Free during early access.
               </p>
             </div>
