@@ -6,7 +6,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Geist", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
 
   --radius-sm: calc(var(--radius) - 6px);
@@ -62,9 +62,9 @@
 :root {
   --radius: 1rem;
 
-  /* Soft white-blend base with warm pink tint */
-  --background: oklch(0.99 0.008 340);
-  --foreground: oklch(0.22 0.04 285);
+  /* Calmer near-white canvas with a whisper of warmth */
+  --background: oklch(0.995 0.004 320);
+  --foreground: oklch(0.2 0.035 280);
 
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.22 0.04 285);
@@ -109,6 +109,11 @@
     120deg,
     oklch(0.72 0.24 350),
     oklch(0.62 0.22 250)
+  );
+  --gradient-pink-violet: linear-gradient(
+    120deg,
+    oklch(0.72 0.20 350),
+    oklch(0.60 0.18 295)
   );
   --gradient-soft: linear-gradient(
     135deg,
@@ -162,14 +167,24 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1,
   h2,
   h3 {
     font-family: var(--font-display);
-    letter-spacing: -0.03em;
-    font-weight: 500;
+    letter-spacing: -0.025em;
+    font-weight: 400;
+  }
+}
+
+@layer utilities {
+  .text-gradient-pink-violet {
+    background-image: var(--gradient-pink-violet);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
   }
 }
 

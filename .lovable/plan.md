@@ -1,61 +1,77 @@
-## Goal
-Turn the single-page onboarding into a premium, multi-step flow that produces a deeply personalised SQE plan — especially for resitters and users targeting only one paper.
+# Landing Page — Editorial Polish Pass
 
-## New onboarding flow (`/onboarding`)
-A 5-step wizard with progress bar, smooth transitions (framer-motion), glassy cards, mobile-first.
+A pure visual/UX refinement of `src/routes/index.tsx`. No routing, no product, no copy structure changes beyond the small tweaks called out below. Brand tokens in `src/styles.css` stay intact; only the heading letter-spacing/weight defaults and the display font may be tightened.
 
-**Step 1 — Exam Path**
-Card grid: SQE1 Full · FLK1 Only · FLK2 Only · SQE2 · Custom. Drives which subjects appear later.
+## Typography & global feel
 
-**Step 2 — Your Story (intensity)**
-- Exam date (date picker)
-- Hours/week (slider with live "session shape" preview)
-- Confidence level: Beginner · Intermediate · Advanced · Resitter (cards with descriptions)
+- Swap the display font to a more editorial sans (Geist or General Sans via Fontsource — Geist is already permissively licensed and fits the legal/SaaS register). Body stays Inter. Wired through `--font-display` in `src/styles.css` only — no per-component font classes.
+- Soften default heading weight to 400 with tighter `-0.025em` tracking so the headlines read editorial, not startup.
+- Slightly cool the `--background` warmth (less pink tint) for a calmer canvas. Gradient blobs unchanged so brand identity holds.
 
-**Step 3 — Coverage Mode**
-Two big choice cards:
-- **Cover Everything** — even weighting across all selected subjects
-- **Advanced Personalisation** — pick weak modules + drill into weak subtopics
+## Header / nav
 
-**Step 4 — Module + Subtopic weighting** (shown for both modes; collapsed in Cover-Everything)
-- Show subjects for the chosen path, sourced from `src/lib/sqe-syllabus.ts`
-- Confidence 1–5 per subject (existing UX, polished)
-- In Advanced mode: expand a subject to multi-select weak subtopics (chip selector). Selected subtopics get extra weight.
+- Drop the pill background on "Sign in" and "Get started"; use a quiet text link for Sign in and a single refined gradient CTA for Get started (smaller height, subtler shadow, smoother hover via `transition` + slight `brightness`).
+- Nav links: lighter weight, smaller tracking, more breathing room. Remove hover color jump in favor of a subtle underline-from-left.
+- Add a faint bottom hairline only after scroll (CSS sticky + `backdrop-blur` already present, just refine border).
 
-**Step 5 — Review & Generate**
-Summary card: path, exam date, hrs/wk, confidence tier, weak focus list. CTA "Build my adaptive plan" with loader.
+## Hero
 
-## Data model changes
-Extend `OnboardingInput` in `src/lib/plan-store.ts`:
-```ts
-examPath: "SQE1_FULL" | "FLK1" | "FLK2" | "SQE2" | "CUSTOM"
-intensity: "beginner" | "intermediate" | "advanced" | "resitter"
-coverageMode: "even" | "advanced"
-modules: ModuleConfidence[]  // now includes weakSubtopics: string[]
-```
-`ExamType` stays for backwards compat (derived from `examPath`).
+- Headline: drop from `3.6rem` → `3rem` on desktop, tighten `leading-[1.05]`, weight 300. Keep copy verbatim ("The performance platform for SQE candidates.").
+- Make the gradient on "SQE candidates" more restrained: lower-saturation gradient (pink → violet only, no blue), remove italics, keep the inline-block.
+- Subtitle: replace with the user's line — "Adaptive study plans, performance analytics and AI coaching — built for the demands of qualification." Slightly larger leading, max-width tightened to ~30rem.
+- Spacing rhythm: eyebrow → 28px → headline → 24px → subtitle → 36px → CTA row. Currently inconsistent.
+- CTA button: refine to a smoother gradient (use `--gradient-pink-blue` but with a subtle inset highlight + softer `shadow-glow`), height 52px desktop / 48px mobile, weight 500, no uppercase tracking on the label.
+- Trust micro-line ("Free in early access · 30-second setup"): demote to a single muted line, no icons, smaller tracking.
 
-## Plan engine changes (`supabase/functions/generate-plan/index.ts`)
-- Accept new fields; default-fill for legacy callers.
-- Subject set = derived from `examPath` (FLK1 only / FLK2 only / both / SQE2 list / user-picked).
-- Weighted score: existing PRIORITY SCORE + intensity multiplier + subtopic-weakness boost. Resitter tier shifts pacing toward mocks + targeted refresh; Beginner tier favours concept-deepdive + active-recall.
-- Spaced repetition: explicitly schedule re-touches at 1/3/7/14d for weak subtopics in `weeklyFocus`.
-- Update system prompt: include weak subtopics list, intensity tier, and instruction to bias tasks toward those subtopics by name.
-- Deterministic fallback updated to honour the same inputs.
+## Phone mockup
 
-## UI direction
-- Stepper component (5 dots + labels) at top.
-- Each step in a glass card with the existing gradient pink-blue accents.
-- Framer-motion fade/slide between steps.
-- Sticky bottom action bar on mobile (Back / Continue).
-- Reuse existing tokens — no new colors.
+- Sleeker frame: thinner bezel (`p-1.5`), deeper radius (`rounded-[2.75rem]`), realistic Dynamic-Island-style pill notch (narrower, centered, slight inset shadow).
+- Replace the harsh pink drop shadow with a soft neutral shadow + a faint colored glow underneath only.
+- Reduce internal padding so the dashboard panel breathes.
+- Floating chips: smaller, lighter border, no gradient icon backgrounds — just a tinted dot + label. Repositioned for better balance against the phone.
 
-## Files to change
-- `src/routes/onboarding.tsx` — full rewrite into wizard
-- `src/lib/plan-store.ts` — extend types + persist new fields
-- `supabase/functions/generate-plan/index.ts` — accept + use new inputs, update prompt + fallback
-- `src/lib/sqe-syllabus.ts` — add helper `getSubjectsForPath(examPath)`
+## Dashboard preview (inside phone + showcase tabs)
 
-## Out of scope (this turn)
-- Live re-weighting from quiz/mock results (the engine already accepts `recentMockAccuracy` + `adjustModuleConfidence` exists). We'll keep that pipeline as-is; the new inputs make it more meaningful.
-- Dashboard UI changes — plan rendering already supports the existing schema.
+- Cleaner cards: increase corner radius consistency, softer 1px borders at 60% opacity, replace heavy `shadow-glow` accents with `shadow-card`.
+- More realistic study analytics: weekly bar chart with subtle gridline, "Today's plan" list with checkbox affordance, a single accent metric instead of multiple competing gradients.
+- Reduce color count per panel to 2 (foreground + one accent). Currently every chip is gradient-filled.
+
+## Social proof / trust strip
+
+- Replace the bulky 4-pill grid with a single horizontal trust strip: small mono-line icons + label, separated by hairline dividers, all in muted foreground. Removes the gradient icon tiles entirely.
+- Mobile: wraps to 2x2 with the same hairline treatment, no card background.
+
+## Features section
+
+- Tab strip: ghost buttons with underline-active state instead of filled pills.
+- Section eyebrow: regular weight, looser tracking, no gradient text (eyebrows currently fight the headline gradient).
+- Section heading style matches hero (light weight, tighter tracking, restrained gradient on the emphasis word).
+
+## How it works
+
+- Step cards: lighter borders, no hover lift, replace giant ghost numerals with small `01 / 03` style indices in the corner. Icon tiles drop the gradient fill in favor of a tinted background + colored icon.
+
+## Testimonial + pricing blocks
+
+- Reduce internal padding on desktop, drop the gradient wash behind quote (keep only a very faint top glow).
+- Pricing card: remove the full gradient background tint, keep only the eyebrow pill and CTA as accent surfaces.
+
+## Footer
+
+- Lighter divider, smaller type, single line on desktop. No change to content.
+
+## Mobile sticky CTA
+
+- Match new CTA styling (smoother gradient, 48px height, subtle shadow, no uppercase).
+
+## Responsive sanity
+
+- Verify in the preview at 390px and 1280px after changes. Hero stacks; trust strip wraps to 2x2; phone mockup centers and shrinks to `max-w-[300px]`.
+
+## Technical scope
+
+- Files touched:
+  - `src/routes/index.tsx` — all component-level changes above.
+  - `src/styles.css` — display font swap, heading defaults, small background tint adjustment, optional new `--gradient-pink-violet` token for restrained accents.
+  - `package.json` — add `@fontsource/geist` (or chosen alternative) if we go the Fontsource route.
+- Out of scope: routing, auth, copy beyond the subtitle, brand palette, any other route.

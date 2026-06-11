@@ -15,12 +15,10 @@ import {
   Flame,
   ClipboardCheck,
   TrendingUp,
-  Zap,
   CheckCircle2,
   Activity,
   Timer,
   Trophy,
-  Lock,
 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
@@ -64,10 +62,43 @@ export const Route = createFileRoute("/")({
   }),
 });
 
+/* ---------- Premium primitives ---------- */
+
+/** Refined gradient CTA — smoother gradient, inset highlight, soft glow. */
+function PremiumCta({
+  to,
+  search,
+  children,
+  className = "",
+  size = "md",
+}: {
+  to: string;
+  search?: Record<string, unknown>;
+  children: React.ReactNode;
+  className?: string;
+  size?: "md" | "lg";
+}) {
+  const h = size === "lg" ? "h-12 md:h-[52px]" : "h-11 md:h-12";
+  return (
+    <Button
+      asChild
+      className={`group relative ${h} rounded-full px-7 text-[14.5px] font-medium tracking-[-0.005em] text-primary-foreground transition-all duration-300 hover:brightness-[1.06] ${className}`}
+      style={{
+        background:
+          "linear-gradient(120deg, oklch(0.72 0.22 350) 0%, oklch(0.66 0.20 320) 45%, oklch(0.60 0.20 270) 100%)",
+        boxShadow:
+          "0 1px 0 0 oklch(1 0 0 / 0.25) inset, 0 12px 30px -12px oklch(0.55 0.20 320 / 0.45)",
+      }}
+    >
+      <Link to={to as never} search={search as never}>
+        {children}
+      </Link>
+    </Button>
+  );
+}
+
 function LandingPage() {
   const { isAuthenticated, loading } = useAuth();
-  // Anonymous visitors go straight into the plan builder — they experience
-  // the personalised "aha moment" before being asked to create an account.
   const ctaTo = isAuthenticated ? "/dashboard" : "/onboarding";
   const ctaLabel = isAuthenticated ? "View Dashboard" : "Build My Plan";
 
@@ -77,260 +108,244 @@ function LandingPage() {
 
       <div className="relative pb-28 md:pb-0">
         {/* HEADER */}
-        <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4 md:px-6 md:py-6">
+        <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 md:px-8 md:py-7">
           <BrandMark />
-          <nav className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
-            <a href="#features" className="hover:text-foreground transition-colors">Features</a>
-            <a href="#how" className="hover:text-foreground transition-colors">How it works</a>
-            <a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a>
+          <nav className="hidden items-center gap-9 text-[13px] font-normal text-muted-foreground md:flex">
+            <a href="#features" className="relative transition-colors hover:text-foreground">
+              Features
+            </a>
+            <a href="#how" className="relative transition-colors hover:text-foreground">
+              How it works
+            </a>
+            <a href="#pricing" className="relative transition-colors hover:text-foreground">
+              Pricing
+            </a>
           </nav>
-          <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="flex items-center gap-3 md:gap-4">
             {loading ? (
               <div className="h-9 w-24 animate-pulse rounded-full bg-card/60" />
             ) : isAuthenticated ? (
-              <Button
-                asChild
-                size="sm"
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
-              >
-                <Link to="/dashboard">
-                  <LayoutDashboard className="mr-1 h-4 w-4" /> Dashboard
-                </Link>
-              </Button>
+              <PremiumCta to="/dashboard" className="px-5">
+                <LayoutDashboard className="mr-1.5 h-4 w-4" /> Dashboard
+              </PremiumCta>
             ) : (
               <>
-                <Button asChild variant="ghost" size="sm" className="rounded-full">
-                  <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
-                </Button>
-                <Button
-                  asChild
-                  size="sm"
-                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                <Link
+                  to="/auth"
+                  search={{ mode: "signin" }}
+                  className="hidden text-[13px] font-normal text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
                 >
-                  <Link to="/onboarding">Get started</Link>
-                </Button>
+                  Sign in
+                </Link>
+                <PremiumCta to="/onboarding" className="px-5">
+                  Get started
+                </PremiumCta>
               </>
             )}
           </div>
         </header>
 
         <main>
-        {/* HERO — mobile-first, above-the-fold value prop */}
-        <section className="mx-auto max-w-6xl px-5 pt-2 pb-8 md:px-6 md:pt-12 md:pb-16">
-          <div className="grid items-center gap-8 md:grid-cols-[1.1fr_1fr] md:gap-12">
-            <div className="text-center md:text-left">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground/80 backdrop-blur">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-primary opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+          {/* HERO */}
+          <section className="mx-auto max-w-6xl px-5 pt-4 pb-12 md:px-8 md:pt-16 md:pb-24">
+            <div className="grid items-center gap-12 md:grid-cols-[1.05fr_1fr] md:gap-16">
+              <div className="text-center md:text-left">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground backdrop-blur">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-primary opacity-70" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
+                  </span>
+                  Early access
                 </span>
-                Early access
-              </span>
 
-              <h1 className="mt-5 text-[1.95rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground sm:text-[2.3rem] md:text-[3.1rem] lg:text-[3.6rem]">
-                The performance platform for{" "}
-                <span className="italic text-gradient-tentra font-light inline-block pr-[0.12em]">
-                  SQE candidates
-                </span>
-                .
-              </h1>
+                <h1 className="mt-7 text-[2rem] font-light leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.4rem] md:text-[2.85rem] lg:text-[3.1rem]">
+                  The performance platform for{" "}
+                  <span className="text-gradient-pink-violet font-light">SQE candidates</span>
+                  <span className="text-foreground">.</span>
+                </h1>
 
-              <p className="mx-auto mt-6 max-w-md text-[15px] leading-[1.7] text-muted-foreground md:mx-0 md:max-w-[32rem] md:text-[17px]">
-                Adaptive plans, performance analytics and AI coaching —
-                engineered for the demands of qualification.
+                <p className="mx-auto mt-6 max-w-[30rem] text-[15px] leading-[1.65] text-muted-foreground md:mx-0 md:text-[16.5px]">
+                  Adaptive study plans, performance analytics and AI coaching — built for the
+                  demands of qualification.
+                </p>
+
+                <div className="mt-9 flex flex-col items-center gap-3 md:flex-row md:items-center md:justify-start">
+                  <PremiumCta to={ctaTo} size="lg" className="w-full md:w-auto">
+                    {ctaLabel}
+                    <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                  </PremiumCta>
+                  {!isAuthenticated && (
+                    <Link
+                      to="/auth"
+                      search={{ mode: "signin" }}
+                      className="text-[13.5px] font-normal text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      Sign in
+                    </Link>
+                  )}
+                </div>
+
+                <p className="mt-7 text-[12px] tracking-[0.02em] text-muted-foreground/80">
+                  Free in early access · 30-second setup
+                </p>
+              </div>
+
+              {/* Hero phone mockup */}
+              <div className="relative mx-auto w-full max-w-[300px] md:max-w-[340px]">
+                <div className="absolute -inset-8 -z-10 rounded-[3rem] bg-gradient-pink-violet opacity-[0.18] blur-3xl" />
+                <PhoneFrame>
+                  <DashboardPanel />
+                </PhoneFrame>
+                <FloatingChip className="-right-2 top-20 hidden sm:flex">
+                  <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                      Streak
+                    </span>
+                    <span className="text-[12.5px] font-medium text-foreground">14 days</span>
+                  </span>
+                </FloatingChip>
+                <FloatingChip className="-left-3 bottom-24 hidden sm:flex">
+                  <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                  <span className="flex flex-col leading-tight">
+                    <span className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                      Consistency
+                    </span>
+                    <span className="text-[12.5px] font-medium text-foreground">+12%</span>
+                  </span>
+                </FloatingChip>
+              </div>
+            </div>
+          </section>
+
+          {/* TRUST STRIP — elegant hairline row */}
+          <section className="mx-auto max-w-5xl px-5 pb-16 md:px-8 md:pb-28">
+            <div className="grid grid-cols-2 gap-y-4 border-y border-border/60 py-5 md:grid-cols-4 md:divide-x md:divide-border/60 md:py-6">
+              <TrustItem icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE1 & SQE2" />
+              <TrustItem icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive study planning" />
+              <TrustItem icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance analytics" />
+              <TrustItem icon={<Sparkles className="h-3.5 w-3.5" />} label="For future solicitors" />
+            </div>
+          </section>
+
+          {/* FEATURES */}
+          <section id="features" className="mx-auto max-w-6xl px-5 pb-20 md:px-8 md:pb-32">
+            <div className="mx-auto mb-12 max-w-2xl text-center md:mb-20">
+              <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                The platform
+              </div>
+              <h2 className="mt-5 text-[2rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.75rem]">
+                Engineered to{" "}
+                <span className="text-gradient-pink-violet font-light">perform</span>.
+              </h2>
+              <p className="mt-5 text-[15px] leading-[1.65] text-muted-foreground md:text-[16px]">
+                One disciplined workflow. Five tools designed to compound.
               </p>
+            </div>
 
-              <div className="mt-7 flex flex-col items-center gap-2 md:mt-9 md:flex-row md:items-start md:justify-start md:gap-2.5">
-                <Button
-                  asChild
+            <FeatureShowcase />
+          </section>
+
+          {/* HOW IT WORKS */}
+          <section id="how" className="mx-auto max-w-6xl px-5 pb-20 md:px-8 md:pb-32">
+            <div className="mb-12 text-center md:mb-16">
+              <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                How it works
+              </div>
+              <h2 className="mt-5 text-[2rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.75rem]">
+                Ready in under a minute.
+              </h2>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3 md:gap-6">
+              <StepCard num="01" icon={<Calendar className="h-4 w-4" />} title="Set your exam date" body="Anchor the plan to your SQE1 or SQE2 sitting." />
+              <StepCard num="02" icon={<Brain className="h-4 w-4" />} title="Map your confidence" body="A quick diagnostic across every module." />
+              <StepCard num="03" icon={<Target className="h-4 w-4" />} title="Execute daily" body="A precise schedule that adapts as you progress." />
+            </div>
+          </section>
+
+          {/* TESTIMONIAL */}
+          <section className="mx-auto max-w-3xl px-5 pb-20 md:px-8 md:pb-28">
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-card/60 p-8 text-center backdrop-blur md:p-14">
+              <div className="absolute inset-x-10 -top-16 -z-10 h-32 bg-gradient-pink-violet opacity-[0.10] blur-3xl" />
+              <Sparkles className="mx-auto h-4 w-4 text-pink" />
+              <p className="mx-auto mt-6 max-w-xl text-[17px] font-light leading-[1.45] tracking-[-0.01em] text-foreground md:text-[22px]">
+                "Tentra turned my preparation into something measurable. I knew, every day, that I
+                was getting closer."
+              </p>
+              <p className="mt-6 text-[10.5px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                Built for the next generation of solicitors
+              </p>
+            </div>
+          </section>
+
+          {/* PRICING */}
+          <section id="pricing" className="mx-auto max-w-3xl px-5 pb-24 md:px-8 md:pb-32">
+            <div className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-card/60 p-8 text-center backdrop-blur md:p-14">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+                <Trophy className="h-3 w-3 text-pink" /> Early access
+              </div>
+              <h2 className="mt-6 text-[2rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.75rem]">
+                Free, while we{" "}
+                <span className="text-gradient-pink-violet font-light">build</span>.
+              </h2>
+              <p className="mx-auto mt-5 max-w-md text-[15px] leading-[1.65] text-muted-foreground md:text-[16px]">
+                Every feature unlocked for early candidates. No card required.
+              </p>
+              <div className="mt-9 flex justify-center">
+                <PremiumCta
+                  to={ctaTo}
+                  search={isAuthenticated ? undefined : { mode: "signup" }}
                   size="lg"
-                  className="h-13 w-full rounded-full bg-gradient-pink-blue px-8 text-[15px] font-semibold tracking-[0.01em] text-primary-foreground shadow-glow hover:opacity-95 md:h-14 md:w-auto"
+                  className="w-full max-w-xs"
                 >
-                  <Link to={ctaTo}>
-                    {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
-                  </Link>
-                </Button>
-                {!isAuthenticated && (
-                  <Button
-                    asChild
-                    size="lg"
-                    variant="ghost"
-                    className="h-11 rounded-full text-sm text-muted-foreground hover:text-foreground md:h-14"
-                  >
-                    <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
-                  </Button>
-                )}
-              </div>
-
-              <div className="mt-7 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] tracking-[0.04em] uppercase text-muted-foreground md:justify-start">
-                <span className="inline-flex items-center gap-1.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Free in early access
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Lock className="h-3.5 w-3.5 text-primary" /> 30-second setup
-                </span>
+                  {ctaLabel}
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </PremiumCta>
               </div>
             </div>
-
-            {/* Hero phone mockup */}
-            <div className="relative mx-auto w-full max-w-[320px] md:max-w-[360px]">
-              <div className="absolute -inset-10 -z-10 rounded-[3rem] bg-gradient-tentra opacity-25 blur-3xl" />
-              <PhoneFrame>
-                <DashboardPanel />
-              </PhoneFrame>
-              <FloatingChip className="-right-3 top-16 hidden sm:flex">
-                <Flame className="h-3.5 w-3.5 text-primary" />
-                <span className="flex flex-col leading-tight">
-                  <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Streak</span>
-                  <span className="text-[12px] font-semibold text-foreground">14 days</span>
-                </span>
-              </FloatingChip>
-              <FloatingChip className="-left-4 bottom-20 hidden sm:flex">
-                <TrendingUp className="h-3.5 w-3.5 text-primary" />
-                <span className="flex flex-col leading-tight">
-                  <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Weekly consistency</span>
-                  <span className="text-[12px] font-semibold text-foreground">+12%</span>
-                </span>
-              </FloatingChip>
-            </div>
-          </div>
-        </section>
-
-        {/* SOCIAL PROOF STRIP */}
-        <section className="mx-auto max-w-6xl px-5 pb-12 md:px-6 md:pb-20">
-          <div className="grid grid-cols-2 gap-2 rounded-3xl border border-border bg-card/60 p-3 backdrop-blur md:grid-cols-4 md:gap-6 md:p-6">
-            <TrustPill icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE1 & SQE2" />
-            <TrustPill icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive study planning" />
-            <TrustPill icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance analytics" />
-            <TrustPill icon={<Sparkles className="h-3.5 w-3.5" />} label="Crafted for future solicitors" />
-          </div>
-        </section>
-
-        {/* FEATURES — phone carousel */}
-        <section id="features" className="mx-auto max-w-6xl px-5 pb-16 md:px-6 md:pb-32">
-          <div className="mx-auto mb-8 max-w-2xl text-center md:mb-16">
-            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
-              The platform
-            </div>
-            <h2 className="mt-4 text-[2rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground md:text-5xl">
-              Engineered to{" "}
-              <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">
-                perform
-              </span>
-              .
-            </h2>
-            <p className="mt-4 text-[15px] leading-[1.7] text-muted-foreground md:text-base">
-              One disciplined workflow. Five tools designed to compound.
-            </p>
-          </div>
-
-          <FeatureShowcase />
-        </section>
-
-        {/* HOW IT WORKS */}
-        <section id="how" className="mx-auto max-w-6xl px-5 pb-16 md:px-6 md:pb-32">
-          <div className="mb-8 text-center md:mb-16">
-            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
-              How it works
-            </div>
-            <h2 className="mt-4 text-[2rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground md:text-5xl">
-              Ready in under a minute.
-            </h2>
-          </div>
-          <div className="grid gap-3 md:grid-cols-3 md:gap-6">
-            <StepCard num="01" icon={<Calendar className="h-5 w-5" />} title="Set your exam date" body="Anchor the plan to your SQE1 or SQE2 sitting." />
-            <StepCard num="02" icon={<Brain className="h-5 w-5" />} title="Map your confidence" body="A quick diagnostic across every module." />
-            <StepCard num="03" icon={<Target className="h-5 w-5" />} title="Execute daily" body="A precise schedule that adapts as you progress." />
-          </div>
-        </section>
-
-        {/* TESTIMONIAL / VIBE */}
-        <section className="mx-auto max-w-3xl px-5 pb-16 md:px-6 md:pb-28">
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-7 text-center backdrop-blur md:p-14">
-            <div className="absolute -inset-x-10 -top-10 -z-10 h-40 bg-gradient-tentra opacity-20 blur-3xl" />
-            <Sparkles className="mx-auto h-5 w-5 text-pink" />
-            <p className="mt-5 text-lg font-light leading-[1.45] tracking-[-0.01em] text-foreground md:text-2xl">
-              "Tentra turned my preparation into something measurable. I knew,
-              every day, that I was getting closer."
-            </p>
-            <p className="mt-5 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-              Built for the next generation of solicitors
-            </p>
-          </div>
-        </section>
-
-        {/* PRICING / EARLY ACCESS */}
-        <section id="pricing" className="mx-auto max-w-3xl px-5 pb-24 md:px-6 md:pb-32">
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-7 text-center backdrop-blur md:p-14">
-            <div className="absolute inset-0 -z-10 bg-gradient-tentra opacity-10" />
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground">
-              <Trophy className="h-3 w-3 text-pink" /> Early access
-            </div>
-            <h2 className="mt-5 text-[2rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground md:text-5xl">
-              Free, while we{" "}
-              <span className="italic text-gradient-tentra font-light inline-block pr-[0.15em]">
-                build
-              </span>
-              .
-            </h2>
-            <p className="mx-auto mt-4 max-w-md text-[15px] leading-[1.7] text-muted-foreground md:text-base">
-              Every feature unlocked for early candidates. No card required.
-            </p>
-            <Button
-              asChild
-              size="lg"
-              className="mt-8 h-14 w-full max-w-xs rounded-full bg-gradient-pink-blue px-8 text-[15px] font-semibold tracking-[0.01em] text-primary-foreground shadow-glow hover:opacity-95"
-            >
-              <Link to={ctaTo} search={isAuthenticated ? undefined : { mode: "signup" }}>
-                {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </section>
-
+          </section>
         </main>
 
         {/* FOOTER */}
-        <footer className="border-t border-border/60">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 md:flex-row">
+        <footer className="border-t border-border/50">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-[12.5px] text-muted-foreground md:flex-row md:px-8">
             <div className="flex items-center gap-2.5">
-              <span className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-pink-blue">
-                <span className="font-display text-sm font-bold text-primary-foreground">T</span>
+              <span
+                className="grid h-6 w-6 place-items-center rounded-md"
+                style={{
+                  background:
+                    "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+                }}
+              >
+                <span className="font-display text-[11px] font-semibold text-primary-foreground">T</span>
               </span>
-              <span className="text-sm font-semibold tracking-tight text-foreground">Tentra</span>
-              <span className="hidden text-sm text-muted-foreground sm:inline">
-                · For the next generation of solicitors.
-              </span>
+              <span className="font-medium tracking-tight text-foreground">Tentra</span>
+              <span className="hidden sm:inline">· For the next generation of solicitors.</span>
             </div>
-            <div className="text-xs text-muted-foreground">© {new Date().getFullYear()} Tentra</div>
+            <div>© {new Date().getFullYear()} Tentra</div>
           </div>
         </footer>
       </div>
 
       {/* MOBILE STICKY CTA */}
       {!isAuthenticated && !loading && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/85 px-4 py-3 backdrop-blur-xl md:hidden">
-          <Button
-            asChild
-            className="h-12 w-full rounded-full bg-gradient-pink-blue text-base font-semibold text-primary-foreground shadow-glow hover:opacity-95"
-          >
-            <Link to="/onboarding">
-              Build My Plan <ArrowRight className="ml-1.5 h-4 w-4" />
-            </Link>
-          </Button>
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 px-4 py-3 backdrop-blur-xl md:hidden">
+          <PremiumCta to="/onboarding" size="lg" className="w-full">
+            Build My Plan <ArrowRight className="ml-1.5 h-4 w-4" />
+          </PremiumCta>
         </div>
       )}
     </div>
   );
 }
 
-function TrustPill({ icon, label }: { icon: React.ReactNode; label: string }) {
+function TrustItem({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <div className="flex items-center gap-2.5 rounded-2xl border border-border/70 bg-background/40 px-3 py-2.5 md:px-4 md:py-3">
-      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-gradient-pink-blue text-primary-foreground shadow-glow">
+    <div className="flex items-center justify-center gap-2.5 px-4 text-center md:justify-start md:text-left">
+      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-pink">
         {icon}
       </span>
-      <span className="text-[11px] font-medium leading-snug tracking-[0.01em] text-foreground md:text-[12.5px]">
+      <span className="text-[12px] font-normal leading-snug tracking-[0.01em] text-muted-foreground md:text-[12.5px]">
         {label}
       </span>
     </div>
@@ -349,17 +364,19 @@ function StepCard({
   body: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-5 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-lg md:p-7">
-      <div className="pointer-events-none absolute right-4 top-2 font-display text-4xl leading-none text-gradient-tentra opacity-15 md:text-5xl md:opacity-20">
-        {num}
-      </div>
-      <div className="relative">
-        <div className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/50 p-6 backdrop-blur md:p-8">
+      <div className="flex items-center justify-between">
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-pink/10 text-pink">
           {icon}
         </div>
-        <h3 className="mt-5 text-lg font-semibold text-foreground md:text-xl">{title}</h3>
-        <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+        <div className="font-display text-[11px] font-medium tracking-[0.18em] text-muted-foreground/70">
+          {num} / 03
+        </div>
       </div>
+      <h3 className="mt-7 text-[17px] font-medium tracking-[-0.015em] text-foreground md:text-[18px]">
+        {title}
+      </h3>
+      <p className="mt-2 text-[13.5px] leading-[1.6] text-muted-foreground">{body}</p>
     </div>
   );
 }
@@ -368,10 +385,16 @@ function StepCard({
 
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative mx-auto rounded-[2.5rem] border border-border bg-foreground/90 p-2 shadow-[0_40px_120px_-30px_oklch(0.5_0.2_320/0.45)]">
-      <div className="absolute left-1/2 top-3 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-foreground/95" />
-      <div className="overflow-hidden rounded-[2rem] bg-background">
-        <div className="px-3 pb-4 pt-9">{children}</div>
+    <div className="relative mx-auto rounded-[2.75rem] border border-foreground/10 bg-foreground/95 p-1.5 shadow-[0_30px_80px_-30px_oklch(0.25_0.05_280/0.35),0_10px_30px_-15px_oklch(0.25_0.05_280/0.2)]">
+      <div
+        className="absolute left-1/2 top-2 z-10 h-[18px] w-20 -translate-x-1/2 rounded-full"
+        style={{
+          background: "oklch(0.12 0.02 280)",
+          boxShadow: "inset 0 1px 2px oklch(0 0 0 / 0.5)",
+        }}
+      />
+      <div className="overflow-hidden rounded-[2.25rem] bg-background">
+        <div className="px-3 pb-4 pt-8">{children}</div>
       </div>
     </div>
   );
@@ -393,7 +416,7 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
   {
     id: "dashboard",
     label: "Plan",
-    icon: <LayoutDashboard className="h-4 w-4" />,
+    icon: <LayoutDashboard className="h-3.5 w-3.5" />,
     eyebrow: "Daily plan",
     title: "A plan that thinks ahead.",
     body: "Your countdown, streak and the precise work to ship today — at a glance.",
@@ -402,7 +425,7 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
   {
     id: "focus",
     label: "Focus",
-    icon: <Timer className="h-4 w-4" />,
+    icon: <Timer className="h-3.5 w-3.5" />,
     eyebrow: "Deep work",
     title: "Sessions that compound.",
     body: "Time your work, log the discipline, watch the consistency build.",
@@ -411,7 +434,7 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
   {
     id: "coach",
     label: "Coach",
-    icon: <MessageSquareText className="h-4 w-4" />,
+    icon: <MessageSquareText className="h-3.5 w-3.5" />,
     eyebrow: "AI coach",
     title: "A tutor that knows your gaps.",
     body: "Tailored explanations and quizzes shaped by your latest results.",
@@ -420,7 +443,7 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
   {
     id: "practice",
     label: "Mocks",
-    icon: <ClipboardCheck className="h-4 w-4" />,
+    icon: <ClipboardCheck className="h-3.5 w-3.5" />,
     eyebrow: "FLK1 & FLK2",
     title: "Practice, sharpened to your weak spots.",
     body: "Adaptive MCQs that pressure-test what you don't know yet.",
@@ -429,7 +452,7 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
   {
     id: "analytics",
     label: "Analytics",
-    icon: <BarChart3 className="h-4 w-4" />,
+    icon: <BarChart3 className="h-3.5 w-3.5" />,
     eyebrow: "Performance",
     title: "Mastery, mapped to the syllabus.",
     body: "Accuracy, depth and pace across every module — turned into signal.",
@@ -442,74 +465,83 @@ function FeatureShowcase() {
   const tab = SHOWCASE_TABS.find((t) => t.id === active) ?? SHOWCASE_TABS[0];
 
   return (
-    <div className="space-y-8">
-      {/* Tab selector — horizontal scroll on mobile */}
+    <div className="space-y-12">
+      {/* Tab selector — refined ghost buttons with underline indicator */}
       <div className="relative -mx-5 md:mx-0">
-        <div className="flex justify-start gap-1.5 overflow-x-auto px-5 pb-1 md:justify-center md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card/70 p-1 backdrop-blur">
+        <div className="flex justify-start gap-1 overflow-x-auto px-5 pb-1 md:justify-center md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <div className="inline-flex items-center gap-1 border-b border-border/60">
             {SHOWCASE_TABS.map((t) => {
               const isActive = t.id === active;
               return (
                 <button
                   key={t.id}
                   onClick={() => setActive(t.id)}
-                  className={`group flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-medium transition-all md:px-4 md:text-sm ${
+                  className={`relative flex shrink-0 items-center gap-1.5 px-4 py-3 text-[12.5px] font-medium tracking-[-0.005em] transition-colors md:px-5 md:text-[13px] ${
                     isActive
-                      ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                      : "text-muted-foreground hover:text-foreground"
+                      ? "text-foreground"
+                      : "text-muted-foreground/70 hover:text-foreground"
                   }`}
                 >
-                  {t.icon}
+                  <span className={isActive ? "text-pink" : ""}>{t.icon}</span>
                   {t.label}
+                  {isActive && (
+                    <span
+                      className="absolute -bottom-px left-2 right-2 h-px"
+                      style={{
+                        background:
+                          "linear-gradient(90deg, transparent, oklch(0.66 0.20 320) 50%, transparent)",
+                      }}
+                    />
+                  )}
                 </button>
               );
             })}
           </div>
         </div>
-        {/* edge fade hint that more tabs scroll on mobile */}
         <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent md:hidden" />
       </div>
 
-      {/* Showcase */}
       <div className="relative">
-        <div className="absolute -inset-x-6 -top-10 -bottom-10 -z-10 rounded-[3rem] bg-gradient-tentra opacity-10 blur-3xl" />
-        <div className="grid items-center gap-8 md:grid-cols-[1fr_1fr] md:gap-12">
-          {/* Phone */}
+        <div className="absolute -inset-x-6 -top-10 -bottom-10 -z-10 rounded-[3rem] bg-gradient-pink-violet opacity-[0.06] blur-3xl" />
+        <div className="grid items-center gap-10 md:grid-cols-[1fr_1fr] md:gap-16">
           <div className="order-2 md:order-1">
-            <div className="relative mx-auto w-full max-w-[300px] md:max-w-[340px]">
+            <div className="relative mx-auto w-full max-w-[290px] md:max-w-[320px]">
               <div key={tab.id + "-visual"} className="animate-fade-in">
                 <PhoneFrame>{tab.render()}</PhoneFrame>
               </div>
             </div>
           </div>
 
-          {/* Copy */}
-          <div key={tab.id + "-copy"} className="order-1 animate-fade-in text-center md:order-2 md:text-left">
-            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
+          <div
+            key={tab.id + "-copy"}
+            className="order-1 animate-fade-in text-center md:order-2 md:text-left"
+          >
+            <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
               {tab.eyebrow}
             </div>
-            <h3 className="mt-4 text-2xl font-light leading-[1.15] tracking-[-0.02em] text-foreground md:text-4xl">{tab.title}</h3>
-            <p className="mt-4 text-[15px] leading-[1.7] text-muted-foreground md:text-base">{tab.body}</p>
+            <h3 className="mt-5 text-[1.6rem] font-light leading-[1.1] tracking-[-0.025em] text-foreground md:text-[2.1rem]">
+              {tab.title}
+            </h3>
+            <p className="mt-5 text-[15px] leading-[1.65] text-muted-foreground md:text-[16px]">
+              {tab.body}
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Quick feature pills */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* Refined feature row — minimal, hairline */}
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border/60 pt-8 md:grid-cols-4">
         {[
-          { icon: <Flame className="h-4 w-4" />, title: "Consistency streaks" },
-          { icon: <Activity className="h-4 w-4" />, title: "Effort heatmaps" },
-          { icon: <Target className="h-4 w-4" />, title: "Weak-area focus" },
-          { icon: <TrendingUp className="h-4 w-4" />, title: "Mastery tracking" },
+          { icon: <Flame className="h-3.5 w-3.5" />, title: "Consistency streaks" },
+          { icon: <Activity className="h-3.5 w-3.5" />, title: "Effort heatmaps" },
+          { icon: <Target className="h-3.5 w-3.5" />, title: "Weak-area focus" },
+          { icon: <TrendingUp className="h-3.5 w-3.5" />, title: "Mastery tracking" },
         ].map((f) => (
-          <div
-            key={f.title}
-            className="flex items-center gap-2.5 rounded-2xl border border-border bg-card/60 px-4 py-3 backdrop-blur"
-          >
-            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-pink-blue text-primary-foreground">
-              {f.icon}
+          <div key={f.title} className="flex items-center gap-2.5">
+            <span className="text-pink">{f.icon}</span>
+            <span className="text-[12.5px] font-normal text-muted-foreground md:text-[13px]">
+              {f.title}
             </span>
-            <span className="text-xs font-semibold text-foreground md:text-sm">{f.title}</span>
           </div>
         ))}
       </div>
@@ -517,7 +549,7 @@ function FeatureShowcase() {
   );
 }
 
-/* ---------- Visual panels (rendered inside PhoneFrame) ---------- */
+/* ---------- Visual panels ---------- */
 
 function FloatingChip({
   className = "",
@@ -528,7 +560,7 @@ function FloatingChip({
 }) {
   return (
     <div
-      className={`absolute items-center gap-2 rounded-2xl border border-border bg-card/95 px-3 py-2 text-xs font-medium text-foreground shadow-[0_20px_40px_-20px_oklch(0.5_0.2_320/0.4)] backdrop-blur animate-float ${className}`}
+      className={`absolute items-center gap-2 rounded-xl border border-border/70 bg-card/95 px-2.5 py-2 text-xs font-normal text-foreground shadow-[0_12px_30px_-12px_oklch(0.25_0.05_280/0.25)] backdrop-blur animate-float ${className}`}
     >
       {children}
     </div>
@@ -540,29 +572,38 @@ function DashboardPanel() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+          <div className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
             SQE1 · January
           </div>
-          <div className="mt-0.5 text-[15px] font-semibold tracking-tight text-foreground">Good morning, Amelia</div>
-        </div>
-        <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card/70 px-2.5 py-1.5">
-          <div className="text-center">
-            <div className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Days</div>
-            <div className="font-display text-base leading-none text-gradient-tentra">84</div>
+          <div className="mt-1 text-[14px] font-medium tracking-[-0.01em] text-foreground">
+            Good morning, Amelia
           </div>
-          <div className="h-7 w-px bg-border" />
+        </div>
+        <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-card/70 px-2.5 py-1.5">
           <div className="text-center">
-            <div className="text-[8px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Streak</div>
-            <div className="text-[13px] font-semibold leading-none text-foreground">14</div>
+            <div className="text-[8px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Days
+            </div>
+            <div className="font-display text-[13px] font-medium leading-none text-foreground">84</div>
+          </div>
+          <div className="h-6 w-px bg-border/70" />
+          <div className="text-center">
+            <div className="text-[8px] font-medium uppercase tracking-[0.16em] text-muted-foreground">
+              Streak
+            </div>
+            <div className="text-[13px] font-medium leading-none text-foreground">14</div>
           </div>
         </div>
       </div>
-      <div className="mt-3 rounded-xl border border-border bg-card/60 p-2.5">
+
+      <div className="mt-3 rounded-xl border border-border/60 bg-card/40 p-2.5">
         <div className="flex items-center justify-between">
-          <div className="text-[9px] font-semibold uppercase tracking-[0.18em] text-gradient-tentra">Today</div>
-          <div className="text-[8px] tracking-[0.05em] text-muted-foreground">3 of 5 complete</div>
+          <div className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Today
+          </div>
+          <div className="text-[9px] text-muted-foreground">3 of 5 complete</div>
         </div>
-        <ul className="mt-2 space-y-1.5">
+        <ul className="mt-2 space-y-1">
           {[
             { t: "Negligence — duty of care", m: "45m", done: true },
             { t: "MCQs · Misrepresentation", m: "30m", done: true },
@@ -571,37 +612,49 @@ function DashboardPanel() {
           ].map((x, i) => (
             <li
               key={i}
-              className="flex items-center justify-between rounded-lg bg-card px-2 py-1.5 text-[11px]"
+              className="flex items-center justify-between rounded-md px-1.5 py-1.5 text-[11px]"
             >
               <span className="flex items-center gap-2 text-foreground">
                 {x.done ? (
-                  <CheckCircle2 className="h-3 w-3 text-primary" />
+                  <span className="grid h-3 w-3 place-items-center rounded-[3px] bg-pink/15">
+                    <CheckCircle2 className="h-2.5 w-2.5 text-pink" />
+                  </span>
                 ) : (
-                  <span className="h-1.5 w-1.5 rounded-full bg-gradient-pink-blue" />
+                  <span className="h-3 w-3 rounded-[3px] border border-border" />
                 )}
-                <span className={x.done ? "line-through text-muted-foreground" : ""}>{x.t}</span>
+                <span className={x.done ? "text-muted-foreground line-through" : ""}>{x.t}</span>
               </span>
-              <span className="text-[9px] text-muted-foreground">{x.m}</span>
+              <span className="text-[9.5px] text-muted-foreground">{x.m}</span>
             </li>
           ))}
         </ul>
       </div>
-      {/* mini heatmap */}
-      <div className="mt-3 rounded-xl border border-border bg-card/60 p-2.5">
-        <div className="text-[9px] font-semibold uppercase tracking-wider text-gradient-tentra">Last 8 weeks</div>
-        <div className="mt-2 grid grid-cols-14 gap-[3px]" style={{ gridTemplateColumns: "repeat(14, minmax(0, 1fr))" }}>
-          {Array.from({ length: 56 }).map((_, i) => {
-            const intensity = (Math.sin(i * 0.7) + 1) / 2;
-            return (
+
+      {/* Weekly bars */}
+      <div className="mt-3 rounded-xl border border-border/60 bg-card/40 p-2.5">
+        <div className="flex items-center justify-between">
+          <div className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            This week
+          </div>
+          <div className="text-[9.5px] font-medium text-foreground">11h 20m</div>
+        </div>
+        <div className="mt-2.5 grid h-14 grid-cols-7 items-end gap-1.5">
+          {[0.3, 0.55, 0.4, 0.7, 0.85, 0.5, 0.62].map((v, i) => (
+            <div key={i} className="flex h-full flex-col justify-end">
               <div
-                key={i}
-                className="aspect-square rounded-[2px]"
+                className="rounded-sm"
                 style={{
-                  background: `oklch(0.72 0.24 350 / ${0.08 + intensity * 0.7})`,
+                  height: `${v * 100}%`,
+                  background: `linear-gradient(180deg, oklch(0.70 0.18 340 / ${0.55 + v * 0.35}), oklch(0.62 0.16 295 / ${0.45 + v * 0.35}))`,
                 }}
               />
-            );
-          })}
+            </div>
+          ))}
+        </div>
+        <div className="mt-1.5 grid grid-cols-7 gap-1.5 text-center text-[8px] text-muted-foreground">
+          {["M", "T", "W", "T", "F", "S", "S"].map((d, i) => (
+            <div key={i}>{d}</div>
+          ))}
         </div>
       </div>
     </div>
@@ -613,26 +666,30 @@ function FocusPanel() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[9px] font-semibold uppercase tracking-wider text-gradient-tentra">Focus sprint</div>
-          <div className="mt-0.5 text-base font-semibold text-foreground">Tort · Negligence</div>
+          <div className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Focus sprint
+          </div>
+          <div className="mt-1 text-[14px] font-medium text-foreground">Tort · Negligence</div>
         </div>
-        <div className="flex items-center gap-1 rounded-full border border-border bg-card/70 px-2 py-0.5 text-[9px] font-medium">
-          <Flame className="h-3 w-3 text-primary" /> Day 14
+        <div className="flex items-center gap-1 rounded-full border border-border/60 bg-card/70 px-2 py-0.5 text-[9px] font-medium text-muted-foreground">
+          <Flame className="h-3 w-3 text-pink" /> Day 14
         </div>
       </div>
-      <div className="relative mt-4 grid place-items-center">
+      <div className="relative mt-5 grid place-items-center">
         <svg viewBox="0 0 120 120" className="h-40 w-40">
           <defs>
             <linearGradient id="ring" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="oklch(0.72 0.24 350)" />
-              <stop offset="100%" stopColor="oklch(0.62 0.22 250)" />
+              <stop offset="0%" stopColor="oklch(0.72 0.20 350)" />
+              <stop offset="100%" stopColor="oklch(0.60 0.18 295)" />
             </linearGradient>
           </defs>
-          <circle cx="60" cy="60" r="50" stroke="oklch(0.3 0.05 285 / 10%)" strokeWidth="8" fill="none" />
+          <circle cx="60" cy="60" r="50" stroke="oklch(0.3 0.05 285 / 8%)" strokeWidth="6" fill="none" />
           <circle
-            cx="60" cy="60" r="50"
+            cx="60"
+            cy="60"
+            r="50"
             stroke="url(#ring)"
-            strokeWidth="8"
+            strokeWidth="6"
             strokeLinecap="round"
             fill="none"
             strokeDasharray={`${2 * Math.PI * 50}`}
@@ -641,23 +698,23 @@ function FocusPanel() {
           />
         </svg>
         <div className="absolute text-center">
-          <div className="font-display text-2xl text-gradient-tentra">17:42</div>
-          <div className="text-[9px] uppercase tracking-wider text-muted-foreground">Deep work</div>
+          <div className="font-display text-[26px] font-light tracking-[-0.02em] text-foreground">
+            17:42
+          </div>
+          <div className="text-[9px] uppercase tracking-[0.22em] text-muted-foreground">Deep work</div>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-1.5 text-center">
-        <div className="rounded-xl border border-border bg-card/60 p-2">
-          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">Today</div>
-          <div className="text-xs font-semibold text-foreground">2h 15m</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card/60 p-2">
-          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">Week</div>
-          <div className="text-xs font-semibold text-foreground">11h</div>
-        </div>
-        <div className="rounded-xl border border-border bg-card/60 p-2">
-          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">Sessions</div>
-          <div className="text-xs font-semibold text-foreground">4 / 5</div>
-        </div>
+      <div className="mt-4 grid grid-cols-3 gap-1.5 text-center">
+        {[
+          { l: "Today", v: "2h 15m" },
+          { l: "Week", v: "11h" },
+          { l: "Sessions", v: "4 / 5" },
+        ].map((x) => (
+          <div key={x.l} className="rounded-lg border border-border/60 bg-card/40 p-2">
+            <div className="text-[8px] uppercase tracking-[0.18em] text-muted-foreground">{x.l}</div>
+            <div className="text-[11.5px] font-medium text-foreground">{x.v}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -666,32 +723,47 @@ function FocusPanel() {
 function CoachPanel() {
   return (
     <div>
-      <div className="flex items-center gap-2 border-b border-border pb-2.5">
-        <span className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-pink-blue">
+      <div className="flex items-center gap-2 border-b border-border/60 pb-2.5">
+        <span
+          className="grid h-6 w-6 place-items-center rounded-md"
+          style={{
+            background: "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+          }}
+        >
           <Sparkles className="h-3 w-3 text-primary-foreground" />
         </span>
         <div>
-          <div className="text-xs font-semibold text-foreground">Tentra Coach</div>
+          <div className="text-[11.5px] font-medium text-foreground">Tentra Coach</div>
           <div className="text-[9px] text-muted-foreground">Adapting to your scores</div>
         </div>
       </div>
       <div className="mt-3 space-y-2">
-        <div className="ml-auto max-w-[80%] rounded-2xl rounded-tr-md bg-gradient-pink-blue px-3 py-2 text-[11px] text-primary-foreground">
+        <div
+          className="ml-auto max-w-[80%] rounded-2xl rounded-tr-md px-3 py-2 text-[11px] text-primary-foreground"
+          style={{
+            background: "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+          }}
+        >
           Explain easements simply.
         </div>
-        <div className="max-w-[88%] rounded-2xl rounded-tl-md border border-border bg-card/60 px-3 py-2 text-[11px] text-foreground">
-          <span className="font-medium">An easement</span> is a right one
-          landowner has over another's land — like a right of way…
+        <div className="max-w-[88%] rounded-2xl rounded-tl-md border border-border/60 bg-card/60 px-3 py-2 text-[11px] text-foreground">
+          <span className="font-medium">An easement</span> is a right one landowner has over
+          another's land — like a right of way…
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <span className="rounded-full bg-card px-2 py-0.5 text-[9px] text-muted-foreground border border-border">
+            <span className="rounded-full border border-border/70 bg-card px-2 py-0.5 text-[9px] text-muted-foreground">
               Try a 5-Q quiz
             </span>
-            <span className="rounded-full bg-card px-2 py-0.5 text-[9px] text-muted-foreground border border-border">
+            <span className="rounded-full border border-border/70 bg-card px-2 py-0.5 text-[9px] text-muted-foreground">
               Show case law
             </span>
           </div>
         </div>
-        <div className="ml-auto max-w-[70%] rounded-2xl rounded-tr-md bg-gradient-pink-blue px-3 py-2 text-[11px] text-primary-foreground">
+        <div
+          className="ml-auto max-w-[70%] rounded-2xl rounded-tr-md px-3 py-2 text-[11px] text-primary-foreground"
+          style={{
+            background: "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+          }}
+        >
           Quiz me.
         </div>
         <div className="flex items-center gap-2 text-[9px] text-muted-foreground">
@@ -711,16 +783,18 @@ function PracticePanel() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[9px] font-semibold uppercase tracking-wider text-gradient-tentra">FLK1 · Mini Mock</div>
-          <div className="mt-0.5 text-xs font-semibold text-foreground">Question 7 of 20</div>
+          <div className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            FLK1 · Mini Mock
+          </div>
+          <div className="mt-1 text-[12px] font-medium text-foreground">Question 7 of 20</div>
         </div>
-        <div className="rounded-lg border border-border bg-card/70 px-2 py-0.5 text-[10px] font-medium text-foreground">
-          ⏱ 14:32
+        <div className="rounded-md border border-border/60 bg-card/70 px-2 py-0.5 text-[10px] font-medium text-foreground">
+          14:32
         </div>
       </div>
-      <div className="mt-3 rounded-xl border border-border bg-card/60 p-2.5 text-[11px] leading-relaxed text-foreground">
-        A buyer signs a contract relying on the seller's statement that the
-        roof is "recently repaired." It wasn't. Which doctrine applies?
+      <div className="mt-3 rounded-xl border border-border/60 bg-card/40 p-3 text-[11px] leading-relaxed text-foreground">
+        A buyer signs a contract relying on the seller's statement that the roof is "recently
+        repaired." It wasn't. Which doctrine applies?
       </div>
       <div className="mt-2 space-y-1.5">
         {[
@@ -733,12 +807,12 @@ function PracticePanel() {
             key={o.t}
             className={`flex items-center justify-between rounded-lg border px-3 py-2 text-[11px] ${
               o.a
-                ? "border-primary/40 bg-gradient-soft text-foreground"
-                : "border-border bg-card/70 text-muted-foreground"
+                ? "border-pink/40 bg-pink/[0.06] text-foreground"
+                : "border-border/60 bg-card/40 text-muted-foreground"
             }`}
           >
             <span>{o.t}</span>
-            {o.a && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
+            {o.a && <CheckCircle2 className="h-3.5 w-3.5 text-pink" />}
           </div>
         ))}
       </div>
@@ -761,21 +835,23 @@ function AnalyticsPanel() {
     <div>
       <div className="flex items-center justify-between">
         <div>
-          <div className="text-[9px] font-semibold uppercase tracking-wider text-gradient-tentra">Topic mastery</div>
-          <div className="mt-0.5 text-xs font-semibold text-foreground">Up 8% this week</div>
+          <div className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+            Topic mastery
+          </div>
+          <div className="mt-1 text-[12px] font-medium text-foreground">Up 8% this week</div>
         </div>
-        <div className="flex items-center gap-1 rounded-full border border-border bg-card/70 px-2 py-0.5 text-[9px] font-medium text-foreground">
-          <TrendingUp className="h-3 w-3 text-primary" /> +8%
+        <div className="flex items-center gap-1 rounded-full border border-border/60 bg-card/70 px-2 py-0.5 text-[9px] font-medium text-foreground">
+          <TrendingUp className="h-3 w-3 text-pink" /> +8%
         </div>
       </div>
       <div className="mt-3 grid h-28 grid-cols-8 items-end gap-1.5">
         {modules.map((m) => (
           <div key={m.n} className="flex h-full flex-col justify-end">
             <div
-              className="rounded-md ring-1 ring-border/60"
+              className="rounded-sm"
               style={{
                 height: `${m.v * 100}%`,
-                background: `linear-gradient(180deg, oklch(0.72 0.24 350 / ${0.4 + m.v * 0.5}), oklch(0.62 0.22 250 / ${0.4 + m.v * 0.5}))`,
+                background: `linear-gradient(180deg, oklch(0.70 0.18 340 / ${0.55 + m.v * 0.3}), oklch(0.62 0.16 295 / ${0.45 + m.v * 0.3}))`,
               }}
             />
           </div>
@@ -789,13 +865,13 @@ function AnalyticsPanel() {
         ))}
       </div>
       <div className="mt-3 grid grid-cols-2 gap-1.5">
-        <div className="rounded-xl border border-border bg-card/60 p-2 text-center">
-          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">Accuracy</div>
-          <div className="text-sm font-semibold text-foreground">78%</div>
+        <div className="rounded-lg border border-border/60 bg-card/40 p-2 text-center">
+          <div className="text-[8px] uppercase tracking-[0.18em] text-muted-foreground">Accuracy</div>
+          <div className="text-[12.5px] font-medium text-foreground">78%</div>
         </div>
-        <div className="rounded-xl border border-border bg-card/60 p-2 text-center">
-          <div className="text-[8px] uppercase tracking-wider text-muted-foreground">Hours</div>
-          <div className="text-sm font-semibold text-foreground">42h</div>
+        <div className="rounded-lg border border-border/60 bg-card/40 p-2 text-center">
+          <div className="text-[8px] uppercase tracking-[0.18em] text-muted-foreground">Hours</div>
+          <div className="text-[12.5px] font-medium text-foreground">42h</div>
         </div>
       </div>
     </div>
