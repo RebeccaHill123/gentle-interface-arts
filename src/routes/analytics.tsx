@@ -77,7 +77,7 @@ function AnalyticsPage() {
             <Button
               asChild
               size="sm"
-              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
             >
               <Link to="/pro">
                 <Sparkles className="h-4 w-4" /> Unlock Pro
@@ -239,7 +239,7 @@ function LockedOverlay() {
         </p>
         <Button
           asChild
-          className="mt-4 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+          className="mt-4 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
         >
           <Link to="/pro">
             <Sparkles className="h-4 w-4" /> Try Pro free

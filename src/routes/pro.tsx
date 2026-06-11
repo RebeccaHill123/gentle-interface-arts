@@ -155,7 +155,7 @@ function ProUpgrade({
   return (
     <div>
       {/* Hero */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-8 backdrop-blur md:p-14">
+      <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-8 backdrop-blur md:p-14">
         <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-gradient-tentra opacity-30 blur-3xl" />
         <div className="absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-gradient-pink-blue opacity-25 blur-3xl" />
 
@@ -163,7 +163,7 @@ function ProUpgrade({
           <ProBadge active />
           <h1 className="mt-5 text-4xl font-light tracking-tight text-foreground md:text-6xl">
             Train like the{" "}
-            <span className="italic text-gradient-tentra font-sans text-2xl">top 1%</span> of SQE candidates.
+            <span className="text-gradient-pink-violet font-sans text-2xl">top 1%</span> of SQE candidates.
           </h1>
           <p className="mt-5 text-base text-muted-foreground md:text-lg">
             Tentra Pro turns your study data into intelligence — forecasts, weak-spot detection,
@@ -183,7 +183,7 @@ function ProUpgrade({
               size="lg"
               disabled={busy}
               onClick={onUpgrade}
-              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
             >
               {busy ? (
                 <>
@@ -250,7 +250,7 @@ function ProUpgrade({
           size="lg"
           disabled={busy}
           onClick={onUpgrade}
-          className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+          className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
         >
           {busy ? (
             <>
@@ -361,13 +361,13 @@ function ProDashboard({
   return (
     <div>
       {/* Hero strip */}
-      <section className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-7 backdrop-blur md:p-10">
+      <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-7 backdrop-blur md:p-10">
         <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-gradient-tentra opacity-25 blur-3xl" />
         <div className="relative flex flex-wrap items-end justify-between gap-6">
           <div>
             <ProBadge active />
             <h1 className="mt-4 text-3xl font-light tracking-tight text-foreground md:text-5xl">
-              Welcome back to <span className="italic text-gradient-tentra font-sans inline-block pr-2">Pro</span>.
+              Welcome back to <span className="text-gradient-pink-violet font-sans inline-block pr-2">Pro</span>.
             </h1>
             <p className="mt-2 max-w-lg text-sm text-muted-foreground md:text-base">
               Your intelligence layer is live. Insights refresh in real time as you study.

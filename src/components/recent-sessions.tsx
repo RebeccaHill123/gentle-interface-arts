@@ -439,7 +439,7 @@ function EditSessionDialog({
           </Button>
           <Button
             onClick={handleSave}
-            className="bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+            className="bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
           >
             Save changes
           </Button>

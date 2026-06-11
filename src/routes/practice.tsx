@@ -467,7 +467,7 @@ function LaunchScreen({
         <Button
           onClick={onBegin}
           size="lg"
-          className="rounded-full bg-gradient-pink-blue px-8 text-primary-foreground shadow-glow hover:opacity-95"
+          className="rounded-full bg-gradient-pink-blue px-8 text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
         >
           <Play className="mr-1.5 h-4 w-4" /> Begin session
         </Button>
@@ -699,7 +699,7 @@ function QuizScreen({
           <Button
             onClick={onFinish}
             disabled={!canAdvance}
-            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
           >
             <Flag className="mr-1 h-4 w-4" /> Finish
           </Button>
@@ -707,7 +707,7 @@ function QuizScreen({
           <Button
             onClick={onNext}
             disabled={!canAdvance}
-            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
           >
             Next <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
@@ -909,7 +909,7 @@ function ResultsScreen({
         {wrong.length > 0 && (
           <Button
             onClick={followUpDrill}
-            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
           >
             <Sparkles className="mr-1 h-4 w-4" /> Follow-up drill
           </Button>

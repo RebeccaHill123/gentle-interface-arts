@@ -459,7 +459,7 @@ export function AIQuizBuilderDialog({
               </Button>
               <Button
                 onClick={generate}
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 <Sparkles className="mr-1 h-4 w-4" /> Generate quiz
               </Button>
@@ -482,7 +482,7 @@ export function AIQuizBuilderDialog({
               </div>
               <Button
                 onClick={start}
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 Start quiz <ArrowRight className="ml-1 h-4 w-4" />
               </Button>

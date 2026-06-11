@@ -145,7 +145,7 @@ function AuthCallbackPage() {
         <BrandMark />
       </div>
       <div className="relative mx-auto flex w-full max-w-[420px] flex-col px-6 py-10">
-        <div className="rounded-[2rem] border border-border bg-card/70 p-8 backdrop-blur md:p-10">
+        <div className="rounded-2xl border border-border/60 bg-card/60 p-8 backdrop-blur md:p-10">
           {error ? (
             <>
               <div className="text-xs font-semibold uppercase tracking-wider text-destructive">
@@ -191,7 +191,7 @@ function AuthCallbackPage() {
                 <Button
                   type="submit"
                   disabled={resending}
-                  className="w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                  className="w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
                 >
                   {resending ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resending…</>

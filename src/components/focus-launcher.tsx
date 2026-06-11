@@ -71,12 +71,12 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
     <div className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-card">
       <div className="pointer-events-none absolute inset-0 bg-gradient-hero opacity-60" />
       <div className="relative">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-pink">
+        <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
           <Sparkles className="h-3 w-3" /> Focus sprint
         </div>
         <h3 className="mt-2 text-2xl font-normal text-foreground">
           Ready for some{" "}
-          <span className="italic text-gradient-tentra font-sans inline-block pr-1">deep work</span>?
+          <span className="text-gradient-pink-violet font-sans inline-block pr-1">deep work</span>?
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Pick a preset, name your topic, and we'll do the rest.
@@ -98,7 +98,7 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
                     : "border-border bg-background/40 hover:border-pink/40 hover:bg-card"
                 }`}
               >
-                <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-pink">
+                <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
                   <span>{p.label.split(" ")[0]}</span>
                   <span className="inline-flex items-center gap-1 text-[10px] text-pink/80 opacity-0 transition-opacity group-hover:opacity-100">
                     Start <Play className="h-2.5 w-2.5" />
@@ -123,7 +123,7 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
                 : "border-dashed border-border bg-background/40 hover:border-pink/40"
             }`}
           >
-            <div className="text-xs font-semibold uppercase tracking-wider text-pink">
+            <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
               Custom
             </div>
             {isCustom ? (
@@ -195,7 +195,7 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
 
         <Button
           onClick={handleStart}
-          className="mt-6 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+          className="mt-6 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
           size="lg"
         >
           <Play className="mr-2 h-4 w-4" />

@@ -335,7 +335,7 @@ function FocusPage() {
                 <Button
                   onClick={handleStartBreak}
                   size="lg"
-                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
                 >
                   <Play className="mr-2 h-4 w-4" />
                   Start {Math.round(sprint.breakMs / 60000)}m break
@@ -354,7 +354,7 @@ function FocusPage() {
                 <Button
                   onClick={handlePauseToggle}
                   size="lg"
-                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
                 >
                   {isPaused ? (
                     <>

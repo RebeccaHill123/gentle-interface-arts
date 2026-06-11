@@ -48,7 +48,7 @@ export function FocusInsights({ sessions }: { sessions: StudySession[] | undefin
       <div className="rounded-2xl border border-border bg-background/40 p-5">
         <div className="flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-pink">
+            <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
               <TrendingUp className="h-3 w-3" /> Concentration trend
             </div>
             <p className="mt-0.5 text-xs text-muted-foreground">

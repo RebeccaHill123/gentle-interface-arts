@@ -491,7 +491,7 @@ export function PracticeLauncherDialog({
           {step < 3 ? (
             <Button
               onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3)}
-              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
             >
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
@@ -503,7 +503,7 @@ export function PracticeLauncherDialog({
               <Button
                 onClick={launch}
                 disabled={launching}
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-95"
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 {launching ? (
                   <>
