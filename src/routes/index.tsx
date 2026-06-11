@@ -326,7 +326,7 @@ function LandingPage() {
 
         {/* FOOTER */}
         <footer className="border-t border-border/50">
-          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-6 py-8 text-[12.5px] text-muted-foreground md:flex-row md:px-8">
+          <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-[12.5px] text-muted-foreground md:flex-row md:px-8">
             <div className="flex items-center gap-2.5">
               <span
                 className="grid h-6 w-6 place-items-center rounded-md"
@@ -340,7 +340,15 @@ function LandingPage() {
               <span className="font-medium tracking-tight text-foreground">Tentra</span>
               <span className="hidden sm:inline">· For the next generation of solicitors.</span>
             </div>
-            <div>© {new Date().getFullYear()} Tentra</div>
+            <nav className="flex items-center gap-5">
+              <Link to="/terms" className="transition-colors hover:text-foreground">
+                Terms
+              </Link>
+              <Link to="/privacy" className="transition-colors hover:text-foreground">
+                Privacy
+              </Link>
+              <span>© {new Date().getFullYear()} Tentra</span>
+            </nav>
           </div>
         </footer>
       </div>
