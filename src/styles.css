@@ -110,6 +110,11 @@
     oklch(0.72 0.24 350),
     oklch(0.62 0.22 250)
   );
+  --gradient-pink-violet: linear-gradient(
+    120deg,
+    oklch(0.72 0.20 350),
+    oklch(0.60 0.18 295)
+  );
   --gradient-soft: linear-gradient(
     135deg,
     oklch(0.72 0.24 350 / 0.12),
