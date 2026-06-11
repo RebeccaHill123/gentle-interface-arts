@@ -116,8 +116,8 @@ function LandingPage() {
 
         <main>
         {/* HERO — mobile-first, above-the-fold value prop */}
-        <section className="mx-auto max-w-6xl px-5 pt-4 pb-10 md:px-6 md:pt-12 md:pb-16">
-          <div className="grid items-center gap-10 md:grid-cols-[1.1fr_1fr] md:gap-12">
+        <section className="mx-auto max-w-6xl px-5 pt-2 pb-8 md:px-6 md:pt-12 md:pb-16">
+          <div className="grid items-center gap-8 md:grid-cols-[1.1fr_1fr] md:gap-12">
             <div className="text-center md:text-left">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground/80 backdrop-blur">
                 <span className="relative flex h-1.5 w-1.5">
@@ -127,7 +127,7 @@ function LandingPage() {
                 Early access
               </span>
 
-              <h1 className="mt-5 text-[2.1rem] font-light leading-[1.08] tracking-[-0.02em] text-foreground md:text-[3.1rem] lg:text-[3.6rem]">
+              <h1 className="mt-5 text-[1.95rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground sm:text-[2.3rem] md:text-[3.1rem] lg:text-[3.6rem]">
                 The performance platform for{" "}
                 <span className="italic text-gradient-tentra font-light inline-block pr-[0.12em]">
                   SQE candidates
@@ -140,11 +140,11 @@ function LandingPage() {
                 engineered for the demands of qualification.
               </p>
 
-              <div className="mt-9 flex flex-col items-center gap-2.5 md:flex-row md:items-start md:justify-start">
+              <div className="mt-7 flex flex-col items-center gap-2 md:mt-9 md:flex-row md:items-start md:justify-start md:gap-2.5">
                 <Button
                   asChild
                   size="lg"
-                  className="h-14 w-full rounded-full bg-gradient-pink-blue px-8 text-[15px] font-semibold tracking-[0.01em] text-primary-foreground shadow-glow hover:opacity-95 md:w-auto"
+                  className="h-13 w-full rounded-full bg-gradient-pink-blue px-8 text-[15px] font-semibold tracking-[0.01em] text-primary-foreground shadow-glow hover:opacity-95 md:h-14 md:w-auto"
                 >
                   <Link to={ctaTo}>
                     {ctaLabel} <ArrowRight className="ml-1.5 h-4 w-4" />
@@ -155,7 +155,7 @@ function LandingPage() {
                     asChild
                     size="lg"
                     variant="ghost"
-                    className="h-14 rounded-full text-sm text-muted-foreground hover:text-foreground"
+                    className="h-11 rounded-full text-sm text-muted-foreground hover:text-foreground md:h-14"
                   >
                     <Link to="/auth" search={{ mode: "signin" }}>Sign in</Link>
                   </Button>
@@ -197,8 +197,8 @@ function LandingPage() {
         </section>
 
         {/* SOCIAL PROOF STRIP */}
-        <section className="mx-auto max-w-6xl px-5 pb-16 md:px-6 md:pb-20">
-          <div className="grid grid-cols-2 gap-2 rounded-3xl border border-border bg-card/60 p-4 backdrop-blur md:grid-cols-4 md:gap-6 md:p-6">
+        <section className="mx-auto max-w-6xl px-5 pb-12 md:px-6 md:pb-20">
+          <div className="grid grid-cols-2 gap-2 rounded-3xl border border-border bg-card/60 p-3 backdrop-blur md:grid-cols-4 md:gap-6 md:p-6">
             <TrustPill icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE1 & SQE2" />
             <TrustPill icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive study planning" />
             <TrustPill icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance analytics" />
@@ -207,8 +207,8 @@ function LandingPage() {
         </section>
 
         {/* FEATURES — phone carousel */}
-        <section id="features" className="mx-auto max-w-6xl px-5 pb-24 md:px-6 md:pb-32">
-          <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
+        <section id="features" className="mx-auto max-w-6xl px-5 pb-16 md:px-6 md:pb-32">
+          <div className="mx-auto mb-8 max-w-2xl text-center md:mb-16">
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
               The platform
             </div>
@@ -228,8 +228,8 @@ function LandingPage() {
         </section>
 
         {/* HOW IT WORKS */}
-        <section id="how" className="mx-auto max-w-6xl px-5 pb-24 md:px-6 md:pb-32">
-          <div className="mb-12 text-center md:mb-16">
+        <section id="how" className="mx-auto max-w-6xl px-5 pb-16 md:px-6 md:pb-32">
+          <div className="mb-8 text-center md:mb-16">
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
               How it works
             </div>
@@ -245,11 +245,11 @@ function LandingPage() {
         </section>
 
         {/* TESTIMONIAL / VIBE */}
-        <section className="mx-auto max-w-3xl px-5 pb-24 md:px-6 md:pb-28">
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-10 text-center backdrop-blur md:p-14">
+        <section className="mx-auto max-w-3xl px-5 pb-16 md:px-6 md:pb-28">
+          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-7 text-center backdrop-blur md:p-14">
             <div className="absolute -inset-x-10 -top-10 -z-10 h-40 bg-gradient-tentra opacity-20 blur-3xl" />
             <Sparkles className="mx-auto h-5 w-5 text-pink" />
-            <p className="mt-5 text-xl font-light leading-[1.4] tracking-[-0.01em] text-foreground md:text-2xl">
+            <p className="mt-5 text-lg font-light leading-[1.45] tracking-[-0.01em] text-foreground md:text-2xl">
               "Tentra turned my preparation into something measurable. I knew,
               every day, that I was getting closer."
             </p>
@@ -260,8 +260,8 @@ function LandingPage() {
         </section>
 
         {/* PRICING / EARLY ACCESS */}
-        <section id="pricing" className="mx-auto max-w-3xl px-5 pb-28 md:px-6 md:pb-32">
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-10 text-center backdrop-blur md:p-14">
+        <section id="pricing" className="mx-auto max-w-3xl px-5 pb-24 md:px-6 md:pb-32">
+          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-7 text-center backdrop-blur md:p-14">
             <div className="absolute inset-0 -z-10 bg-gradient-tentra opacity-10" />
             <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground">
               <Trophy className="h-3 w-3 text-pink" /> Early access
@@ -349,8 +349,8 @@ function StepCard({
   body: string;
 }) {
   return (
-    <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-6 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-lg md:p-7">
-      <div className="absolute right-5 top-3 font-display text-5xl leading-none text-gradient-tentra opacity-20">
+    <div className="group relative overflow-hidden rounded-3xl border border-border bg-card/60 p-5 backdrop-blur transition-all hover:-translate-y-1 hover:shadow-lg md:p-7">
+      <div className="pointer-events-none absolute right-4 top-2 font-display text-4xl leading-none text-gradient-tentra opacity-15 md:text-5xl md:opacity-20">
         {num}
       </div>
       <div className="relative">
@@ -444,8 +444,8 @@ function FeatureShowcase() {
   return (
     <div className="space-y-8">
       {/* Tab selector — horizontal scroll on mobile */}
-      <div className="-mx-5 px-5 md:mx-0 md:px-0">
-        <div className="flex justify-start gap-1.5 overflow-x-auto pb-1 md:justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="relative -mx-5 md:mx-0">
+        <div className="flex justify-start gap-1.5 overflow-x-auto px-5 pb-1 md:justify-center md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card/70 p-1 backdrop-blur">
             {SHOWCASE_TABS.map((t) => {
               const isActive = t.id === active;
@@ -466,6 +466,8 @@ function FeatureShowcase() {
             })}
           </div>
         </div>
+        {/* edge fade hint that more tabs scroll on mobile */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent md:hidden" />
       </div>
 
       {/* Showcase */}
