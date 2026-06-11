@@ -1,8 +1,37 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
-import { Layers, BookOpen, Brain, Clock, ArrowLeft } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import {
+  Layers,
+  BookOpen,
+  Brain,
+  ArrowLeft,
+  Star,
+  Check,
+  RotateCcw,
+  Sparkles,
+  ChevronRight,
+} from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { cn } from "@/lib/utils";
 import { waitForAuthUser } from "@/lib/auth-session";
+import {
+  DECKS,
+  CARDS,
+  getCardsByDeck,
+  getDeck,
+  type Flashcard,
+  type FlkArea,
+} from "@/lib/flashcards-data";
+import {
+  getAllProgress,
+  markCard,
+  toggleStar,
+  resetDeckProgress,
+  type CardProgress,
+} from "@/lib/flashcards-progress";
 
 export const Route = createFileRoute("/flashcards")({
   beforeLoad: async () => {
@@ -17,12 +46,13 @@ export const Route = createFileRoute("/flashcards")({
       {
         name: "description",
         content:
-          "Adaptive flashcards for SQE rule recall. Target weak areas, build retention and review high-yield legal principles with Tentra.",
+          "High-yield SQE flashcards across FLK1 and FLK2. Target weak areas, star key rules and build fast recall with Tentra.",
       },
       { property: "og:title", content: "SQE Flashcards | Tentra" },
       {
         property: "og:description",
-        content: "Adaptive flashcards for SQE rule recall and weak-area targeting.",
+        content:
+          "High-yield SQE flashcards: build fast recall across rules, exceptions and exam traps.",
       },
       { property: "og:url", content: "https://tentraapp.com/flashcards" },
     ],
@@ -30,7 +60,78 @@ export const Route = createFileRoute("/flashcards")({
   }),
 });
 
+type Filter = "all" | "FLK1" | "FLK2" | "weak" | "starred";
+
+type ReviewMode =
+  | { kind: "deck"; deckId: string }
+  | { kind: "weak" }
+  | { kind: "starred" };
+
+function useProgress() {
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const onChange = () => setTick((t) => t + 1);
+    window.addEventListener("tentra:flashcards-updated", onChange);
+    window.addEventListener("storage", onChange);
+    return () => {
+      window.removeEventListener("tentra:flashcards-updated", onChange);
+      window.removeEventListener("storage", onChange);
+    };
+  }, []);
+  return useMemo(() => getAllProgress(), [tick]);
+}
+
 function FlashcardsPage() {
+  const [mode, setMode] = useState<ReviewMode | null>(null);
+
+  if (mode) {
+    return <StudyView mode={mode} onExit={() => setMode(null)} />;
+  }
+
+  return <DeckBrowser onStart={setMode} />;
+}
+
+// ---------- Deck browser ----------
+
+function DeckBrowser({ onStart }: { onStart: (m: ReviewMode) => void }) {
+  const [filter, setFilter] = useState<Filter>("all");
+  const progress = useProgress();
+
+  const decksFiltered = useMemo(() => {
+    if (filter === "FLK1" || filter === "FLK2")
+      return DECKS.filter((d) => d.flk === filter);
+    return DECKS;
+  }, [filter]);
+
+  const weakCount = useMemo(
+    () =>
+      CARDS.filter((c) => progress[c.id]?.status === "needs_review").length,
+    [progress],
+  );
+  const starredCount = useMemo(
+    () => CARDS.filter((c) => progress[c.id]?.starred).length,
+    [progress],
+  );
+
+  const continueDeck = useMemo(() => {
+    let best: { deckId: string; lastAt: number } | null = null;
+    for (const card of CARDS) {
+      const p = progress[card.id];
+      if (!p?.lastReviewedAt) continue;
+      if (!best || p.lastReviewedAt > best.lastAt)
+        best = { deckId: card.deckId, lastAt: p.lastReviewedAt };
+    }
+    return best ? getDeck(best.deckId) ?? null : null;
+  }, [progress]);
+
+  const filters: { id: Filter; label: string; count?: number }[] = [
+    { id: "all", label: "All" },
+    { id: "FLK1", label: "FLK1" },
+    { id: "FLK2", label: "FLK2" },
+    { id: "weak", label: "Weak areas", count: weakCount },
+    { id: "starred", label: "Starred", count: starredCount },
+  ];
+
   return (
     <AppShell
       title="Flashcards"
@@ -39,86 +140,464 @@ function FlashcardsPage() {
       backTo="/mocks"
       backLabel="Back to Mocks & Practice"
     >
-      {/* Hero — coming soon */}
+      {/* Hero */}
       <section className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-card md:p-12">
         <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-gradient-pink-blue opacity-20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-gradient-pink-blue opacity-10 blur-3xl" />
-
         <div className="relative flex flex-col items-start gap-6 md:flex-row md:items-center md:justify-between">
           <div className="max-w-xl">
             <Badge
               variant="outline"
               className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground"
             >
-              Coming soon
+              FLK1 · FLK2
             </Badge>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
               Flashcards
             </h2>
             <p className="mt-3 text-base text-muted-foreground md:text-lg">
-              Review key rules, definitions and high-yield legal principles in a
-              focused, adaptive format.
+              Build fast recall across high-yield SQE rules, definitions and
+              exam traps.
             </p>
-
-            <div className="mt-6 flex flex-wrap gap-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/60 px-3 py-1.5 text-xs text-muted-foreground">
-                <BookOpen className="h-3.5 w-3.5" /> Topic-based decks
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/60 px-3 py-1.5 text-xs text-muted-foreground">
-                <Brain className="h-3.5 w-3.5" /> Weak-area generation
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/60 px-3 py-1.5 text-xs text-muted-foreground">
-                <Clock className="h-3.5 w-3.5" /> Spaced repetition
-              </span>
-            </div>
           </div>
-
-          <div className="hidden h-32 w-32 shrink-0 place-items-center rounded-3xl bg-gradient-pink-blue text-primary-foreground opacity-70 shadow-glow md:grid">
+          <div className="hidden h-32 w-32 shrink-0 place-items-center rounded-3xl bg-gradient-pink-blue text-primary-foreground opacity-80 shadow-glow md:grid">
             <Layers className="h-14 w-14" />
           </div>
         </div>
       </section>
 
-      {/* Feature preview cards */}
-      <section className="mt-8 grid gap-4 md:grid-cols-3">
-        {(
-          [
-            {
-              title: "Topic Decks",
-              desc: "Curated flashcard sets for every SQE module — from contract formation to land registration.",
-              icon: BookOpen,
-            },
-            {
-              title: "Adaptive Recall",
-              desc: "Cards generated automatically from your weakest practice areas to close knowledge gaps fast.",
-              icon: Brain,
-            },
-            {
-              title: "Quick Review",
-              desc: "Short, high-intensity sessions designed for commutes, breaks and last-minute revision.",
-              icon: Clock,
-            },
-          ] as const
-        ).map((f) => (
-          <div
-            key={f.title}
-            className="relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 backdrop-blur"
+      {/* Continue + quick review */}
+      <section className="mt-6 grid gap-4 md:grid-cols-3">
+        {continueDeck ? (
+          <button
+            onClick={() => onStart({ kind: "deck", deckId: continueDeck.id })}
+            className="group relative overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-card transition hover:border-primary/40"
           >
-            <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-10 blur-2xl" />
-            <div className="relative grid h-10 w-10 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
-              <f.icon className="h-5 w-5" />
+            <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-gradient-pink-blue opacity-20 blur-2xl" />
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Continue review
             </div>
-            <div className="relative mt-5">
-              <div className="text-base font-semibold text-foreground">
-                {f.title}
-              </div>
-              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                {f.desc}
-              </p>
+            <div className="mt-1 text-base font-semibold text-foreground">
+              {continueDeck.title}
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Pick up where you left off
+            </div>
+            <ChevronRight className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+          </button>
+        ) : (
+          <div className="rounded-2xl border border-dashed border-border bg-card/40 p-5">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Continue review
+            </div>
+            <div className="mt-1 text-sm text-muted-foreground">
+              Open a deck below to start your first session.
             </div>
           </div>
+        )}
+
+        <button
+          onClick={() => onStart({ kind: "weak" })}
+          disabled={weakCount === 0}
+          className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-card transition hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Review weak cards
+            </div>
+            <div className="mt-1 text-base font-semibold text-foreground">
+              {weakCount} card{weakCount === 1 ? "" : "s"} flagged
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Targets anything marked "needs review"
+            </div>
+          </div>
+          <Brain className="h-5 w-5 text-muted-foreground transition group-hover:text-foreground" />
+        </button>
+
+        <button
+          onClick={() => onStart({ kind: "starred" })}
+          disabled={starredCount === 0}
+          className="group relative flex items-center justify-between overflow-hidden rounded-2xl border border-border bg-card p-5 text-left shadow-card transition hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <div>
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Review starred
+            </div>
+            <div className="mt-1 text-base font-semibold text-foreground">
+              {starredCount} saved
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              Your shortlist of essentials
+            </div>
+          </div>
+          <Star className="h-5 w-5 text-muted-foreground transition group-hover:text-foreground" />
+        </button>
+      </section>
+
+      {/* Filters */}
+      <section className="mt-8 flex flex-wrap items-center gap-2">
+        {filters.map((f) => (
+          <button
+            key={f.id}
+            onClick={() => setFilter(f.id)}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition",
+              filter === f.id
+                ? "border-primary/40 bg-primary/10 text-foreground"
+                : "border-border bg-background/60 text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {f.label}
+            {typeof f.count === "number" && (
+              <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                {f.count}
+              </span>
+            )}
+          </button>
         ))}
       </section>
+
+      {/* Deck grid */}
+      {filter === "weak" || filter === "starred" ? (
+        <section className="mt-6 rounded-2xl border border-dashed border-border bg-card/40 p-6 text-sm text-muted-foreground">
+          Use the “Review {filter === "weak" ? "weak" : "starred"} cards”
+          card above to start a focused session across every deck.
+        </section>
+      ) : (
+        <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {decksFiltered.map((deck) => (
+            <DeckCard
+              key={deck.id}
+              deck={deck}
+              progress={progress}
+              onOpen={() => onStart({ kind: "deck", deckId: deck.id })}
+            />
+          ))}
+        </section>
+      )}
+
+      <p className="mt-10 text-center text-xs text-muted-foreground">
+        Study guidance only. Not legal advice.
+      </p>
     </AppShell>
+  );
+}
+
+function DeckCard({
+  deck,
+  progress,
+  onOpen,
+}: {
+  deck: (typeof DECKS)[number];
+  progress: Record<string, CardProgress>;
+  onOpen: () => void;
+}) {
+  const cards = getCardsByDeck(deck.id);
+  const completed = cards.filter(
+    (c) => progress[c.id]?.status === "got_it",
+  ).length;
+  const pct = cards.length ? Math.round((completed / cards.length) * 100) : 0;
+
+  return (
+    <button
+      onClick={onOpen}
+      className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-5 text-left backdrop-blur transition hover:border-primary/40 hover:shadow-card"
+    >
+      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-10 blur-2xl" />
+      <div className="relative flex items-center justify-between">
+        <Badge
+          variant="outline"
+          className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground"
+        >
+          {deck.flk}
+        </Badge>
+        <span className="text-[11px] text-muted-foreground">
+          {cards.length} cards
+        </span>
+      </div>
+      <div className="relative mt-3 text-base font-semibold text-foreground">
+        {deck.title}
+      </div>
+      <p className="relative mt-1 text-sm leading-relaxed text-muted-foreground line-clamp-2">
+        {deck.description}
+      </p>
+      <div className="relative mt-4 space-y-1.5">
+        <Progress value={pct} className="h-1.5" />
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>
+            {completed}/{cards.length} mastered
+          </span>
+          <span>{pct}%</span>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ---------- Study view ----------
+
+function buildQueue(mode: ReviewMode): Flashcard[] {
+  const progress = getAllProgress();
+  let pool: Flashcard[] = [];
+  if (mode.kind === "deck") pool = getCardsByDeck(mode.deckId);
+  else if (mode.kind === "weak")
+    pool = CARDS.filter((c) => progress[c.id]?.status === "needs_review");
+  else pool = CARDS.filter((c) => progress[c.id]?.starred);
+
+  // Adaptive weighting: needs_review cards appear twice, got_it skipped in deck
+  // mode if everything has been seen at least once.
+  const expanded: Flashcard[] = [];
+  for (const card of pool) {
+    const p = progress[card.id];
+    expanded.push(card);
+    if (p?.status === "needs_review") expanded.push(card);
+  }
+  // Shuffle
+  for (let i = expanded.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [expanded[i], expanded[j]] = [expanded[j], expanded[i]];
+  }
+  return expanded;
+}
+
+function StudyView({
+  mode,
+  onExit,
+}: {
+  mode: ReviewMode;
+  onExit: () => void;
+}) {
+  const [queue, setQueue] = useState<Flashcard[]>(() => buildQueue(mode));
+  const [index, setIndex] = useState(0);
+  const [revealed, setRevealed] = useState(false);
+  const progress = useProgress();
+
+  const card = queue[index];
+  const total = queue.length;
+  const done = index >= total;
+
+  const heading =
+    mode.kind === "deck"
+      ? getDeck(mode.deckId)?.title ?? "Deck"
+      : mode.kind === "weak"
+        ? "Weak-area review"
+        : "Starred cards";
+
+  const flkBadge: FlkArea | null =
+    mode.kind === "deck" ? getDeck(mode.deckId)?.flk ?? null : null;
+
+  const handleStatus = (status: "got_it" | "needs_review") => {
+    if (!card) return;
+    markCard(card.id, status);
+    setRevealed(false);
+    setIndex((i) => i + 1);
+  };
+
+  const handleStar = () => {
+    if (!card) return;
+    toggleStar(card.id);
+  };
+
+  const restart = () => {
+    setQueue(buildQueue(mode));
+    setIndex(0);
+    setRevealed(false);
+  };
+
+  const resetDeck = () => {
+    if (mode.kind !== "deck") return;
+    resetDeckProgress(getCardsByDeck(mode.deckId).map((c) => c.id));
+    restart();
+  };
+
+  return (
+    <AppShell title={heading} subtitle="One card at a time. Be honest.">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={onExit}
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="mr-1.5 h-4 w-4" /> All decks
+        </Button>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          {flkBadge && (
+            <Badge
+              variant="outline"
+              className="rounded-full border-border text-[10px] uppercase tracking-wide"
+            >
+              {flkBadge}
+            </Badge>
+          )}
+          {!done && (
+            <span>
+              Card {Math.min(index + 1, total)} of {total}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <Progress
+        value={total ? (Math.min(index, total) / total) * 100 : 0}
+        className="h-1.5"
+      />
+
+      {!card ? (
+        <CompletionPanel
+          mode={mode}
+          progress={progress}
+          onRestart={restart}
+          onResetDeck={mode.kind === "deck" ? resetDeck : undefined}
+          onExit={onExit}
+        />
+      ) : (
+        <div className="mt-8">
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-card transition md:p-12",
+              revealed && "ring-1 ring-primary/20",
+            )}
+          >
+            <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-gradient-pink-blue opacity-15 blur-3xl" />
+            <div className="relative flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
+              <span>{card.topic}</span>
+              <div className="flex items-center gap-2">
+                <span>{card.difficulty}</span>
+                <button
+                  onClick={handleStar}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Star card"
+                >
+                  <Star
+                    className={cn(
+                      "h-4 w-4",
+                      progress[card.id]?.starred &&
+                        "fill-primary text-primary",
+                    )}
+                  />
+                </button>
+              </div>
+            </div>
+
+            <div className="relative mt-6 text-xl font-semibold leading-snug text-foreground md:text-2xl">
+              {card.front}
+            </div>
+
+            {revealed && (
+              <div className="relative mt-6 space-y-4 border-t border-border pt-6">
+                <p className="text-base leading-relaxed text-foreground/90">
+                  {card.back}
+                </p>
+                {card.examTip && (
+                  <div className="rounded-xl border border-border bg-background/60 p-4 text-sm text-muted-foreground">
+                    <div className="mb-1 flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-foreground">
+                      <Sparkles className="h-3.5 w-3.5" /> Exam tip
+                    </div>
+                    {card.examTip}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
+            {!revealed ? (
+              <Button
+                onClick={() => setRevealed(true)}
+                className="bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-90"
+                size="lg"
+              >
+                <BookOpen className="mr-2 h-4 w-4" /> Reveal answer
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => handleStatus("needs_review")}
+                >
+                  <RotateCcw className="mr-2 h-4 w-4" /> Needs review
+                </Button>
+                <Button
+                  size="lg"
+                  onClick={() => handleStatus("got_it")}
+                  className="bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-90"
+                >
+                  <Check className="mr-2 h-4 w-4" /> Got it
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      <p className="mt-10 text-center text-xs text-muted-foreground">
+        Study guidance only. Not legal advice.
+      </p>
+    </AppShell>
+  );
+}
+
+function CompletionPanel({
+  mode,
+  progress,
+  onRestart,
+  onResetDeck,
+  onExit,
+}: {
+  mode: ReviewMode;
+  progress: Record<string, CardProgress>;
+  onRestart: () => void;
+  onResetDeck?: () => void;
+  onExit: () => void;
+}) {
+  const cards =
+    mode.kind === "deck"
+      ? getCardsByDeck(mode.deckId)
+      : mode.kind === "weak"
+        ? CARDS.filter((c) => progress[c.id]?.status === "needs_review")
+        : CARDS.filter((c) => progress[c.id]?.starred);
+  const mastered = cards.filter(
+    (c) => progress[c.id]?.status === "got_it",
+  ).length;
+  const pct = cards.length ? Math.round((mastered / cards.length) * 100) : 0;
+
+  return (
+    <div className="mt-8 rounded-3xl border border-border bg-card p-8 text-center shadow-card md:p-12">
+      <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+        <Check className="h-7 w-7" />
+      </div>
+      <h3 className="mt-4 text-2xl font-semibold text-foreground">
+        Session complete
+      </h3>
+      <p className="mt-2 text-sm text-muted-foreground">
+        {mastered} of {cards.length} mastered · {pct}% completion
+      </p>
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        <Button variant="outline" onClick={onExit}>
+          <ArrowLeft className="mr-1.5 h-4 w-4" /> All decks
+        </Button>
+        <Button
+          onClick={onRestart}
+          className="bg-gradient-pink-blue text-primary-foreground shadow-glow hover:opacity-90"
+        >
+          <RotateCcw className="mr-1.5 h-4 w-4" /> Review again
+        </Button>
+        {onResetDeck && (
+          <Button variant="ghost" onClick={onResetDeck}>
+            Reset deck progress
+          </Button>
+        )}
+      </div>
+      <Link
+        to="/coach"
+        className="mt-6 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+      >
+        Ask the Coach to target your weakest area
+        <ChevronRight className="h-3 w-3" />
+      </Link>
+    </div>
   );
 }
