@@ -127,7 +127,7 @@ function LandingPage() {
                 Early access
               </span>
 
-              <h1 className="mt-5 text-[2.1rem] font-light leading-[1.08] tracking-[-0.02em] text-foreground md:text-[3.1rem] lg:text-[3.6rem]">
+              <h1 className="mt-5 text-[1.95rem] font-light leading-[1.1] tracking-[-0.02em] text-foreground sm:text-[2.3rem] md:text-[3.1rem] lg:text-[3.6rem]">
                 The performance platform for{" "}
                 <span className="italic text-gradient-tentra font-light inline-block pr-[0.12em]">
                   SQE candidates
