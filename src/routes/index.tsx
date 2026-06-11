@@ -260,8 +260,8 @@ function LandingPage() {
         </section>
 
         {/* PRICING / EARLY ACCESS */}
-        <section id="pricing" className="mx-auto max-w-3xl px-5 pb-28 md:px-6 md:pb-32">
-          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-10 text-center backdrop-blur md:p-14">
+        <section id="pricing" className="mx-auto max-w-3xl px-5 pb-24 md:px-6 md:pb-32">
+          <div className="relative overflow-hidden rounded-[2rem] border border-border bg-card/70 p-7 text-center backdrop-blur md:p-14">
             <div className="absolute inset-0 -z-10 bg-gradient-tentra opacity-10" />
             <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.22em] text-foreground">
               <Trophy className="h-3 w-3 text-pink" /> Early access
