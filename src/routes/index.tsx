@@ -228,8 +228,8 @@ function LandingPage() {
         </section>
 
         {/* HOW IT WORKS */}
-        <section id="how" className="mx-auto max-w-6xl px-5 pb-24 md:px-6 md:pb-32">
-          <div className="mb-12 text-center md:mb-16">
+        <section id="how" className="mx-auto max-w-6xl px-5 pb-16 md:px-6 md:pb-32">
+          <div className="mb-8 text-center md:mb-16">
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-gradient-tentra">
               How it works
             </div>
