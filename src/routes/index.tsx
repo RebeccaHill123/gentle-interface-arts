@@ -444,8 +444,8 @@ function FeatureShowcase() {
   return (
     <div className="space-y-8">
       {/* Tab selector — horizontal scroll on mobile */}
-      <div className="-mx-5 px-5 md:mx-0 md:px-0">
-        <div className="flex justify-start gap-1.5 overflow-x-auto pb-1 md:justify-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+      <div className="relative -mx-5 md:mx-0">
+        <div className="flex justify-start gap-1.5 overflow-x-auto px-5 pb-1 md:justify-center md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card/70 p-1 backdrop-blur">
             {SHOWCASE_TABS.map((t) => {
               const isActive = t.id === active;
@@ -466,6 +466,8 @@ function FeatureShowcase() {
             })}
           </div>
         </div>
+        {/* edge fade hint that more tabs scroll on mobile */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent md:hidden" />
       </div>
 
       {/* Showcase */}
