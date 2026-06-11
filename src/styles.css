@@ -62,9 +62,9 @@
 :root {
   --radius: 1rem;
 
-  /* Soft white-blend base with warm pink tint */
-  --background: oklch(0.99 0.008 340);
-  --foreground: oklch(0.22 0.04 285);
+  /* Calmer near-white canvas with a whisper of warmth */
+  --background: oklch(0.995 0.004 320);
+  --foreground: oklch(0.2 0.035 280);
 
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.22 0.04 285);
