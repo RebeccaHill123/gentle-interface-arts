@@ -121,7 +121,12 @@ function AuthPage() {
           },
         });
         if (signUpErr) {
-          setError(signUpErr.message);
+          const m = signUpErr.message;
+          if (m.toLowerCase().includes("weak")) {
+            setError("That password is too easy to guess. Try a longer phrase or mix of words, numbers and symbols.");
+          } else {
+            setError(m);
+          }
           return;
         }
         const userId = data.user?.id;
