@@ -42,6 +42,7 @@ import {
   todayKey,
   type StoredPlan,
 } from "@/lib/plan-store";
+import { deriveAnalytics, READINESS_LABELS, type ReadinessResult } from "@/lib/analytics-derive";
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
