@@ -42,6 +42,7 @@ import {
   todayKey,
   type StoredPlan,
 } from "@/lib/plan-store";
+import { deriveAnalytics, READINESS_LABELS, type ReadinessResult } from "@/lib/analytics-derive";
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
@@ -133,6 +134,8 @@ function DashboardPage() {
   const totalToday = plan.todayTasks.length;
   const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
   const streak = computeStreak(sessions);
+  const analytics = useMemo(() => deriveAnalytics(stored), [stored]);
+  const readiness = analytics.readiness;
 
   // Weekly progress (rolling 7 days)
   const weeklyTargetMins = (input.hoursPerWeek ?? 0) * 60;
@@ -206,7 +209,9 @@ function DashboardPage() {
           weeklyDoneMins={weeklyDoneMins}
           weeklyTargetMins={weeklyTargetMins}
           weeklyPct={weeklyPct}
+          readiness={readiness}
         />
+
 
         <div className="flex gap-1 w-fit">
           {([
@@ -444,6 +449,7 @@ function HeroBanner({
   weeklyDoneMins,
   weeklyTargetMins,
   weeklyPct,
+  readiness,
 }: {
   name: string;
   examType: string;
@@ -453,6 +459,7 @@ function HeroBanner({
   weeklyDoneMins: number;
   weeklyTargetMins: number;
   weeklyPct: number;
+  readiness: ReadinessResult | null;
 }) {
   const doneH = (weeklyDoneMins / 60).toFixed(1).replace(/\.0$/, "");
   const targetH = Math.round(weeklyTargetMins / 60);
@@ -474,6 +481,7 @@ function HeroBanner({
         </div>
         <div className="flex flex-wrap gap-3">
           <CountdownRing days={daysUntilExam} />
+          <ReadinessCard readiness={readiness} />
           <StreakCard streak={streak} />
           <div className="rounded-2xl bg-foreground/[0.025] p-5">
             <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
@@ -499,6 +507,94 @@ function HeroBanner({
     </section>
   );
 }
+
+function ReadinessCard({ readiness }: { readiness: ReadinessResult | null }) {
+  const score = readiness?.score ?? null;
+  const circumference = 2 * Math.PI * 32;
+  const dash = score !== null ? (score / 100) * circumference : 0;
+  const band =
+    score === null
+      ? "Locked"
+      : score >= 80
+        ? "Strong"
+        : score >= 65
+          ? "On track"
+          : score >= 50
+            ? "Building"
+            : "Below pass";
+  const topDrivers = readiness
+    ? (Object.keys(readiness.breakdown) as (keyof typeof readiness.breakdown)[])
+        .filter((k) => readiness.weights[k] > 0 && readiness.breakdown[k] !== null)
+        .sort((a, b) => (readiness.breakdown[a] as number) - (readiness.breakdown[b] as number))
+        .slice(0, 2)
+    : [];
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <div className="rounded-2xl bg-foreground/[0.025] p-5 cursor-help">
+          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
+            Readiness
+          </div>
+          <div className="relative mt-2 grid h-20 w-20 place-items-center">
+            <svg className="absolute inset-0 -rotate-90" viewBox="0 0 80 80">
+              <defs>
+                <linearGradient id="readiness-ring" x1="0" x2="1" y1="0" y2="1">
+                  <stop offset="0%" stopColor="oklch(0.78 0.18 160)" />
+                  <stop offset="100%" stopColor="oklch(0.62 0.22 250)" />
+                </linearGradient>
+              </defs>
+              <circle cx="40" cy="40" r="32" fill="none" stroke="oklch(0.5 0.05 285 / 0.12)" strokeWidth="4" />
+              {score !== null && (
+                <circle
+                  cx="40"
+                  cy="40"
+                  r="32"
+                  fill="none"
+                  stroke="url(#readiness-ring)"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                  strokeDasharray={`${dash} ${circumference}`}
+                />
+              )}
+            </svg>
+            <div className="text-center">
+              <div className="font-display text-2xl text-foreground">
+                {score !== null ? `${score}` : "—"}
+              </div>
+              <div className="text-[9px] tracking-wider text-muted-foreground/80">
+                {score !== null ? band : "log 3+"}
+              </div>
+            </div>
+          </div>
+        </div>
+      </TooltipTrigger>
+      <TooltipContent side="bottom" className="max-w-[260px]">
+        {score === null ? (
+          <p className="text-xs">
+            Predicted readiness unlocks after 3 logged sessions. It blends completion vs target,
+            weak-area confidence and review outcomes (mocks &amp; quizzes).
+          </p>
+        ) : (
+          <div className="space-y-1.5 text-xs">
+            <p className="font-medium">Predicted exam readiness: {score}%</p>
+            <p className="text-muted-foreground">
+              Weighted blend of completion, weak areas and review accuracy.
+            </p>
+            {topDrivers.length > 0 && (
+              <p className="text-muted-foreground">
+                Pulling you down:{" "}
+                {topDrivers
+                  .map((k) => `${READINESS_LABELS[k]} (${Math.round(readiness!.breakdown[k] as number)}%)`)
+                  .join(", ")}
+              </p>
+            )}
+          </div>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
 
 function StreakCard({
   streak,
