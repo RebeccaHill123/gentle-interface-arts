@@ -185,9 +185,6 @@ function LandingPage() {
                   )}
                 </div>
 
-                <p className="mt-7 text-[12px] tracking-[0.02em] text-muted-foreground/80">
-                  Free in early access · 30-second setup
-                </p>
               </div>
 
               {/* Hero phone mockup */}
