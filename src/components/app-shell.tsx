@@ -16,6 +16,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { ProfileMenu } from "@/components/profile-menu";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export type AppRoute =
   | "/dashboard"
@@ -65,63 +66,65 @@ export function AppShell({
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto flex max-w-7xl gap-6 p-4 md:p-6">
-        <DesktopSidebar />
+    <TooltipProvider delayDuration={200}>
+      <div className="min-h-screen bg-background text-foreground">
+        <div className="mx-auto flex max-w-7xl gap-6 p-4 md:p-6">
+          <DesktopSidebar />
 
-        <div className="flex min-w-0 flex-1 flex-col space-y-6 pb-24 md:pb-0">
-          {/* Top bar — quieter, hairline border, more breathing room */}
-          <header className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/50 px-4 py-3 backdrop-blur md:px-5 md:py-3.5">
-            <div className="flex min-w-0 items-center gap-3">
-              <button
-                onClick={() => setMobileNavOpen(true)}
-                className="grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-background/50 text-muted-foreground transition-colors hover:text-foreground md:hidden"
-                aria-label="Open menu"
-              >
-                <Menu className="h-4 w-4" />
-              </button>
-              {showBack && (
+          <div className="flex min-w-0 flex-1 flex-col space-y-6 pb-24 md:pb-0">
+            {/* Top bar — quieter, hairline border, more breathing room */}
+            <header className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-card/50 px-4 py-3 backdrop-blur md:px-5 md:py-3.5">
+              <div className="flex min-w-0 items-center gap-3">
                 <button
-                  onClick={() => navigate({ to: backTo })}
-                  className="hidden items-center gap-1.5 text-[12.5px] font-normal text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+                  onClick={() => setMobileNavOpen(true)}
+                  className="grid h-9 w-9 place-items-center rounded-lg border border-border/60 bg-background/50 text-muted-foreground transition-colors hover:text-foreground md:hidden"
+                  aria-label="Open menu"
                 >
-                  <ArrowLeft className="h-3.5 w-3.5" /> {backLabel}
+                  <Menu className="h-4 w-4" />
                 </button>
-              )}
-              <div className="min-w-0">
-                <h1 className="truncate font-display text-[15px] font-medium tracking-[-0.015em] text-foreground md:text-[17px]">
-                  {title}
-                </h1>
-                {subtitle && (
-                  <p className="truncate text-[11.5px] font-normal text-muted-foreground md:text-[12px]">
-                    {subtitle}
-                  </p>
+                {showBack && (
+                  <button
+                    onClick={() => navigate({ to: backTo })}
+                    className="hidden items-center gap-1.5 text-[12.5px] font-normal text-muted-foreground transition-colors hover:text-foreground sm:inline-flex"
+                  >
+                    <ArrowLeft className="h-3.5 w-3.5" /> {backLabel}
+                  </button>
                 )}
+                <div className="min-w-0">
+                  <h1 className="truncate font-display text-[15px] font-medium tracking-[-0.015em] text-foreground md:text-[17px]">
+                    {title}
+                  </h1>
+                  {subtitle && (
+                    <p className="truncate text-[11.5px] font-normal text-muted-foreground md:text-[12px]">
+                      {subtitle}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-            <div className="flex shrink-0 items-center gap-2">
-              {actions}
-              <ProfileMenu />
-            </div>
-          </header>
+              <div className="flex shrink-0 items-center gap-2">
+                {actions}
+                <ProfileMenu />
+              </div>
+            </header>
 
-          {showBack && (
-            <button
-              onClick={() => navigate({ to: backTo })}
-              className="-mt-3 inline-flex items-center gap-1.5 self-start text-[12px] font-normal text-muted-foreground transition-colors hover:text-foreground sm:hidden"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" /> {backLabel}
-            </button>
-          )}
+            {showBack && (
+              <button
+                onClick={() => navigate({ to: backTo })}
+                className="-mt-3 inline-flex items-center gap-1.5 self-start text-[12px] font-normal text-muted-foreground transition-colors hover:text-foreground sm:hidden"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> {backLabel}
+              </button>
+            )}
 
-          <main className={bare ? "" : "min-w-0"}>{children}</main>
+            <main className={bare ? "" : "min-w-0"}>{children}</main>
+          </div>
         </div>
+
+        <MobileBottomNav />
+
+        {mobileNavOpen && <MobileDrawer onClose={() => setMobileNavOpen(false)} />}
       </div>
-
-      <MobileBottomNav />
-
-      {mobileNavOpen && <MobileDrawer onClose={() => setMobileNavOpen(false)} />}
-    </div>
+    </TooltipProvider>
   );
 }
 
