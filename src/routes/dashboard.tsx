@@ -117,7 +117,12 @@ function DashboardPage() {
     setStored(loadPlan());
   }, [tick]);
 
-  if (hydrating || !stored) {
+  const analytics = useMemo(
+    () => (stored ? deriveAnalytics(stored) : null),
+    [stored],
+  );
+
+  if (hydrating || !stored || !analytics) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -134,7 +139,6 @@ function DashboardPage() {
   const totalToday = plan.todayTasks.length;
   const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
   const streak = computeStreak(sessions);
-  const analytics = useMemo(() => deriveAnalytics(stored), [stored]);
   const readiness = analytics.readiness;
 
   // Weekly progress (rolling 7 days)
