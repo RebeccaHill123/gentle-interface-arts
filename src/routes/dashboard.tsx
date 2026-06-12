@@ -266,7 +266,6 @@ function DashboardPage() {
                 title="Adaptive study blocks"
                 subtitle="Complete these in any order, on any day this week. Streak counts after one block per day."
               >
-                <TooltipProvider delayDuration={200}>
                   <ul className="space-y-2">
                     {plan.todayTasks.map((t, i) => {
                       const done = completedTaskIds.includes(String(i));
@@ -341,7 +340,6 @@ function DashboardPage() {
                       );
                     })}
                   </ul>
-                </TooltipProvider>
               </Panel>
             </div>
 

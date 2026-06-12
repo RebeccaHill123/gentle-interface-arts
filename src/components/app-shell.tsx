@@ -16,6 +16,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { ProfileMenu } from "@/components/profile-menu";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export type AppRoute =
   | "/dashboard"
