@@ -134,6 +134,8 @@ function DashboardPage() {
   const totalToday = plan.todayTasks.length;
   const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
   const streak = computeStreak(sessions);
+  const analytics = useMemo(() => deriveAnalytics(stored), [stored]);
+  const readiness = analytics.readiness;
 
   // Weekly progress (rolling 7 days)
   const weeklyTargetMins = (input.hoursPerWeek ?? 0) * 60;
