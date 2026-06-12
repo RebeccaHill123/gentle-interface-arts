@@ -97,14 +97,15 @@ function DashboardPage() {
     (async () => {
       const cloud = await pullPlanFromCloud();
       if (!active) return;
-      if (cloud) {
-        setStored(cloud);
+      const fallback = cloud ?? loadPlan();
+      if (fallback) {
+        setStored(fallback);
+        setHydrating(false);
       } else {
         // No plan saved for this account — send them through onboarding.
         window.location.replace("/onboarding");
         return;
       }
-      setHydrating(false);
     })();
     return () => {
       active = false;
