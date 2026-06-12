@@ -209,7 +209,9 @@ function DashboardPage() {
           weeklyDoneMins={weeklyDoneMins}
           weeklyTargetMins={weeklyTargetMins}
           weeklyPct={weeklyPct}
+          readiness={readiness}
         />
+
 
         <div className="flex gap-1 w-fit">
           {([
