@@ -49,7 +49,6 @@ import { AppShell } from "@/components/app-shell";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
