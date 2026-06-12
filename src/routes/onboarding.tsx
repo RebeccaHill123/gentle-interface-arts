@@ -277,13 +277,15 @@ function OnboardingPage() {
         },
       );
       if (fnErr) {
-        setError(fnErr.message || "Failed to generate plan");
+        console.error("generate-plan invoke error", fnErr);
+        setError(fnErr.message || "Couldn't reach the plan generator. Please try again.");
         return;
       }
       const plan = data?.plan as StudyPlan | undefined;
       const daysUntilExam = data?.daysUntilExam as number | undefined;
       if (!plan || typeof daysUntilExam !== "number") {
-        setError("Unexpected response from plan generator.");
+        console.error("generate-plan unexpected response", data);
+        setError("Unexpected response from plan generator. Please try again.");
         return;
       }
       const stored: StoredPlan = {
@@ -317,7 +319,8 @@ function OnboardingPage() {
         });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      console.error("handleGenerate error", err);
+      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setSubmitting(false);
     }
