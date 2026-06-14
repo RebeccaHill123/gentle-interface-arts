@@ -221,7 +221,7 @@ export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
   if (userError) throw userError;
   const uid = userData.user?.id;
   if (!uid) throw new Error("Please sign in to save your plan.");
-  const { error } = await (supabase as any)
+  const { error } = await supabase
     .from("user_plans")
     .upsert([{ user_id: uid, plan }], { onConflict: "user_id" });
   if (error) throw error;

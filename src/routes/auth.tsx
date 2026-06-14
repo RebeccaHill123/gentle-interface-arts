@@ -184,7 +184,10 @@ function AuthPage() {
         if (local) {
           await pushPlanToCloud(local);
         }
-        navigate({ to: "/dashboard", replace: true });
+        navigate({
+          to: fromOnboarding && !local ? "/onboarding" : "/dashboard",
+          replace: true,
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
