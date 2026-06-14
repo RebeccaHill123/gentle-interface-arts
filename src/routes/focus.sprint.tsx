@@ -102,7 +102,6 @@ function FocusPage() {
   const remaining = sprint ? remainingMs(sprint, now) : 0;
   const target = sprint ? (phase === "focus" ? sprint.focusMs : sprint.breakMs) : 1;
 
-  if (!sprint) return <Navigate to="/focus" replace />;
   const progress = sprint ? 1 - remaining / Math.max(1, target) : 0;
   const isPaused = !!sprint?.pausedAt;
 
@@ -174,6 +173,8 @@ function FocusPage() {
       toast.success("Break over — ready for the next sprint?");
     }
   }, [remaining, sprint]);
+
+  if (!sprint) return <Navigate to="/focus" replace />;
 
   const handlePauseToggle = () => {
     if (!sprint) return;
