@@ -91,7 +91,7 @@ export function ProfileMenu() {
     try {
       await signOut();
       toast.success("Signed out");
-      navigate({ to: "/" });
+      navigate({ to: "/", replace: true });
     } catch {
       toast.error("Could not sign out");
     }

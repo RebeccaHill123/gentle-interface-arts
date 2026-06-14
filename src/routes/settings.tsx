@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/use-auth";
-import { clearPlan } from "@/lib/plan-store";
+import { clearOnboardingDraft, clearPlan } from "@/lib/plan-store";
 
 export const Route = createFileRoute("/settings")({
   beforeLoad: async () => {
@@ -60,7 +60,7 @@ function SettingsPage() {
     try {
       await signOut();
       toast.success("Signed out");
-      navigate({ to: "/" });
+      navigate({ to: "/", replace: true });
     } catch {
       toast.error("Could not sign out");
     } finally {
@@ -73,6 +73,7 @@ function SettingsPage() {
     setResetting(true);
     try {
       clearPlan();
+      clearOnboardingDraft();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { error } = await supabase
