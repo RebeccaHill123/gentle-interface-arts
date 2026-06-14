@@ -183,15 +183,17 @@ function OnboardingPage() {
             .select("first_name, display_name")
             .eq("user_id", uid)
             .maybeSingle();
-          if (profile?.first_name) setName(profile.first_name);
-          else if (profile?.display_name) setName(profile.display_name);
+          if (!draft?.name) {
+            if (profile?.first_name) setName(profile.first_name);
+            else if (profile?.display_name) setName(profile.display_name);
+          }
         }
       } catch {
         // Anonymous visitor — that's fine, continue onboarding.
       }
       setChecking(false);
     })();
-  }, [navigate]);
+  }, [draft?.name, navigate]);
 
   // Reset module list when path changes
   useEffect(() => {
@@ -279,9 +281,8 @@ function OnboardingPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const validationError = canContinue();
-      if (validationError) {
-        setError(validationError);
+      if (!name.trim() || !examDate || new Date(examDate).getTime() <= Date.now()) {
+        setError("Please check your name and choose a future exam date before continuing.");
         return;
       }
       const { data: userData, error: authError } = await supabase.auth.getUser();

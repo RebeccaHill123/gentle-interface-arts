@@ -252,6 +252,7 @@ export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
     const plan = data.plan as unknown as StoredPlan;
     if (typeof window !== "undefined") {
       localStorage.setItem(KEY, JSON.stringify(plan));
+      return loadPlan();
     }
     return plan;
   } catch (e) {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { clearPlan } from "@/lib/plan-store";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -34,4 +35,5 @@ export function useAuth() {
 
 export async function signOut() {
   await supabase.auth.signOut();
+  clearPlan();
 }
