@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +54,7 @@ export const Route = createFileRoute("/analytics")({
 });
 
 function AnalyticsPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [isPro, setIsPro] = useState(false);
   const [data, setData] = useState<AnalyticsBundle | null>(null);
@@ -62,10 +63,15 @@ function AnalyticsPage() {
     (async () => {
       const status = await getProStatus().catch(() => ({ isPro: false }));
       setIsPro(!!status.isPro);
-      setData(deriveAnalytics(loadPlan()));
+      const stored = loadPlan();
+      if (!stored) {
+        navigate({ to: "/onboarding", replace: true });
+        return;
+      }
+      setData(deriveAnalytics(stored));
       setLoading(false);
     })();
-  }, []);
+  }, [navigate]);
 
   return (
     <TooltipProvider delayDuration={150}>

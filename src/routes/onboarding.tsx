@@ -260,9 +260,10 @@ function OnboardingPage() {
       if (!examDate) return "Please pick your exam date.";
       if (new Date(examDate).getTime() <= Date.now())
         return "Exam date must be in the future.";
-      if (hoursPerWeek < 1 || hoursPerWeek > 80)
-        return "Hours per week should be between 1 and 80.";
+      if (hoursPerWeek < 1 || hoursPerWeek > 40)
+        return "Hours per week should be between 1 and 40.";
     }
+    if (step === 4 && modules.length === 0) return "Choose at least one subject to continue.";
     return null;
   };
 
@@ -304,9 +305,11 @@ function OnboardingPage() {
         return;
       }
       const examType = pathToExamType(examPath);
-      const { data, error: fnErr } = await supabase.functions.invoke(
-        "generate-plan",
-        {
+      const timeout = new Promise<never>((_, reject) => {
+        window.setTimeout(() => reject(new Error("Plan generation took too long. Please try again.")), 45_000);
+      });
+      const { data, error: fnErr } = await Promise.race([
+        supabase.functions.invoke("generate-plan", {
           body: {
             name: name.trim(),
             examType,
@@ -317,8 +320,9 @@ function OnboardingPage() {
             hoursPerWeek,
             modules,
           },
-        },
-      );
+        }),
+        timeout,
+      ]);
       if (fnErr) {
         console.error("generate-plan invoke error", fnErr);
         setError(fnErr.message || "Couldn't reach the plan generator. Please try again.");

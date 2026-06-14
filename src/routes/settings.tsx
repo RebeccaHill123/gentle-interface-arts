@@ -72,8 +72,6 @@ function SettingsPage() {
     if (!confirm("This will clear your current study plan. Continue?")) return;
     setResetting(true);
     try {
-      clearPlan();
-      clearOnboardingDraft();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { error } = await supabase
@@ -82,8 +80,10 @@ function SettingsPage() {
           .eq("user_id", user.id);
         if (error) throw error;
       }
+      clearPlan();
+      clearOnboardingDraft();
       toast.success("Plan cleared — let's rebuild it");
-      navigate({ to: "/onboarding" });
+      navigate({ to: "/onboarding", replace: true });
     } catch (e) {
       console.error(e);
       toast.error("Could not reset plan. Please try again.");

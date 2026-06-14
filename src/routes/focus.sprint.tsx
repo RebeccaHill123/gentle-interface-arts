@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Navigate, redirect, useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, Pause, Play, Square, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { waitForAuthUser } from "@/lib/auth-session";
@@ -83,13 +83,6 @@ function FocusPage() {
   } | null>(null);
   const completedFiredRef = useRef(false);
 
-  // If no sprint, send back to focus launcher
-  useEffect(() => {
-    if (!sprint) {
-      navigate({ to: "/focus" });
-    }
-  }, [sprint, navigate]);
-
   // 1s tick
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250);
@@ -108,6 +101,8 @@ function FocusPage() {
   const phase = sprint?.phase ?? "focus";
   const remaining = sprint ? remainingMs(sprint, now) : 0;
   const target = sprint ? (phase === "focus" ? sprint.focusMs : sprint.breakMs) : 1;
+
+  if (!sprint) return <Navigate to="/focus" replace />;
   const progress = sprint ? 1 - remaining / Math.max(1, target) : 0;
   const isPaused = !!sprint?.pausedAt;
 
