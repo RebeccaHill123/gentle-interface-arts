@@ -1,5 +1,6 @@
 // Plan store: localStorage cache + Supabase cloud sync (per-user).
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { hasRecentAuthCallback, waitForAuthUser } from "@/lib/auth-session";
 
 export type ExamType = "SQE1" | "SQE2";
@@ -223,7 +224,7 @@ export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
   if (!uid) throw new Error("Please sign in to save your plan.");
   const { error } = await supabase
     .from("user_plans")
-    .upsert([{ user_id: uid, plan }], { onConflict: "user_id" });
+    .upsert([{ user_id: uid, plan: plan as unknown as Json }], { onConflict: "user_id" });
   if (error) throw error;
 }
 
