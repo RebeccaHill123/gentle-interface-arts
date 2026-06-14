@@ -24,8 +24,11 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  savePlan,
+  savePlanAndSync,
   pullPlanFromCloud,
+  loadOnboardingDraft,
+  saveOnboardingDraft,
+  clearOnboardingDraft,
   type ExamType,
   type ExamPath,
   type IntensityTier,
@@ -140,25 +143,26 @@ function pathToExamType(path: ExamPath): ExamType {
 
 function OnboardingPage() {
   const navigate = useNavigate();
+  const [draft] = useState(() => loadOnboardingDraft());
   const [checking, setChecking] = useState(true);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(() => Math.min(STEPS.length, Math.max(1, draft?.step ?? 1)));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Step 1
-  const [examPath, setExamPath] = useState<ExamPath>("SQE1_FULL");
+  const [examPath, setExamPath] = useState<ExamPath>(draft?.examPath ?? "SQE1_FULL");
 
   // Step 2
-  const [name, setName] = useState("");
-  const [examDate, setExamDate] = useState("");
-  const [hoursPerWeek, setHoursPerWeek] = useState(10);
-  const [intensity, setIntensity] = useState<IntensityTier>("intermediate");
+  const [name, setName] = useState(draft?.name ?? "");
+  const [examDate, setExamDate] = useState(draft?.examDate ?? "");
+  const [hoursPerWeek, setHoursPerWeek] = useState(draft?.hoursPerWeek ?? 10);
+  const [intensity, setIntensity] = useState<IntensityTier>(draft?.intensity ?? "intermediate");
 
   // Step 3
-  const [coverageMode, setCoverageMode] = useState<CoverageMode>("even");
+  const [coverageMode, setCoverageMode] = useState<CoverageMode>(draft?.coverageMode ?? "even");
 
   // Step 4
-  const [modules, setModules] = useState<ModuleConfidence[]>([]);
+  const [modules, setModules] = useState<ModuleConfidence[]>(draft?.modules ?? []);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   // Prefill name from profile if signed-in. If a plan already exists in the
@@ -192,6 +196,7 @@ function OnboardingPage() {
   // Reset module list when path changes
   useEffect(() => {
     const list = getSubjectsForPath(examPath);
+    if (draft?.examPath === examPath && draft.modules.length > 0) return;
     setModules(
       list.map((s, i) => ({
         id: String(i),
@@ -201,7 +206,21 @@ function OnboardingPage() {
       })),
     );
     setExpanded(null);
-  }, [examPath]);
+  }, [draft, examPath]);
+
+  useEffect(() => {
+    if (checking) return;
+    saveOnboardingDraft({
+      step,
+      examPath,
+      name,
+      examDate,
+      hoursPerWeek,
+      intensity,
+      coverageMode,
+      modules,
+    });
+  }, [checking, step, examPath, name, examDate, hoursPerWeek, intensity, coverageMode, modules]);
 
   const updateConfidence = (idx: number, value: number) => {
     setModules((prev) =>
@@ -260,6 +279,29 @@ function OnboardingPage() {
     setError(null);
     setSubmitting(true);
     try {
+      const validationError = canContinue();
+      if (validationError) {
+        setError(validationError);
+        return;
+      }
+      const { data: userData, error: authError } = await supabase.auth.getUser();
+      if (authError || !userData.user) {
+        saveOnboardingDraft({
+          step,
+          examPath,
+          name,
+          examDate,
+          hoursPerWeek,
+          intensity,
+          coverageMode,
+          modules,
+        });
+        navigate({
+          to: "/auth",
+          search: { mode: "signup", from: "onboarding" },
+        });
+        return;
+      }
       const examType = pathToExamType(examPath);
       const { data, error: fnErr } = await supabase.functions.invoke(
         "generate-plan",
@@ -305,19 +347,9 @@ function OnboardingPage() {
         completedTaskIds: [],
         sessions: [],
       };
-      savePlan(stored);
-      // If signed in, savePlan already pushed to cloud → straight to dashboard.
-      // Otherwise, the plan lives in localStorage and we route to signup so
-      // the user can claim/save it. Auth callback + signin/up will sync it.
-      const { data: userData } = await supabase.auth.getUser();
-      if (userData.user?.id) {
-        navigate({ to: "/dashboard" });
-      } else {
-        navigate({
-          to: "/auth",
-          search: { mode: "signup", from: "onboarding" },
-        });
-      }
+      await savePlanAndSync(stored);
+      clearOnboardingDraft();
+      navigate({ to: "/dashboard" });
     } catch (err) {
       console.error("handleGenerate error", err);
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
