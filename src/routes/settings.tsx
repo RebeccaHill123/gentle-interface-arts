@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/use-auth";
-import { clearPlan } from "@/lib/plan-store";
+import { clearOnboardingDraft, clearPlan } from "@/lib/plan-store";
 
 export const Route = createFileRoute("/settings")({
   beforeLoad: async () => {
@@ -60,7 +60,7 @@ function SettingsPage() {
     try {
       await signOut();
       toast.success("Signed out");
-      navigate({ to: "/" });
+      navigate({ to: "/", replace: true });
     } catch {
       toast.error("Could not sign out");
     } finally {
@@ -72,7 +72,6 @@ function SettingsPage() {
     if (!confirm("This will clear your current study plan. Continue?")) return;
     setResetting(true);
     try {
-      clearPlan();
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { error } = await supabase
@@ -81,8 +80,10 @@ function SettingsPage() {
           .eq("user_id", user.id);
         if (error) throw error;
       }
+      clearPlan();
+      clearOnboardingDraft();
       toast.success("Plan cleared — let's rebuild it");
-      navigate({ to: "/onboarding" });
+      navigate({ to: "/onboarding", replace: true });
     } catch (e) {
       console.error(e);
       toast.error("Could not reset plan. Please try again.");

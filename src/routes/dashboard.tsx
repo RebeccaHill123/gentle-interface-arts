@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,6 +79,7 @@ export const Route = createFileRoute("/dashboard")({
 type DashboardTab = "week" | "mastery";
 
 function DashboardPage() {
+  const navigate = useNavigate();
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [hydrating, setHydrating] = useState(true);
   const [tick, setTick] = useState(0);
@@ -102,14 +103,14 @@ function DashboardPage() {
         setHydrating(false);
       } else {
         // No plan saved for this account — send them through onboarding.
-        window.location.replace("/onboarding");
+        navigate({ to: "/onboarding", replace: true });
         return;
       }
     })();
     return () => {
       active = false;
     };
-  }, []);
+  }, [navigate]);
 
   // Re-read local cache when tick changes (e.g. after task toggle)
   useEffect(() => {

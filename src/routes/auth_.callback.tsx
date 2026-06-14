@@ -106,25 +106,37 @@ function AuthCallbackPage() {
           throw new Error("Verification link is invalid or has expired.");
         }
 
+        const metadata = session.user.user_metadata;
+        const { error: profileError } = await supabase.from("profiles").upsert(
+          {
+            user_id: session.user.id,
+            first_name: typeof metadata.first_name === "string" ? metadata.first_name : null,
+            last_name: typeof metadata.last_name === "string" ? metadata.last_name : null,
+            display_name: typeof metadata.display_name === "string" ? metadata.display_name : null,
+            email: session.user.email ?? null,
+          },
+          { onConflict: "user_id" },
+        );
+        if (profileError) console.warn("Could not update profile after verification", profileError);
+
         if (cancelled) return;
 
         // Clean the URL (remove tokens from hash/search) before navigating.
         window.history.replaceState({}, document.title, "/auth/callback");
         markAuthCallbackComplete();
 
-        // If a plan was built before signup, sync it to the user's account.
-        try {
-          const { loadPlan, pushPlanToCloud } = await import("@/lib/plan-store");
-          const local = loadPlan();
-          if (local) {
-            await pushPlanToCloud(local);
-            navigate({ to: "/dashboard", replace: true });
-            return;
-          }
-        } catch {
-          // ignore — fall through to onboarding
+        const { loadPlan, pullPlanFromCloud, pushPlanToCloud } = await import("@/lib/plan-store");
+        const local = loadPlan();
+        if (local) {
+          await pushPlanToCloud(local);
+          navigate({ to: "/dashboard", replace: true });
+          return;
         }
-        // /onboarding handles redirect to /dashboard if a plan already exists.
+        const cloud = await pullPlanFromCloud();
+        if (cloud) {
+          navigate({ to: "/dashboard", replace: true });
+          return;
+        }
         navigate({ to: "/onboarding", replace: true });
       } catch (err) {
         if (cancelled) return;

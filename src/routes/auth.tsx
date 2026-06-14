@@ -153,9 +153,9 @@ function AuthPage() {
         const local = loadPlan();
         if (local) {
           await pushPlanToCloud(local);
-          navigate({ to: "/dashboard" });
+          navigate({ to: "/dashboard", replace: true });
         } else {
-          navigate({ to: "/onboarding" });
+          navigate({ to: "/onboarding", replace: true });
         }
       } else {
         const parsed = signInSchema.safeParse({ email, password });
@@ -180,11 +180,14 @@ function AuthPage() {
           return;
         }
         // Sync any locally-built plan to the user's account.
-        const local = loadPlan();
+        const local = fromOnboarding ? loadPlan() : null;
         if (local) {
           await pushPlanToCloud(local);
         }
-        navigate({ to: "/dashboard" });
+        navigate({
+          to: fromOnboarding && !local ? "/onboarding" : "/dashboard",
+          replace: true,
+        });
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

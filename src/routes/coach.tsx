@@ -112,10 +112,11 @@ function CoachPage() {
   useEffect(() => {
     (async () => {
       const user = await waitForAuthUser();
+      if (!user) return;
       const { data: profile } = await supabase
         .from("profiles")
         .select("first_name, display_name")
-        .eq("user_id", user!.id)
+        .eq("user_id", user.id)
         .maybeSingle();
       const name = profile?.first_name || profile?.display_name?.split(" ")[0] || "";
       setFirstName(name);

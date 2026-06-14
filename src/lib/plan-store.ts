@@ -1,5 +1,6 @@
 // Plan store: localStorage cache + Supabase cloud sync (per-user).
 import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import { hasRecentAuthCallback, waitForAuthUser } from "@/lib/auth-session";
 
 export type ExamType = "SQE1" | "SQE2";
@@ -107,6 +108,18 @@ export interface StoredPlan {
 }
 
 const KEY = "tentra.plan.v1";
+const DRAFT_KEY = "tentra.onboarding.draft.v1";
+
+export interface OnboardingDraft {
+  step: number;
+  examPath: ExamPath;
+  name: string;
+  examDate: string;
+  hoursPerWeek: number;
+  intensity: IntensityTier;
+  coverageMode: CoverageMode;
+  modules: ModuleConfidence[];
+}
 
 export const SQE1_MODULES = [
   "Business Law & Practice",
@@ -138,7 +151,30 @@ export function loadPlan(): StoredPlan | null {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as StoredPlan;
+    const value = JSON.parse(raw) as Partial<StoredPlan>;
+    if (!value.input || !value.plan || !Array.isArray(value.input.modules)) return null;
+    return {
+      ...value,
+      input: {
+        ...value.input,
+        name: value.input.name ?? "Tentra student",
+        examType: value.input.examType ?? "SQE1",
+        examDate: value.input.examDate ?? "",
+        hoursPerWeek: value.input.hoursPerWeek ?? 0,
+        modules: value.input.modules,
+      },
+      plan: {
+        ...value.plan,
+        overview: value.plan.overview ?? "Your personalised study plan.",
+        todayTasks: Array.isArray(value.plan.todayTasks) ? value.plan.todayTasks : [],
+        weeklyFocus: Array.isArray(value.plan.weeklyFocus) ? value.plan.weeklyFocus : [],
+        masteryTargets: Array.isArray(value.plan.masteryTargets) ? value.plan.masteryTargets : [],
+      },
+      daysUntilExam: value.daysUntilExam ?? 0,
+      generatedAt: value.generatedAt ?? new Date().toISOString(),
+      completedTaskIds: Array.isArray(value.completedTaskIds) ? value.completedTaskIds : [],
+      sessions: Array.isArray(value.sessions) ? value.sessions : [],
+    } as StoredPlan;
   } catch {
     return null;
   }
@@ -148,7 +184,32 @@ export function savePlan(plan: StoredPlan) {
   if (typeof window === "undefined") return;
   localStorage.setItem(KEY, JSON.stringify(plan));
   // Fire-and-forget cloud sync
-  void pushPlanToCloud(plan);
+  void pushPlanToCloud(plan).catch((error) => console.warn("pushPlanToCloud failed", error));
+}
+
+export async function savePlanAndSync(plan: StoredPlan): Promise<void> {
+  if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(plan));
+  await pushPlanToCloud(plan);
+}
+
+export function loadOnboardingDraft(): OnboardingDraft | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(DRAFT_KEY);
+    return raw ? (JSON.parse(raw) as OnboardingDraft) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveOnboardingDraft(draft: OnboardingDraft) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+}
+
+export function clearOnboardingDraft() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(DRAFT_KEY);
 }
 
 export function clearPlan() {
@@ -157,19 +218,14 @@ export function clearPlan() {
 }
 
 export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
-  try {
-    const { data: userData } = await supabase.auth.getUser();
-    const uid = userData.user?.id;
-    if (!uid) return;
-    await (supabase as any)
-      .from("user_plans")
-      .upsert(
-        [{ user_id: uid, plan }],
-        { onConflict: "user_id" },
-      );
-  } catch (e) {
-    console.warn("pushPlanToCloud failed", e);
-  }
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError) throw userError;
+  const uid = userData.user?.id;
+  if (!uid) throw new Error("Please sign in to save your plan.");
+  const { error } = await supabase
+    .from("user_plans")
+    .upsert([{ user_id: uid, plan: plan as unknown as Json }], { onConflict: "user_id" });
+  if (error) throw error;
 }
 
 export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
@@ -182,7 +238,11 @@ export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
       .select("plan")
       .eq("user_id", uid)
       .maybeSingle();
-    if (error || !data) {
+    if (error) {
+      console.warn("pullPlanFromCloud failed", error);
+      return null;
+    }
+    if (!data) {
       // No cloud plan for this user — clear stale local cache after normal sign-in,
       // but preserve it immediately after verification while auth storage settles.
       if (typeof window !== "undefined" && !hasRecentAuthCallback()) {
@@ -193,6 +253,7 @@ export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
     const plan = data.plan as unknown as StoredPlan;
     if (typeof window !== "undefined") {
       localStorage.setItem(KEY, JSON.stringify(plan));
+      return loadPlan();
     }
     return plan;
   } catch (e) {

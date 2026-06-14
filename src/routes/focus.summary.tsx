@@ -36,6 +36,7 @@ export const Route = createFileRoute("/focus/summary")({
 function FocusSummaryPage() {
   const navigate = useNavigate();
   const [summary, setSummary] = useState<FocusSummary | null>(null);
+  const [checking, setChecking] = useState(true);
   const [confettiKey, setConfettiKey] = useState(0);
 
   useEffect(() => {
@@ -45,11 +46,17 @@ function FocusSummaryPage() {
         const parsed = JSON.parse(raw) as FocusSummary;
         setSummary(parsed);
         if (!parsed.endedEarly) setConfettiKey(1);
+      } else {
+        navigate({ to: "/focus", replace: true });
       }
     } catch {
-      /* ignore */
+      navigate({ to: "/focus", replace: true });
+    } finally {
+      setChecking(false);
     }
-  }, []);
+  }, [navigate]);
+
+  if (checking || !summary) return null;
 
   const minutes = summary?.focusMin ?? 0;
 
