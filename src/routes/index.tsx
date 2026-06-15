@@ -288,7 +288,7 @@ function LandingPage() {
                 was getting closer."
               </p>
               <p className="mt-6 text-[10.5px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                Built for the next generation of solicitors
+                Built for the next generation of lawyers
               </p>
             </div>
           </section>
