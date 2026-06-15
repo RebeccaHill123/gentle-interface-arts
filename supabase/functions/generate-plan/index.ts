@@ -505,8 +505,21 @@ The allocations, tasks and weeklyFocus[0] MUST be internally consistent — same
                                 type: "string",
                                 description: "One-line reason in plain English",
                               },
+                              subtopics: {
+                                type: "array",
+                                description: "2–4 exact subtopic names to cover this week for this module",
+                                items: { type: "string" },
+                              },
+                              method: {
+                                type: "string",
+                                description: "Suggested approach in one sentence (e.g. '60 min recall notes, 90 min timed SBA, 60 min mistake review')",
+                              },
+                              outcome: {
+                                type: "string",
+                                description: "Expected outcome by week end in one sentence",
+                              },
                             },
-                            required: ["module", "hours", "rationale", "note"],
+                            required: ["module", "hours", "rationale", "note", "subtopics", "method", "outcome"],
                           },
                         },
                       },
@@ -514,7 +527,7 @@ The allocations, tasks and weeklyFocus[0] MUST be internally consistent — same
                     },
                     weeklyFocus: {
                       type: "array",
-                      description: "Up to 12 forward-looking weekly themes",
+                      description: "Up to 12 forward-looking weekly themes. Each week MUST have a coherent theme, 2–3 priority modules, a one-line reason, target hours and a balance object.",
                       items: {
                         type: "object",
                         properties: {
@@ -522,8 +535,23 @@ The allocations, tasks and weeklyFocus[0] MUST be internally consistent — same
                           theme: { type: "string" },
                           modules: { type: "array", items: { type: "string" } },
                           hours: { type: "number" },
+                          reason: {
+                            type: "string",
+                            description: "Plain-English explanation of WHY these subjects this week",
+                          },
+                          balance: {
+                            type: "object",
+                            description: "Time split as percentages, summing to 100",
+                            properties: {
+                              review: { type: "number" },
+                              recall: { type: "number" },
+                              practice: { type: "number" },
+                              mistakes: { type: "number" },
+                            },
+                            required: ["review", "recall", "practice", "mistakes"],
+                          },
                         },
-                        required: ["week", "theme", "modules", "hours"],
+                        required: ["week", "theme", "modules", "hours", "reason", "balance"],
                       },
                     },
                     todayTasks: {
