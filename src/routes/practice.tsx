@@ -134,7 +134,7 @@ function PracticeSessionPage() {
     const mod = plan?.input.modules.find((m) => m.name === parsed.module);
     setConfidenceBefore(mod?.confidence ?? null);
 
-    const examType = (plan?.input.examType ?? "SQE1") as "SQE1" | "SQE2";
+    const examType = (plan?.input.examType ?? "SQE1") as "SQE1" | "SQE2" | "UBE";
 
     // Animate the thinking lines
     const tick = setInterval(() => {

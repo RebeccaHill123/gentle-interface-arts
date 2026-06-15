@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import {
   Sparkles,
@@ -12,8 +12,13 @@ import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { waitForAuthUser } from "@/lib/auth-session";
-import { PracticeLauncherDialog } from "@/components/practice-launcher-dialog";
+import {
+  PracticeLauncherDialog,
+  type PaperKey,
+} from "@/components/practice-launcher-dialog";
 import { AIQuizBuilderDialog } from "@/components/ai-quiz-builder-dialog";
+import { loadPlan } from "@/lib/plan-store";
+import { isUbePath } from "@/lib/exam-paths";
 
 export const Route = createFileRoute("/mocks")({
   beforeLoad: async () => {
@@ -24,16 +29,17 @@ export const Route = createFileRoute("/mocks")({
   component: MocksPage,
   head: () => ({
     meta: [
-      { title: "SQE Mocks & Practice — timed mocks and adaptive drills | Tentra" },
+      { title: "Mocks & Practice — timed mocks and adaptive drills | Tentra" },
       {
         name: "description",
         content:
-          "Timed SQE mock exams and adaptive MCQ drills covering FLK1 and FLK2. Build exam stamina and target weak topics with Tentra.",
+          "Timed SQE and NY UBE mock exams and adaptive MCQ drills. Build exam stamina and target weak topics with Tentra.",
       },
-      { property: "og:title", content: "SQE Mocks & Practice | Tentra" },
+      { property: "og:title", content: "Mocks & Practice | Tentra" },
       {
         property: "og:description",
-        content: "Timed SQE mock exams and adaptive MCQ drills for FLK1 and FLK2.",
+        content:
+          "Timed mock exams and adaptive drills for SQE (FLK1/FLK2) and NY UBE (MBE/MEE/MPT).",
       },
       { property: "og:url", content: "https://tentraapp.com/mocks" },
     ],
@@ -41,14 +47,45 @@ export const Route = createFileRoute("/mocks")({
   }),
 });
 
+type MiniMock = {
+  paper: PaperKey;
+  title: string;
+  desc: string;
+  duration: string;
+};
+
+const SQE_MINI: MiniMock[] = [
+  { paper: "FLK1", title: "Mini FLK1 Mock", desc: "20-question FLK1 mini mock.", duration: "30 min" },
+  { paper: "FLK2", title: "Mini FLK2 Mock", desc: "20-question FLK2 mini mock.", duration: "30 min" },
+];
+
+const UBE_MINI: MiniMock[] = [
+  { paper: "MBE", title: "Mini MBE Set", desc: "20 MBE-style SBAs across the 7 MBE subjects.", duration: "36 min" },
+  { paper: "MEE", title: "Mini MEE Drill", desc: "Essay-style prompts on MEE-tested subjects.", duration: "30 min" },
+  { paper: "MPT", title: "MPT Practice Task", desc: "Closed-library lawyering task with a memo or brief.", duration: "45 min" },
+];
+
 function MocksPage() {
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
   const [practicePreset, setPracticePreset] = useState<
-    { type: "mini-flk"; paper: "FLK1" | "FLK2" } | undefined
+    { type: "mini-flk"; paper: PaperKey } | undefined
   >(undefined);
 
-  const openMiniFlk = (paper: "FLK1" | "FLK2") => {
+  const isUbe = useMemo(() => {
+    const plan = loadPlan();
+    const path = plan?.input.examPath;
+    return path ? isUbePath(path) : plan?.input.examType === "UBE";
+  }, []);
+
+  const miniMocks = isUbe ? UBE_MINI : SQE_MINI;
+  const fullMockTitle = isUbe ? "Full UBE Simulation" : "Full Mock";
+  const fullMockDesc = isUbe
+    ? "Sit a full-length UBE simulation: MBE + MEE + MPT under exam conditions."
+    : "Sit a full-length FLK paper under exam conditions.";
+  const fullMockMeta = isUbe ? "200 MBE + 6 MEE + 2 MPT · 12 hours" : "180 questions · 5 hours";
+
+  const openMiniPaper = (paper: PaperKey) => {
     setPracticePreset({ type: "mini-flk", paper });
     setPracticeOpen(true);
   };
@@ -71,13 +108,13 @@ function MocksPage() {
               <Lock className="mr-1 h-3 w-3" /> Coming soon
             </Badge>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
-              Full Mock
+              {fullMockTitle}
             </h2>
             <p className="mt-3 text-base text-muted-foreground md:text-lg">
-              Sit a full-length FLK paper under exam conditions.
+              {fullMockDesc}
             </p>
             <div className="mt-3 text-sm text-muted-foreground/80">
-              180 questions · 5 hours
+              {fullMockMeta}
             </div>
 
             <div className="mt-6 flex flex-wrap gap-3">
@@ -97,18 +134,13 @@ function MocksPage() {
         </div>
       </section>
 
-      {/* MINI MOCKS — secondary pair */}
-      <section className="mt-8 grid gap-4 md:grid-cols-2">
-        {(
-          [
-            { paper: "FLK1" as const, title: "Mini FLK1 Mock", desc: "20-question FLK1 mini mock." },
-            { paper: "FLK2" as const, title: "Mini FLK2 Mock", desc: "20-question FLK2 mini mock." },
-          ]
-        ).map((m) => (
+      {/* MINI MOCKS */}
+      <section className={`mt-8 grid gap-4 ${miniMocks.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+        {miniMocks.map((m) => (
           <button
             key={m.paper}
             type="button"
-            onClick={() => openMiniFlk(m.paper)}
+            onClick={() => openMiniPaper(m.paper)}
             className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 text-left backdrop-blur transition hover:border-pink/40 hover:shadow-glow"
           >
             <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-10 blur-2xl" />
@@ -121,7 +153,7 @@ function MocksPage() {
             <div className="relative mt-6">
               <div className="text-lg font-semibold text-foreground">{m.title}</div>
               <p className="mt-1 text-sm text-muted-foreground">{m.desc}</p>
-              <div className="mt-3 text-xs text-muted-foreground/80">30 min</div>
+              <div className="mt-3 text-xs text-muted-foreground/80">{m.duration}</div>
             </div>
           </button>
         ))}
@@ -146,7 +178,7 @@ function MocksPage() {
           <div className="relative mt-6">
             <div className="text-lg font-semibold text-foreground">Weak Area Drill</div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Targeted SBAs on your weakest topics.
+              Targeted questions on your weakest topics.
             </p>
           </div>
           <ArrowRight className="relative mt-4 h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
@@ -169,7 +201,7 @@ function MocksPage() {
               Review key rules, definitions and high-yield legal principles.
             </p>
             <div className="mt-3 text-xs text-muted-foreground/80">
-              Adaptive recall · FLK1 & FLK2
+              {isUbe ? "Adaptive recall · MBE & MEE" : "Adaptive recall · FLK1 & FLK2"}
             </div>
           </div>
         </Link>

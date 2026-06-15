@@ -30,6 +30,25 @@ import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
 import { deriveAnalytics, type SubjectStat } from "@/lib/analytics-derive";
 
+
+export type PaperKey = "FLK1" | "FLK2" | "MBE" | "MEE" | "MPT";
+
+const PAPER_SUBJECT_LIST: Record<PaperKey, string> = {
+  FLK1: "Contract, Tort, Business Law, Dispute Resolution, Constitutional & Administrative, Legal System, Ethics",
+  FLK2: "Property Practice, Wills & Estates, Trusts, Land Law, Criminal Law, Criminal Practice, Solicitors' Accounts, Ethics",
+  MBE: "Civil Procedure, Constitutional Law, Contracts & Sales (UCC Art. 2), Criminal Law & Procedure, Evidence (FRE), Real Property, Torts",
+  MEE: "MBE subjects plus Business Associations, Conflict of Laws, Family Law, Trusts & Estates, Secured Transactions (UCC Art. 9)",
+  MPT: "Closed-library lawyering tasks: objective memos, persuasive briefs, client letters, statute interpretation",
+};
+
+const PAPER_LABEL: Record<PaperKey, string> = {
+  FLK1: "Mini FLK1 Mock",
+  FLK2: "Mini FLK2 Mock",
+  MBE: "Mini MBE Mock",
+  MEE: "Mini MEE Mock",
+  MPT: "MPT Practice Task",
+};
+
 type PracticeType =
   | "weak-area"
   | "timed-mini"
@@ -64,8 +83,8 @@ const PRACTICE_TYPES: {
   },
   {
     id: "mini-flk",
-    title: "Mini FLK Mock",
-    desc: "Exam-style sample drawn from a single FLK paper.",
+    title: "Mini Paper Mock",
+    desc: "Exam-style sample drawn from a single paper.",
     icon: Scale,
     defaultMinutes: 30,
     defaultQuestions: 20,
@@ -106,12 +125,7 @@ const DURATIONS: { v: 10 | 20 | 30 | 45 | 90; label: string }[] = [
 
 export type PracticeLauncherPreset = {
   type: PracticeType;
-  paper?: "FLK1" | "FLK2";
-};
-
-const FLK_SUBJECT_LIST: Record<"FLK1" | "FLK2", string> = {
-  FLK1: "Contract, Tort, Business Law, Dispute Resolution, Constitutional & Administrative, Legal System, Ethics",
-  FLK2: "Property Practice, Wills & Estates, Trusts, Land Law, Criminal Law, Criminal Practice, Solicitors' Accounts, Ethics",
+  paper?: PaperKey;
 };
 
 export function PracticeLauncherDialog({
@@ -130,7 +144,7 @@ export function PracticeLauncherDialog({
   const [duration, setDuration] = useState<10 | 20 | 30 | 45 | 90>(20);
   const [adaptive, setAdaptive] = useState(true);
   const [launching, setLaunching] = useState(false);
-  const [paper, setPaper] = useState<"FLK1" | "FLK2" | undefined>(undefined);
+  const [paper, setPaper] = useState<PaperKey | undefined>(undefined);
 
   const analytics = useMemo(() => deriveAnalytics(loadPlan()), [open]);
   const subjects: SubjectStat[] = analytics.subjects;
@@ -228,7 +242,7 @@ export function PracticeLauncherDialog({
     setLaunching(true);
     const rationale =
       type === "mini-flk" && paper
-        ? `Mini ${paper} mock — 20 SBAs sampled across ${FLK_SUBJECT_LIST[paper]}, weighted by syllabus share.`
+        ? `Mini ${paper} mock — 20 SBAs sampled across ${PAPER_SUBJECT_LIST[paper]}, weighted by syllabus share.`
         : reasonBits.length
           ? `Generated because ${reasonBits.join(", ")}.`
           : `Generated from a balanced view of your syllabus.`;
@@ -248,7 +262,7 @@ export function PracticeLauncherDialog({
     // mixed-subject questions covering the whole paper.
     const moduleForGen =
       type === "mini-flk" && paper
-        ? `${paper} mixed paper (${FLK_SUBJECT_LIST[paper]})`
+        ? `${paper} mixed paper (${PAPER_SUBJECT_LIST[paper]})`
         : targetSubject;
 
     const config = {
