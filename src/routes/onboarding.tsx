@@ -654,22 +654,84 @@ function StepHeader({ kicker, title, sub }: { kicker: string; title: React.React
   );
 }
 
-function StepPath({
+function StepExam({
   value,
   onChange,
 }: {
-  value: ExamPath;
-  onChange: (v: ExamPath) => void;
+  value: ExamType;
+  onChange: (v: ExamType) => void;
 }) {
   return (
     <div className="space-y-6">
       <StepHeader
         kicker="Step 1"
         title={<>Which exam are you preparing for?</>}
-        sub="Resitting one paper? Pick just FLK1 or FLK2 — we'll skip everything else."
+        sub="Pick your jurisdiction — we'll tailor the syllabus, scoring weights and mock cadence."
       />
       <div className="grid gap-3">
-        {PATH_OPTIONS.map((opt) => {
+        {EXAM_OPTIONS.map((opt) => {
+          const Icon = opt.icon;
+          const active = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => onChange(opt.value)}
+              className={cn(
+                "group flex items-center gap-4 rounded-2xl border p-4 text-left transition-all",
+                active
+                  ? "border-pink bg-gradient-pink-blue/10 shadow-glow"
+                  : "border-border bg-background/40 hover:border-muted-foreground",
+              )}
+            >
+              <div
+                className={cn(
+                  "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
+                  active
+                    ? "bg-gradient-pink-blue text-primary-foreground"
+                    : "bg-card text-muted-foreground",
+                )}
+              >
+                <Icon className="h-5 w-5" />
+              </div>
+              <div className="flex-1">
+                <div className="font-semibold text-foreground">{opt.title}</div>
+                <div className="mt-0.5 text-xs text-muted-foreground">
+                  {opt.blurb}
+                </div>
+              </div>
+              {active && <CheckCircle2 className="h-5 w-5 text-pink" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function StepPath({
+  value,
+  onChange,
+  options,
+  examType,
+}: {
+  value: ExamPath;
+  onChange: (v: ExamPath) => void;
+  options: PathOption[];
+  examType: ExamType;
+}) {
+  const sub = examType === "UBE"
+    ? "Targeting just the MBE or just the MPT? Pick one component — we'll skip the rest."
+    : "Resitting one paper? Pick just FLK1 or FLK2 — we'll skip everything else.";
+  return (
+    <div className="space-y-6">
+      <StepHeader
+        kicker="Step 2"
+        title={<>Which {examType === "UBE" ? "component" : "paper"} are you focused on?</>}
+        sub={sub}
+      />
+      <div className="grid gap-3">
+        {options.map((opt) => {
           const Icon = opt.icon;
           const active = value === opt.value;
           return (
