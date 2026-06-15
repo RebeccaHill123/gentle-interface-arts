@@ -55,11 +55,17 @@ export type StrategyTaskType =
   | "concept-deepdive"
   | "ethics-application";
 
+export type TaskDifficulty = "foundational" | "core" | "challenging";
+export type TaskBucket = "must" | "should" | "optional";
+
 export interface WeeklyAllocation {
   module: string;
   hours: number;
   rationale: StrategyRationale;
   note: string;
+  subtopics?: string[];
+  method?: string;
+  outcome?: string;
 }
 
 export interface StrategyTask {
@@ -70,6 +76,19 @@ export interface StrategyTask {
   rationale?: StrategyRationale;
   priority?: "high" | "medium" | "low";
   why?: string;
+  subtopic?: string;
+  difficulty?: TaskDifficulty;
+  output?: string;
+  bucket?: TaskBucket;
+}
+
+export interface WeeklyFocusEntry {
+  week: number;
+  theme: string;
+  modules: string[];
+  hours: number;
+  reason?: string;
+  balance?: { review: number; recall: number; practice: number; mistakes: number };
 }
 
 export interface StudyPlan {
@@ -78,7 +97,7 @@ export interface StudyPlan {
     summary: string;
     allocations: WeeklyAllocation[];
   };
-  weeklyFocus: { week: number; theme: string; modules: string[]; hours: number }[];
+  weeklyFocus: WeeklyFocusEntry[];
   todayTasks: StrategyTask[];
   masteryTargets: {
     module: string;
