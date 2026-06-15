@@ -335,7 +335,7 @@ function LandingPage() {
                 <span className="font-display text-[11px] font-semibold text-primary-foreground">T</span>
               </span>
               <span className="font-medium tracking-tight text-foreground">Tentra</span>
-              <span className="hidden sm:inline">· For the next generation of solicitors.</span>
+              <span className="hidden sm:inline">· For the next generation of lawyers.</span>
             </div>
             <nav className="flex items-center gap-5">
               <Link to="/terms" className="transition-colors hover:text-foreground">
