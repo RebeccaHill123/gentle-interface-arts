@@ -1,4 +1,4 @@
-// Edge function: generate a 10-question multiple-choice quiz for a given SQE topic
+// Edge function: generate a 10-question multiple-choice quiz for a given exam topic
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -6,9 +6,9 @@ const corsHeaders = {
 };
 
 interface QuizRequest {
-  module: string; // e.g. "Contract"
+  module: string; // e.g. "Contract" or "Evidence"
   topic?: string; // e.g. today's task title
-  examType: "SQE1" | "SQE2";
+  examType: "SQE1" | "SQE2" | "UBE";
   confidence?: number; // 1-5, used to scale difficulty
 }
 
@@ -29,12 +29,19 @@ Deno.serve(async (req) => {
           ? "advanced, exam-realistic"
           : "intermediate";
 
-    const systemPrompt = `You are an expert UK SQE (Solicitors Qualifying Examination) tutor. You write rigorous single-best-answer multiple-choice questions in the style of the official SRA SQE assessments. Each question must have exactly 4 options (A-D), exactly one correct answer, and a concise explanation.`;
+    const isUbe = body.examType === "UBE";
+    const systemPrompt = isUbe
+      ? `You are an expert US bar (UBE / NY Bar) tutor. You write rigorous MBE-style single-best-answer multiple-choice questions modelled on the NCBE Subject Matter Outlines. Each question must have exactly 4 options (A-D), exactly one correct answer, and a concise explanation citing the controlling rule. Use US law only (federal rules + majority common-law positions).`
+      : `You are an expert UK SQE (Solicitors Qualifying Examination) tutor. You write rigorous single-best-answer multiple-choice questions in the style of the official SRA SQE assessments. Each question must have exactly 4 options (A-D), exactly one correct answer, and a concise explanation.`;
+
+    const jurisdictionNote = isUbe
+      ? "Make the questions varied, fact-pattern based (1.8-min MBE pace), and grounded in current US federal law and majority rules. Avoid trick wording."
+      : "Make the questions varied, scenario-based where appropriate, and grounded in current English & Welsh law. Avoid trick wording.";
 
     const userPrompt = `Write a 10-question ${difficulty} ${body.examType} mini-assessment.
 Module: ${body.module}
 ${body.topic ? `Specific topic / today's task: ${body.topic}` : ""}
-Make the questions varied, scenario-based where appropriate, and grounded in current English & Welsh law. Avoid trick wording.`;
+${jurisdictionNote}`;
 
     const response = await fetch(
       "https://ai.gateway.lovable.dev/v1/chat/completions",
