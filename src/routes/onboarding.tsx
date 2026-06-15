@@ -324,7 +324,7 @@ function OnboardingPage() {
   );
 
   const canContinue = (): string | null => {
-    if (step === 2) {
+    if (step === 3) {
       if (!name.trim()) return "Please tell us your name.";
       if (!examDate) return "Please pick your exam date.";
       if (new Date(examDate).getTime() <= Date.now())
@@ -332,7 +332,7 @@ function OnboardingPage() {
       if (hoursPerWeek < 1 || hoursPerWeek > 40)
         return "Hours per week should be between 1 and 40.";
     }
-    if (step === 4 && modules.length === 0) return "Choose at least one subject to continue.";
+    if (step === 5 && modules.length === 0) return "Choose at least one subject to continue.";
     return null;
   };
 
@@ -359,6 +359,7 @@ function OnboardingPage() {
       if (authError || !userData.user) {
         saveOnboardingDraft({
           step,
+          examType,
           examPath,
           name,
           examDate,
@@ -373,7 +374,7 @@ function OnboardingPage() {
         });
         return;
       }
-      const examType = pathToExamType(examPath);
+      const resolvedExamType = pathToExamType(examPath);
       const timeout = new Promise<never>((_, reject) => {
         window.setTimeout(() => reject(new Error("Plan generation took too long. Please try again.")), 45_000);
       });
