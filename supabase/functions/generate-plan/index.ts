@@ -212,7 +212,7 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
       : isWeak && intensity === "beginner"
         ? "concept-deepdive"
         : taskTypes[index % taskTypes.length];
-    const taskType: StudyTask["taskType"] = module.name.includes("Ethics") || rationale === "ethics-cornerstone" ? "ethics-application" : baseTaskType;
+    const taskType: StudyTask["taskType"] = module.name.includes("Ethics") ? "ethics-application" : baseTaskType;
     const titleVerb = taskType === "timed-sba" ? "Timed SBA set" :
       taskType === "mixed-mock" ? "Mixed mock set" :
       taskType === "active-recall" ? "Active recall drill" :
