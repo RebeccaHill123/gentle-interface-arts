@@ -87,8 +87,8 @@ export const Route = createFileRoute("/coach")({
   component: CoachPage,
   head: () => ({
     meta: [
-      { title: "Tentra Coach · Your SQE strategist & private tutor" },
-      { name: "description", content: "An intelligent SQE study coach and private tutor. Plan strategically, drill weak areas, test understanding and stay on track for qualification." },
+      { title: "Tentra Coach · Your exam strategist & private tutor" },
+      { name: "description", content: "An intelligent study coach and private tutor. Plan strategically, drill weak areas, test understanding and stay on track for qualification." },
     ],
   }),
 });
