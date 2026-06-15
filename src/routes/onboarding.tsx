@@ -382,7 +382,7 @@ function OnboardingPage() {
         supabase.functions.invoke("generate-plan", {
           body: {
             name: name.trim(),
-            examType,
+            examType: resolvedExamType,
             examPath,
             intensity,
             coverageMode,
@@ -408,7 +408,7 @@ function OnboardingPage() {
       const stored: StoredPlan = {
         input: {
           name: name.trim(),
-          examType,
+          examType: resolvedExamType,
           examPath,
           intensity,
           coverageMode,
