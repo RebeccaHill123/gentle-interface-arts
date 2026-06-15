@@ -160,13 +160,13 @@ function LandingPage() {
 
                 <h1 className="mt-7 text-[2rem] font-light leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.4rem] md:text-[2.85rem] lg:text-[3.1rem]">
                   The performance platform for{" "}
-                  <span className="text-gradient-pink-violet font-light">SQE candidates</span>
+                  <span className="text-gradient-pink-violet font-light">future lawyers</span>
                   <span className="text-foreground">.</span>
                 </h1>
 
                 <p className="mx-auto mt-6 max-w-[30rem] text-[15px] leading-[1.65] text-muted-foreground md:mx-0 md:text-[16.5px]">
-                  Adaptive study plans, performance analytics and AI coaching — built for the
-                  demands of qualification.
+                  Adaptive study plans, performance analytics and AI coaching — built for the SQE
+                  and the New York UBE.
                 </p>
 
                 <div className="mt-9 flex flex-col items-center gap-3 md:flex-row md:items-center md:justify-start">
