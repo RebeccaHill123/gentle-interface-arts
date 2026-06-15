@@ -483,7 +483,7 @@ function CoachPage() {
         {/* MODE TOGGLE — Coach | Tutor only */}
         <div className="flex flex-col gap-3">
           <div className="inline-flex w-full items-center gap-1 rounded-2xl border border-border bg-card/40 p-1 backdrop-blur sm:w-auto sm:self-start">
-            {MODES.map((m) => {
+            {getModes(isUbe).map((m) => {
               const active = mode === m.id;
               return (
                 <button
@@ -500,7 +500,7 @@ function CoachPage() {
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground">{MODES.find((m) => m.id === mode)!.blurb}</p>
+          <p className="text-xs text-muted-foreground">{getModes(isUbe).find((m) => m.id === mode)!.blurb}</p>
         </div>
 
         {/* EMPTY STATE — Insight panel + curated cards */}
