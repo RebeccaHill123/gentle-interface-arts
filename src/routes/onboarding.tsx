@@ -65,19 +65,22 @@ export const Route = createFileRoute("/onboarding")({
 });
 
 const STEPS = [
-  { id: 1, label: "Path" },
-  { id: 2, label: "Intensity" },
-  { id: 3, label: "Coverage" },
-  { id: 4, label: "Focus" },
-  { id: 5, label: "Review" },
+  { id: 1, label: "Exam" },
+  { id: 2, label: "Path" },
+  { id: 3, label: "Intensity" },
+  { id: 4, label: "Coverage" },
+  { id: 5, label: "Focus" },
+  { id: 6, label: "Review" },
 ] as const;
 
-const PATH_OPTIONS: {
+interface PathOption {
   value: ExamPath;
   title: string;
   blurb: string;
   icon: typeof GraduationCap;
-}[] = [
+}
+
+const SQE_PATH_OPTIONS: PathOption[] = [
   {
     value: "SQE1_FULL",
     title: "SQE1 — Full Course",
@@ -110,6 +113,57 @@ const PATH_OPTIONS: {
   },
 ];
 
+const UBE_PATH_OPTIONS: PathOption[] = [
+  {
+    value: "UBE_FULL",
+    title: "UBE — Full Bar",
+    blurb: "MBE + MEE essays + MPT in one adaptive plan.",
+    icon: Layers3,
+  },
+  {
+    value: "UBE_MBE",
+    title: "MBE Only",
+    blurb: "200 multiple-choice across the 7 MBE subjects.",
+    icon: Target,
+  },
+  {
+    value: "UBE_ESSAYS",
+    title: "MEE Essays",
+    blurb: "12 MEE-eligible subjects, 30-min IRAC essays.",
+    icon: Scale,
+  },
+  {
+    value: "UBE_MPT",
+    title: "MPT Only",
+    blurb: "90-min performance tasks — closed-library skills drill.",
+    icon: GraduationCap,
+  },
+];
+
+function pathOptionsForExam(examType: ExamType): PathOption[] {
+  return examType === "UBE" ? UBE_PATH_OPTIONS : SQE_PATH_OPTIONS;
+}
+
+const EXAM_OPTIONS: {
+  value: ExamType;
+  title: string;
+  blurb: string;
+  icon: typeof GraduationCap;
+}[] = [
+  {
+    value: "SQE1",
+    title: "SQE (UK)",
+    blurb: "Solicitors Qualifying Exam — SQE1 (FLK1/FLK2) or SQE2 skills.",
+    icon: Scale,
+  },
+  {
+    value: "UBE",
+    title: "NY Bar — UBE",
+    blurb: "Uniform Bar Exam: MBE + MEE essays + MPT (qualifies for NY admission).",
+    icon: Landmark,
+  },
+];
+
 const INTENSITY_OPTIONS: {
   value: IntensityTier;
   title: string;
@@ -125,7 +179,7 @@ const INTENSITY_OPTIONS: {
   {
     value: "intermediate",
     title: "Intermediate",
-    blurb: "Studied the basics. Ready for active recall + SBAs.",
+    blurb: "Studied the basics. Ready for active recall + practice questions.",
     icon: Target,
   },
   {
@@ -142,9 +196,7 @@ const INTENSITY_OPTIONS: {
   },
 ];
 
-function pathToExamType(path: ExamPath): ExamType {
-  return path === "SQE2" ? "SQE2" : "SQE1";
-}
+
 
 function OnboardingPage() {
   const navigate = useNavigate();
