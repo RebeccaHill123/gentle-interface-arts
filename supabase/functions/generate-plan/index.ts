@@ -23,6 +23,8 @@ interface PlanRequest {
 }
 
 type TaskMinutes = 30 | 45 | 60 | 90 | 120;
+type TaskBucket = "must" | "should" | "optional";
+type TaskDifficulty = "foundational" | "core" | "challenging";
 
 interface StudyTask {
   title: string;
@@ -32,15 +34,38 @@ interface StudyTask {
   rationale: "high-yield" | "weak-area" | "recency-gap" | "mixed-practice" | "mock-prep" | "ethics-cornerstone";
   priority: "high" | "medium" | "low";
   why: string;
+  subtopic?: string;
+  difficulty?: TaskDifficulty;
+  output?: string;
+  bucket?: TaskBucket;
+}
+
+interface Allocation {
+  module: string;
+  hours: number;
+  rationale: StudyTask["rationale"];
+  note: string;
+  subtopics?: string[];
+  method?: string;
+  outcome?: string;
+}
+
+interface WeeklyFocusEntry {
+  week: number;
+  theme: string;
+  modules: string[];
+  hours: number;
+  reason?: string;
+  balance?: { review: number; recall: number; practice: number; mistakes: number };
 }
 
 interface StudyPlanResponse {
   overview: string;
   weeklyStrategy: {
     summary: string;
-    allocations: { module: string; hours: number; rationale: StudyTask["rationale"]; note: string }[];
+    allocations: Allocation[];
   };
-  weeklyFocus: { week: number; theme: string; modules: string[]; hours: number }[];
+  weeklyFocus: WeeklyFocusEntry[];
   todayTasks: StudyTask[];
   masteryTargets: { module: string; targetConfidence: number; priority: "high" | "medium" | "low" }[];
 }
