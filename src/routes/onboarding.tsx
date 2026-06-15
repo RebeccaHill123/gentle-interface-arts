@@ -490,9 +490,17 @@ function OnboardingPage() {
               transition={{ duration: 0.25 }}
             >
               {step === 1 && (
-                <StepPath value={examPath} onChange={setExamPath} />
+                <StepExam value={examType} onChange={setExamType} />
               )}
               {step === 2 && (
+                <StepPath
+                  value={examPath}
+                  onChange={setExamPath}
+                  options={pathOptionsForExam(examType)}
+                  examType={examType}
+                />
+              )}
+              {step === 3 && (
                 <StepIntensity
                   name={name}
                   setName={setName}
@@ -505,10 +513,10 @@ function OnboardingPage() {
                   sessionShape={sessionShape}
                 />
               )}
-              {step === 3 && (
+              {step === 4 && (
                 <StepCoverage value={coverageMode} onChange={setCoverageMode} />
               )}
-              {step === 4 && (
+              {step === 5 && (
                 <StepFocus
                   modules={modules}
                   coverageMode={coverageMode}
@@ -518,9 +526,10 @@ function OnboardingPage() {
                   toggleWeakSubtopic={toggleWeakSubtopic}
                 />
               )}
-              {step === 5 && (
+              {step === 6 && (
                 <StepReview
                   name={name}
+                  examType={examType}
                   examPath={examPath}
                   intensity={intensity}
                   coverageMode={coverageMode}
