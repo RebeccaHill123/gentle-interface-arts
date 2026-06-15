@@ -3,13 +3,17 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { hasRecentAuthCallback, waitForAuthUser } from "@/lib/auth-session";
 
-export type ExamType = "SQE1" | "SQE2";
+export type ExamType = "SQE1" | "SQE2" | "UBE";
 
 export type ExamPath =
   | "SQE1_FULL"
   | "FLK1"
   | "FLK2"
   | "SQE2"
+  | "UBE_FULL"
+  | "UBE_MBE"
+  | "UBE_ESSAYS"
+  | "UBE_MPT"
   | "CUSTOM";
 
 export type IntensityTier =
@@ -131,6 +135,7 @@ const DRAFT_KEY = "tentra.onboarding.draft.v1";
 
 export interface OnboardingDraft {
   step: number;
+  examType: ExamType;
   examPath: ExamPath;
   name: string;
   examDate: string;

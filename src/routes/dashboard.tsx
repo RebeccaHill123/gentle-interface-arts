@@ -71,7 +71,7 @@ export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
       { title: "Your dashboard · Tentra" },
-      { name: "description", content: "Your personalised SQE study dashboard." },
+      { name: "description", content: "Your personalised adaptive study dashboard." },
     ],
   }),
 });
@@ -707,7 +707,7 @@ function NoPlanState() {
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Tell Tentra your exam date and confidence levels and we'll build your
-          personalised SQE study plan.
+          personalised study plan.
         </p>
         <Button
           asChild
@@ -1336,7 +1336,7 @@ function QuizDialog({
   onComplete,
 }: {
   task: { index: number; title: string; module: string; minutes: number };
-  examType: "SQE1" | "SQE2";
+  examType: "SQE1" | "SQE2" | "UBE";
   confidence: number;
   onClose: () => void;
   onComplete: (accuracy: number, minutesSpent: number) => void;
