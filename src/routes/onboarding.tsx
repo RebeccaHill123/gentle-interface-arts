@@ -1145,7 +1145,8 @@ function StepReview({
 
   const rows: { k: string; v: React.ReactNode }[] = [
     { k: "Name", v: name || "—" },
-    { k: "Exam path", v: pathLabel },
+    { k: "Exam", v: examLabel },
+    { k: "Path", v: pathLabel },
     { k: "Exam date", v: `${examDate} · ${days} days` },
     { k: "Hours / week", v: `${hoursPerWeek}h` },
     { k: "Intensity", v: intensityLabel },
@@ -1159,7 +1160,7 @@ function StepReview({
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 5"
+        kicker="Step 6"
         title={
           <>
             Ready to build your <span className="text-gradient-pink-violet">plan</span>
