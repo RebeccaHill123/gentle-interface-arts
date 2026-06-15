@@ -1001,7 +1001,7 @@ function StepFocus({
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 4"
+        kicker="Step 5"
         title={<>How confident are you in each area?</>}
         sub={
           coverageMode === "advanced"
@@ -1114,6 +1114,7 @@ function StepFocus({
 
 function StepReview({
   name,
+  examType,
   examPath,
   intensity,
   coverageMode,
@@ -1123,6 +1124,7 @@ function StepReview({
   totalModules,
 }: {
   name: string;
+  examType: ExamType;
   examPath: ExamPath;
   intensity: IntensityTier;
   coverageMode: CoverageMode;
@@ -1131,7 +1133,9 @@ function StepReview({
   weakModules: ModuleConfidence[];
   totalModules: number;
 }) {
-  const pathLabel = PATH_OPTIONS.find((p) => p.value === examPath)?.title ?? examPath;
+  const pathOpts = pathOptionsForExam(examType);
+  const pathLabel = pathOpts.find((p) => p.value === examPath)?.title ?? examPath;
+  const examLabel = EXAM_OPTIONS.find((e) => e.value === examType)?.title ?? examType;
   const intensityLabel =
     INTENSITY_OPTIONS.find((i) => i.value === intensity)?.title ?? intensity;
   const days = Math.max(
