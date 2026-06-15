@@ -374,11 +374,12 @@ function CoachPage() {
     if (!text || isStreaming) return;
     setInput("");
 
-    const modeHint = MODES.find((m) => m.id === mode)?.systemHint ?? "";
+    const modes = getModes(isUbe);
+    const modeHint = modes.find((m) => m.id === mode)?.systemHint ?? "";
     const userMsg: Msg = { role: "user", content: text };
     const next: Msg[] =
       messages.length === 0 && modeHint
-        ? [{ role: "user", content: `[${MODES.find((m) => m.id === mode)?.label} mode] ${modeHint}` }, { role: "assistant", content: "Understood." }, ...messages, userMsg]
+        ? [{ role: "user", content: `[${modes.find((m) => m.id === mode)?.label} mode] ${modeHint}` }, { role: "assistant", content: "Understood." }, ...messages, userMsg]
         : [...messages, userMsg];
 
     const visible: Msg[] = [...messages, userMsg];
