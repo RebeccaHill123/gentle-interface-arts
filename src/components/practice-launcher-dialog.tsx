@@ -29,6 +29,25 @@ import {
 import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
 import { deriveAnalytics, type SubjectStat } from "@/lib/analytics-derive";
+import { isUbePath } from "@/lib/exam-paths";
+
+export type PaperKey = "FLK1" | "FLK2" | "MBE" | "MEE" | "MPT";
+
+const PAPER_SUBJECT_LIST: Record<PaperKey, string> = {
+  FLK1: "Contract, Tort, Business Law, Dispute Resolution, Constitutional & Administrative, Legal System, Ethics",
+  FLK2: "Property Practice, Wills & Estates, Trusts, Land Law, Criminal Law, Criminal Practice, Solicitors' Accounts, Ethics",
+  MBE: "Civil Procedure, Constitutional Law, Contracts & Sales (UCC Art. 2), Criminal Law & Procedure, Evidence (FRE), Real Property, Torts",
+  MEE: "MBE subjects plus Business Associations, Conflict of Laws, Family Law, Trusts & Estates, Secured Transactions (UCC Art. 9)",
+  MPT: "Closed-library lawyering tasks: objective memos, persuasive briefs, client letters, statute interpretation",
+};
+
+const PAPER_LABEL: Record<PaperKey, string> = {
+  FLK1: "Mini FLK1 Mock",
+  FLK2: "Mini FLK2 Mock",
+  MBE: "Mini MBE Mock",
+  MEE: "Mini MEE Mock",
+  MPT: "MPT Practice Task",
+};
 
 type PracticeType =
   | "weak-area"
