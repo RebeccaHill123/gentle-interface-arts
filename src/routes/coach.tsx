@@ -126,6 +126,7 @@ function CoachPage() {
 
       const plan = loadPlan();
       if (plan) {
+        setExamType(plan.input.examType);
         setStreak(computeStreak(plan.sessions).current);
         setAnalytics(deriveAnalytics(plan));
         if (plan.input?.examDate) {
