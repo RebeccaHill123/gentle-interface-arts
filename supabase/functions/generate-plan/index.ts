@@ -600,8 +600,25 @@ The allocations, tasks and weeklyFocus[0] MUST be internally consistent — same
                             type: "string",
                             description: "One-line explanation of why this task now",
                           },
+                          subtopic: {
+                            type: "string",
+                            description: "Canonical subtopic this block targets",
+                          },
+                          difficulty: {
+                            type: "string",
+                            enum: ["foundational", "core", "challenging"],
+                          },
+                          output: {
+                            type: "string",
+                            description: "The concrete artefact or evidence the user should produce (e.g. 'Add 3 recurring mistakes to your mistake log')",
+                          },
+                          bucket: {
+                            type: "string",
+                            enum: ["must", "should", "optional"],
+                            description: "Priority bucket: Must do this week / Should do this week / Optional stretch",
+                          },
                         },
-                        required: ["title", "module", "minutes", "taskType", "rationale", "priority", "why"],
+                        required: ["title", "module", "minutes", "taskType", "rationale", "priority", "why", "subtopic", "difficulty", "output", "bucket"],
                       },
                     },
                     masteryTargets: {
