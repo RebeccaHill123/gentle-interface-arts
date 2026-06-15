@@ -27,17 +27,17 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
     meta: [
-      { title: "Tentra — SQE1 & SQE2 revision app with personalised study plan" },
+      { title: "Tentra — SQE & NY UBE revision app with personalised study plan" },
       {
         name: "description",
         content:
-          "The SQE revision app for SQE1, FLK1, FLK2 and SQE2. Personalised study planner, MCQ practice, mock exams, AI coach and progress tracking for UK law students.",
+          "The revision app for SQE1, SQE2 and the NY UBE (MBE, MEE, MPT). Personalised study planner, MCQ practice, mock exams, AI coach and progress tracking for future lawyers.",
       },
-      { property: "og:title", content: "Tentra — SQE1 & SQE2 revision app with personalised study plan" },
+      { property: "og:title", content: "Tentra — SQE & NY UBE revision app with personalised study plan" },
       {
         property: "og:description",
         content:
-          "Personalised SQE study schedule, MCQ practice and mock exams. Built for SQE1, FLK1, FLK2 and SQE2 candidates.",
+          "Personalised study schedule, MCQ practice and mock exams. Built for SQE and NY UBE candidates.",
       },
       { property: "og:url", content: "https://tentraapp.com/" },
       { property: "og:type", content: "website" },
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/")({
           operatingSystem: "Web",
           url: "https://tentraapp.com/",
           description:
-            "Personalised SQE revision app with study planner, MCQ practice, mock exams and AI coach for SQE1, FLK1, FLK2 and SQE2.",
+            "Personalised revision app with study planner, MCQ practice, mock exams and AI coach for SQE1, SQE2 and NY UBE candidates.",
           offers: { "@type": "Offer", price: "0", priceCurrency: "GBP" },
         }),
       },
