@@ -206,8 +206,9 @@ function CoachPage() {
     }
     if (daysToExam === 0) return "Exam day. Trust your preparation — review high-yield rules only.";
     const r = analytics?.readiness?.score ?? null;
+    const qType = isUbe ? "MBEs" : "SBAs";
     if (daysToExam <= 7) {
-      return `You're ${daysToExam} days out — protect sleep, taper volume, and run timed SBAs only on your weakest two modules.`;
+      return `You're ${daysToExam} days out — protect sleep, taper volume, and run timed ${qType} only on your weakest two modules.`;
     }
     if (daysToExam <= 21) {
       if (r !== null && r < 65) return `${daysToExam} days out at ${r}% readiness — scale mock exposure now and cut anything that isn't moving the score.`;
@@ -220,7 +221,7 @@ function CoachPage() {
       return `${daysToExam} days out — build depth on your weakest modules now while there's still time for spaced repetition to compound.`;
     }
     return `${daysToExam} days out — establish the cadence and breadth now; tactical drills come later.`;
-  }, [daysToExam, analytics]);
+  }, [daysToExam, analytics, isUbe]);
 
   // Three curated premium insight cards
   const insightCards = useMemo(() => {
