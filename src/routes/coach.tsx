@@ -30,44 +30,54 @@ type Msg = { role: "user" | "assistant"; content: string };
 type Suggestion = { label: string; prompt: string };
 type Mode = "coach" | "tutor";
 
-const MODES: {
-  id: Mode;
-  label: string;
-  blurb: string;
-  systemHint: string;
-}[] = [
-  {
-    id: "coach",
-    label: "Coach",
-    blurb: "Strategy, planning and exam readiness.",
-    systemHint:
-      "Reply as a senior SQE study strategist. Prioritise sequencing, trade-offs, mock performance, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused.",
-  },
-  {
-    id: "tutor",
-    label: "Tutor",
-    blurb: "Legal concepts, worked examples and SBA practice.",
-    systemHint:
-      "Reply as a private SQE1 tutor (FLK1/FLK2). Explain the law with academic precision, structured headings, worked examples and key authorities only when certain. Where useful, offer to test understanding with SBA-style questions.",
-  },
-];
+function getModes(isUbe: boolean) {
+  return [
+    {
+      id: "coach" as Mode,
+      label: "Coach",
+      blurb: "Strategy, planning and exam readiness.",
+      systemHint: isUbe
+        ? "Reply as a senior bar exam study strategist. Prioritise sequencing, trade-offs, mock performance, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused."
+        : "Reply as a senior SQE study strategist. Prioritise sequencing, trade-offs, mock performance, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused.",
+    },
+    {
+      id: "tutor" as Mode,
+      label: "Tutor",
+      blurb: isUbe ? "Legal concepts, worked examples and MBE practice." : "Legal concepts, worked examples and SBA practice.",
+      systemHint: isUbe
+        ? "Reply as a private bar exam tutor (MBE/MEE/MPT). Explain the law with academic precision, structured headings, worked examples and key authorities only when certain. Where useful, offer to test understanding with multiple-choice-style questions."
+        : "Reply as a private SQE1 tutor (FLK1/FLK2). Explain the law with academic precision, structured headings, worked examples and key authorities only when certain. Where useful, offer to test understanding with SBA-style questions.",
+    },
+  ];
+}
 
-const SUGGESTIONS_BY_MODE: Record<Mode, Suggestion[]> = {
-  coach: [
-    { label: "Prioritise this week", prompt: "What should I prioritise this week based on my weak areas, recency decay and exam proximity? Give me a 3-step ordered plan with the reasoning behind each step." },
-    { label: "Review my mocks", prompt: "Review my recent mock performance and identify the highest-risk topics I need to drill before the exam. Tell me what's improving, what's regressing, and the next 3 sessions." },
-    { label: "Build a 7-day catch-up", prompt: "Build me a focused 7-day catch-up plan. Use my available hours, prioritise the highest-leverage modules, and tell me exactly what to do each day." },
-    { label: "Am I on track?", prompt: "Given my exam date, readiness and recent activity — am I on track? Be honest. If I'm not, prescribe what changes this week." },
-    { label: "Highest mark-impact today", prompt: "What should I revise today for the single highest mark impact? Cite the data — recency, accuracy, syllabus weight — and give me a 60-minute session structure." },
-  ],
-  tutor: [
+function getSuggestionsByMode(mode: Mode, isUbe: boolean): Suggestion[] {
+  if (mode === "coach") {
+    return [
+      { label: "Prioritise this week", prompt: "What should I prioritise this week based on my weak areas, recency decay and exam proximity? Give me a 3-step ordered plan with the reasoning behind each step." },
+      { label: "Review my mocks", prompt: "Review my recent mock performance and identify the highest-risk topics I need to drill before the exam. Tell me what's improving, what's regressing, and the next 3 sessions." },
+      { label: "Build a 7-day catch-up", prompt: "Build me a focused 7-day catch-up plan. Use my available hours, prioritise the highest-leverage modules, and tell me exactly what to do each day." },
+      { label: "Am I on track?", prompt: "Given my exam date, readiness and recent activity — am I on track? Be honest. If I'm not, prescribe what changes this week." },
+      { label: "Highest mark-impact today", prompt: "What should I revise today for the single highest mark impact? Cite the data — recency, accuracy, syllabus weight — and give me a 60-minute session structure." },
+    ];
+  }
+  if (isUbe) {
+    return [
+      { label: "Explain a concept", prompt: "Explain a tricky bar exam concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?" },
+      { label: "Test me on MBE", prompt: "Test me on a Uniform Bar Exam MBE topic. Ask one multiple-choice question at a time, wait for my answer, mark it, then explain." },
+      { label: "5 MBE questions", prompt: "Give me 5 MBE-style multiple-choice questions on a topic of my choice. Four options each (A–D), correct answer marked, one-line explanation per question." },
+      { label: "Mark my reasoning", prompt: "I'll give you my answer and reasoning to a problem question. Mark it as a bar examiner would, explain exactly where the reasoning is wrong, and show the model answer structure." },
+      { label: "Compare key doctrines", prompt: "Compare two closely related legal doctrines that are commonly tested on the bar exam. Explain when each applies, the leading authorities, and the most-tested traps. Finish with two contrasting worked examples." },
+    ];
+  }
+  return [
     { label: "Explain consideration", prompt: "Explain the doctrine of consideration using SQE-style examples. Cover past consideration, sufficiency vs adequacy, and the Williams v Roffey exception. Finish with one SBA to test me." },
     { label: "Test me on easements", prompt: "Test me on easements. Ask one SQE1-style SBA at a time, wait for my answer, mark it, then explain. Cover creation, scope and termination across the set." },
     { label: "5 SBAs on negligence", prompt: "Give me 5 SQE1-style single best answer questions on negligence — duty, breach, causation, remoteness. Four options each (A–D), correct answer marked, one-line explanation per question." },
     { label: "Mark my reasoning", prompt: "I'll give you my answer and reasoning to a problem question. Mark it as an SQE examiner would, explain exactly where the reasoning is wrong, and show the model answer structure." },
     { label: "Compare resulting & constructive trusts", prompt: "Compare resulting and constructive trusts: when each arises, the leading authorities, and the most-tested SQE traps. Finish with two contrasting worked examples." },
-  ],
-};
+  ];
+}
 
 const THINKING_LINES = [
   "Reading your performance snapshot…",
@@ -87,8 +97,8 @@ export const Route = createFileRoute("/coach")({
   component: CoachPage,
   head: () => ({
     meta: [
-      { title: "Tentra Coach · Your SQE strategist & private tutor" },
-      { name: "description", content: "An intelligent SQE study coach and private tutor. Plan strategically, drill weak areas, test understanding and stay on track for qualification." },
+      { title: "Tentra Coach · Your exam strategist & private tutor" },
+      { name: "description", content: "An intelligent study coach and private tutor. Plan strategically, drill weak areas, test understanding and stay on track for qualification." },
     ],
   }),
 });
@@ -104,9 +114,12 @@ function CoachPage() {
   const [mode, setMode] = useState<Mode>("coach");
   const [thinkingIdx, setThinkingIdx] = useState(0);
   const [hasPrior, setHasPrior] = useState(false);
+  const [examType, setExamType] = useState<"SQE1" | "SQE2" | "UBE" | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+
+  const isUbe = examType === "UBE";
 
   // Bootstrap: profile + analytics + last conversation flag
   useEffect(() => {
@@ -123,6 +136,7 @@ function CoachPage() {
 
       const plan = loadPlan();
       if (plan) {
+        setExamType(plan.input.examType);
         setStreak(computeStreak(plan.sessions).current);
         setAnalytics(deriveAnalytics(plan));
         if (plan.input?.examDate) {
@@ -192,8 +206,9 @@ function CoachPage() {
     }
     if (daysToExam === 0) return "Exam day. Trust your preparation — review high-yield rules only.";
     const r = analytics?.readiness?.score ?? null;
+    const qType = isUbe ? "MBEs" : "SBAs";
     if (daysToExam <= 7) {
-      return `You're ${daysToExam} days out — protect sleep, taper volume, and run timed SBAs only on your weakest two modules.`;
+      return `You're ${daysToExam} days out — protect sleep, taper volume, and run timed ${qType} only on your weakest two modules.`;
     }
     if (daysToExam <= 21) {
       if (r !== null && r < 65) return `${daysToExam} days out at ${r}% readiness — scale mock exposure now and cut anything that isn't moving the score.`;
@@ -206,10 +221,11 @@ function CoachPage() {
       return `${daysToExam} days out — build depth on your weakest modules now while there's still time for spaced repetition to compound.`;
     }
     return `${daysToExam} days out — establish the cadence and breadth now; tactical drills come later.`;
-  }, [daysToExam, analytics]);
+  }, [daysToExam, analytics, isUbe]);
 
   // Three curated premium insight cards
   const insightCards = useMemo(() => {
+    const qType = isUbe ? "MBE" : "SBA";
     type Card = {
       eyebrow: string;
       icon: typeof Target;
@@ -227,7 +243,7 @@ function CoachPage() {
         icon: Target,
         title: weakest.module,
         body: `Your lowest-confidence module — a focused 45-minute block here will move the needle furthest today.`,
-        prompt: `Build me a 45-minute high-yield session on ${weakest.module}, structured around my weakest sub-topics, with a short SBA set at the end.`,
+        prompt: `Build me a 45-minute high-yield session on ${weakest.module}, structured around my weakest sub-topics, with a short ${qType} set at the end.`,
       });
     } else {
       cards.push({
@@ -289,7 +305,7 @@ function CoachPage() {
         icon: CalendarClock,
         title: `${peak.label} block`,
         body: `You perform ${peak.uplift}% better in ${peak.label.toLowerCase()} blocks. Pair it with active recall on your weakest module.`,
-        prompt: `Design my next ${peak.label.toLowerCase()} block — 60 minutes, structured around my weakest module with active recall and one SBA set.`,
+        prompt: `Design my next ${peak.label.toLowerCase()} block — 60 minutes, structured around my weakest module with active recall and one ${qType} set.`,
       });
     } else if (streak >= 3) {
       cards.push({
@@ -310,7 +326,7 @@ function CoachPage() {
     }
 
     return cards;
-  }, [analytics, daysToExam, streak]);
+  }, [analytics, daysToExam, streak, isUbe]);
 
   const suggestions = useMemo<Suggestion[]>(() => {
     const dyn: Suggestion[] = [];
@@ -328,11 +344,11 @@ function CoachPage() {
       if (weakest) {
         dyn.push({
           label: `Drill ${weakest.module}`,
-          prompt: `Build me a 10-question SBA drill on ${weakest.module}, targeting my weakest sub-topics, with answers and explanations.`,
+          prompt: `Build me a 10-question ${isUbe ? "MBE" : "SBA"} drill on ${weakest.module}, targeting my weakest sub-topics, with answers and explanations.`,
         });
       }
     }
-    return [...dyn, ...SUGGESTIONS_BY_MODE[mode]].slice(0, 5);
+    return [...dyn, ...getSuggestionsByMode(mode, isUbe)].slice(0, 5);
   }, [mode, analytics]);
 
   const canSend = input.trim().length > 0 && !isStreaming;
@@ -360,11 +376,12 @@ function CoachPage() {
     if (!text || isStreaming) return;
     setInput("");
 
-    const modeHint = MODES.find((m) => m.id === mode)?.systemHint ?? "";
+    const modes = getModes(isUbe);
+    const modeHint = modes.find((m) => m.id === mode)?.systemHint ?? "";
     const userMsg: Msg = { role: "user", content: text };
     const next: Msg[] =
       messages.length === 0 && modeHint
-        ? [{ role: "user", content: `[${MODES.find((m) => m.id === mode)?.label} mode] ${modeHint}` }, { role: "assistant", content: "Understood." }, ...messages, userMsg]
+        ? [{ role: "user", content: `[${modes.find((m) => m.id === mode)?.label} mode] ${modeHint}` }, { role: "assistant", content: "Understood." }, ...messages, userMsg]
         : [...messages, userMsg];
 
     const visible: Msg[] = [...messages, userMsg];
@@ -452,7 +469,7 @@ function CoachPage() {
   return (
     <AppShell
       title="Tentra Coach"
-      subtitle="Your SQE strategist and private tutor."
+      subtitle={`Your ${isUbe ? "Bar" : "SQE"} strategist and private tutor.`}
       actions={
         !isEmpty ? (
           <button
@@ -468,7 +485,7 @@ function CoachPage() {
         {/* MODE TOGGLE — Coach | Tutor only */}
         <div className="flex flex-col gap-3">
           <div className="inline-flex w-full items-center gap-1 rounded-2xl border border-border bg-card/40 p-1 backdrop-blur sm:w-auto sm:self-start">
-            {MODES.map((m) => {
+            {getModes(isUbe).map((m) => {
               const active = mode === m.id;
               return (
                 <button
@@ -485,7 +502,7 @@ function CoachPage() {
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground">{MODES.find((m) => m.id === mode)!.blurb}</p>
+          <p className="text-xs text-muted-foreground">{getModes(isUbe).find((m) => m.id === mode)!.blurb}</p>
         </div>
 
         {/* EMPTY STATE — Insight panel + curated cards */}
@@ -549,14 +566,20 @@ function CoachPage() {
                     icon: BookOpenCheck,
                     title: "A concept, clearly",
                     body: "Pick any topic — I'll teach it with structure, authority and a worked example.",
-                    prompt: "Explain a tricky SQE concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?",
+                    prompt: isUbe
+                      ? "Explain a tricky bar exam concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?"
+                      : "Explain a tricky SQE concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?",
                   },
                   {
                     eyebrow: "Test",
                     icon: Compass,
                     title: "My understanding",
-                    body: "I'll generate SBA-style questions and mark your reasoning as an examiner would.",
-                    prompt: "Test my understanding with 5 SQE1-style SBA questions on a topic of my choice. Mark each answer and explain the reasoning.",
+                    body: isUbe
+                      ? "I'll generate MBE-style questions and mark your reasoning as an examiner would."
+                      : "I'll generate SBA-style questions and mark your reasoning as an examiner would.",
+                    prompt: isUbe
+                      ? "Test my understanding with 5 MBE-style multiple-choice questions on a topic of my choice. Mark each answer and explain the reasoning."
+                      : "Test my understanding with 5 SQE1-style SBA questions on a topic of my choice. Mark each answer and explain the reasoning.",
                   },
                   {
                     eyebrow: "Review",

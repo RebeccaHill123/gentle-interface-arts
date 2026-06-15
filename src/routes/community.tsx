@@ -1,7 +1,23 @@
+import { useMemo } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { Users, MessageSquare, Trophy } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { waitForAuthUser } from "@/lib/auth-session";
+import { loadPlan } from "@/lib/plan-store";
+
+function useExamLabel() {
+  const plan = useMemo(() => {
+    if (typeof window === "undefined") return null;
+    return loadPlan();
+  }, []);
+  const isUbe = plan?.input.examType === "UBE";
+  return {
+    isUbe,
+    examName: isUbe ? "Bar" : "SQE",
+    candidateLabel: isUbe ? "Bar candidates" : "SQE candidates",
+    professionLabel: isUbe ? "future attorneys" : "solicitors",
+  };
+}
 
 export const Route = createFileRoute("/community")({
   beforeLoad: async () => {
@@ -13,14 +29,15 @@ export const Route = createFileRoute("/community")({
   head: () => ({
     meta: [
       { title: "Community · Tentra" },
-      { name: "description", content: "Study alongside other SQE candidates." },
+      { name: "description", content: "Study alongside other candidates." },
     ],
   }),
 });
 
 function CommunityPage() {
+  const { candidateLabel, professionLabel } = useExamLabel();
   return (
-    <AppShell title="Community" subtitle="Study alongside other SQE candidates.">
+    <AppShell title="Community" subtitle={`Study alongside other ${candidateLabel}.`}>
       <section className="rounded-3xl border border-border bg-card p-8 shadow-card">
         <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-pink-blue shadow-glow">
           <Users className="h-6 w-6 text-primary-foreground" />
@@ -30,7 +47,7 @@ function CommunityPage() {
         </h2>
         <p className="mt-2 max-w-xl text-sm text-muted-foreground">
           Streak leaderboards, study groups, peer Q&amp;A and weekly challenges —
-          built for the next cohort of solicitors.
+          built for the next cohort of {professionLabel}.
         </p>
       </section>
 
