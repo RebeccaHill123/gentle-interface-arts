@@ -264,119 +264,19 @@ function DashboardPage() {
 
               <Panel
                 title="Adaptive study blocks"
-                subtitle="Complete these in any order, on any day this week. Streak counts after one block per day."
+                subtitle="Grouped by priority. Tackle Must-do first; Should-do strengthens the week; Optional is stretch or catch-up."
               >
-                  <ul className="space-y-2">
-                    {plan.todayTasks.map((t, i) => {
-                      const done = completedTaskIds.includes(String(i));
-                      return (
-                        <li
-                          key={i}
-                          className={`group flex items-start gap-4 rounded-2xl p-5 transition-colors ${
-                            done
-                              ? "bg-emerald-400/[0.04]"
-                              : "bg-foreground/[0.015] hover:bg-foreground/[0.035]"
-                          }`}
-                        >
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button
-                                type="button"
-                                role="checkbox"
-                                aria-checked={done}
-                                aria-label={done ? `Mark "${t.title}" incomplete` : `Mark "${t.title}" complete`}
-                                onClick={() => handleToggle(i)}
-                                className={`relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 outline-none transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-pink/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-90 ${
-                                  done
-                                    ? "border-transparent bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                                    : "border-muted-foreground/40 bg-background hover:border-pink hover:bg-pink/10 hover:shadow-[0_0_0_4px_hsl(var(--pink)/0.12)] hover:scale-105"
-                                }`}
-                              >
-                                {done ? (
-                                  <Check className="h-5 w-5 animate-scale-in" strokeWidth={3} />
-                                ) : (
-                                  <Check className="h-4 w-4 text-muted-foreground/0 transition-opacity group-hover:text-pink/60 group-hover:opacity-100" strokeWidth={3} />
-                                )}
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent side="right">
-                              {done ? "Mark incomplete" : "Mark complete"}
-                            </TooltipContent>
-                          </Tooltip>
-                          <div className="min-w-0 flex-1">
-                            <p
-                              className={`text-sm font-medium leading-snug transition-all ${
-                                done
-                                  ? "text-muted-foreground line-through decoration-emerald-400/60"
-                                  : "text-foreground"
-                              }`}
-                            >
-                              {t.title}
-                            </p>
-                            <div className={`mt-1 flex flex-wrap items-center gap-1.5 transition-opacity ${done ? "opacity-60" : ""}`}>
-                              <span className="text-[11px] text-muted-foreground">
-                                {t.module}
-                              </span>
-                              {t.rationale && (
-                                <RationaleChip rationale={t.rationale} />
-                              )}
-                              {t.taskType && <TypeChip type={t.taskType} />}
-                              {t.priority === "high" && !done && (
-                                <span className="rounded-full bg-pink/10 px-2 py-0.5 text-[10px] font-medium text-pink/90">
-                                  priority
-                                </span>
-                              )}
-                            </div>
-                            {t.why && (
-                              <p className={`mt-1.5 text-[11px] italic text-muted-foreground/80 ${done ? "opacity-60" : ""}`}>
-                                {t.why}
-                              </p>
-                            )}
-                          </div>
-                          <span className={`shrink-0 text-sm font-semibold transition-colors ${done ? "text-emerald-300" : "text-cyan"}`}>
-                            {done ? "Done" : `${t.minutes}m`}
-                          </span>
-                        </li>
-                      );
-                    })}
-                  </ul>
+                <BlockGroups
+                  tasks={plan.todayTasks}
+                  completedTaskIds={completedTaskIds}
+                  onToggle={handleToggle}
+                />
               </Panel>
             </div>
 
             <div className="space-y-8">
               <Panel title="Weekly focus" subtitle="Your plan, week by week.">
-                <ol className="divide-y divide-border/40">
-                  {plan.weeklyFocus.slice(0, 6).map((w, i) => (
-                    <li key={w.week} className="py-4 first:pt-0 last:pb-0">
-                      <div className="flex items-center justify-between">
-                        <div className="text-[11px] font-medium text-muted-foreground/80">
-                          Week {w.week}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground/70">
-                          {w.hours}h
-                        </div>
-                      </div>
-                      <div className="mt-1.5 text-sm font-medium text-foreground">
-                        {w.theme}
-                      </div>
-                      <div className="mt-2.5 flex flex-wrap gap-1.5">
-                        {w.modules.slice(0, 3).map((m) => (
-                          <span
-                            key={m}
-                            className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
-                          >
-                            {m}
-                          </span>
-                        ))}
-                        {i === 0 && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-pink/10 px-2 py-0.5 text-[10px] font-medium text-pink/90">
-                            <Flame className="h-2.5 w-2.5" /> this week
-                          </span>
-                        )}
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                <WeeklyFocusList weeks={plan.weeklyFocus} />
               </Panel>
             </div>
           </div>
