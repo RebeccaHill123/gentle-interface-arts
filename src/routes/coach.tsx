@@ -456,7 +456,7 @@ function CoachPage() {
   return (
     <AppShell
       title="Tentra Coach"
-      subtitle="Your SQE strategist and private tutor."
+      subtitle={`Your ${isUbe ? "Bar" : "SQE"} strategist and private tutor.`}
       actions={
         !isEmpty ? (
           <button
