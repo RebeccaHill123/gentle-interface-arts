@@ -225,6 +225,7 @@ function CoachPage() {
 
   // Three curated premium insight cards
   const insightCards = useMemo(() => {
+    const qType = isUbe ? "MBE" : "SBA";
     type Card = {
       eyebrow: string;
       icon: typeof Target;
@@ -242,7 +243,7 @@ function CoachPage() {
         icon: Target,
         title: weakest.module,
         body: `Your lowest-confidence module — a focused 45-minute block here will move the needle furthest today.`,
-        prompt: `Build me a 45-minute high-yield session on ${weakest.module}, structured around my weakest sub-topics, with a short SBA set at the end.`,
+        prompt: `Build me a 45-minute high-yield session on ${weakest.module}, structured around my weakest sub-topics, with a short ${qType} set at the end.`,
       });
     } else {
       cards.push({
@@ -304,7 +305,7 @@ function CoachPage() {
         icon: CalendarClock,
         title: `${peak.label} block`,
         body: `You perform ${peak.uplift}% better in ${peak.label.toLowerCase()} blocks. Pair it with active recall on your weakest module.`,
-        prompt: `Design my next ${peak.label.toLowerCase()} block — 60 minutes, structured around my weakest module with active recall and one SBA set.`,
+        prompt: `Design my next ${peak.label.toLowerCase()} block — 60 minutes, structured around my weakest module with active recall and one ${qType} set.`,
       });
     } else if (streak >= 3) {
       cards.push({
@@ -325,7 +326,7 @@ function CoachPage() {
     }
 
     return cards;
-  }, [analytics, daysToExam, streak]);
+  }, [analytics, daysToExam, streak, isUbe]);
 
   const suggestions = useMemo<Suggestion[]>(() => {
     const dyn: Suggestion[] = [];
