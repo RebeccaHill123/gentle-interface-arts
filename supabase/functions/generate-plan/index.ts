@@ -177,7 +177,7 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   const intensityWeakBoost = intensity === "resitter" ? 0.25 : intensity === "advanced" ? 0.15 : intensity === "beginner" ? 0.05 : 0.1;
   const scoredModules = body.modules
     .map((module) => {
-      const subject = SQE_FALLBACK_SUBJECTS[module.name] ?? { weight: 0.08, highYield: 3, groups: [body.examType], subtopics: [module.name] };
+      const subject = getSubjectTable(body)[module.name] ?? { weight: 0.08, highYield: 3, groups: [body.examType], subtopics: [module.name] };
       const confidenceGap = Math.max(0, 5 - module.confidence) / 5;
       const recencyDays = studiedByModule.get(module.name);
       const recencyBoost = recencyDays === undefined ? 0.2 : Math.min(1, recencyDays / 14) * 0.3;
@@ -263,7 +263,7 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
       taskType,
       rationale,
       priority,
-      why: `${module.name} is prioritised ${weak.length > 0 ? `because you flagged ${weak.slice(0, 2).join(" and ")} as weak` : isWeak ? "because confidence is still low here" : module.subject.highYield >= 4 ? "for its high SQE yield" : "to keep related topics fresh"}${isStale ? " and it hasn't been touched recently" : ""}.`,
+      why: `${module.name} is prioritised ${weak.length > 0 ? `because you flagged ${weak.slice(0, 2).join(" and ")} as weak` : isWeak ? "because confidence is still low here" : module.subject.highYield >= 4 ? "for its high exam yield" : "to keep related topics fresh"}${isStale ? " and it hasn't been touched recently" : ""}.`,
       subtopic: topicA,
       difficulty,
       output: outputFor(taskType),
@@ -351,7 +351,7 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   });
 
   return {
-    overview: `${body.name}, this plan leads with ${priorityModules.map((m) => m.name).join(", ")} because they combine high SQE yield with your current confidence and revision recency. The week is deliberately interleaved so weak areas are repaired without crowding out mixed SBA practice.`,
+    overview: `${body.name}, this plan leads with ${priorityModules.map((m) => m.name).join(", ")} because they combine high exam yield with your current confidence and revision recency. The week is deliberately interleaved so weak areas are repaired without crowding out timed practice.`,
     weeklyStrategy: {
       summary: `This week allocates ${body.hoursPerWeek} hours across high-yield weak areas and recency gaps, with the priority on ${priorityModules.map((m) => m.name).join(" and ")}. Blocks balance recall, timed practice and mistake review.`,
       allocations,
