@@ -236,10 +236,10 @@ function LandingPage() {
           {/* TRUST STRIP — elegant hairline row */}
           <section className="mx-auto max-w-5xl px-5 pb-16 md:px-8 md:pb-28">
             <div className="grid grid-cols-2 gap-y-4 border-y border-border/60 py-5 md:grid-cols-4 md:divide-x md:divide-border/60 md:py-6">
-              <TrustItem icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE1 & SQE2" />
+              <TrustItem icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE & NY UBE" />
               <TrustItem icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive study planning" />
               <TrustItem icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance analytics" />
-              <TrustItem icon={<Sparkles className="h-3.5 w-3.5" />} label="For future solicitors" />
+              <TrustItem icon={<Sparkles className="h-3.5 w-3.5" />} label="For future lawyers" />
             </div>
           </section>
 
