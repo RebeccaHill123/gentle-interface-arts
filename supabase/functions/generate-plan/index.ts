@@ -5,16 +5,17 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-type ExamPath = "SQE1_FULL" | "FLK1" | "FLK2" | "SQE2" | "CUSTOM";
+type ExamPath = "SQE1_FULL" | "FLK1" | "FLK2" | "SQE2" | "UBE_FULL" | "UBE_MBE" | "UBE_ESSAYS" | "UBE_MPT" | "CUSTOM";
 type IntensityTier = "beginner" | "intermediate" | "advanced" | "resitter";
 type CoverageMode = "even" | "advanced";
+type ExamType = "SQE1" | "SQE2" | "UBE";
 
 interface PlanRequest {
   name: string;
   examDate: string; // ISO date
   hoursPerWeek: number;
   modules: { id: string; name: string; confidence: number; weakSubtopics?: string[] }[]; // confidence 1-5
-  examType: "SQE1" | "SQE2";
+  examType: ExamType;
   examPath?: ExamPath;
   intensity?: IntensityTier;
   coverageMode?: CoverageMode;
@@ -90,6 +91,39 @@ const SQE_FALLBACK_SUBJECTS: Record<string, { weight: number; highYield: number;
   "Wills & Estates": { weight: 0.10, highYield: 4, groups: ["Private Client"], subtopics: ["validity and execution", "intestacy and family provision", "IHT", "estate administration", "trusts in wills"] },
   "Solicitors Accounts": { weight: 0.07, highYield: 5, groups: ["Ethics", "Business"], subtopics: ["client vs business account", "SRA Accounts Rules", "double-entry bookkeeping", "interest, disbursements and VAT", "breaches and reconciliations"] },
 };
+
+// UBE (NY Bar) fallback subject table — calibrated from NCBE Subject Matter
+// Outlines and historical MBE/MEE/MPT question-frequency data.
+const UBE_FALLBACK_SUBJECTS: Record<string, { weight: number; highYield: number; groups: string[]; subtopics: string[] }> = {
+  "Civil Procedure": { weight: 1 / 7, highYield: 5, groups: ["Civil Litigation"], subtopics: ["subject-matter jurisdiction (federal question, diversity, removal)", "personal jurisdiction and venue", "Erie doctrine", "pleadings and Rule 12 motions", "discovery scope and sanctions", "summary judgment", "claim and issue preclusion"] },
+  "Constitutional Law": { weight: 1 / 7, highYield: 5, groups: ["Public Law"], subtopics: ["justiciability (standing, ripeness, mootness)", "Commerce Clause and dormant Commerce Clause", "Equal Protection and levels of scrutiny", "Procedural and Substantive Due Process", "First Amendment speech and forum analysis", "Establishment and Free Exercise"] },
+  "Contracts & Sales (UCC Art. 2)": { weight: 1 / 7, highYield: 5, groups: ["Commercial"], subtopics: ["formation (offer, acceptance, consideration)", "Statute of Frauds and defenses", "UCC vs common law terms and gap-fillers", "performance, breach and perfect tender", "UCC warranties and disclaimers", "remedies (expectation, UCC seller/buyer)"] },
+  "Contracts": { weight: 1 / 7, highYield: 5, groups: ["Commercial"], subtopics: ["formation", "Statute of Frauds and defenses", "UCC vs common law terms", "performance and breach", "warranties", "remedies"] },
+  "Criminal Law & Procedure": { weight: 1 / 7, highYield: 5, groups: ["Criminal"], subtopics: ["homicide (common law murder, felony murder)", "inchoate offenses and accomplice liability", "defenses (self-defense, insanity, intoxication)", "4th Amendment search and seizure", "5th Amendment Miranda and confessions", "6th Amendment right to counsel"] },
+  "Evidence (FRE)": { weight: 1 / 7, highYield: 5, groups: ["Civil Litigation", "Criminal"], subtopics: ["relevance and FRE 403 balancing", "character, habit and prior acts", "hearsay definition and non-hearsay", "hearsay exceptions (803, 804)", "Confrontation Clause", "privileges and impeachment"] },
+  "Evidence": { weight: 1 / 7, highYield: 5, groups: ["Civil Litigation", "Criminal"], subtopics: ["relevance and FRE 403", "character and prior acts", "hearsay and exceptions", "Confrontation Clause", "privileges", "impeachment"] },
+  "Real Property": { weight: 1 / 7, highYield: 5, groups: ["Property"], subtopics: ["estates in land and future interests (RAP)", "concurrent estates", "landlord-tenant duties and assignment", "easements, covenants and equitable servitudes", "conveyancing and marketable title", "recording acts and BFP doctrine", "mortgages and foreclosure"] },
+  "Torts": { weight: 1 / 7, highYield: 5, groups: ["Civil Litigation"], subtopics: ["intentional torts and defenses", "negligence (duty, breach, causation, damages)", "special duties (NIED, premises, products)", "products liability theories", "defamation and First Amendment limits", "damages and comparative fault"] },
+  "Business Associations (Agency, Partnership, Corporations, LLCs)": { weight: 0.17, highYield: 5, groups: ["Commercial"], subtopics: ["agency (actual, apparent, ratification)", "general and limited partnerships", "corporate formation and piercing the veil", "directors and officers (BJR, duty of loyalty)", "shareholder rights and derivative suits", "LLC formation and member duties"] },
+  "Conflict of Laws": { weight: 0.10, highYield: 4, groups: ["Civil Litigation"], subtopics: ["domicile and characterization", "choice of law in tort and contract (vested rights, Second Restatement)", "Full Faith and Credit", "recognition of foreign judgments", "renvoi and public policy defense"] },
+  "Family Law": { weight: 0.14, highYield: 5, groups: ["Property"], subtopics: ["marriage validity and premarital agreements", "divorce and no-fault grounds", "equitable distribution and community property", "spousal and child support", "child custody and UCCJEA", "adoption and termination of parental rights"] },
+  "Trusts & Estates (Wills + Trusts)": { weight: 0.18, highYield: 5, groups: ["Property"], subtopics: ["will execution, revocation and revival", "intestacy and per stirpes/per capita", "ademption, abatement, lapse and anti-lapse", "will contests (capacity, undue influence)", "express trusts and beneficiaries", "trustee duties and UPIA", "resulting and constructive trusts"] },
+  "Trusts & Estates": { weight: 0.18, highYield: 5, groups: ["Property"], subtopics: ["will execution and revocation", "intestacy", "lapse and anti-lapse", "will contests", "express trusts", "trustee duties and UPIA"] },
+  "Secured Transactions (UCC Art. 9)": { weight: 0.11, highYield: 4, groups: ["Commercial"], subtopics: ["scope of Article 9 and classification of collateral", "attachment of security interests", "perfection (filing, possession, control)", "priority rules and PMSI super-priority", "default, repossession and disposition"] },
+  "Secured Transactions": { weight: 0.11, highYield: 4, groups: ["Commercial"], subtopics: ["scope and collateral", "attachment", "perfection", "priority and PMSI", "default and disposition"] },
+  "Multistate Performance Test (MPT)": { weight: 1.0, highYield: 5, groups: ["Skills"], subtopics: ["issue spotting from closed library", "fact analysis and evidence weighing", "objective office memo format", "persuasive brief and motion format", "client letter and advisory writing", "statute and regulation interpretation", "case synthesis from provided authorities"] },
+};
+
+function isUbe(body: PlanRequest): boolean {
+  if (body.examType === "UBE") return true;
+  const p = body.examPath ?? "";
+  return p.startsWith("UBE_");
+}
+
+function getSubjectTable(body: PlanRequest): Record<string, { weight: number; highYield: number; groups: string[]; subtopics: string[] }> {
+  if (isUbe(body)) return UBE_FALLBACK_SUBJECTS;
+  return SQE_FALLBACK_SUBJECTS;
+}
 
 function safeParsePlan(payload: unknown): StudyPlanResponse | null {
   if (!payload || typeof payload !== "object") return null;
