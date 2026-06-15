@@ -30,44 +30,54 @@ type Msg = { role: "user" | "assistant"; content: string };
 type Suggestion = { label: string; prompt: string };
 type Mode = "coach" | "tutor";
 
-const MODES: {
-  id: Mode;
-  label: string;
-  blurb: string;
-  systemHint: string;
-}[] = [
-  {
-    id: "coach",
-    label: "Coach",
-    blurb: "Strategy, planning and exam readiness.",
-    systemHint:
-      "Reply as a senior SQE study strategist. Prioritise sequencing, trade-offs, mock performance, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused.",
-  },
-  {
-    id: "tutor",
-    label: "Tutor",
-    blurb: "Legal concepts, worked examples and SBA practice.",
-    systemHint:
-      "Reply as a private SQE1 tutor (FLK1/FLK2). Explain the law with academic precision, structured headings, worked examples and key authorities only when certain. Where useful, offer to test understanding with SBA-style questions.",
-  },
-];
+function getModes(isUbe: boolean) {
+  return [
+    {
+      id: "coach" as Mode,
+      label: "Coach",
+      blurb: "Strategy, planning and exam readiness.",
+      systemHint: isUbe
+        ? "Reply as a senior bar exam study strategist. Prioritise sequencing, trade-offs, mock performance, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused."
+        : "Reply as a senior SQE study strategist. Prioritise sequencing, trade-offs, mock performance, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused.",
+    },
+    {
+      id: "tutor" as Mode,
+      label: "Tutor",
+      blurb: isUbe ? "Legal concepts, worked examples and MBE practice." : "Legal concepts, worked examples and SBA practice.",
+      systemHint: isUbe
+        ? "Reply as a private bar exam tutor (MBE/MEE/MPT). Explain the law with academic precision, structured headings, worked examples and key authorities only when certain. Where useful, offer to test understanding with multiple-choice-style questions."
+        : "Reply as a private SQE1 tutor (FLK1/FLK2). Explain the law with academic precision, structured headings, worked examples and key authorities only when certain. Where useful, offer to test understanding with SBA-style questions.",
+    },
+  ];
+}
 
-const SUGGESTIONS_BY_MODE: Record<Mode, Suggestion[]> = {
-  coach: [
-    { label: "Prioritise this week", prompt: "What should I prioritise this week based on my weak areas, recency decay and exam proximity? Give me a 3-step ordered plan with the reasoning behind each step." },
-    { label: "Review my mocks", prompt: "Review my recent mock performance and identify the highest-risk topics I need to drill before the exam. Tell me what's improving, what's regressing, and the next 3 sessions." },
-    { label: "Build a 7-day catch-up", prompt: "Build me a focused 7-day catch-up plan. Use my available hours, prioritise the highest-leverage modules, and tell me exactly what to do each day." },
-    { label: "Am I on track?", prompt: "Given my exam date, readiness and recent activity — am I on track? Be honest. If I'm not, prescribe what changes this week." },
-    { label: "Highest mark-impact today", prompt: "What should I revise today for the single highest mark impact? Cite the data — recency, accuracy, syllabus weight — and give me a 60-minute session structure." },
-  ],
-  tutor: [
+function getSuggestionsByMode(mode: Mode, isUbe: boolean): Suggestion[] {
+  if (mode === "coach") {
+    return [
+      { label: "Prioritise this week", prompt: "What should I prioritise this week based on my weak areas, recency decay and exam proximity? Give me a 3-step ordered plan with the reasoning behind each step." },
+      { label: "Review my mocks", prompt: "Review my recent mock performance and identify the highest-risk topics I need to drill before the exam. Tell me what's improving, what's regressing, and the next 3 sessions." },
+      { label: "Build a 7-day catch-up", prompt: "Build me a focused 7-day catch-up plan. Use my available hours, prioritise the highest-leverage modules, and tell me exactly what to do each day." },
+      { label: "Am I on track?", prompt: "Given my exam date, readiness and recent activity — am I on track? Be honest. If I'm not, prescribe what changes this week." },
+      { label: "Highest mark-impact today", prompt: "What should I revise today for the single highest mark impact? Cite the data — recency, accuracy, syllabus weight — and give me a 60-minute session structure." },
+    ];
+  }
+  if (isUbe) {
+    return [
+      { label: "Explain a concept", prompt: "Explain a tricky bar exam concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?" },
+      { label: "Test me on MBE", prompt: "Test me on a Uniform Bar Exam MBE topic. Ask one multiple-choice question at a time, wait for my answer, mark it, then explain." },
+      { label: "5 MBE questions", prompt: "Give me 5 MBE-style multiple-choice questions on a topic of my choice. Four options each (A–D), correct answer marked, one-line explanation per question." },
+      { label: "Mark my reasoning", prompt: "I'll give you my answer and reasoning to a problem question. Mark it as a bar examiner would, explain exactly where the reasoning is wrong, and show the model answer structure." },
+      { label: "Compare key doctrines", prompt: "Compare two closely related legal doctrines that are commonly tested on the bar exam. Explain when each applies, the leading authorities, and the most-tested traps. Finish with two contrasting worked examples." },
+    ];
+  }
+  return [
     { label: "Explain consideration", prompt: "Explain the doctrine of consideration using SQE-style examples. Cover past consideration, sufficiency vs adequacy, and the Williams v Roffey exception. Finish with one SBA to test me." },
     { label: "Test me on easements", prompt: "Test me on easements. Ask one SQE1-style SBA at a time, wait for my answer, mark it, then explain. Cover creation, scope and termination across the set." },
     { label: "5 SBAs on negligence", prompt: "Give me 5 SQE1-style single best answer questions on negligence — duty, breach, causation, remoteness. Four options each (A–D), correct answer marked, one-line explanation per question." },
     { label: "Mark my reasoning", prompt: "I'll give you my answer and reasoning to a problem question. Mark it as an SQE examiner would, explain exactly where the reasoning is wrong, and show the model answer structure." },
     { label: "Compare resulting & constructive trusts", prompt: "Compare resulting and constructive trusts: when each arises, the leading authorities, and the most-tested SQE traps. Finish with two contrasting worked examples." },
-  ],
-};
+  ];
+}
 
 const THINKING_LINES = [
   "Reading your performance snapshot…",
