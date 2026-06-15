@@ -404,7 +404,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const systemPrompt = `You are an elite UK SQE coach with deep knowledge of the SRA assessment specification, examiner reports and historical question frequencies. You design adaptive weekly strategies that read like an Oxbridge tutor + sports performance analyst.
+    const examIsUbe = isUbe(body);
+    const sqeSystemPrompt = `You are an elite UK SQE coach with deep knowledge of the SRA assessment specification, examiner reports and historical question frequencies. You design adaptive weekly strategies that read like an Oxbridge tutor + sports performance analyst.
 
 # SQE syllabus (canonical — use EXACT subject + subtopic names in tasks)
 
@@ -440,6 +441,50 @@ Tasks MUST be academically specific. Bad: "Study land law". Good: "Timed mixed S
 
 Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
 
+    const ubeSystemPrompt = `You are an elite US bar coach (NY Bar / UBE) with deep knowledge of the NCBE Subject Matter Outlines, historical MBE/MEE/MPT scoring distributions and bar examiner feedback. You design adaptive weekly strategies that read like a top BarBri/Themis tutor + sports performance analyst.
+
+# UBE structure (scoring weights: MBE 50%, MEE 30%, MPT 20%)
+- MBE: 200 multiple-choice over 6 hours (~1.8 minutes/question). 7 subjects, each ~1/7 of the MBE.
+- MEE: 6 essays × 30 minutes each. 12 subjects fair game (7 MBE + 5 MEE-exclusive). IRAC structure expected.
+- MPT: 2 tasks × 90 minutes each. Closed library — issue spotting, fact analysis, persuasive or objective writing from provided materials only.
+
+# UBE syllabus (canonical — use EXACT subject + subtopic names in tasks)
+
+## MBE subjects (each ~14% of the MBE; also fair game on MEE)
+- Civil Procedure — HY5 — SMJ (federal question, diversity, removal) (HY5); personal jurisdiction & venue (HY5); Erie; pleadings & Rule 12; discovery; SJ; claim/issue preclusion (HY5). Group: Civil Litigation.
+- Constitutional Law — HY5 — justiciability; Commerce Clause/dormant Commerce Clause (HY5); Equal Protection & scrutiny levels (HY5); Procedural & Substantive Due Process (HY5); First Amendment speech (HY5); Establishment/Free Exercise. Group: Public Law.
+- Contracts & Sales (UCC Art. 2) — HY5 — formation; SOF/defenses; UCC vs common law; performance/breach/perfect tender; UCC warranties; remedies (HY5). Group: Commercial.
+- Criminal Law & Procedure — HY5 — homicide (common law murder, felony murder) (HY5); inchoate & accomplice; defenses; 4th Amendment (HY5); 5th Amendment Miranda (HY5); 6th Amendment counsel. Group: Crim.
+- Evidence (FRE) — HY5 — relevance & FRE 403 (HY5); character/habit/prior acts (HY5); hearsay & exceptions (HY5×2); Confrontation Clause; privileges; impeachment. Group: Civil Litigation, Crim.
+- Real Property — HY5 — estates & future interests (RAP) (HY5); concurrent estates; landlord-tenant; easements/covenants/servitudes (HY5); conveyancing/marketable title (HY5); recording acts & BFP (HY5); mortgages (HY5). Group: Property.
+- Torts — HY5 — intentional torts (HY5); negligence (duty/breach/causation/damages) (HY5); special duties; products liability (HY5); defamation; damages & comparative fault. Group: Civil Litigation.
+
+## MEE-exclusive subjects (essay-only)
+- Business Associations (Agency, Partnership, Corporations, LLCs) — HY5 — agency (HY5); partnerships; corporate formation/piercing; D&O fiduciary duties (BJR, duty of loyalty) (HY5); shareholder rights; LLCs. Group: Commercial.
+- Conflict of Laws — HY4 — domicile; choice of law in tort/K (vested rights, Second Restatement, interest analysis) (HY5); Full Faith & Credit; recognition of judgments. Group: Civil Litigation.
+- Family Law — HY5 — marriage validity; divorce; equitable distribution & community property (HY5); spousal/child support (HY5); custody & UCCJEA (HY5). Group: Property.
+- Trusts & Estates — HY5 — will execution/revocation (HY5); intestacy; ademption/abatement/anti-lapse; will contests; express trusts (HY5); trustee duties & UPIA (HY5); resulting/constructive trusts. Group: Property.
+- Secured Transactions (UCC Art. 9) — HY4 — scope & collateral; attachment (HY5); perfection (HY5); priority & PMSI super-priority (HY5); default & disposition. Group: Commercial.
+
+## MPT (skills, closed library)
+- Issue spotting from closed file/library (HY5); fact analysis (HY5); objective memo format (HY5); persuasive brief/motion (HY5); client letter; statute/regulation interpretation; case synthesis from provided authorities (HY5).
+
+# Planner doctrine
+1. PRIORITY SCORE = 0.4·subjectWeight + 0.3·HY/5 + 0.2·confidenceGap + 0.1·recencyBoost. Apply explicitly.
+2. Weak (confidence ≤ 2) AND high-yield (HY ≥ 4) topics get DOUBLE the time of strong/low-yield areas.
+3. INTERLEAVE within related groups (Civil Litigation, Commercial, Crim, Property, Public Law, Skills) — never single-subject grinds.
+4. SPACED REPETITION — re-touch a topic at 1d, 3d, 7d, 14d. Anything stale (>10 days) earns a refresh block.
+5. MBE pace discipline: timed sets must use ~1.8 min/question. State Q count and minutes explicitly in titles.
+6. MEE essays MUST be written under 30-minute timing with IRAC structure; self-grade against NCBE point sheet style.
+7. MPT tasks MUST be drilled under full 90-minute timing at least weekly in the final 6 weeks.
+8. Mock exposure scales with proximity: 0–25% of weekly hours far out, 40–55% in the final 4 weeks (mix of MBE sets, full essays and one MPT/week).
+
+Tasks MUST be academically specific. Bad: "Study evidence". Good: "Timed 30-MBE set on hearsay exceptions (FRE 803/804) at 1.8 min/Q, then re-attempt missed Qs and write a one-page rule schematic". Today is ${new Date().toISOString().slice(0, 10)}.
+
+Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
+
+    const systemPrompt = examIsUbe ? ubeSystemPrompt : sqeSystemPrompt;
+
     const mockSummary = body.recentMockAccuracy?.length
       ? `\nRecent mock accuracy:\n${body.recentMockAccuracy.map((m) => `- ${m.module}: ${Math.round(m.accuracy * 100)}%`).join("\n")}`
       : "";
@@ -447,15 +492,23 @@ Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
       ? `\nLast revised (days ago):\n${body.recentlyStudied.map((m) => `- ${m.module}: ${m.daysAgo}d`).join("\n")}`
       : "";
 
-    const examPath = body.examPath ?? (body.examType === "SQE2" ? "SQE2" : "SQE1_FULL");
+    const defaultPath: ExamPath = examIsUbe ? "UBE_FULL" : body.examType === "SQE2" ? "SQE2" : "SQE1_FULL";
+    const examPath = body.examPath ?? defaultPath;
     const intensity = body.intensity ?? "intermediate";
     const coverageMode = body.coverageMode ?? "even";
-    const intensityGuidance: Record<string, string> = {
+    const sqeIntensityGuidance: Record<string, string> = {
       beginner: "Lead with concept-deepdive and active-recall. Limit timed mocks to 15-20% of weekly minutes. Build foundations before pace.",
       intermediate: "Balanced mix: ~40% SBA practice, 30% scenario/active recall, 20% deepdive, 10% mock. Standard interleaving.",
       advanced: "Heavy SBA + mock exposure (≥40% mocks/timed-sba). Surgical weak-area drills. Minimal concept time unless gaps exist.",
       resitter: "RESITTER MODE — assume prior coverage. ≥50% timed-sba/mixed-mock. Aggressive spaced repetition (1d/3d/7d/14d) on every flagged weak subtopic. Treat low-confidence + flagged subtopics as the entire revision spine.",
     };
+    const ubeIntensityGuidance: Record<string, string> = {
+      beginner: "Lead with concept-deepdive and active-recall on MBE-only subjects first. Limit timed MBE sets to 15-20% of weekly minutes. Defer full MPT timing drills until foundations are solid.",
+      intermediate: "Balanced mix: ~40% timed MBE practice, 25% MEE essay drills, 15% MPT skill work, 10% recall/deepdive, 10% mistake review. Standard interleaving across MBE topics.",
+      advanced: "Heavy timed practice (≥40% timed MBE + ≥20% full MEE essays under 30-min timing). Weekly full MPT. Surgical weak-subtopic drills.",
+      resitter: "RESITTER MODE — assume prior bar prep. ≥50% timed MBE + MEE essays under exam timing. Aggressive spaced repetition (1d/3d/7d/14d) on every flagged weak subtopic. Treat low-confidence + flagged subtopics as the entire revision spine.",
+    };
+    const intensityGuidance = examIsUbe ? ubeIntensityGuidance : sqeIntensityGuidance;
     const weakSubtopicSummary = body.modules
       .filter((m) => (m.weakSubtopics?.length ?? 0) > 0)
       .map((m) => `  - ${m.name}: ${m.weakSubtopics!.join("; ")}`)
@@ -463,6 +516,10 @@ Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
     const weakSubtopicBlock = weakSubtopicSummary
       ? `\nUSER-FLAGGED WEAK SUBTOPICS (give these noticeably more sessions, drills, mocks and spaced-repetition reps; reference by name in task titles):\n${weakSubtopicSummary}`
       : "";
+
+    const themeExample = examIsUbe
+      ? `"Repair weak areas in Evidence hearsay and Real Property mortgages, then apply through a timed 50-MBE mixed set and a full MEE essay"`
+      : `"Repair weak areas in Land Law and Business Law, then apply through mixed SBA practice"`;
 
     const userPrompt = `Design ${body.name}'s ${examPath} weekly strategy.
 Exam path: ${examPath} (${body.examType})
@@ -473,12 +530,12 @@ Available study time: ${body.hoursPerWeek} hours/week
 Confidence per module (1=weak, 5=strong):
 ${body.modules.map((m) => `- ${m.name}: ${m.confidence}/5`).join("\n")}${weakSubtopicBlock}${mockSummary}${recencySummary}
 
-Apply the planner doctrine. Voice MUST sound like a calm, premium legal revision coach — never robotic. Produce:
+Apply the planner doctrine. Voice MUST sound like a calm, premium ${examIsUbe ? "bar prep" : "legal revision"} coach — never robotic. Produce:
 (a) a 1–2 sentence overview that names the highest-priority subjects + reasoning (mention intensity and any weak subtopics by name);
 (b) weeklyStrategy.allocations across modules. For EACH allocation include: rationale tag, plain-English note, 2–4 EXACT subtopics to cover this week, the suggested study method (one sentence), the expected outcome (one sentence). Tilt toward high-yield + weak-area + recency-gap; suppress HY≤2 niche topics; flagged weak modules get a noticeably larger share;
-(c) todayTasks — academically-specific study blocks for THIS WEEK using interleaving + spaced repetition. Restrict tasks to the 2–3 priority subjects in weeklyFocus[0].modules PLUS at most 1–2 maintenance blocks on other subjects (so the week is coherent, not a random timetable). For EACH task include: title (names the exact subtopic), module, minutes, taskType, rationale, priority, why (one line), subtopic (canonical name), difficulty (foundational | core | challenging), output (the concrete artefact the user should produce), bucket (must | should | optional — split roughly 50% must, 30% should, 20% optional by minutes). CRITICAL: SUM of block minutes MUST equal ${body.hoursPerWeek * 60} (±10%). Typical count: ${Math.max(4, Math.ceil(body.hoursPerWeek * 60 / 75))}–${Math.ceil(body.hoursPerWeek * 60 / 45)} blocks. Allowed durations: 30/45/60/90/120;
-(d) weeklyFocus — up to 12 forward-looking weekly themes built around topic clusters with spaced-repetition re-touches. EACH week MUST have: a clear theme in plain English (e.g. "Repair weak areas in Land Law and Business Law, then apply through mixed SBA practice"), 2–3 priority modules only, a one-sentence reason explaining why those subjects were chosen this week, target hours, and a balance object {review, recall, practice, mistakes} as percentages summing to 100;
-(e) masteryTargets per module by exam day weighted by HY + paper weight + flagged weakness.
+(c) todayTasks — academically-specific study blocks for THIS WEEK using interleaving + spaced repetition. Restrict tasks to the 2–3 priority subjects in weeklyFocus[0].modules PLUS at most 1–2 maintenance blocks on other subjects (so the week is coherent, not a random timetable). For EACH task include: title (names the exact subtopic${examIsUbe ? "; for MBE blocks state Q count and timing at 1.8 min/Q; for MEE blocks state essay count and 30-min timing; for MPT blocks state 90-min timing" : ""}), module, minutes, taskType, rationale, priority, why (one line), subtopic (canonical name), difficulty (foundational | core | challenging), output (the concrete artefact the user should produce), bucket (must | should | optional — split roughly 50% must, 30% should, 20% optional by minutes). CRITICAL: SUM of block minutes MUST equal ${body.hoursPerWeek * 60} (±10%). Typical count: ${Math.max(4, Math.ceil(body.hoursPerWeek * 60 / 75))}–${Math.ceil(body.hoursPerWeek * 60 / 45)} blocks. Allowed durations: 30/45/60/90/120;
+(d) weeklyFocus — up to 12 forward-looking weekly themes built around topic clusters with spaced-repetition re-touches. EACH week MUST have: a clear theme in plain English (e.g. ${themeExample}), 2–3 priority modules only, a one-sentence reason explaining why those subjects were chosen this week, target hours, and a balance object {review, recall, practice, mistakes} as percentages summing to 100;
+(e) masteryTargets per module by exam day weighted by HY + ${examIsUbe ? "component" : "paper"} weight + flagged weakness.
 The allocations, tasks and weeklyFocus[0] MUST be internally consistent — same priority modules, same subtopics, no random interleaving of unrelated subjects unless explicitly framed as maintenance.`;
 
     const response = await fetch(
