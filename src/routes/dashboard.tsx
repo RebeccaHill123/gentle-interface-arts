@@ -856,7 +856,15 @@ function Stat({
 function AllocationBars({
   allocations,
 }: {
-  allocations: { module: string; hours: number; rationale: string; note: string }[];
+  allocations: {
+    module: string;
+    hours: number;
+    rationale: string;
+    note: string;
+    subtopics?: string[];
+    method?: string;
+    outcome?: string;
+  }[];
 }) {
   const total = Math.max(1, allocations.reduce((acc, a) => acc + a.hours, 0));
   return (
@@ -886,14 +894,46 @@ function AllocationBars({
           return (
             <li
               key={a.module}
-              className="flex items-start gap-3 py-3 first:pt-0 last:pb-0"
+              className="flex items-start gap-4 py-4 first:pt-0 last:pb-0"
             >
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-foreground">{a.module}</span>
                   <RationaleChip rationale={a.rationale} />
                 </div>
-                <p className="mt-1 text-[11px] text-muted-foreground/80">{a.note}</p>
+                <p className="text-[11px] text-muted-foreground/80">
+                  <span className="font-medium text-foreground/80">Why this week: </span>
+                  {a.note}
+                </p>
+                {a.subtopics && a.subtopics.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                      Focus subtopics
+                    </div>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {a.subtopics.map((s) => (
+                        <span
+                          key={s}
+                          className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {a.method && (
+                  <p className="text-[11px] text-muted-foreground/80">
+                    <span className="font-medium text-foreground/80">Suggested approach: </span>
+                    {a.method}
+                  </p>
+                )}
+                {a.outcome && (
+                  <p className="text-[11px] text-muted-foreground/80">
+                    <span className="font-medium text-foreground/80">Outcome: </span>
+                    {a.outcome}
+                  </p>
+                )}
               </div>
               <div className="shrink-0 text-right">
                 <div className="text-sm font-medium text-foreground">{a.hours}h</div>
@@ -904,6 +944,215 @@ function AllocationBars({
         })}
       </ul>
     </div>
+  );
+}
+
+const BUCKET_META: Record<string, { label: string; sub: string; cls: string }> = {
+  must: { label: "Must do this week", sub: "Highest-yield priorities", cls: "bg-pink/10 text-pink/90" },
+  should: { label: "Should do this week", sub: "Strengthens the week", cls: "bg-cyan/10 text-cyan/90" },
+  optional: { label: "Optional stretch", sub: "Catch-up or extension", cls: "bg-foreground/[0.05] text-muted-foreground" },
+};
+
+const DIFFICULTY_LABEL: Record<string, string> = {
+  foundational: "Foundational",
+  core: "Core",
+  challenging: "Challenging",
+};
+
+function BlockGroups({
+  tasks,
+  completedTaskIds,
+  onToggle,
+}: {
+  tasks: import("@/lib/plan-store").StrategyTask[];
+  completedTaskIds: string[];
+  onToggle: (i: number) => void;
+}) {
+  const indexed = tasks.map((t, i) => ({ t, i }));
+  const groups: Array<{ key: "must" | "should" | "optional" }> = [
+    { key: "must" }, { key: "should" }, { key: "optional" },
+  ];
+  const fallbackBucket = (t: import("@/lib/plan-store").StrategyTask): "must" | "should" | "optional" =>
+    t.bucket ?? (t.priority === "high" ? "must" : t.priority === "low" ? "optional" : "should");
+
+  return (
+    <div className="space-y-6">
+      {groups.map(({ key }) => {
+        const items = indexed.filter(({ t }) => fallbackBucket(t) === key);
+        if (items.length === 0) return null;
+        const meta = BUCKET_META[key];
+        const totalMin = items.reduce((acc, x) => acc + x.t.minutes, 0);
+        return (
+          <div key={key} className="space-y-2">
+            <div className="flex items-baseline justify-between">
+              <div className="flex items-center gap-2">
+                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${meta.cls}`}>
+                  {meta.label}
+                </span>
+                <span className="text-[11px] text-muted-foreground/70">{meta.sub}</span>
+              </div>
+              <span className="text-[11px] text-muted-foreground/70">
+                {items.length} block{items.length === 1 ? "" : "s"} · {totalMin}m
+              </span>
+            </div>
+            <ul className="space-y-2">
+              {items.map(({ t, i }) => {
+                const done = completedTaskIds.includes(String(i));
+                return (
+                  <li
+                    key={i}
+                    className={`group flex items-start gap-4 rounded-2xl p-5 transition-colors ${
+                      done ? "bg-emerald-400/[0.04]" : "bg-foreground/[0.015] hover:bg-foreground/[0.035]"
+                    }`}
+                  >
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={done}
+                          aria-label={done ? `Mark "${t.title}" incomplete` : `Mark "${t.title}" complete`}
+                          onClick={() => onToggle(i)}
+                          className={`relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 outline-none transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-pink/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-90 ${
+                            done
+                              ? "border-transparent bg-gradient-pink-blue text-primary-foreground shadow-glow"
+                              : "border-muted-foreground/40 bg-background hover:border-pink hover:bg-pink/10"
+                          }`}
+                        >
+                          {done ? (
+                            <Check className="h-5 w-5" strokeWidth={3} />
+                          ) : (
+                            <Check className="h-4 w-4 text-muted-foreground/0 transition-opacity group-hover:text-pink/60 group-hover:opacity-100" strokeWidth={3} />
+                          )}
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="right">
+                        {done ? "Mark incomplete" : "Mark complete"}
+                      </TooltipContent>
+                    </Tooltip>
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <p className={`text-sm font-medium leading-snug ${done ? "text-muted-foreground line-through decoration-emerald-400/60" : "text-foreground"}`}>
+                        {t.title}
+                      </p>
+                      <div className={`flex flex-wrap items-center gap-1.5 ${done ? "opacity-60" : ""}`}>
+                        <span className="text-[11px] text-muted-foreground">{t.module}</span>
+                        {t.rationale && <RationaleChip rationale={t.rationale} />}
+                        {t.taskType && <TypeChip type={t.taskType} />}
+                        {t.difficulty && (
+                          <span className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground">
+                            {DIFFICULTY_LABEL[t.difficulty] ?? t.difficulty}
+                          </span>
+                        )}
+                      </div>
+                      {t.subtopic && (
+                        <p className={`text-[11px] text-muted-foreground/80 ${done ? "opacity-60" : ""}`}>
+                          <span className="font-medium text-foreground/80">Focus subtopic: </span>
+                          {t.subtopic}
+                        </p>
+                      )}
+                      {t.why && (
+                        <p className={`text-[11px] italic text-muted-foreground/80 ${done ? "opacity-60" : ""}`}>
+                          {t.why}
+                        </p>
+                      )}
+                      {t.output && (
+                        <p className={`text-[11px] text-muted-foreground/80 ${done ? "opacity-60" : ""}`}>
+                          <span className="font-medium text-foreground/80">Outcome: </span>
+                          {t.output}
+                        </p>
+                      )}
+                    </div>
+                    <span className={`shrink-0 text-sm font-semibold ${done ? "text-emerald-300" : "text-cyan"}`}>
+                      {done ? "Done" : `${t.minutes}m`}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function WeeklyFocusList({
+  weeks,
+}: {
+  weeks: import("@/lib/plan-store").WeeklyFocusEntry[];
+}) {
+  return (
+    <ol className="divide-y divide-border/40">
+      {weeks.slice(0, 6).map((w, i) => {
+        const balance = w.balance;
+        const items: Array<{ key: string; label: string; value: number; cls: string }> = balance
+          ? [
+              { key: "review", label: "Review", value: balance.review, cls: "bg-cyan/60" },
+              { key: "recall", label: "Recall", value: balance.recall, cls: "bg-pink/60" },
+              { key: "practice", label: "Timed practice", value: balance.practice, cls: "bg-violet-400/60" },
+              { key: "mistakes", label: "Mistake review", value: balance.mistakes, cls: "bg-amber-400/60" },
+            ]
+          : [];
+        return (
+          <li key={w.week} className="py-4 first:pt-0 last:pb-0">
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-medium text-muted-foreground/80">
+                Week {w.week}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-[11px] text-muted-foreground/70">{w.hours}h</div>
+                {i === 0 && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-pink/10 px-2 py-0.5 text-[10px] font-medium text-pink/90">
+                    <Flame className="h-2.5 w-2.5" /> this week
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="mt-1.5 text-sm font-medium text-foreground">
+              {w.theme}
+            </div>
+            {w.reason && (
+              <p className="mt-1.5 text-[11px] text-muted-foreground/80">
+                <span className="font-medium text-foreground/80">Why this week? </span>
+                {w.reason}
+              </p>
+            )}
+            <div className="mt-2.5 flex flex-wrap gap-1.5">
+              {w.modules.slice(0, 3).map((m) => (
+                <span
+                  key={m}
+                  className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
+                >
+                  {m}
+                </span>
+              ))}
+            </div>
+            {items.length > 0 && (
+              <div className="mt-3 space-y-1.5">
+                <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
+                  {items.map((b) => (
+                    <div
+                      key={b.key}
+                      className={`${b.cls} transition-all`}
+                      style={{ width: `${b.value}%` }}
+                      title={`${b.label}: ${b.value}%`}
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted-foreground/70">
+                  {items.map((b) => (
+                    <span key={b.key} className="inline-flex items-center gap-1">
+                      <span className={`h-1.5 w-1.5 rounded-full ${b.cls}`} />
+                      {b.label} {b.value}%
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 
