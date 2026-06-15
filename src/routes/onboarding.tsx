@@ -795,7 +795,7 @@ function StepIntensity({
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 2"
+        kicker="Step 3"
         title={<>Tell us about <span className="text-gradient-pink-violet">you</span></>}
         sub="We'll calibrate the plan's intensity, pacing and task mix to match."
       />
@@ -925,7 +925,7 @@ function StepCoverage({
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 3"
+        kicker="Step 4"
         title={<>How should we shape your coverage?</>}
         sub="Both modes use Tentra's adaptive engine — Advanced just listens harder to your weak spots."
       />
@@ -1012,7 +1012,7 @@ function StepFocus({
 
       <div className="space-y-2">
         {modules.map((m, idx) => {
-          const subj = getSubjectByName(m.name);
+          const subtopics = getSubtopicsForSubject(m.name);
           const isOpen = expanded === m.name;
           const weakCount = m.weakSubtopics?.length ?? 0;
           return (
@@ -1049,7 +1049,7 @@ function StepFocus({
                     </button>
                   ))}
                 </div>
-                {coverageMode === "advanced" && subj && subj.subtopics.length > 0 && (
+                {coverageMode === "advanced" && subtopics.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setExpanded(isOpen ? null : m.name)}
@@ -1067,7 +1067,7 @@ function StepFocus({
               </div>
 
               <AnimatePresence initial={false}>
-                {coverageMode === "advanced" && isOpen && subj && (
+                {coverageMode === "advanced" && isOpen && subtopics.length > 0 && (
                   <motion.div
                     key="subs"
                     initial={{ height: 0, opacity: 0 }}
@@ -1081,7 +1081,7 @@ function StepFocus({
                         Tap subtopics you find hardest
                       </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {subj.subtopics.map((t) => {
+                        {subtopics.map((t) => {
                           const selected = (m.weakSubtopics ?? []).includes(t.name);
                           return (
                             <button
