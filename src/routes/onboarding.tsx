@@ -206,19 +206,24 @@ function OnboardingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Step 1
-  const [examPath, setExamPath] = useState<ExamPath>(draft?.examPath ?? "SQE1_FULL");
+  // Step 1 — which exam
+  const [examType, setExamType] = useState<ExamType>(draft?.examType ?? "SQE1");
 
-  // Step 2
+  // Step 2 — which path within that exam
+  const [examPath, setExamPath] = useState<ExamPath>(
+    draft?.examPath ?? defaultPathForExam(draft?.examType ?? "SQE1"),
+  );
+
+  // Step 3
   const [name, setName] = useState(draft?.name ?? "");
   const [examDate, setExamDate] = useState(draft?.examDate ?? "");
   const [hoursPerWeek, setHoursPerWeek] = useState(draft?.hoursPerWeek ?? 10);
   const [intensity, setIntensity] = useState<IntensityTier>(draft?.intensity ?? "intermediate");
 
-  // Step 3
+  // Step 4
   const [coverageMode, setCoverageMode] = useState<CoverageMode>(draft?.coverageMode ?? "even");
 
-  // Step 4
+  // Step 5
   const [modules, setModules] = useState<ModuleConfidence[]>(draft?.modules ?? []);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -252,9 +257,15 @@ function OnboardingPage() {
     })();
   }, [draft?.name, navigate]);
 
+  // If user switches exam, snap to a sensible default path for that exam.
+  useEffect(() => {
+    const valid = pathOptionsForExam(examType).some((o) => o.value === examPath);
+    if (!valid) setExamPath(defaultPathForExam(examType));
+  }, [examType, examPath]);
+
   // Reset module list when path changes
   useEffect(() => {
-    const list = getSubjectsForPath(examPath);
+    const list = getSubjectsForExamPath(examPath);
     if (draft?.examPath === examPath && draft.modules.length > 0) return;
     setModules(
       list.map((s, i) => ({
@@ -271,6 +282,7 @@ function OnboardingPage() {
     if (checking) return;
     saveOnboardingDraft({
       step,
+      examType,
       examPath,
       name,
       examDate,
@@ -279,7 +291,7 @@ function OnboardingPage() {
       coverageMode,
       modules,
     });
-  }, [checking, step, examPath, name, examDate, hoursPerWeek, intensity, coverageMode, modules]);
+  }, [checking, step, examType, examPath, name, examDate, hoursPerWeek, intensity, coverageMode, modules]);
 
   const updateConfidence = (idx: number, value: number) => {
     setModules((prev) =>
