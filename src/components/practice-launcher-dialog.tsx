@@ -242,7 +242,7 @@ export function PracticeLauncherDialog({
     setLaunching(true);
     const rationale =
       type === "mini-flk" && paper
-        ? `Mini ${paper} mock — 20 SBAs sampled across ${FLK_SUBJECT_LIST[paper]}, weighted by syllabus share.`
+        ? `Mini ${paper} mock — 20 SBAs sampled across ${PAPER_SUBJECT_LIST[paper]}, weighted by syllabus share.`
         : reasonBits.length
           ? `Generated because ${reasonBits.join(", ")}.`
           : `Generated from a balanced view of your syllabus.`;
@@ -262,7 +262,7 @@ export function PracticeLauncherDialog({
     // mixed-subject questions covering the whole paper.
     const moduleForGen =
       type === "mini-flk" && paper
-        ? `${paper} mixed paper (${FLK_SUBJECT_LIST[paper]})`
+        ? `${paper} mixed paper (${PAPER_SUBJECT_LIST[paper]})`
         : targetSubject;
 
     const config = {
