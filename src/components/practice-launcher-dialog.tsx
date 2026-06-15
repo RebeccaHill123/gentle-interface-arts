@@ -83,8 +83,8 @@ const PRACTICE_TYPES: {
   },
   {
     id: "mini-flk",
-    title: "Mini FLK Mock",
-    desc: "Exam-style sample drawn from a single FLK paper.",
+    title: "Mini Paper Mock",
+    desc: "Exam-style sample drawn from a single paper.",
     icon: Scale,
     defaultMinutes: 30,
     defaultQuestions: 20,
