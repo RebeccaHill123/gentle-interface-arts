@@ -272,7 +272,7 @@ function LandingPage() {
               </h2>
             </div>
             <div className="grid gap-4 md:grid-cols-3 md:gap-6">
-              <StepCard num="01" icon={<Calendar className="h-4 w-4" />} title="Set your exam date" body="Anchor the plan to your SQE1 or SQE2 sitting." />
+              <StepCard num="01" icon={<Calendar className="h-4 w-4" />} title="Set your exam date" body="Anchor the plan to your SQE or NY UBE sitting." />
               <StepCard num="02" icon={<Brain className="h-4 w-4" />} title="Map your confidence" body="A quick diagnostic across every module." />
               <StepCard num="03" icon={<Target className="h-4 w-4" />} title="Execute daily" body="A precise schedule that adapts as you progress." />
             </div>
