@@ -29,7 +29,7 @@ import {
 import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
 import { deriveAnalytics, type SubjectStat } from "@/lib/analytics-derive";
-import { isUbePath } from "@/lib/exam-paths";
+
 
 export type PaperKey = "FLK1" | "FLK2" | "MBE" | "MEE" | "MPT";
 
