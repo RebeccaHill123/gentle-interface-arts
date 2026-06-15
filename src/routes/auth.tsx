@@ -359,6 +359,27 @@ function AuthPage() {
               </div>
             )}
 
+            {isSignup && (
+              <label className="flex cursor-pointer select-none items-start gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={agreeTerms}
+                  onChange={(e) => { setAgreeTerms(e.target.checked); reset(); }}
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-pink"
+                  required
+                />
+                <span>
+                  I agree to the{" "}
+                  <Link
+                    to="/terms"
+                    className="font-medium text-foreground underline-offset-4 hover:underline"
+                  >
+                    Terms of Use
+                  </Link>
+                </span>
+              </label>
+            )}
+
             {!isSignup && (
               <label className="flex cursor-pointer select-none items-center gap-2 text-sm text-muted-foreground">
                 <input
