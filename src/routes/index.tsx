@@ -27,17 +27,17 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
     meta: [
-      { title: "Tentra — SQE1 & SQE2 revision app with personalised study plan" },
+      { title: "Tentra — SQE & NY UBE revision app with personalised study plan" },
       {
         name: "description",
         content:
-          "The SQE revision app for SQE1, FLK1, FLK2 and SQE2. Personalised study planner, MCQ practice, mock exams, AI coach and progress tracking for UK law students.",
+          "The revision app for SQE1, SQE2 and the NY UBE (MBE, MEE, MPT). Personalised study planner, MCQ practice, mock exams, AI coach and progress tracking for future lawyers.",
       },
-      { property: "og:title", content: "Tentra — SQE1 & SQE2 revision app with personalised study plan" },
+      { property: "og:title", content: "Tentra — SQE & NY UBE revision app with personalised study plan" },
       {
         property: "og:description",
         content:
-          "Personalised SQE study schedule, MCQ practice and mock exams. Built for SQE1, FLK1, FLK2 and SQE2 candidates.",
+          "Personalised study schedule, MCQ practice and mock exams. Built for SQE and NY UBE candidates.",
       },
       { property: "og:url", content: "https://tentraapp.com/" },
       { property: "og:type", content: "website" },
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/")({
           operatingSystem: "Web",
           url: "https://tentraapp.com/",
           description:
-            "Personalised SQE revision app with study planner, MCQ practice, mock exams and AI coach for SQE1, FLK1, FLK2 and SQE2.",
+            "Personalised revision app with study planner, MCQ practice, mock exams and AI coach for SQE1, SQE2 and NY UBE candidates.",
           offers: { "@type": "Offer", price: "0", priceCurrency: "GBP" },
         }),
       },
@@ -160,13 +160,13 @@ function LandingPage() {
 
                 <h1 className="mt-7 text-[2rem] font-light leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.4rem] md:text-[2.85rem] lg:text-[3.1rem]">
                   The performance platform for{" "}
-                  <span className="text-gradient-pink-violet font-light">SQE candidates</span>
+                  <span className="text-gradient-pink-violet font-light">future lawyers</span>
                   <span className="text-foreground">.</span>
                 </h1>
 
                 <p className="mx-auto mt-6 max-w-[30rem] text-[15px] leading-[1.65] text-muted-foreground md:mx-0 md:text-[16.5px]">
-                  Adaptive study plans, performance analytics and AI coaching — built for the
-                  demands of qualification.
+                  Adaptive study plans, performance analytics and AI coaching — built for the SQE
+                  and the New York UBE.
                 </p>
 
                 <div className="mt-9 flex flex-col items-center gap-3 md:flex-row md:items-center md:justify-start">
@@ -236,10 +236,10 @@ function LandingPage() {
           {/* TRUST STRIP — elegant hairline row */}
           <section className="mx-auto max-w-5xl px-5 pb-16 md:px-8 md:pb-28">
             <div className="grid grid-cols-2 gap-y-4 border-y border-border/60 py-5 md:grid-cols-4 md:divide-x md:divide-border/60 md:py-6">
-              <TrustItem icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE1 & SQE2" />
+              <TrustItem icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE & NY UBE" />
               <TrustItem icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive study planning" />
               <TrustItem icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance analytics" />
-              <TrustItem icon={<Sparkles className="h-3.5 w-3.5" />} label="For future solicitors" />
+              <TrustItem icon={<Sparkles className="h-3.5 w-3.5" />} label="For future lawyers" />
             </div>
           </section>
 
@@ -272,7 +272,7 @@ function LandingPage() {
               </h2>
             </div>
             <div className="grid gap-4 md:grid-cols-3 md:gap-6">
-              <StepCard num="01" icon={<Calendar className="h-4 w-4" />} title="Set your exam date" body="Anchor the plan to your SQE1 or SQE2 sitting." />
+              <StepCard num="01" icon={<Calendar className="h-4 w-4" />} title="Set your exam date" body="Anchor the plan to your SQE or NY UBE sitting." />
               <StepCard num="02" icon={<Brain className="h-4 w-4" />} title="Map your confidence" body="A quick diagnostic across every module." />
               <StepCard num="03" icon={<Target className="h-4 w-4" />} title="Execute daily" body="A precise schedule that adapts as you progress." />
             </div>
@@ -288,7 +288,7 @@ function LandingPage() {
                 was getting closer."
               </p>
               <p className="mt-6 text-[10.5px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                Built for the next generation of solicitors
+                Built for the next generation of lawyers
               </p>
             </div>
           </section>
@@ -335,7 +335,7 @@ function LandingPage() {
                 <span className="font-display text-[11px] font-semibold text-primary-foreground">T</span>
               </span>
               <span className="font-medium tracking-tight text-foreground">Tentra</span>
-              <span className="hidden sm:inline">· For the next generation of solicitors.</span>
+              <span className="hidden sm:inline">· For the next generation of lawyers.</span>
             </div>
             <nav className="flex items-center gap-5">
               <Link to="/terms" className="transition-colors hover:text-foreground">
