@@ -125,12 +125,7 @@ const DURATIONS: { v: 10 | 20 | 30 | 45 | 90; label: string }[] = [
 
 export type PracticeLauncherPreset = {
   type: PracticeType;
-  paper?: "FLK1" | "FLK2";
-};
-
-const FLK_SUBJECT_LIST: Record<"FLK1" | "FLK2", string> = {
-  FLK1: "Contract, Tort, Business Law, Dispute Resolution, Constitutional & Administrative, Legal System, Ethics",
-  FLK2: "Property Practice, Wills & Estates, Trusts, Land Law, Criminal Law, Criminal Practice, Solicitors' Accounts, Ethics",
+  paper?: PaperKey;
 };
 
 export function PracticeLauncherDialog({
@@ -149,7 +144,7 @@ export function PracticeLauncherDialog({
   const [duration, setDuration] = useState<10 | 20 | 30 | 45 | 90>(20);
   const [adaptive, setAdaptive] = useState(true);
   const [launching, setLaunching] = useState(false);
-  const [paper, setPaper] = useState<"FLK1" | "FLK2" | undefined>(undefined);
+  const [paper, setPaper] = useState<PaperKey | undefined>(undefined);
 
   const analytics = useMemo(() => deriveAnalytics(loadPlan()), [open]);
   const subjects: SubjectStat[] = analytics.subjects;
