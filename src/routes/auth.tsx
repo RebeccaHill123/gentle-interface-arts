@@ -44,6 +44,9 @@ const signUpSchema = z
     email: z.string().trim().email("Enter a valid email").max(255),
     password: z.string().min(8, "Password must be at least 8 characters").max(128),
     confirmPassword: z.string().min(1, "Please confirm your password").max(128),
+    agreeTerms: z.literal(true, {
+      errorMap: () => ({ message: "You must agree to the Terms of Use to continue" }),
+    }),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: "Passwords do not match",
@@ -65,6 +68,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [verifySent, setVerifySent] = useState<string | null>(null);
