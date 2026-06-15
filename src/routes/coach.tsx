@@ -564,14 +564,20 @@ function CoachPage() {
                     icon: BookOpenCheck,
                     title: "A concept, clearly",
                     body: "Pick any topic — I'll teach it with structure, authority and a worked example.",
-                    prompt: "Explain a tricky SQE concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?",
+                    prompt: isUbe
+                      ? "Explain a tricky bar exam concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?"
+                      : "Explain a tricky SQE concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?",
                   },
                   {
                     eyebrow: "Test",
                     icon: Compass,
                     title: "My understanding",
-                    body: "I'll generate SBA-style questions and mark your reasoning as an examiner would.",
-                    prompt: "Test my understanding with 5 SQE1-style SBA questions on a topic of my choice. Mark each answer and explain the reasoning.",
+                    body: isUbe
+                      ? "I'll generate MBE-style questions and mark your reasoning as an examiner would."
+                      : "I'll generate SBA-style questions and mark your reasoning as an examiner would.",
+                    prompt: isUbe
+                      ? "Test my understanding with 5 MBE-style multiple-choice questions on a topic of my choice. Mark each answer and explain the reasoning."
+                      : "Test my understanding with 5 SQE1-style SBA questions on a topic of my choice. Mark each answer and explain the reasoning.",
                   },
                   {
                     eyebrow: "Review",
