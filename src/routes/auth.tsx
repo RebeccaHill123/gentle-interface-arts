@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,9 @@ const signUpSchema = z
     email: z.string().trim().email("Enter a valid email").max(255),
     password: z.string().min(8, "Password must be at least 8 characters").max(128),
     confirmPassword: z.string().min(1, "Please confirm your password").max(128),
+    agreeTerms: z.literal(true, {
+      errorMap: () => ({ message: "You must agree to the Terms of Use to continue" }),
+    }),
   })
   .refine((d) => d.password === d.confirmPassword, {
     message: "Passwords do not match",
@@ -65,6 +68,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [agreeTerms, setAgreeTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [verifySent, setVerifySent] = useState<string | null>(null);
@@ -103,7 +107,7 @@ function AuthPage() {
     setSubmitting(true);
     try {
       if (mode === "signup") {
-        const parsed = signUpSchema.safeParse({ firstName, lastName, email, password, confirmPassword });
+        const parsed = signUpSchema.safeParse({ firstName, lastName, email, password, confirmPassword, agreeTerms });
         if (!parsed.success) {
           setError(parsed.error.issues[0]?.message ?? "Invalid input");
           return;
@@ -353,6 +357,27 @@ function AuthPage() {
                   required
                 />
               </div>
+            )}
+
+            {isSignup && (
+              <label className="flex cursor-pointer select-none items-start gap-2 text-sm text-muted-foreground">
+                <input
+                  type="checkbox"
+                  checked={agreeTerms}
+                  onChange={(e) => { setAgreeTerms(e.target.checked); reset(); }}
+                  className="mt-0.5 h-4 w-4 rounded border-border accent-pink"
+                  required
+                />
+                <span>
+                  I agree to the{" "}
+                  <Link
+                    to="/terms"
+                    className="font-medium text-foreground underline-offset-4 hover:underline"
+                  >
+                    Terms of Use
+                  </Link>
+                </span>
+              </label>
             )}
 
             {!isSignup && (
