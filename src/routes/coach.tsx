@@ -342,11 +342,11 @@ function CoachPage() {
       if (weakest) {
         dyn.push({
           label: `Drill ${weakest.module}`,
-          prompt: `Build me a 10-question SBA drill on ${weakest.module}, targeting my weakest sub-topics, with answers and explanations.`,
+          prompt: `Build me a 10-question ${isUbe ? "MBE" : "SBA"} drill on ${weakest.module}, targeting my weakest sub-topics, with answers and explanations.`,
         });
       }
     }
-    return [...dyn, ...SUGGESTIONS_BY_MODE[mode]].slice(0, 5);
+    return [...dyn, ...getSuggestionsByMode(mode, isUbe)].slice(0, 5);
   }, [mode, analytics]);
 
   const canSend = input.trim().length > 0 && !isStreaming;
