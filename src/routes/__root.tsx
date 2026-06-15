@@ -32,28 +32,28 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Tentra — The Revision App for SQE Students" },
+      { title: "Tentra — The Revision App for SQE & NY UBE Students" },
       {
         name: "description",
         content:
-          "Tentra is the SQE revision app for SQE1, FLK1, FLK2 and SQE2 — personalised study plans, MCQ practice, mock exams, AI coach and progress tracking for UK law students.",
+          "Tentra is the revision app for SQE1, SQE2 and the NY UBE — personalised study plans, MCQ practice, mock exams, AI coach and progress tracking for future lawyers.",
       },
       { name: "author", content: "Tentra" },
       { property: "og:site_name", content: "Tentra" },
-      { property: "og:title", content: "Tentra — SQE Revision for Ambitious Law Students" },
+      { property: "og:title", content: "Tentra — SQE & NY UBE Revision for Ambitious Law Students" },
       {
         property: "og:description",
         content:
-          "Personalised SQE study plans, MCQ practice and mock exams for SQE1, FLK1, FLK2 and SQE2 candidates.",
+          "Personalised study plans, MCQ practice and mock exams for SQE and NY UBE candidates.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@tentraapp" },
-      { name: "twitter:title", content: "Tentra — SQE Revision for Ambitious Law Students" },
+      { name: "twitter:title", content: "Tentra — SQE & NY UBE Revision for Ambitious Law Students" },
       {
         name: "twitter:description",
         content:
-          "Personalised SQE study plans, MCQ practice and mock exams for SQE1, FLK1, FLK2 and SQE2 candidates.",
+          "Personalised study plans, MCQ practice and mock exams for SQE and NY UBE candidates.",
       },
       { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a7ddf46a-3a4f-474c-85b6-c3f508c35fbc/id-preview-1c985e4a--c0d0fdd1-6a49-47d4-acb7-092208251a0f.lovable.app-1778503272714.png" },
       { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a7ddf46a-3a4f-474c-85b6-c3f508c35fbc/id-preview-1c985e4a--c0d0fdd1-6a49-47d4-acb7-092208251a0f.lovable.app-1778503272714.png" },
