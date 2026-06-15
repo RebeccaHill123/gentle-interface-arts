@@ -21,6 +21,8 @@ import {
   CheckCircle2,
   RefreshCw,
   ChevronDown,
+  Scale,
+  Landmark,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -38,9 +40,12 @@ import {
   type StudyPlan,
 } from "@/lib/plan-store";
 import {
-  getSubjectsForPath,
-  getSubjectByName,
-} from "@/lib/sqe-syllabus";
+  getSubjectsForExamPath,
+  getSubtopicsForSubject,
+  defaultPathForExam,
+  pathToExamType,
+  isUbePath,
+} from "@/lib/exam-paths";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/onboarding")({
