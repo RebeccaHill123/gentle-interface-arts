@@ -155,7 +155,10 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
     })
     .sort((a, b) => b.score - a.score);
 
+  const priorityCount = Math.min(3, scoredModules.length || 1);
+  const priorityModules = scoredModules.slice(0, priorityCount);
   const focusModules = scoredModules.slice(0, Math.min(6, scoredModules.length || 1));
+
   const durations: TaskMinutes[] = [];
   let remaining = targetMinutes;
   while (remaining > 0) {
@@ -164,56 +167,163 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
     remaining -= next;
   }
 
+  const methodFor = (taskType: StudyTask["taskType"], minutes: number): string => {
+    switch (taskType) {
+      case "timed-sba": return `${Math.max(10, Math.round(minutes / 1.6))} timed SBAs with full review of every incorrect answer`;
+      case "mixed-mock": return `${Math.max(15, Math.round(minutes / 1.6))}-question mixed mock under exam timing, then mark-scheme reflection`;
+      case "mistake-review": return "Re-attempt 3 recent mistakes, then articulate the rule each one tested";
+      case "scenario-drill": return "Work through 2–3 fact patterns, stating the issue, rule, application and conclusion aloud";
+      case "active-recall": return "Closed-book recall notes, then self-grade against your condensed outline";
+      case "concept-deepdive": return "Read the SRA spec line, then build a one-page schematic of the doctrine";
+      case "ethics-application": return "Apply SRA Principles to 3 short scenarios and write the regulatory response";
+      default: return "Focused study block";
+    }
+  };
+  const outputFor = (taskType: StudyTask["taskType"]): string => {
+    switch (taskType) {
+      case "timed-sba": return "Log 3 recurring mistakes into your mistake log";
+      case "mixed-mock": return "Capture your accuracy and your two weakest topics";
+      case "mistake-review": return "Mark each mistake as resolved or carry forward";
+      case "scenario-drill": return "One condensed IRAC paragraph per scenario";
+      case "active-recall": return "A one-page recall sheet you can re-test in 3 days";
+      case "concept-deepdive": return "One schematic added to your revision binder";
+      case "ethics-application": return "Three-line regulatory note per scenario";
+      default: return "A short reflection on what you learned";
+    }
+  };
+
   const taskTypes: StudyTask["taskType"][] = ["timed-sba", "active-recall", "scenario-drill", "mistake-review", "ethics-application", "mixed-mock"];
-  const rationales: StudyTask["rationale"][] = ["weak-area", "high-yield", "mixed-practice", "recency-gap", "ethics-cornerstone", "mock-prep"];
-  const todayTasks = durations.map((minutes, index): StudyTask => {
-    const module = focusModules[index % focusModules.length] ?? scoredModules[0];
+  const todayTasks: StudyTask[] = durations.map((minutes, index) => {
+    // Bias first ~60% of blocks toward priority modules so the week stays coherent.
+    const useModule = index < Math.ceil(durations.length * 0.6)
+      ? priorityModules[index % priorityModules.length]
+      : focusModules[index % focusModules.length];
+    const module = useModule ?? scoredModules[0];
     const weak = module.weakSubtopics ?? [];
     const subtopics = weak.length > 0 ? weak : module.subject.subtopics;
     const topicA = subtopics[index % subtopics.length];
     const topicB = subtopics[(index + 2) % subtopics.length] ?? topicA;
     const isWeak = module.confidence <= 2 || weak.length > 0;
     const isStale = (module.recencyDays ?? 99) > 10;
-    const rationale = isStale ? "recency-gap" : isWeak ? "weak-area" : rationales[index % rationales.length];
+    const rationale: StudyTask["rationale"] = isStale ? "recency-gap" : isWeak ? "weak-area" : (["high-yield","mixed-practice","mock-prep"] as const)[index % 3];
     const isResitter = intensity === "resitter";
-    const baseTaskType = isResitter && index % 3 === 2 ? "mixed-mock" : isWeak && intensity === "beginner" ? "concept-deepdive" : taskTypes[index % taskTypes.length];
-    const taskType = module.name.includes("Ethics") || rationale === "ethics-cornerstone" ? "ethics-application" : baseTaskType;
+    const baseTaskType: StudyTask["taskType"] = isResitter && index % 3 === 2
+      ? "mixed-mock"
+      : isWeak && intensity === "beginner"
+        ? "concept-deepdive"
+        : taskTypes[index % taskTypes.length];
+    const taskType: StudyTask["taskType"] = module.name.includes("Ethics") || rationale === "ethics-cornerstone" ? "ethics-application" : baseTaskType;
+    const titleVerb = taskType === "timed-sba" ? "Timed SBA set" :
+      taskType === "mixed-mock" ? "Mixed mock set" :
+      taskType === "active-recall" ? "Active recall drill" :
+      taskType === "mistake-review" ? "Mistake-log review" :
+      taskType === "concept-deepdive" ? "Concept deep-dive" :
+      taskType === "ethics-application" ? "Ethics application" :
+      "Scenario drill";
+    const difficulty: TaskDifficulty = module.confidence <= 2 ? "foundational" : module.subject.highYield >= 4 ? "challenging" : "core";
+    const priority: "high" | "medium" | "low" = module.score >= 0.55 ? "high" : module.score >= 0.42 ? "medium" : "low";
     return {
-      title: `${taskType === "timed-sba" || taskType === "mixed-mock" ? "Timed mixed SBA set" : taskType === "active-recall" ? "Active recall drill" : taskType === "mistake-review" ? "Mistake-log review" : taskType === "concept-deepdive" ? "Concept deep-dive" : "Scenario drill"} on ${topicA}${topicB !== topicA ? ` and ${topicB}` : ""}`,
+      title: `${titleVerb}: ${topicA}${topicB !== topicA ? ` & ${topicB}` : ""}`,
       module: module.name,
       minutes,
       taskType,
       rationale,
-      priority: module.score >= 0.55 ? "high" : module.score >= 0.42 ? "medium" : "low",
-      why: `${module.name} is prioritised for ${weak.length > 0 ? `flagged weak subtopics (${weak.slice(0, 2).join(", ")})` : isWeak ? "low confidence" : module.subject.highYield >= 4 ? "high-yield coverage" : "balanced interleaving"}${isStale ? " and revision staleness" : ""}.`,
+      priority,
+      why: `${module.name} is prioritised ${weak.length > 0 ? `because you flagged ${weak.slice(0, 2).join(" and ")} as weak` : isWeak ? "because confidence is still low here" : module.subject.highYield >= 4 ? "for its high SQE yield" : "to keep related topics fresh"}${isStale ? " and it hasn't been touched recently" : ""}.`,
+      subtopic: topicA,
+      difficulty,
+      output: outputFor(taskType),
+      bucket: undefined, // assigned below by priority pass
     };
   });
 
+  // Assign Must / Should / Optional buckets by priority and order.
+  const sortedIdx = todayTasks
+    .map((t, i) => ({ i, score: (t.priority === "high" ? 3 : t.priority === "medium" ? 2 : 1) * 10 - i }))
+    .sort((a, b) => b.score - a.score)
+    .map((x) => x.i);
+  const mustCount = Math.max(1, Math.round(sortedIdx.length * 0.5));
+  const shouldCount = Math.max(0, Math.round(sortedIdx.length * 0.3));
+  sortedIdx.forEach((idx, rank) => {
+    todayTasks[idx].bucket = rank < mustCount ? "must" : rank < mustCount + shouldCount ? "should" : "optional";
+  });
+
   const totalScore = focusModules.reduce((sum, module) => sum + module.score, 0) || 1;
-  const allocations = focusModules.map((module) => ({
-    module: module.name,
-    hours: Math.round((body.hoursPerWeek * module.score / totalScore) * 10) / 10,
-    rationale: (module.confidence <= 2 ? "weak-area" : module.subject.highYield >= 5 ? "high-yield" : "mixed-practice") as StudyTask["rationale"],
-    note: `${module.subject.groups.join("/")} cluster; HY${module.subject.highYield}, confidence ${module.confidence}/5.`,
-  }));
+  const allocations: Allocation[] = focusModules.map((module) => {
+    const weak = module.weakSubtopics ?? [];
+    const focusList = (weak.length > 0 ? weak : module.subject.subtopics).slice(0, 4);
+    const rationale: StudyTask["rationale"] = module.confidence <= 2
+      ? "weak-area"
+      : (module.recencyDays ?? 0) > 10 ? "recency-gap"
+      : module.subject.highYield >= 5 ? "high-yield" : "mixed-practice";
+    const method = module.confidence <= 2
+      ? "Short concept recap, then timed SBAs on the weak subtopics, then a mistake-log review"
+      : module.subject.highYield >= 4
+        ? "Timed SBA practice on high-yield subtopics, followed by structured mistake review"
+        : "Mixed interleaved practice with brief recall notes";
+    const outcome = module.confidence <= 2
+      ? "Move from foundational gaps to confident application on the named subtopics"
+      : "Hold your accuracy at 75%+ on the named subtopics and tighten exam timing";
+    return {
+      module: module.name,
+      hours: Math.round((body.hoursPerWeek * module.score / totalScore) * 10) / 10,
+      rationale,
+      note: `${module.subject.groups.join(" / ")} — HY${module.subject.highYield}, confidence ${module.confidence}/5${(module.recencyDays ?? 0) > 10 ? ", last revised >10d ago" : ""}.`,
+      subtopics: focusList,
+      method,
+      outcome,
+    };
+  });
+
+  // Balance derived from intensity (sums to 100).
+  const balance = intensity === "beginner"
+    ? { review: 40, recall: 30, practice: 20, mistakes: 10 }
+    : intensity === "resitter"
+      ? { review: 10, recall: 20, practice: 50, mistakes: 20 }
+      : intensity === "advanced"
+        ? { review: 15, recall: 20, practice: 45, mistakes: 20 }
+        : { review: 25, recall: 25, practice: 35, mistakes: 15 };
+
+  const weekOneReason = priorityModules.length >= 2
+    ? `Repair weak areas in ${priorityModules[0].name} and ${priorityModules[1].name}, then apply through mixed SBA practice.`
+    : priorityModules.length === 1
+      ? `Rebuild confidence in ${priorityModules[0].name} with focused recall and timed SBAs.`
+      : `Build momentum across your selected subjects.`;
+
+  const weeksAhead = Math.min(12, Math.max(4, Math.ceil((Math.max(1, scoredModules.length) * 2))));
+  const weeklyFocus: WeeklyFocusEntry[] = Array.from({ length: weeksAhead }, (_, index) => {
+    const first = scoredModules[index % scoredModules.length] ?? focusModules[0];
+    const second = scoredModules[(index + 1) % scoredModules.length] ?? first;
+    const third = scoredModules[(index + 2) % scoredModules.length] ?? second;
+    const trio = Array.from(new Set([first.name, second.name, third.name])).slice(0, 3);
+    const theme = index === 0
+      ? `Repair weak areas in ${first.name}${second.name !== first.name ? ` and ${second.name}` : ""}, then apply through mixed SBA practice`
+      : index < 3
+        ? `Consolidate ${first.subject.groups[0] ?? first.name} with interleaved ${second.name}`
+        : index >= weeksAhead - 2
+          ? `Mock-led refresh: ${first.name} with timed scenarios across ${second.name}`
+          : `Interleaved practice across ${first.subject.groups[0] ?? first.name} with spaced re-touch of ${second.name}`;
+    const reason = index === 0
+      ? weekOneReason
+      : `Carries forward gains in ${first.name} while re-touching ${second.name} on a spaced-repetition schedule.`;
+    return {
+      week: index + 1,
+      hours: body.hoursPerWeek,
+      theme,
+      modules: trio,
+      reason,
+      balance,
+    };
+  });
 
   return {
-    overview: `${body.name}, this plan prioritises ${focusModules.slice(0, 3).map((m) => m.name).join(", ")} because they combine high SQE yield with your current confidence and revision recency profile. The week is deliberately interleaved so weak areas are reinforced without crowding out mixed SBA practice.`,
+    overview: `${body.name}, this plan leads with ${priorityModules.map((m) => m.name).join(", ")} because they combine high SQE yield with your current confidence and revision recency. The week is deliberately interleaved so weak areas are repaired without crowding out mixed SBA practice.`,
     weeklyStrategy: {
-      summary: `This week allocates ${body.hoursPerWeek} hours across high-yield weak areas, recency gaps and mixed practice blocks. Task minutes total ${todayTasks.reduce((sum, task) => sum + task.minutes, 0)} minutes.`,
+      summary: `This week allocates ${body.hoursPerWeek} hours across high-yield weak areas and recency gaps, with the priority on ${priorityModules.map((m) => m.name).join(" and ")}. Blocks balance recall, timed practice and mistake review.`,
       allocations,
     },
     todayTasks,
-    weeklyFocus: Array.from({ length: Math.min(12, Math.max(4, Math.ceil(84 / 7))) }, (_, index) => {
-      const first = scoredModules[index % scoredModules.length] ?? focusModules[0];
-      const second = scoredModules[(index + 1) % scoredModules.length] ?? first;
-      return {
-        week: index + 1,
-        hours: body.hoursPerWeek,
-        theme: index < 2 ? `High-yield repair: ${first.name} with ${second.name}` : index >= 8 ? `Mock analysis and targeted refresh: ${first.name}` : `Interleaved consolidation: ${first.subject.groups[0] ?? first.name}`,
-        modules: Array.from(new Set([first.name, second.name])),
-      };
-    }),
+    weeklyFocus,
     masteryTargets: scoredModules.map((module) => ({
       module: module.name,
       targetConfidence: module.subject.highYield >= 4 || module.confidence <= 2 ? 5 : 4,
