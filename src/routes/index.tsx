@@ -893,11 +893,11 @@ function AnalyticsPanel() {
   const modules = [
     { n: "Contract", v: 0.86 },
     { n: "Tort", v: 0.72 },
-    { n: "Land", v: 0.58 },
-    { n: "Trusts", v: 0.41 },
+    { n: "Property", v: 0.58 },
+    { n: "Evidence", v: 0.41 },
     { n: "Crim", v: 0.65 },
-    { n: "Business", v: 0.78 },
-    { n: "Dispute", v: 0.69 },
+    { n: "Con Law", v: 0.78 },
+    { n: "Civ Pro", v: 0.69 },
     { n: "Ethics", v: 0.92 },
   ];
   return (
