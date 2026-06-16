@@ -17,6 +17,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FocusRouteImport } from './routes/focus'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -72,6 +73,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const MocksRoute = MocksRouteImport.update({
   id: '/mocks',
   path: '/mocks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FocusRoute = FocusRouteImport.update({
@@ -165,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
@@ -190,6 +197,7 @@ export interface FileRoutesByTo {
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
@@ -217,6 +225,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
@@ -245,6 +254,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/flashcards'
     | '/focus'
+    | '/forgot-password'
     | '/mocks'
     | '/onboarding'
     | '/practice'
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/community'
     | '/dashboard'
     | '/flashcards'
+    | '/forgot-password'
     | '/mocks'
     | '/onboarding'
     | '/practice'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/flashcards'
     | '/focus'
+    | '/forgot-password'
     | '/mocks'
     | '/onboarding'
     | '/practice'
@@ -323,6 +335,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   FlashcardsRoute: typeof FlashcardsRoute
   FocusRoute: typeof FocusRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   MocksRoute: typeof MocksRoute
   OnboardingRoute: typeof OnboardingRoute
   PracticeRoute: typeof PracticeRoute
@@ -394,6 +407,13 @@ declare module '@tanstack/react-router' {
       path: '/mocks'
       fullPath: '/mocks'
       preLoaderRoute: typeof MocksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/focus': {
@@ -534,6 +554,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   FlashcardsRoute: FlashcardsRoute,
   FocusRoute: FocusRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   MocksRoute: MocksRoute,
   OnboardingRoute: OnboardingRoute,
   PracticeRoute: PracticeRoute,
