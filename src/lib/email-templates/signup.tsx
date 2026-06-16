@@ -2,13 +2,13 @@ import * as React from 'react'
 
 import {
   Body,
-  Button,
   Container,
   Head,
   Heading,
   Html,
   Link,
   Preview,
+  Section,
   Text,
 } from '@react-email/components'
 
@@ -17,6 +17,7 @@ interface SignupEmailProps {
   siteUrl: string
   recipient: string
   confirmationUrl: string
+  token?: string
 }
 
 export const SignupEmail = ({
@@ -24,32 +25,42 @@ export const SignupEmail = ({
   siteUrl,
   recipient,
   confirmationUrl,
+  token,
 }: SignupEmailProps) => (
   <Html lang="en" dir="ltr">
     <Head />
-    <Preview>Confirm your email for {siteName}</Preview>
+    <Preview>
+      {token ? `Your ${siteName} verification code: ${token}` : `Confirm your email for ${siteName}`}
+    </Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm your email</Heading>
+        <Heading style={h1}>Your verification code</Heading>
         <Text style={text}>
-          Thanks for signing up for{' '}
-          <Link href={siteUrl} style={link}>
-            <strong>{siteName}</strong>
-          </Link>
-          !
-        </Text>
-        <Text style={text}>
-          Please confirm your email address (
+          Enter this code in the {siteName} sign-up tab to finish setting up your account for{' '}
           <Link href={`mailto:${recipient}`} style={link}>
             {recipient}
           </Link>
-          ) by clicking the button below:
+          .
         </Text>
-        <Button style={button} href={confirmationUrl}>
-          Verify Email
-        </Button>
+        {token && (
+          <Section style={codeWrap}>
+            <Text style={code}>{token}</Text>
+          </Section>
+        )}
+        <Text style={smallMuted}>This code expires in 1 hour.</Text>
+        <Text style={fallback}>
+          Opening this email on a different device?{' '}
+          <Link href={confirmationUrl} style={link}>
+            Click here to verify instead
+          </Link>
+          .
+        </Text>
         <Text style={footer}>
-          If you didn't create an account, you can safely ignore this email.
+          Didn't sign up for{' '}
+          <Link href={siteUrl} style={link}>
+            {siteName}
+          </Link>
+          ? You can safely ignore this email.
         </Text>
       </Container>
     </Body>
@@ -70,15 +81,35 @@ const text = {
   fontSize: '14px',
   color: '#55575d',
   lineHeight: '1.5',
+  margin: '0 0 20px',
+}
+const codeWrap = {
+  textAlign: 'center' as const,
+  margin: '24px 0',
+}
+const code = {
+  display: 'inline-block',
+  fontSize: '32px',
+  fontWeight: 'bold' as const,
+  letterSpacing: '8px',
+  color: '#000000',
+  backgroundColor: '#f4f4f5',
+  padding: '14px 24px',
+  borderRadius: '10px',
+  fontFamily: 'Menlo, Consolas, monospace',
+  margin: 0,
+}
+const smallMuted = {
+  fontSize: '12px',
+  color: '#888888',
+  textAlign: 'center' as const,
+  margin: '0 0 30px',
+}
+const fallback = {
+  fontSize: '13px',
+  color: '#55575d',
+  lineHeight: '1.5',
   margin: '0 0 25px',
 }
-const link = { color: 'inherit', textDecoration: 'underline' }
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
+const link = { color: '#000000', textDecoration: 'underline' }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }

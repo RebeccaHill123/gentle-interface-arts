@@ -1,9 +1,10 @@
-import { useState, type FormEvent } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { Loader2, AlertCircle, ArrowLeft } from "lucide-react";
@@ -16,7 +17,7 @@ export const Route = createFileRoute("/forgot-password")({
       { title: "Reset your password · Tentra" },
       {
         name: "description",
-        content: "Request a password reset link for your Tentra account.",
+        content: "Request a password reset code for your Tentra account.",
       },
     ],
     links: [{ rel: "canonical", href: "https://tentraapp.com/forgot-password" }],
@@ -28,10 +29,30 @@ const emailSchema = z.object({
 });
 
 function ForgotPasswordPage() {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [step, setStep] = useState<"email" | "otp">("email");
+
+  const [code, setCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const autoSubmitted = useRef(false);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = window.setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [resendCooldown]);
+
+  const sendCode = async (target: string) => {
+    const redirectTo = `${window.location.origin}/reset-password`;
+    return supabase.auth.resetPasswordForEmail(target, { redirectTo });
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -43,20 +64,67 @@ function ForgotPasswordPage() {
     }
     setSubmitting(true);
     try {
-      const redirectTo = `${window.location.origin}/reset-password`;
-      const { error: resetErr } = await supabase.auth.resetPasswordForEmail(
-        parsed.data.email,
-        { redirectTo }
-      );
+      const { error: resetErr } = await sendCode(parsed.data.email);
       if (resetErr) {
         setError(resetErr.message);
         return;
       }
-      setSent(true);
+      setStep("otp");
+      setResendCooldown(30);
+      autoSubmitted.current = false;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleVerify = async (token: string) => {
+    if (token.length !== 6 || verifying) return;
+    setOtpError(null);
+    setVerifying(true);
+    try {
+      const { error: vErr } = await supabase.auth.verifyOtp({
+        email,
+        token,
+        type: "recovery",
+      });
+      if (vErr) {
+        setOtpError(
+          vErr.message.toLowerCase().includes("expired")
+            ? "That code has expired. Tap resend below."
+            : "That code doesn't match. Double-check and try again.",
+        );
+        setCode("");
+        autoSubmitted.current = false;
+        return;
+      }
+      navigate({ to: "/reset-password", replace: true });
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : "Verification failed");
+      autoSubmitted.current = false;
+    } finally {
+      setVerifying(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (resending || resendCooldown > 0) return;
+    setResendMsg(null);
+    setOtpError(null);
+    setResending(true);
+    try {
+      const { error: rErr } = await sendCode(email);
+      if (rErr) {
+        setOtpError(rErr.message);
+      } else {
+        setResendMsg("New code sent — check your inbox.");
+        setResendCooldown(30);
+      }
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : "Failed to resend");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -73,26 +141,18 @@ function ForgotPasswordPage() {
             Account recovery
           </div>
           <h1 className="mt-4 text-[1.9rem] font-light leading-[1.1] tracking-[-0.025em] text-foreground">
-            Reset your <span className="text-gradient-pink-violet font-light">password</span>
+            {step === "email" ? (
+              <>Reset your <span className="text-gradient-pink-violet font-light">password</span></>
+            ) : (
+              <>Enter the <span className="text-gradient-pink-violet font-light">6-digit code</span></>
+            )}
           </h1>
 
-          {sent ? (
-            <div className="mt-6 space-y-4">
-              <p className="text-[14.5px] leading-[1.6] text-muted-foreground">
-                If an account exists for <span className="font-medium text-foreground">{email}</span>,
-                we&apos;ve sent a password reset link. Check your inbox (and spam folder) and follow the instructions.
-              </p>
-              <Link
-                to="/auth"
-                search={{ mode: "signin" }}
-                className="inline-flex items-center gap-2 text-sm font-medium text-foreground hover:underline"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to sign in
-              </Link>
-            </div>
-          ) : (
+          {step === "email" ? (
             <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
+              <p className="text-[14px] leading-[1.6] text-muted-foreground">
+                Enter your email and we'll send you a 6-digit code to reset your password.
+              </p>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -125,7 +185,7 @@ function ForgotPasswordPage() {
                 {submitting ? (
                   <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending…</>
                 ) : (
-                  "Send reset link"
+                  "Send code"
                 )}
               </Button>
 
@@ -140,6 +200,91 @@ function ForgotPasswordPage() {
                 </Link>
               </p>
             </form>
+          ) : (
+            <div className="mt-6">
+              <p className="text-[14px] leading-[1.6] text-muted-foreground">
+                We sent a code to <span className="font-medium text-foreground">{email}</span>. Enter
+                it below to choose a new password.
+              </p>
+
+              <div className="mt-6 flex justify-center">
+                <InputOTP
+                  maxLength={6}
+                  value={code}
+                  onChange={(v) => {
+                    const digits = v.replace(/\D/g, "").slice(0, 6);
+                    setCode(digits);
+                    setOtpError(null);
+                    if (digits.length === 6 && !autoSubmitted.current) {
+                      autoSubmitted.current = true;
+                      void handleVerify(digits);
+                    }
+                  }}
+                  disabled={verifying}
+                  inputMode="numeric"
+                  autoFocus
+                >
+                  <InputOTPGroup>
+                    <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
+                    <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
+                    <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
+                    <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
+                    <InputOTPSlot index={4} className="h-12 w-12 text-lg" />
+                    <InputOTPSlot index={5} className="h-12 w-12 text-lg" />
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+
+              {verifying && (
+                <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Verifying…
+                </div>
+              )}
+
+              {otpError && (
+                <div
+                  role="alert"
+                  className="mt-5 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+                >
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <div>{otpError}</div>
+                </div>
+              )}
+
+              {resendMsg && !otpError && (
+                <div className="mt-5 rounded-xl border border-border bg-muted/40 p-3 text-sm text-foreground">
+                  {resendMsg}
+                </div>
+              )}
+
+              <div className="mt-6 flex flex-col items-center gap-3 text-center text-sm">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resending || resendCooldown > 0}
+                  className="font-medium text-foreground hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
+                >
+                  {resending
+                    ? "Resending…"
+                    : resendCooldown > 0
+                    ? `Resend code in ${resendCooldown}s`
+                    : "Resend code"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep("email");
+                    setCode("");
+                    setOtpError(null);
+                    setResendMsg(null);
+                    autoSubmitted.current = false;
+                  }}
+                  className="text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Use a different email
+                </button>
+              </div>
+            </div>
           )}
         </div>
       </div>

@@ -1,16 +1,18 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { Loader2, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { getRememberMe, setRememberMe } from "@/lib/remember-me";
 import { getAuthRedirectURL } from "@/lib/auth-redirect";
-import { loadPlan, pushPlanToCloud } from "@/lib/plan-store";
+import { loadPlan, pullPlanFromCloud, pushPlanToCloud } from "@/lib/plan-store";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -71,31 +73,111 @@ function AuthPage() {
   const [agreeTerms, setAgreeTerms] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [verifySent, setVerifySent] = useState<string | null>(null);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  // OTP step state
+  const [otpEmail, setOtpEmail] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpError, setOtpError] = useState<string | null>(null);
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
-  const [resendErr, setResendErr] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const otpAutoSubmitted = useRef(false);
+
   const [remember, setRemember] = useState<boolean>(getRememberMe());
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = window.setTimeout(() => setResendCooldown((s) => s - 1), 1000);
+    return () => window.clearTimeout(t);
+  }, [resendCooldown]);
 
   const reset = () => setError(null);
 
-  const handleResend = async (target: string) => {
+  const goAfterAuth = async () => {
+    const local = loadPlan();
+    if (local) {
+      await pushPlanToCloud(local);
+      navigate({ to: "/dashboard", replace: true });
+      return;
+    }
+    const cloud = await pullPlanFromCloud();
+    if (cloud) {
+      navigate({ to: "/dashboard", replace: true });
+      return;
+    }
+    navigate({ to: "/onboarding", replace: true });
+  };
+
+  const handleGoogle = async () => {
+    setError(null);
+    setGoogleLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        setError(result.error.message ?? "Could not sign in with Google");
+        setGoogleLoading(false);
+        return;
+      }
+      if (result.redirected) return; // browser will navigate away
+      await goAfterAuth();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign in with Google");
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async (code: string) => {
+    if (!otpEmail || code.length !== 6 || verifyingOtp) return;
+    setOtpError(null);
+    setVerifyingOtp(true);
+    try {
+      const { error: vErr } = await supabase.auth.verifyOtp({
+        email: otpEmail,
+        token: code,
+        type: "signup",
+      });
+      if (vErr) {
+        setOtpError(
+          vErr.message.toLowerCase().includes("expired")
+            ? "That code has expired. Tap resend below."
+            : "That code doesn't match. Double-check and try again.",
+        );
+        setOtpCode("");
+        otpAutoSubmitted.current = false;
+        return;
+      }
+      await goAfterAuth();
+    } catch (err) {
+      setOtpError(err instanceof Error ? err.message : "Verification failed");
+      otpAutoSubmitted.current = false;
+    } finally {
+      setVerifyingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!otpEmail || resending || resendCooldown > 0) return;
     setResendMsg(null);
-    setResendErr(null);
+    setOtpError(null);
     setResending(true);
     try {
       const { error: rErr } = await supabase.auth.resend({
         type: "signup",
-        email: target,
+        email: otpEmail,
         options: { emailRedirectTo: getAuthRedirectURL() },
       });
       if (rErr) {
-        setResendErr(rErr.message);
+        setOtpError(rErr.message);
       } else {
-        setResendMsg("Verification email sent — check your inbox.");
+        setResendMsg("New code sent — check your inbox.");
+        setResendCooldown(30);
       }
     } catch (err) {
-      setResendErr(err instanceof Error ? err.message : "Failed to resend");
+      setOtpError(err instanceof Error ? err.message : "Failed to resend");
     } finally {
       setResending(false);
     }
@@ -135,8 +217,6 @@ function AuthPage() {
         }
         const userId = data.user?.id;
         if (userId) {
-          // Profile row will be created automatically by handle_new_user trigger;
-          // upsert anyway so first/last names are stored.
           await supabase.from("profiles").upsert(
             {
               user_id: userId,
@@ -148,19 +228,17 @@ function AuthPage() {
             { onConflict: "user_id" },
           );
         }
-        // Email verification is required — session will be null until they click the link.
         if (!data.session) {
-          setVerifySent(parsed.data.email);
+          // Move to inline OTP step instead of asking them to leave the tab.
+          setOtpEmail(parsed.data.email);
+          setOtpCode("");
+          setOtpError(null);
+          setResendMsg(null);
+          setResendCooldown(30);
+          otpAutoSubmitted.current = false;
           return;
         }
-        // If they built a plan before signing up, push it to cloud now.
-        const local = loadPlan();
-        if (local) {
-          await pushPlanToCloud(local);
-          navigate({ to: "/dashboard", replace: true });
-        } else {
-          navigate({ to: "/onboarding", replace: true });
-        }
+        await goAfterAuth();
       } else {
         const parsed = signInSchema.safeParse({ email, password });
         if (!parsed.success) {
@@ -175,7 +253,19 @@ function AuthPage() {
         if (signInErr) {
           const msg = signInErr.message.toLowerCase();
           if (msg.includes("not confirmed") || msg.includes("email not confirmed")) {
-            setError("Please verify your email first — check your inbox.");
+            // Drop them straight into OTP verification instead of bouncing them to email.
+            setOtpEmail(parsed.data.email);
+            setOtpCode("");
+            setOtpError(null);
+            setResendMsg("We sent a fresh 6-digit code to verify your email.");
+            setResendCooldown(30);
+            otpAutoSubmitted.current = false;
+            await supabase.auth.resend({
+              type: "signup",
+              email: parsed.data.email,
+              options: { emailRedirectTo: getAuthRedirectURL() },
+            });
+            return;
           } else if (msg.includes("invalid")) {
             setError("Wrong email or password.");
           } else {
@@ -183,7 +273,6 @@ function AuthPage() {
           }
           return;
         }
-        // Sync any locally-built plan to the user's account.
         const local = fromOnboarding ? loadPlan() : null;
         if (local) {
           await pushPlanToCloud(local);
@@ -210,55 +299,96 @@ function AuthPage() {
       </div>
 
       <div className="relative mx-auto flex w-full max-w-[440px] flex-col px-6 py-10">
-        {verifySent ? (
+        {otpEmail ? (
           <div className="rounded-2xl border border-border/60 bg-card/60 p-8 backdrop-blur md:p-10">
             <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-              One more step
+              Verify your email
             </div>
             <h1 className="mt-4 text-[1.9rem] font-light leading-[1.1] tracking-[-0.025em] text-foreground">
-              Check your <span className="text-gradient-pink-violet font-light">inbox</span>
+              Enter the <span className="text-gradient-pink-violet font-light">6-digit code</span>
             </h1>
-            <p className="mt-5 text-[14.5px] leading-[1.6] text-muted-foreground">
-              We've sent a verification email to <span className="font-medium text-foreground">{verifySent}</span>.
-              Click the link inside to confirm your account — you'll then be taken to build your study plan.
+            <p className="mt-4 text-[14.5px] leading-[1.6] text-muted-foreground">
+              We sent a code to <span className="font-medium text-foreground">{otpEmail}</span>.
+              Type it in below to finish setting up your account.
             </p>
-            <p className="mt-3 text-[12px] text-muted-foreground/80">
-              Didn't get it? Check spam, or resend below.
-            </p>
-            {resendMsg && (
-              <div className="mt-4 rounded-xl border border-border bg-muted/40 p-3 text-sm text-foreground">
+
+            <div className="mt-7 flex justify-center">
+              <InputOTP
+                maxLength={6}
+                value={otpCode}
+                onChange={(v) => {
+                  const digits = v.replace(/\D/g, "").slice(0, 6);
+                  setOtpCode(digits);
+                  setOtpError(null);
+                  if (digits.length === 6 && !otpAutoSubmitted.current) {
+                    otpAutoSubmitted.current = true;
+                    void handleVerifyOtp(digits);
+                  }
+                }}
+                disabled={verifyingOtp}
+                inputMode="numeric"
+                autoFocus
+              >
+                <InputOTPGroup>
+                  <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={4} className="h-12 w-12 text-lg" />
+                  <InputOTPSlot index={5} className="h-12 w-12 text-lg" />
+                </InputOTPGroup>
+              </InputOTP>
+            </div>
+
+            {verifyingOtp && (
+              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> Verifying…
+              </div>
+            )}
+
+            {otpError && (
+              <div
+                role="alert"
+                className="mt-5 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+              >
+                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                <div>{otpError}</div>
+              </div>
+            )}
+
+            {resendMsg && !otpError && (
+              <div className="mt-5 rounded-xl border border-border bg-muted/40 p-3 text-sm text-foreground">
                 {resendMsg}
               </div>
             )}
-            {resendErr && (
-              <div
-                role="alert"
-                className="mt-4 flex items-start gap-2 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive"
+
+            <div className="mt-6 flex flex-col items-center gap-3 text-center text-sm">
+              <button
+                type="button"
+                onClick={handleResendOtp}
+                disabled={resending || resendCooldown > 0}
+                className="font-medium text-foreground hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
               >
-                <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <div>{resendErr}</div>
-              </div>
-            )}
-            <Button
-              type="button"
-              onClick={() => handleResend(verifySent)}
-              disabled={resending}
-              className="mt-7 h-11 w-full rounded-full bg-gradient-pink-blue text-[14px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
-            >
-              {resending ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Resending…</>
-              ) : (
-                "Resend verification email"
-              )}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => { setVerifySent(null); setMode("signin"); }}
-              className="mt-3 h-11 w-full rounded-full border border-border/60 bg-transparent text-[13.5px] font-normal text-muted-foreground hover:bg-foreground/[0.03] hover:text-foreground"
-              variant="ghost"
-            >
-              Back to sign in
-            </Button>
+                {resending
+                  ? "Resending…"
+                  : resendCooldown > 0
+                  ? `Resend code in ${resendCooldown}s`
+                  : "Resend code"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setOtpEmail(null);
+                  setOtpCode("");
+                  setOtpError(null);
+                  setResendMsg(null);
+                  otpAutoSubmitted.current = false;
+                }}
+                className="text-muted-foreground hover:text-foreground hover:underline"
+              >
+                Use a different email
+              </button>
+            </div>
           </div>
         ) : (
         <div className="rounded-2xl border border-border/60 bg-card/60 p-8 backdrop-blur md:p-10">
@@ -284,7 +414,30 @@ function AuthPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="mt-7 space-y-4" noValidate>
+          <Button
+            type="button"
+            onClick={handleGoogle}
+            disabled={googleLoading || submitting}
+            variant="outline"
+            className="mt-7 h-11 w-full rounded-full border-border/70 bg-background/60 text-[14px] font-medium text-foreground hover:bg-foreground/[0.04]"
+          >
+            {googleLoading ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Opening Google…</>
+            ) : (
+              <>
+                <GoogleLogo className="mr-2 h-4 w-4" />
+                Continue with Google
+              </>
+            )}
+          </Button>
+
+          <div className="my-5 flex items-center gap-3 text-[11px] uppercase tracking-[0.2em] text-muted-foreground/70">
+            <div className="h-px flex-1 bg-border/60" />
+            or
+            <div className="h-px flex-1 bg-border/60" />
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {isSignup && (
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
@@ -423,7 +576,7 @@ function AuthPage() {
 
             <Button
               type="submit"
-              disabled={submitting}
+              disabled={submitting || googleLoading}
               className="h-11 w-full rounded-full bg-gradient-pink-blue text-[14px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
             >
               {submitting ? (
@@ -451,5 +604,17 @@ function AuthPage() {
         )}
       </div>
     </div>
+  );
+}
+
+function GoogleLogo({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.24 1.4-1.7 4.1-5.5 4.1-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.6 14.6 2.7 12 2.7 6.9 2.7 2.8 6.8 2.8 12S6.9 21.3 12 21.3c6.9 0 11.5-4.8 11.5-11.6 0-.78-.08-1.37-.18-1.95H12z" />
+      <path fill="#34A853" d="M3.88 7.55l3.2 2.35C7.95 7.95 9.8 6.6 12 6.6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.6 14.6 2.7 12 2.7 8.18 2.7 4.92 5 3.88 7.55z" opacity="0" />
+      <path fill="#4285F4" d="M23.5 12c0-.78-.08-1.37-.18-1.95H12V14.1h6.5c-.28 1.45-1.1 2.68-2.34 3.5l3.6 2.8c2.1-1.95 3.74-4.82 3.74-8.4z" />
+      <path fill="#FBBC05" d="M5.3 14.3a6 6 0 0 1 0-4.6L2.1 7.35A10 10 0 0 0 2 12c0 1.65.4 3.2 1.1 4.55l3.2-2.25z" />
+      <path fill="#34A853" d="M12 21.3c2.7 0 5-.9 6.66-2.45l-3.6-2.8c-.95.65-2.2 1.1-3.66 1.1-2.8 0-5.18-1.88-6.03-4.4l-3.2 2.45C3.93 18.7 7.66 21.3 12 21.3z" />
+    </svg>
   );
 }
