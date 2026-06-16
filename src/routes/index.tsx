@@ -607,7 +607,7 @@ function DashboardPanel() {
             Study plan
           </div>
           <div className="mt-0.5 text-[13px] font-medium tracking-[-0.01em] text-foreground">
-            SQE1 · January 2027
+            Your exam · January 2027
           </div>
         </div>
         <div className="relative grid place-items-center">
@@ -659,8 +659,8 @@ function DashboardPanel() {
           {[
             { t: "Contract Law MCQs", m: "30m", done: true },
             { t: "Consideration flashcards", m: "20m", done: true },
-            { t: "Land Law mini assessment", m: "25m", done: false, next: true },
-            { t: "Property practice questions", m: "40m", done: false },
+            { t: "Tort mini assessment", m: "25m", done: false, next: true },
+            { t: "Negligence practice questions", m: "40m", done: false },
           ].map((x, i) => (
             <li key={i} className="flex items-center justify-between rounded-md px-1 py-1 text-[10.5px]">
               <span className="flex items-center gap-1.5 text-foreground">
@@ -688,7 +688,7 @@ function DashboardPanel() {
               AI recommendation
             </div>
             <div className="mt-0.5 text-[10.5px] leading-snug text-foreground">
-              Land Law accuracy fell 8%. Prioritise Property this week.
+              Tort accuracy fell 8%. Prioritise Negligence this week.
             </div>
           </div>
         </div>
@@ -701,9 +701,9 @@ function DashboardPanel() {
             Weak areas
           </div>
           <ul className="mt-1 space-y-0.5 text-[10px] text-foreground">
-            <li className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-pink" />Land Law</li>
-            <li className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-pink/70" />Trusts</li>
-            <li className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-pink/50" />Crim. Litigation</li>
+            <li className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-pink" />Tort</li>
+            <li className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-pink/70" />Evidence</li>
+            <li className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-pink/50" />Criminal Law</li>
           </ul>
         </div>
         <div className="rounded-xl border border-border/60 bg-card/40 p-2.5">
