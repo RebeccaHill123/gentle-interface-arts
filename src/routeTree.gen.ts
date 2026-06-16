@@ -12,11 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FocusRouteImport } from './routes/focus'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -49,6 +51,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProRoute = ProRouteImport.update({
   id: '/pro',
   path: '/pro',
@@ -72,6 +79,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const MocksRoute = MocksRouteImport.update({
   id: '/mocks',
   path: '/mocks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FocusRoute = FocusRouteImport.update({
@@ -165,11 +177,13 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/pro': typeof ProRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
@@ -190,11 +204,13 @@ export interface FileRoutesByTo {
   '/community': typeof CommunityRoute
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/pro': typeof ProRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
@@ -217,11 +233,13 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
+  '/forgot-password': typeof ForgotPasswordRoute
   '/mocks': typeof MocksRoute
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/pro': typeof ProRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
@@ -245,11 +263,13 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/flashcards'
     | '/focus'
+    | '/forgot-password'
     | '/mocks'
     | '/onboarding'
     | '/practice'
     | '/privacy'
     | '/pro'
+    | '/reset-password'
     | '/settings'
     | '/sitemap.xml'
     | '/terms'
@@ -270,11 +290,13 @@ export interface FileRouteTypes {
     | '/community'
     | '/dashboard'
     | '/flashcards'
+    | '/forgot-password'
     | '/mocks'
     | '/onboarding'
     | '/practice'
     | '/privacy'
     | '/pro'
+    | '/reset-password'
     | '/settings'
     | '/sitemap.xml'
     | '/terms'
@@ -296,11 +318,13 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/flashcards'
     | '/focus'
+    | '/forgot-password'
     | '/mocks'
     | '/onboarding'
     | '/practice'
     | '/privacy'
     | '/pro'
+    | '/reset-password'
     | '/settings'
     | '/sitemap.xml'
     | '/terms'
@@ -323,11 +347,13 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   FlashcardsRoute: typeof FlashcardsRoute
   FocusRoute: typeof FocusRouteWithChildren
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   MocksRoute: typeof MocksRoute
   OnboardingRoute: typeof OnboardingRoute
   PracticeRoute: typeof PracticeRoute
   PrivacyRoute: typeof PrivacyRoute
   ProRoute: typeof ProRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
@@ -359,6 +385,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pro': {
@@ -394,6 +427,13 @@ declare module '@tanstack/react-router' {
       path: '/mocks'
       fullPath: '/mocks'
       preLoaderRoute: typeof MocksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/focus': {
@@ -534,11 +574,13 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   FlashcardsRoute: FlashcardsRoute,
   FocusRoute: FocusRouteWithChildren,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   MocksRoute: MocksRoute,
   OnboardingRoute: OnboardingRoute,
   PracticeRoute: PracticeRoute,
   PrivacyRoute: PrivacyRoute,
   ProRoute: ProRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
