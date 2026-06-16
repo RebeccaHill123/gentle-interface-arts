@@ -213,6 +213,15 @@ function ResetPasswordPage() {
               >
                 Sign in
               </Button>
+              <p className="text-center text-sm text-muted-foreground">
+                <Link
+                  to="/auth"
+                  search={{ mode: "signin" }}
+                  className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+                >
+                  Back to sign in
+                </Link>
+              </p>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
