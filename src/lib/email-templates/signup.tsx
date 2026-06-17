@@ -48,14 +48,16 @@ export const SignupEmail = ({
             <Text style={code}>{token}</Text>
           </Section>
         )}
-        <Text style={smallMuted}>This code expires in 1 hour.</Text>
-        <Text style={fallback}>
-          Opening this email on a different device?{' '}
-          <Link href={confirmationUrl} style={link}>
-            Click here to verify instead
-          </Link>
-          .
-        </Text>
+        <Text style={smallMuted}>This code expires in 1 hour. If you request a new code, older codes stop working.</Text>
+        <Section style={fallbackWrap}>
+          <Text style={fallbackLabel}>Can't see the code clearly?</Text>
+          <Button href={confirmationUrl} style={fallbackButton}>
+            Verify instantly
+          </Button>
+          <Text style={fallbackHelp}>
+            Opens {siteName} in a new tab and signs you in — no code needed.
+          </Text>
+        </Section>
         <Text style={footer}>
           Didn't sign up for{' '}
           <Link href={siteUrl} style={link}>
