@@ -1,55 +1,35 @@
-## Goal
+## Diagnosis
 
-Make sign-up feel instant. Two problems with the current flow:
-1. Email link opens a new tab (or worse, on a different device), so the user feels like they "signed in twice".
-2. Even on the same device, the user lands on `/auth/callback` with a spinner instead of moving forward in context.
+samantha.harris2921@yahoo.com signed up on 16 June at 19:40 UTC and received 3 signup emails successfully (`email_send_log` confirms `status: sent` for all). She never confirmed. Auth logs for that date have rolled off, so we can't see the exact reason, but the fact that she resent the code twice within 3 minutes suggests codes weren't being accepted.
 
-## Solution: dual track
+Most likely cause: when a user clicks "Resend", Supabase invalidates the previous code, so if she typed a code from an older email she'd get a generic "invalid OTP" error. Combined with Yahoo's aggressive spam filtering / link rewriting, the UX is brittle.
 
-**Primary:** Google sign-in — one click, no email, no password, no verification step.
-**Email/password track:** Replace the magic link with a **6-digit verification code (OTP)**. User stays on the sign-up page and types the code from their email. Same tab, same device, no re-login.
+The flow itself is working — 12 of the last 15 signups confirmed successfully, including Yahoo / Hotmail / iCloud users. So this is a polish issue, not a broken flow.
 
-The existing `/auth/callback` route stays in place as a fallback so any old verification links already in inboxes still work — but new sign-ups stop relying on it.
+## Improvements
 
----
+### 1. Clearer messaging around resend (`src/routes/auth.tsx`)
+Today: clicking "Resend" silently invalidates the previous code, but the UI only says "Code sent". 
+Change: after a successful resend show "We sent a new code — older codes no longer work. Check your inbox for the latest one." This is the single most likely cause of samantha's drop-off.
 
-## Changes
+### 2. More helpful error copy on invalid OTP (`src/routes/auth.tsx`)
+Today: a wrong code surfaces Supabase's raw error string. 
+Change: map common errors:
+- `Token has expired or is invalid` → "That code didn't work. It may be from an older email — make sure you're using the most recent code we sent. You can resend below."
+- `otp_expired` → keep existing copy.
 
-### 1. Add Google sign-in (top of auth card)
-- Run `supabase--configure_social_auth` with `providers: ["google"]` (keep email enabled).
-- Add a "Continue with Google" button at the top of `src/routes/auth.tsx`, above the email form, with a thin "or" divider beneath it. Uses `lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin })`.
-- After successful Google sign-in: push any local onboarding plan to cloud, then go to `/dashboard` (or `/onboarding` if no plan yet) — mirrors current post-signup logic.
+### 3. Make the email link a reliable fallback (`src/lib/email-templates/signup.tsx`)
+Today: link is buried at the bottom as "Opening this email on a different device?". Yahoo and some corporate filters strip or wrap the 6-digit code visually. 
+Change: keep code as the headline but rename the fallback link to a clearer secondary CTA — "Or click here to verify instantly" — and make it a styled button rather than inline text. Link still routes through `/auth/callback`, which already handles `token_hash` + `type=signup` and creates the session in the same tab.
 
-### 2. Switch email verification to 6-digit OTP
-- In the sign-up handler in `src/routes/auth.tsx`, keep `supabase.auth.signUp(...)` (it already emails an OTP alongside the link with Supabase's default templates), but on success render an **inline OTP step** instead of the current "Check your inbox" copy.
-- New inline UI in the same card:
-  - Heading: "Enter the 6-digit code we sent to {email}"
-  - Single 6-digit input (`InputOTP` from `src/components/ui/input-otp.tsx`).
-  - On 6 digits entered → auto-submit: `supabase.auth.verifyOtp({ email, token, type: "signup" })`.
-  - On success the session is set in the same tab → push local plan if any → navigate to `/dashboard` or `/onboarding`.
-  - "Resend code" button (reuses existing `supabase.auth.resend({ type: "signup" })`) with 30s cooldown.
-  - "Wrong email? Start over" link to reset state.
-- Update the recovery email template wording in `src/lib/email-templates/signup.tsx` so the **6-digit code is the headline** and the link is secondary fallback text ("Or click here to verify from this device").
-
-### 3. Apply the same OTP pattern to password reset
-- `src/routes/forgot-password.tsx`: after submitting email, show OTP input → on verify, navigate straight to `/reset-password` with an active session (skip the link round-trip).
-- `src/routes/reset-password.tsx` keeps its current link-handling logic as a fallback for emails already sent.
-
-### 4. Keep `/auth/callback` working
-No removals. Old emails in inboxes still complete via the link. New flows just don't depend on it.
-
----
+### 4. (Optional) Admin recovery path for stuck users
+For users like samantha who are now stuck (account exists, unconfirmed, can't sign in), the current path is to sign up again with the same email — which works (`signUp` re-issues a code for unconfirmed users). Worth adding one line to the sign-in error state: if a user tries to sign in with an unconfirmed email, surface "This email isn't verified yet — [resend verification code]" instead of "Invalid login credentials".
 
 ## Files touched
+- `src/routes/auth.tsx` — resend messaging, OTP error mapping, unconfirmed-on-signin handling
+- `src/lib/email-templates/signup.tsx` — promote fallback link to a clearer secondary CTA
 
-- `src/routes/auth.tsx` — Google button, OTP step UI, verifyOtp wiring
-- `src/routes/forgot-password.tsx` — OTP step
-- `src/lib/email-templates/signup.tsx` — lead with code, demote link
-- `src/lib/email-templates/recovery.tsx` — same treatment
-- (no DB or server-function changes; Supabase already issues OTPs by default with signup emails)
+No backend or schema changes. No changes to the Google / OTP architecture — just polish to reduce the confusion that almost certainly tripped up samantha.
 
-## What the user sees
-
-- **Google user:** Click "Continue with Google" → dashboard. Done.
-- **Email user:** Fill form → "We sent a code to you@x.com" → type 6 digits → dashboard. Never leaves the tab.
-- **Old emails in inbox:** Link still works via `/auth/callback`.
+## What to tell samantha
+She can simply sign up again with the same email and a code will be re-issued; her unconfirmed account will be reused (no duplicate). Or you can manually confirm her in the backend if you want to remove the friction entirely.
