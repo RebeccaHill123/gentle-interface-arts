@@ -108,11 +108,31 @@ const smallMuted = {
   textAlign: 'center' as const,
   margin: '0 0 30px',
 }
-const fallback = {
+const fallbackWrap = {
+  borderTop: '1px solid #eeeeee',
+  paddingTop: '20px',
+  margin: '0 0 25px',
+  textAlign: 'center' as const,
+}
+const fallbackLabel = {
   fontSize: '13px',
   color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
+  margin: '0 0 12px',
+}
+const fallbackButton = {
+  display: 'inline-block',
+  backgroundColor: '#000000',
+  color: '#ffffff',
+  fontSize: '14px',
+  fontWeight: 'bold' as const,
+  padding: '12px 24px',
+  borderRadius: '8px',
+  textDecoration: 'none',
+}
+const fallbackHelp = {
+  fontSize: '12px',
+  color: '#888888',
+  margin: '12px 0 0',
 }
 const link = { color: '#000000', textDecoration: 'underline' }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
