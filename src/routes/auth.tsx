@@ -174,7 +174,7 @@ function AuthPage() {
       if (rErr) {
         setOtpError(rErr.message);
       } else {
-        setResendMsg("New code sent — check your inbox.");
+        setResendMsg("New code sent — older codes no longer work. Use the latest one in your inbox.");
         setResendCooldown(30);
       }
     } catch (err) {
