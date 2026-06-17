@@ -2,6 +2,7 @@ import * as React from 'react'
 
 import {
   Body,
+  Button,
   Container,
   Head,
   Heading,
@@ -47,14 +48,16 @@ export const SignupEmail = ({
             <Text style={code}>{token}</Text>
           </Section>
         )}
-        <Text style={smallMuted}>This code expires in 1 hour.</Text>
-        <Text style={fallback}>
-          Opening this email on a different device?{' '}
-          <Link href={confirmationUrl} style={link}>
-            Click here to verify instead
-          </Link>
-          .
-        </Text>
+        <Text style={smallMuted}>This code expires in 1 hour. If you request a new code, older codes stop working.</Text>
+        <Section style={fallbackWrap}>
+          <Text style={fallbackLabel}>Can't see the code clearly?</Text>
+          <Button href={confirmationUrl} style={fallbackButton}>
+            Verify instantly
+          </Button>
+          <Text style={fallbackHelp}>
+            Opens {siteName} in a new tab and signs you in — no code needed.
+          </Text>
+        </Section>
         <Text style={footer}>
           Didn't sign up for{' '}
           <Link href={siteUrl} style={link}>
@@ -105,11 +108,31 @@ const smallMuted = {
   textAlign: 'center' as const,
   margin: '0 0 30px',
 }
-const fallback = {
+const fallbackWrap = {
+  borderTop: '1px solid #eeeeee',
+  paddingTop: '20px',
+  margin: '0 0 25px',
+  textAlign: 'center' as const,
+}
+const fallbackLabel = {
   fontSize: '13px',
   color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
+  margin: '0 0 12px',
+}
+const fallbackButton = {
+  display: 'inline-block',
+  backgroundColor: '#000000',
+  color: '#ffffff',
+  fontSize: '14px',
+  fontWeight: 'bold' as const,
+  padding: '12px 24px',
+  borderRadius: '8px',
+  textDecoration: 'none',
+}
+const fallbackHelp = {
+  fontSize: '12px',
+  color: '#888888',
+  margin: '12px 0 0',
 }
 const link = { color: '#000000', textDecoration: 'underline' }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
