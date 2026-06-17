@@ -141,10 +141,11 @@ function AuthPage() {
         type: "signup",
       });
       if (vErr) {
+        const lower = vErr.message.toLowerCase();
         setOtpError(
-          vErr.message.toLowerCase().includes("expired")
-            ? "That code has expired. Tap resend below."
-            : "That code doesn't match. Double-check and try again.",
+          lower.includes("expired")
+            ? "That code has expired. Tap resend below to get a new one."
+            : "That code didn't work. If you've resent a new code, older codes no longer work — use the most recent one in your inbox.",
         );
         setOtpCode("");
         otpAutoSubmitted.current = false;
