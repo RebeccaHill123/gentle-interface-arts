@@ -43,9 +43,8 @@ Module: ${body.module}
 ${body.topic ? `Specific topic / today's task: ${body.topic}` : ""}
 ${jurisdictionNote}`;
 
-    const response = await fetch(
-      "https://ai.gateway.lovable.dev/v1/chat/completions",
-      {
+    const callGateway = async () =>
+      fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
           Authorization: `Bearer ${LOVABLE_API_KEY}`,
@@ -84,12 +83,7 @@ ${jurisdictionNote}`;
                           },
                           explanation: { type: "string" },
                         },
-                        required: [
-                          "prompt",
-                          "options",
-                          "correctIndex",
-                          "explanation",
-                        ],
+                        required: ["prompt", "options", "correctIndex", "explanation"],
                       },
                     },
                   },
@@ -98,49 +92,92 @@ ${jurisdictionNote}`;
               },
             },
           ],
-          tool_choice: {
-            type: "function",
-            function: { name: "mini_assessment" },
-          },
+          tool_choice: { type: "function", function: { name: "mini_assessment" } },
         }),
-      },
-    );
+      });
 
+    const extractQuiz = (data: any): { questions: unknown[] } | null => {
+      const message = data?.choices?.[0]?.message;
+      const toolArgs = message?.tool_calls?.[0]?.function?.arguments;
+      if (toolArgs) {
+        try {
+          const parsed = typeof toolArgs === "string" ? JSON.parse(toolArgs) : toolArgs;
+          if (parsed && Array.isArray(parsed.questions)) return parsed;
+        } catch (err) {
+          console.error("Could not parse tool args", err);
+        }
+      }
+      const content = message?.content;
+      if (typeof content === "string" && content.trim()) {
+        const match =
+          content.match(/```json\s*([\s\S]*?)```/i)?.[1] ?? content.match(/\{[\s\S]*\}/)?.[0];
+        if (match) {
+          try {
+            const parsed = JSON.parse(match);
+            if (parsed && Array.isArray(parsed.questions)) return parsed;
+          } catch (err) {
+            console.error("Could not parse content JSON", err);
+          }
+        }
+      }
+      return null;
+    };
+
+    let response = await callGateway();
     if (!response.ok) {
       if (response.status === 429) {
         return new Response(
-          JSON.stringify({
-            error: "Rate limit reached. Please try again in a moment.",
-          }),
-          {
-            status: 429,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
+          JSON.stringify({ error: "Rate limit reached. Please try again in a moment." }),
+          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       if (response.status === 402) {
         return new Response(
-          JSON.stringify({
-            error: "AI credits exhausted. Add credits in Lovable workspace.",
-          }),
-          {
-            status: 402,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          },
+          JSON.stringify({ error: "AI credits exhausted. Add credits in Lovable workspace." }),
+          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
       const text = await response.text();
-      console.error("AI gateway error", response.status, text);
-      return new Response(JSON.stringify({ error: "AI gateway error" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      console.error("AI gateway error (quiz, attempt 1)", response.status, text.slice(0, 400));
+      // Retry once for transient 5xx
+      if (response.status >= 500) {
+        await new Promise((r) => setTimeout(r, 400));
+        response = await callGateway();
+      }
+      if (!response.ok) {
+        const text2 = await response.text();
+        console.error("AI gateway error (quiz, final)", response.status, text2.slice(0, 400));
+        return new Response(JSON.stringify({ error: "AI gateway error" }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No quiz returned");
-    const quiz = JSON.parse(toolCall.function.arguments);
+    let data = await response.json();
+    let quiz = extractQuiz(data);
+
+    // Retry once if the model didn't return a tool_call
+    if (!quiz) {
+      console.warn("No tool_call returned, retrying quiz generation once");
+      await new Promise((r) => setTimeout(r, 300));
+      const retry = await callGateway();
+      if (retry.ok) {
+        data = await retry.json();
+        quiz = extractQuiz(data);
+      } else {
+        const text = await retry.text();
+        console.error("AI gateway error (quiz retry)", retry.status, text.slice(0, 400));
+      }
+    }
+
+    if (!quiz) {
+      console.error("Quiz extraction failed after retry", JSON.stringify(data).slice(0, 500));
+      return new Response(
+        JSON.stringify({ error: "Couldn't generate quiz. Please try again." }),
+        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     return new Response(JSON.stringify(quiz), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -148,13 +185,9 @@ ${jurisdictionNote}`;
   } catch (e) {
     console.error("generate-quiz error", e);
     return new Response(
-      JSON.stringify({
-        error: e instanceof Error ? e.message : "Unknown error",
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      },
+      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
+
