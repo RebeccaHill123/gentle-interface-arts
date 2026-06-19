@@ -747,11 +747,12 @@ The allocations, tasks and weeklyFocus[0] MUST be internally consistent — same
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("AI gateway error", response.status, text);
+      console.error("Plan AI gateway error", response.status, text.slice(0, 400));
       return new Response(JSON.stringify({ plan: buildDeterministicPlan(body), daysUntilExam, fallback: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
 
     const data = await response.json();
     const structuredPlan = extractStructuredPlan(data);
