@@ -253,21 +253,37 @@ function AuthPage() {
         });
         if (signInErr) {
           const msg = signInErr.message.toLowerCase();
-          if (msg.includes("not confirmed") || msg.includes("email not confirmed")) {
-            // Drop them straight into OTP verification instead of bouncing them to email.
-            setOtpEmail(parsed.data.email);
-            setOtpCode("");
-            setOtpError(null);
-            setResendMsg("We sent a fresh 6-digit code to verify your email.");
-            setResendCooldown(30);
-            otpAutoSubmitted.current = false;
-            await supabase.auth.resend({
+          const looksUnconfirmed =
+            msg.includes("not confirmed") || msg.includes("email not confirmed");
+          const looksInvalid = msg.includes("invalid");
+
+          // Supabase usually returns "Invalid login credentials" even when the
+          // account is just unconfirmed (to prevent email enumeration). Probe
+          // by attempting a signup resend — it only succeeds for unconfirmed
+          // users. If it succeeds, the user is unconfirmed: drop them straight
+          // into OTP verification with a fresh code, no extra step required.
+          if (looksUnconfirmed || looksInvalid) {
+            const { error: probeErr } = await supabase.auth.resend({
               type: "signup",
               email: parsed.data.email,
               options: { emailRedirectTo: getAuthRedirectURL() },
             });
-            return;
-          } else if (msg.includes("invalid")) {
+            const probeMsg = probeErr?.message?.toLowerCase() ?? "";
+            const alreadyConfirmed =
+              probeMsg.includes("already") || probeMsg.includes("confirmed");
+
+            if (!probeErr || (!alreadyConfirmed && looksUnconfirmed)) {
+              setOtpEmail(parsed.data.email);
+              setOtpCode("");
+              setOtpError(null);
+              setResendMsg(
+                "Your email isn't verified yet — we just sent a fresh 6-digit code. Enter it below to finish signing in.",
+              );
+              setResendCooldown(30);
+              otpAutoSubmitted.current = false;
+              return;
+            }
+            // Account is confirmed — it really was a bad password.
             setError("Wrong email or password.");
           } else {
             setError(signInErr.message);
