@@ -203,8 +203,9 @@ export const Route = createFileRoute("/api/coach")({
               return new Response(JSON.stringify({ error: "AI credits exhausted. Add funds in Workspace settings." }), { status: 402 });
             }
             const t = await aiRes.text();
-            console.error("AI gateway error", aiRes.status, t);
-            return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 500 });
+            console.error("Coach AI gateway error", aiRes.status, t.slice(0, 400));
+            return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 502 });
+
           }
 
           return new Response(aiRes.body, {
