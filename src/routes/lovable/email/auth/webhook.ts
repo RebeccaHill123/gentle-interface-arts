@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { render } from '@react-email/render'
-import { parseEmailWebhookPayload } from '@lovable.dev/email-js'
+import { parseEmailWebhookPayload, sendLovableEmail } from '@lovable.dev/email-js'
 import { WebhookError, verifyWebhookRequest } from '@lovable.dev/webhooks-js'
 import { createClient } from '@supabase/supabase-js'
 import { createFileRoute } from '@tanstack/react-router'
@@ -12,7 +12,7 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
+  signup: 'Your Tentra verification code',
   invite: "You've been invited",
   magiclink: 'Your login link',
   recovery: 'Reset your password',
@@ -162,34 +162,54 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
 
         const supabase = createClient(supabaseUrl, supabaseServiceKey)
         const messageId = crypto.randomUUID()
+        const emailPayload = {
+          run_id,
+          to: payload.data.email,
+          from: `${SITE_NAME} <verify@${FROM_DOMAIN}>`,
+          sender_domain: SENDER_DOMAIN,
+          subject: EMAIL_SUBJECTS[emailType] || 'Notification',
+          html,
+          text,
+          purpose: 'transactional',
+          label: emailType,
+          idempotency_key: `auth-${run_id}`,
+          message_id: messageId,
+        }
 
         // Log pending BEFORE enqueue so we have a record even if enqueue crashes
-        await supabase.from('email_send_log').insert({
+        const { error: pendingLogError } = await supabase.from('email_send_log').insert({
           message_id: messageId,
           template_name: emailType,
           recipient_email: payload.data.email,
           status: 'pending',
         })
+        if (pendingLogError) {
+          console.error('Failed to log pending auth email', { error: pendingLogError, run_id, emailType })
+        }
 
         const { error: enqueueError } = await supabase.rpc('enqueue_email', {
           queue_name: 'auth_emails',
           payload: {
-            run_id,
-            message_id: messageId,
-            to: payload.data.email,
-            from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
-            sender_domain: SENDER_DOMAIN,
-            subject: EMAIL_SUBJECTS[emailType] || 'Notification',
-            html,
-            text,
-            purpose: 'transactional',
-            label: emailType,
+            ...emailPayload,
             queued_at: new Date().toISOString(),
           },
         })
 
         if (enqueueError) {
           console.error('Failed to enqueue auth email', { error: enqueueError, run_id, emailType })
+          try {
+            await sendLovableEmail(emailPayload, { apiKey, sendUrl: process.env.LOVABLE_SEND_URL })
+            await supabase.from('email_send_log').insert({
+              message_id: messageId,
+              template_name: emailType,
+              recipient_email: payload.data.email,
+              status: 'sent',
+            })
+            console.log('Auth email sent directly after queue failure', { emailType, email_redacted: redactEmail(payload.data.email), run_id })
+            return Response.json({ success: true, queued: false })
+          } catch (sendError) {
+            console.error('Direct auth email fallback failed', { error: sendError, run_id, emailType })
+          }
           await supabase.from('email_send_log').insert({
             message_id: messageId,
             template_name: emailType,

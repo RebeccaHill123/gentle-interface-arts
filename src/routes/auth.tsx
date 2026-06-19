@@ -174,7 +174,7 @@ function AuthPage() {
       if (rErr) {
         setOtpError(rErr.message);
       } else {
-        setResendMsg("New code sent — older codes no longer work. Use the latest one in your inbox.");
+        setResendMsg("New verification email sent — older codes no longer work. Check your inbox and junk/spam folder for the latest code.");
         setResendCooldown(30);
       }
     } catch (err) {
@@ -234,7 +234,7 @@ function AuthPage() {
           setOtpEmail(parsed.data.email);
           setOtpCode("");
           setOtpError(null);
-          setResendMsg(null);
+          setResendMsg("Verification email sent. If it doesn't arrive within a minute, check junk/spam or tap resend for a fresh code.");
           setResendCooldown(30);
           otpAutoSubmitted.current = false;
           return;
@@ -325,8 +325,8 @@ function AuthPage() {
               Enter the <span className="text-gradient-pink-violet font-light">6-digit code</span>
             </h1>
             <p className="mt-4 text-[14.5px] leading-[1.6] text-muted-foreground">
-              We sent a code to <span className="font-medium text-foreground">{otpEmail}</span>.
-              Type it in below to finish setting up your account.
+              We sent a verification email to <span className="font-medium text-foreground">{otpEmail}</span>.
+              Enter the latest 6-digit code below to finish setting up your account.
             </p>
 
             <div className="mt-7 flex justify-center">
