@@ -171,7 +171,7 @@ function ProUpgrade({
           <ProBadge active />
           <h1 className="mt-5 text-4xl font-light tracking-tight text-foreground md:text-6xl">
             Train like the{" "}
-            <span className="text-gradient-pink-violet font-sans text-2xl">top 1%</span> of SQE candidates.
+            <span className="text-gradient-pink-violet font-sans">top 1%</span> of {pathwayLabel} candidates.
           </h1>
           <p className="mt-5 text-base text-muted-foreground md:text-lg">
             Tentra Pro turns your study data into intelligence — forecasts, weak-spot detection,
