@@ -312,7 +312,7 @@ function MocksPage() {
                 <div>
                   <div className="text-sm font-medium">{s.exam_type}</div>
                   <div className="text-xs text-muted-foreground">
-                    {new Date(s.started_at ?? s.created_at ?? "").toLocaleDateString()} ·{" "}
+                    {s.started_at ? new Date(s.started_at).toLocaleDateString() : ""} ·{" "}
                     {s.mode === "exam" ? "Exam mode" : "Practice mode"} ·{" "}
                     {s.status === "completed" ? "Completed" : "In progress"}
                   </div>
