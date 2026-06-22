@@ -6,7 +6,7 @@ import {
   Flag,
   Clock,
   CheckCircle2,
-  AlertTriangle,
+  
   Pause,
   Play,
   Menu,
