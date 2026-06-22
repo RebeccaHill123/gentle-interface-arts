@@ -26,6 +26,7 @@ import {
 import { waitForAuthUser } from "@/lib/auth-session";
 import { getProStatus, upgradeToPro, cancelPro } from "@/lib/pro-store";
 import { loadPlan, computeStreak } from "@/lib/plan-store";
+import { isUbePath } from "@/lib/exam-paths";
 import { computeFocusInsights } from "@/lib/focus-store";
 
 export const Route = createFileRoute("/pro")({
