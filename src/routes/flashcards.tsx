@@ -166,14 +166,15 @@ function DeckBrowser({ kind, onStart }: { kind: ExamKind; onStart: (m: ReviewMod
               variant="outline"
               className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground"
             >
-              FLK1 · FLK2
+              {isUbe ? "MBE · MEE · MPT" : "FLK1 · FLK2"}
             </Badge>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
               Flashcards
             </h2>
             <p className="mt-3 text-base text-muted-foreground md:text-lg">
-              Build fast recall across high-yield SQE rules, definitions and
-              exam traps.
+              {isUbe
+                ? "Build fast recall across high-yield UBE rules, doctrines and exam traps."
+                : "Build fast recall across high-yield SQE rules, definitions and exam traps."}
             </p>
           </div>
           <div className="hidden h-32 w-32 shrink-0 place-items-center rounded-3xl bg-gradient-pink-blue text-primary-foreground opacity-80 shadow-glow md:grid">
