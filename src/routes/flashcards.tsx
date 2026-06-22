@@ -64,7 +64,16 @@ export const Route = createFileRoute("/flashcards")({
   }),
 });
 
-type Filter = "all" | "FLK1" | "FLK2" | "weak" | "starred";
+type Filter = "all" | "FLK1" | "FLK2" | "MBE" | "MEE" | "MPT" | "weak" | "starred";
+
+function useExamKind(): ExamKind {
+  return useMemo(() => {
+    const plan = loadPlan();
+    const path = plan?.input.examPath;
+    const isUbe = path ? isUbePath(path) : plan?.input.examType === "UBE";
+    return isUbe ? "UBE" : "SQE";
+  }, []);
+}
 
 type ReviewMode =
   | { kind: "deck"; deckId: string }
@@ -87,51 +96,54 @@ function useProgress() {
 
 function FlashcardsPage() {
   const [mode, setMode] = useState<ReviewMode | null>(null);
+  const kind = useExamKind();
 
   if (mode) {
-    return <StudyView mode={mode} onExit={() => setMode(null)} />;
+    return <StudyView mode={mode} kind={kind} onExit={() => setMode(null)} />;
   }
 
-  return <DeckBrowser onStart={setMode} />;
+  return <DeckBrowser kind={kind} onStart={setMode} />;
 }
 
 // ---------- Deck browser ----------
 
-function DeckBrowser({ onStart }: { onStart: (m: ReviewMode) => void }) {
+function DeckBrowser({ kind, onStart }: { kind: ExamKind; onStart: (m: ReviewMode) => void }) {
   const [filter, setFilter] = useState<Filter>("all");
   const progress = useProgress();
+  const isUbe = kind === "UBE";
+  const decks = useMemo(() => getDecksFor(kind), [kind]);
+  const cards = useMemo(() => getCardsFor(kind), [kind]);
 
   const decksFiltered = useMemo(() => {
-    if (filter === "FLK1" || filter === "FLK2")
-      return DECKS.filter((d) => d.flk === filter);
-    return DECKS;
-  }, [filter]);
+    if (filter === "all" || filter === "weak" || filter === "starred") return decks;
+    return decks.filter((d) => d.flk === filter);
+  }, [filter, decks]);
 
   const weakCount = useMemo(
     () =>
-      CARDS.filter((c) => progress[c.id]?.status === "needs_review").length,
-    [progress],
+      cards.filter((c) => progress[c.id]?.status === "needs_review").length,
+    [progress, cards],
   );
   const starredCount = useMemo(
-    () => CARDS.filter((c) => progress[c.id]?.starred).length,
-    [progress],
+    () => cards.filter((c) => progress[c.id]?.starred).length,
+    [progress, cards],
   );
 
   const continueDeck = useMemo(() => {
     let best: { deckId: string; lastAt: number } | null = null;
-    for (const card of CARDS) {
+    for (const card of cards) {
       const p = progress[card.id];
       if (!p?.lastReviewedAt) continue;
       if (!best || p.lastReviewedAt > best.lastAt)
         best = { deckId: card.deckId, lastAt: p.lastReviewedAt };
     }
-    return best ? getDeck(best.deckId) ?? null : null;
-  }, [progress]);
+    return best ? getDeckFor(kind, best.deckId) ?? null : null;
+  }, [progress, cards, kind]);
 
+  const areaChips: Filter[] = isUbe ? ["MBE", "MEE", "MPT"] : ["FLK1", "FLK2"];
   const filters: { id: Filter; label: string; count?: number }[] = [
     { id: "all", label: "All" },
-    { id: "FLK1", label: "FLK1" },
-    { id: "FLK2", label: "FLK2" },
+    ...areaChips.map((id) => ({ id, label: id })),
     { id: "weak", label: "Weak areas", count: weakCount },
     { id: "starred", label: "Starred", count: starredCount },
   ];
@@ -139,7 +151,7 @@ function DeckBrowser({ onStart }: { onStart: (m: ReviewMode) => void }) {
   return (
     <AppShell
       title="Flashcards"
-      subtitle="Adaptive rule recall for FLK1 & FLK2."
+      subtitle={isUbe ? "Adaptive rule recall for MBE, MEE & MPT." : "Adaptive rule recall for FLK1 & FLK2."}
       showBack
       backTo="/mocks"
       backLabel="Back to Mocks & Practice"
