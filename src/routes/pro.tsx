@@ -151,11 +151,11 @@ function ProUpgrade({
 
   const features = [
     { icon: <Brain className="h-4 w-4" />, title: "AI-powered study insights", body: "Daily intelligence on what's working and what's slipping." },
-    { icon: <BarChart3 className="h-4 w-4" />, title: "Mock exam score forecast", body: "Predicted SQE1 and SQE2 scores with confidence bands." },
+    { icon: <BarChart3 className="h-4 w-4" />, title: "Mock exam score forecast", body: isUbe ? "Predicted UBE scores with confidence bands." : "Predicted SQE1 and SQE2 scores with confidence bands." },
     { icon: <Target className="h-4 w-4" />, title: "Weak topic detection", body: "We surface the three things to fix this week." },
     { icon: <CalendarClock className="h-4 w-4" />, title: "Smart revision scheduling", body: "Your plan re-tunes itself as you study." },
     { icon: <ShieldAlert className="h-4 w-4" />, title: "Burnout & risk alerts", body: "We protect your streak — and your sanity." },
-    { icon: <Trophy className="h-4 w-4" />, title: "Peer leaderboards", body: "See where you rank among SQE candidates this week." },
+    { icon: <Trophy className="h-4 w-4" />, title: "Peer leaderboards", body: `See where you rank among ${pathwayLabel} candidates this week.` },
     { icon: <Mic className="h-4 w-4" />, title: "Voice study coach", body: "Spoken recaps and quick-fire MCQs while you commute." },
     { icon: <Activity className="h-4 w-4" />, title: "Advanced analytics", body: "Heatmaps, focus consistency, retention curves." },
   ];
