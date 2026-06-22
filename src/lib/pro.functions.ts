@@ -1,6 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // Early Access: Pro is free. This server function grants Pro to the
 // authenticated user via the service-role client (the DB trigger blocks
@@ -9,6 +8,9 @@ export const activateEarlyAccessPro = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { userId } = context;
+    const { supabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
     const { data, error } = await supabaseAdmin
       .from("profiles")
       .update({ is_pro: true, pro_since: new Date().toISOString() })
