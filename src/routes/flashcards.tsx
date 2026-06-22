@@ -469,6 +469,7 @@ function StudyView({
       {!card ? (
         <CompletionPanel
           mode={mode}
+          kind={kind}
           progress={progress}
           onRestart={restart}
           onResetDeck={mode.kind === "deck" ? resetDeck : undefined}
