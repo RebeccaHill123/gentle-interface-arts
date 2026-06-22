@@ -565,23 +565,26 @@ function StudyView({
 
 function CompletionPanel({
   mode,
+  kind,
   progress,
   onRestart,
   onResetDeck,
   onExit,
 }: {
   mode: ReviewMode;
+  kind: ExamKind;
   progress: Record<string, CardProgress>;
   onRestart: () => void;
   onResetDeck?: () => void;
   onExit: () => void;
 }) {
+  const allCards = getCardsFor(kind);
   const cards =
     mode.kind === "deck"
-      ? getCardsByDeck(mode.deckId)
+      ? getCardsByDeckFor(kind, mode.deckId)
       : mode.kind === "weak"
-        ? CARDS.filter((c) => progress[c.id]?.status === "needs_review")
-        : CARDS.filter((c) => progress[c.id]?.starred);
+        ? allCards.filter((c) => progress[c.id]?.status === "needs_review")
+        : allCards.filter((c) => progress[c.id]?.starred);
   const mastered = cards.filter(
     (c) => progress[c.id]?.status === "got_it",
   ).length;
