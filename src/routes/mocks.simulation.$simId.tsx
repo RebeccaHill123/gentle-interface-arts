@@ -589,6 +589,8 @@ function SectionRunner({
       try {
         adjustModuleConfidence(topic, s.right / Math.max(1, s.total));
       } catch {}
+    }
+
 
     const sectionScore = mcqCount > 0 ? Math.round((correctCount / mcqCount) * 100) : null;
     await completeSection(dbSection.id, sectionScore);
