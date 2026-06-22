@@ -142,6 +142,13 @@ function ProUpgrade({
   onUpgrade: () => void;
   busy: boolean;
 }) {
+  const isUbe = useMemo(() => {
+    const plan = loadPlan();
+    const path = plan?.input.examPath;
+    return path ? isUbePath(path) : plan?.input.examType === "UBE";
+  }, []);
+  const pathwayLabel = isUbe ? "UBE" : "SQE";
+
   const features = [
     { icon: <Brain className="h-4 w-4" />, title: "AI-powered study insights", body: "Daily intelligence on what's working and what's slipping." },
     { icon: <BarChart3 className="h-4 w-4" />, title: "Mock exam score forecast", body: "Predicted SQE1 and SQE2 scores with confidence bands." },
