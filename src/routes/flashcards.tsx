@@ -18,12 +18,14 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { waitForAuthUser } from "@/lib/auth-session";
 import {
-  DECKS,
-  CARDS,
-  getCardsByDeck,
-  getDeck,
+  getDecksFor,
+  getCardsFor,
+  getDeckFor,
+  getCardsByDeckFor,
+  type Deck,
   type Flashcard,
-  type FlkArea,
+  type CardArea,
+  type ExamKind,
 } from "@/lib/flashcards-data";
 import {
   getAllProgress,
@@ -32,6 +34,8 @@ import {
   resetDeckProgress,
   type CardProgress,
 } from "@/lib/flashcards-progress";
+import { loadPlan } from "@/lib/plan-store";
+import { isUbePath } from "@/lib/exam-paths";
 
 export const Route = createFileRoute("/flashcards")({
   beforeLoad: async () => {
