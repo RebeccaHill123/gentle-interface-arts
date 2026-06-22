@@ -286,6 +286,7 @@ function DeckBrowser({ kind, onStart }: { kind: ExamKind; onStart: (m: ReviewMod
             <DeckCard
               key={deck.id}
               deck={deck}
+              kind={kind}
               progress={progress}
               onOpen={() => onStart({ kind: "deck", deckId: deck.id })}
             />
@@ -302,14 +303,16 @@ function DeckBrowser({ kind, onStart }: { kind: ExamKind; onStart: (m: ReviewMod
 
 function DeckCard({
   deck,
+  kind,
   progress,
   onOpen,
 }: {
-  deck: (typeof DECKS)[number];
+  deck: Deck;
+  kind: ExamKind;
   progress: Record<string, CardProgress>;
   onOpen: () => void;
 }) {
-  const cards = getCardsByDeck(deck.id);
+  const cards = getCardsByDeckFor(kind, deck.id);
   const completed = cards.filter(
     (c) => progress[c.id]?.status === "got_it",
   ).length;
@@ -353,13 +356,14 @@ function DeckCard({
 
 // ---------- Study view ----------
 
-function buildQueue(mode: ReviewMode): Flashcard[] {
+function buildQueue(mode: ReviewMode, kind: ExamKind): Flashcard[] {
   const progress = getAllProgress();
+  const allCards = getCardsFor(kind);
   let pool: Flashcard[] = [];
-  if (mode.kind === "deck") pool = getCardsByDeck(mode.deckId);
+  if (mode.kind === "deck") pool = getCardsByDeckFor(kind, mode.deckId);
   else if (mode.kind === "weak")
-    pool = CARDS.filter((c) => progress[c.id]?.status === "needs_review");
-  else pool = CARDS.filter((c) => progress[c.id]?.starred);
+    pool = allCards.filter((c) => progress[c.id]?.status === "needs_review");
+  else pool = allCards.filter((c) => progress[c.id]?.starred);
 
   // Adaptive weighting: needs_review cards appear twice, got_it skipped in deck
   // mode if everything has been seen at least once.
@@ -379,12 +383,14 @@ function buildQueue(mode: ReviewMode): Flashcard[] {
 
 function StudyView({
   mode,
+  kind,
   onExit,
 }: {
   mode: ReviewMode;
+  kind: ExamKind;
   onExit: () => void;
 }) {
-  const [queue, setQueue] = useState<Flashcard[]>(() => buildQueue(mode));
+  const [queue, setQueue] = useState<Flashcard[]>(() => buildQueue(mode, kind));
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const progress = useProgress();
@@ -395,13 +401,13 @@ function StudyView({
 
   const heading =
     mode.kind === "deck"
-      ? getDeck(mode.deckId)?.title ?? "Deck"
+      ? getDeckFor(kind, mode.deckId)?.title ?? "Deck"
       : mode.kind === "weak"
         ? "Weak-area review"
         : "Starred cards";
 
-  const flkBadge: FlkArea | null =
-    mode.kind === "deck" ? getDeck(mode.deckId)?.flk ?? null : null;
+  const flkBadge: CardArea | null =
+    mode.kind === "deck" ? getDeckFor(kind, mode.deckId)?.flk ?? null : null;
 
   const handleStatus = (status: "got_it" | "needs_review") => {
     if (!card) return;
@@ -416,14 +422,14 @@ function StudyView({
   };
 
   const restart = () => {
-    setQueue(buildQueue(mode));
+    setQueue(buildQueue(mode, kind));
     setIndex(0);
     setRevealed(false);
   };
 
   const resetDeck = () => {
     if (mode.kind !== "deck") return;
-    resetDeckProgress(getCardsByDeck(mode.deckId).map((c) => c.id));
+    resetDeckProgress(getCardsByDeckFor(kind, mode.deckId).map((c) => c.id));
     restart();
   };
 
