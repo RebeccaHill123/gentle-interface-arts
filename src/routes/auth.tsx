@@ -255,38 +255,31 @@ function AuthPage() {
           const msg = signInErr.message.toLowerCase();
           const looksUnconfirmed =
             msg.includes("not confirmed") || msg.includes("email not confirmed");
-          const looksInvalid = msg.includes("invalid");
 
-          // Supabase usually returns "Invalid login credentials" even when the
-          // account is just unconfirmed (to prevent email enumeration). Probe
-          // by attempting a signup resend — it only succeeds for unconfirmed
-          // users. If it succeeds, the user is unconfirmed: drop them straight
-          // into OTP verification with a fresh code, no extra step required.
-          if (looksUnconfirmed || looksInvalid) {
-            const { error: probeErr } = await supabase.auth.resend({
+          if (looksUnconfirmed) {
+            const { error: resendErr } = await supabase.auth.resend({
               type: "signup",
               email: parsed.data.email,
               options: { emailRedirectTo: getAuthRedirectURL() },
             });
-            const probeMsg = probeErr?.message?.toLowerCase() ?? "";
-            const alreadyConfirmed =
-              probeMsg.includes("already") || probeMsg.includes("confirmed");
 
-            if (!probeErr || (!alreadyConfirmed && looksUnconfirmed)) {
-              setOtpEmail(parsed.data.email);
-              setOtpCode("");
-              setOtpError(null);
-              setResendMsg(
-                "Your email isn't verified yet — we just sent a fresh 6-digit code. Enter it below to finish signing in.",
+            if (resendErr) {
+              setError(
+                "Your email isn't verified yet, but we couldn't send a new code. Please try again in a moment.",
               );
-              setResendCooldown(30);
-              otpAutoSubmitted.current = false;
               return;
             }
-            // Account is confirmed — it really was a bad password.
-            setError("Wrong email or password.");
+
+            setOtpEmail(parsed.data.email);
+            setOtpCode("");
+            setOtpError(null);
+            setResendMsg(
+              "Your email isn't verified yet — we just sent a fresh 6-digit code. Enter it below to finish signing in.",
+            );
+            setResendCooldown(30);
+            otpAutoSubmitted.current = false;
           } else {
-            setError(signInErr.message);
+            setError("Wrong email or password.");
           }
           return;
         }
