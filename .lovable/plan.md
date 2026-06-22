@@ -1,35 +1,72 @@
-## Diagnosis
+## Problem
 
-samantha.harris2921@yahoo.com signed up on 16 June at 19:40 UTC and received 3 signup emails successfully (`email_send_log` confirms `status: sent` for all). She never confirmed. Auth logs for that date have rolled off, so we can't see the exact reason, but the fact that she resent the code twice within 3 minutes suggests codes weren't being accepted.
+The Flashcards page currently only contains SQE content (FLK1 / FLK2 decks). For users on a UBE (US Bar / NY Bar) exam path, the cards on display are not examinable law for them — they need MBE / MEE / MPT content instead.
 
-Most likely cause: when a user clicks "Resend", Supabase invalidates the previous code, so if she typed a code from an older email she'd get a generic "invalid OTP" error. Combined with Yahoo's aggressive spam filtering / link rewriting, the UX is brittle.
+The rest of the app already branches on `plan.input.examType` / `isUbePath` (see `mocks.tsx`, `practice.tsx`, `dashboard.tsx`), but `flashcards.tsx` does not.
 
-The flow itself is working — 12 of the last 15 signups confirmed successfully, including Yahoo / Hotmail / iCloud users. So this is a polish issue, not a broken flow.
+## Goal
 
-## Improvements
+When a user's selected exam path is UBE, the Flashcards page shows UBE decks (US law, MBE/MEE/MPT) instead of SQE decks. SQE users see the existing SQE decks unchanged.
 
-### 1. Clearer messaging around resend (`src/routes/auth.tsx`)
-Today: clicking "Resend" silently invalidates the previous code, but the UI only says "Code sent". 
-Change: after a successful resend show "We sent a new code — older codes no longer work. Check your inbox for the latest one." This is the single most likely cause of samantha's drop-off.
+## Changes
 
-### 2. More helpful error copy on invalid OTP (`src/routes/auth.tsx`)
-Today: a wrong code surfaces Supabase's raw error string. 
-Change: map common errors:
-- `Token has expired or is invalid` → "That code didn't work. It may be from an older email — make sure you're using the most recent code we sent. You can resend below."
-- `otp_expired` → keep existing copy.
+### 1. New data module: `src/lib/flashcards-data-ube.ts`
 
-### 3. Make the email link a reliable fallback (`src/lib/email-templates/signup.tsx`)
-Today: link is buried at the bottom as "Opening this email on a different device?". Yahoo and some corporate filters strip or wrap the 6-digit code visually. 
-Change: keep code as the headline but rename the fallback link to a clearer secondary CTA — "Or click here to verify instantly" — and make it a styled button rather than inline text. Link still routes through `/auth/callback`, which already handles `token_hash` + `type=signup` and creates the session in the same tab.
+Mirror the shape of `flashcards-data.ts` but for UBE:
 
-### 4. (Optional) Admin recovery path for stuck users
-For users like samantha who are now stuck (account exists, unconfirmed, can't sign in), the current path is to sign up again with the same email — which works (`signUp` re-issues a code for unconfirmed users). Worth adding one line to the sign-in error state: if a user tries to sign in with an unconfirmed email, surface "This email isn't verified yet — [resend verification code]" instead of "Invalid login credentials".
+- New types `UbeArea = "MBE" | "MEE" | "MPT"` reusing the existing `Difficulty`, `Flashcard`, `Deck` shapes (extend `flk` field to accept a generic `area` string, or add a parallel `area` field — see Technical notes).
+- `UBE_DECKS`: one deck per UBE_SYLLABUS subject (Civil Procedure, Constitutional Law, Contracts & Sales, Criminal Law & Procedure, Evidence, Real Property, Torts, Business Associations, Conflict of Laws, Family Law, Trusts & Estates, Secured Transactions, MPT) — 13 decks total, tagged by component (MBE/MEE/MPT).
+- `UBE_CARDS`: 5–7 high-yield cards per deck, written as black-letter US rules with exam tips. Examples of the kind of cards (not exhaustive):
+  - Civ Pro: SMJ thresholds, PJ Int'l Shoe test, Erie, claim/issue preclusion, Rule 12 timing.
+  - Con Law: standing (injury/causation/redressability), levels of scrutiny, dormant Commerce Clause, free speech forum analysis.
+  - Contracts: UCC vs common law triggers, mailbox rule, SOF categories, perfect tender, expectation damages.
+  - Crim: common-law murder + felony murder, Miranda triggers, 4A warrant exceptions, accomplice liability.
+  - Evidence: hearsay definition, 803/804 exceptions, character evidence rules, confrontation clause.
+  - Real Property: RAP, recording acts (race / notice / race-notice), mortgages priority, easement creation.
+  - Torts: negligence elements, products liability theories, defamation public/private figures, intentional torts.
+  - BA: agency authority types, BJR, piercing the veil, derivative suits.
+  - Conflict of Laws: vested rights vs Second Restatement, FF&C judgment recognition.
+  - Family Law: equitable distribution vs community property, UCCJEA, child-support guidelines.
+  - Trusts & Estates: will execution requirements, intestacy, anti-lapse, trustee duties.
+  - Secured Transactions: attachment, perfection methods, PMSI super-priority.
+  - MPT: objective memo vs persuasive brief structure, closed-library rule, fact analysis framework.
 
-## Files touched
-- `src/routes/auth.tsx` — resend messaging, OTP error mapping, unconfirmed-on-signin handling
-- `src/lib/email-templates/signup.tsx` — promote fallback link to a clearer secondary CTA
+All cards are original, plain-English summaries of black-letter rules — no copying from bar-prep vendors.
 
-No backend or schema changes. No changes to the Google / OTP architecture — just polish to reduce the confusion that almost certainly tripped up samantha.
+### 2. Update `src/lib/flashcards-data.ts`
 
-## What to tell samantha
-She can simply sign up again with the same email and a code will be re-issued; her unconfirmed account will be reused (no duplicate). Or you can manually confirm her in the backend if you want to remove the friction entirely.
+Add a small helper so the page can pull the right dataset:
+
+```ts
+export type ExamKind = "SQE" | "UBE";
+export function getDecksFor(kind: ExamKind): Deck[]
+export function getCardsFor(kind: ExamKind): Flashcard[]
+export function getDeckFor(kind, id)
+export function getCardsByDeckFor(kind, deckId)
+```
+
+Internally these route to either the SQE arrays already in this file or the new UBE arrays.
+
+### 3. Update `src/routes/flashcards.tsx`
+
+- Read the active exam path from `plan-store` (same pattern as `mocks.tsx`): compute `isUbe` from `isUbePath(plan.input.examPath)` with `plan.input.examType === "UBE"` as fallback.
+- Replace direct imports of `DECKS`, `CARDS`, `getDeck`, `getCardsByDeck` with the `*For(kind)` helpers.
+- Replace the FLK1 / FLK2 filter chips with MBE / MEE / MPT chips when `isUbe` is true. Keep Weak / Starred chips for both.
+- Update the hero badge ("FLK1 · FLK2") and copy ("Build fast recall across high-yield SQE rules…") to UBE-equivalent strings ("MBE · MEE · MPT", "Build fast recall across high-yield UBE rules, doctrines and exam traps.") when `isUbe`.
+- Update route `head()` title and description conditionally is not possible at module scope; instead, keep a generic title ("Flashcards — adaptive rule recall | Tentra") that works for both. SQE-specific OG copy is replaced with neutral copy mentioning both exams.
+
+### 4. Per-card progress
+
+Card IDs in the new UBE dataset are namespaced (`ube-<deck>-<slug>`) so they cannot collide with SQE card IDs in `localStorage`. No changes needed to `flashcards-progress.ts`.
+
+## Out of scope
+
+- Server-side storage of flashcard progress (still localStorage per existing code).
+- Adaptive scheduling beyond what `buildQueue` already does.
+- Vendor-style explanations or case citations beyond a one-line rule + tip.
+
+## Technical notes
+
+- The existing `Flashcard.flk: FlkArea` field is used in the UI to render a badge. The cleanest change is to widen the badge type to `string` (e.g. `area: string`) in the shared shape, or keep two parallel types and have `flashcards.tsx` render whichever field is present. Plan to add a generic `area: string` field on the `Flashcard`/`Deck` types and keep `flk` as a deprecated alias on SQE cards so no other code breaks.
+- The page already gates on auth and uses `AppShell` — no routing changes needed.
+- Card count target: ~70–90 UBE cards total in this first pass (matches the ~70 SQE cards already shipped).
