@@ -101,6 +101,176 @@ export type Database = {
         }
         Relationships: []
       }
+      mock_answers: {
+        Row: {
+          answer_value: string | null
+          created_at: string
+          essay_text: string | null
+          id: string
+          is_correct: boolean | null
+          is_flagged: boolean
+          metadata: Json
+          question_id: string
+          section_id: string
+          simulation_id: string
+          time_spent_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          answer_value?: string | null
+          created_at?: string
+          essay_text?: string | null
+          id?: string
+          is_correct?: boolean | null
+          is_flagged?: boolean
+          metadata?: Json
+          question_id: string
+          section_id: string
+          simulation_id: string
+          time_spent_seconds?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          answer_value?: string | null
+          created_at?: string
+          essay_text?: string | null
+          id?: string
+          is_correct?: boolean | null
+          is_flagged?: boolean
+          metadata?: Json
+          question_id?: string
+          section_id?: string
+          simulation_id?: string
+          time_spent_seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mock_answers_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "mock_sections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mock_answers_simulation_id_fkey"
+            columns: ["simulation_id"]
+            isOneToOne: false
+            referencedRelation: "mock_simulations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mock_sections: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          duration_seconds: number
+          id: string
+          metadata: Json
+          order_index: number
+          score: number | null
+          section_type: string
+          simulation_id: string
+          started_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds: number
+          id?: string
+          metadata?: Json
+          order_index: number
+          score?: number | null
+          section_type: string
+          simulation_id: string
+          started_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          duration_seconds?: number
+          id?: string
+          metadata?: Json
+          order_index?: number
+          score?: number | null
+          section_type?: string
+          simulation_id?: string
+          started_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mock_sections_simulation_id_fkey"
+            columns: ["simulation_id"]
+            isOneToOne: false
+            referencedRelation: "mock_simulations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mock_simulations: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          exam_type: string
+          id: string
+          metadata: Json
+          mode: string
+          overall_score: number | null
+          pathway: string
+          started_at: string | null
+          status: string
+          total_time_seconds: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          exam_type: string
+          id?: string
+          metadata?: Json
+          mode?: string
+          overall_score?: number | null
+          pathway: string
+          started_at?: string | null
+          status?: string
+          total_time_seconds?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          exam_type?: string
+          id?: string
+          metadata?: Json
+          mode?: string
+          overall_score?: number | null
+          pathway?: string
+          started_at?: string | null
+          status?: string
+          total_time_seconds?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
