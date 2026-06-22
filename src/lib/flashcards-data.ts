@@ -2,6 +2,8 @@
 // Structured so it can later be migrated to Supabase (decks + cards tables).
 
 export type FlkArea = "FLK1" | "FLK2";
+export type UbeArea = "MBE" | "MEE" | "MPT";
+export type CardArea = FlkArea | UbeArea;
 export type Difficulty = "Easy" | "Medium" | "Hard";
 
 export interface Flashcard {
@@ -12,14 +14,14 @@ export interface Flashcard {
   examTip?: string;
   topic: string;
   difficulty: Difficulty;
-  flk: FlkArea;
+  flk: CardArea;
 }
 
 export interface Deck {
   id: string;
   title: string;
   description: string;
-  flk: FlkArea;
+  flk: CardArea;
   subject: string;
 }
 
@@ -515,3 +517,20 @@ export const CARDS: Flashcard[] = [
 export const getDeck = (id: string) => DECKS.find((d) => d.id === id);
 export const getCardsByDeck = (deckId: string) =>
   CARDS.filter((c) => c.deckId === deckId);
+
+// ===== Exam-aware helpers =====
+import { UBE_DECKS, UBE_CARDS, getUbeDeck, getUbeCardsByDeck } from "./flashcards-data-ube";
+
+export type ExamKind = "SQE" | "UBE";
+
+export const getDecksFor = (kind: ExamKind): Deck[] =>
+  kind === "UBE" ? UBE_DECKS : DECKS;
+
+export const getCardsFor = (kind: ExamKind): Flashcard[] =>
+  kind === "UBE" ? UBE_CARDS : CARDS;
+
+export const getDeckFor = (kind: ExamKind, id: string) =>
+  kind === "UBE" ? getUbeDeck(id) : getDeck(id);
+
+export const getCardsByDeckFor = (kind: ExamKind, deckId: string) =>
+  kind === "UBE" ? getUbeCardsByDeck(deckId) : getCardsByDeck(deckId);
