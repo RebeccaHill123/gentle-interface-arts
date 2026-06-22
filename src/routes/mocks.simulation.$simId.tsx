@@ -570,13 +570,25 @@ function SectionRunner({
         is_correct: isCorrect,
       });
 
-      // Adjust module confidence for MCQ outcomes
-      if (isMcq && isCorrect != null) {
-        try {
-          adjustModuleConfidence((q as MCQQuestion).topic, isCorrect ? 0.05 : -0.05);
-        } catch {}
-      }
     }
+
+    // Aggregate per-topic accuracy and feed module confidence
+    const perTopic = new Map<string, { right: number; total: number }>();
+    for (const q of items) {
+      if (bpSection.kind !== "mcq") break;
+      const mcq = q as MCQQuestion;
+      const la = local[q.id] ?? (q.id === currentId ? currentLocal : {});
+      const ai = (la as LocalAnswer).answerIndex;
+      if (ai == null) continue;
+      const cur = perTopic.get(mcq.topic) ?? { right: 0, total: 0 };
+      cur.total++;
+      if (ai === mcq.correctIndex) cur.right++;
+      perTopic.set(mcq.topic, cur);
+    }
+    for (const [topic, s] of perTopic) {
+      try {
+        adjustModuleConfidence(topic, s.right / Math.max(1, s.total));
+      } catch {}
 
     const sectionScore = mcqCount > 0 ? Math.round((correctCount / mcqCount) * 100) : null;
     await completeSection(dbSection.id, sectionScore);
