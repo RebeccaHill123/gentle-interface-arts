@@ -448,7 +448,7 @@ function SectionRunner({
   useEffect(() => {
     if (paused) return;
     const t = setInterval(() => {
-      setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
+      setSecondsLeft((s: number) => (s > 0 ? s - 1 : 0));
     }, 1000);
     return () => clearInterval(t);
   }, [paused]);
