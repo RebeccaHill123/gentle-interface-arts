@@ -32,6 +32,7 @@ import { Route as FocusSummaryRouteImport } from './routes/focus.summary'
 import { Route as FocusSprintRouteImport } from './routes/focus.sprint'
 import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
+import { Route as MocksSimulationSimIdRouteImport } from './routes/mocks.simulation.$simId'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
@@ -151,6 +152,11 @@ const ApiCoachRoute = ApiCoachRouteImport.update({
   path: '/api/coach',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MocksSimulationSimIdRoute = MocksSimulationSimIdRouteImport.update({
+  id: '/simulation/$simId',
+  path: '/simulation/$simId',
+  getParentRoute: () => MocksRoute,
+} as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -178,7 +184,7 @@ export interface FileRoutesByFullPath {
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
-  '/mocks': typeof MocksRoute
+  '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
@@ -192,6 +198,7 @@ export interface FileRoutesByFullPath {
   '/focus/sprint': typeof FocusSprintRoute
   '/focus/summary': typeof FocusSummaryRoute
   '/focus/': typeof FocusIndexRoute
+  '/mocks/simulation/$simId': typeof MocksSimulationSimIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -205,7 +212,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
   '/forgot-password': typeof ForgotPasswordRoute
-  '/mocks': typeof MocksRoute
+  '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
@@ -219,6 +226,7 @@ export interface FileRoutesByTo {
   '/focus/sprint': typeof FocusSprintRoute
   '/focus/summary': typeof FocusSummaryRoute
   '/focus': typeof FocusIndexRoute
+  '/mocks/simulation/$simId': typeof MocksSimulationSimIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -234,7 +242,7 @@ export interface FileRoutesById {
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
-  '/mocks': typeof MocksRoute
+  '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
@@ -248,6 +256,7 @@ export interface FileRoutesById {
   '/focus/sprint': typeof FocusSprintRoute
   '/focus/summary': typeof FocusSummaryRoute
   '/focus/': typeof FocusIndexRoute
+  '/mocks/simulation/$simId': typeof MocksSimulationSimIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -278,6 +287,7 @@ export interface FileRouteTypes {
     | '/focus/sprint'
     | '/focus/summary'
     | '/focus/'
+    | '/mocks/simulation/$simId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/focus/sprint'
     | '/focus/summary'
     | '/focus'
+    | '/mocks/simulation/$simId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -333,6 +344,7 @@ export interface FileRouteTypes {
     | '/focus/sprint'
     | '/focus/summary'
     | '/focus/'
+    | '/mocks/simulation/$simId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -348,7 +360,7 @@ export interface RootRouteChildren {
   FlashcardsRoute: typeof FlashcardsRoute
   FocusRoute: typeof FocusRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
-  MocksRoute: typeof MocksRoute
+  MocksRoute: typeof MocksRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
   PracticeRoute: typeof PracticeRoute
   PrivacyRoute: typeof PrivacyRoute
@@ -527,6 +539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCoachRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/mocks/simulation/$simId': {
+      id: '/mocks/simulation/$simId'
+      path: '/simulation/$simId'
+      fullPath: '/mocks/simulation/$simId'
+      preLoaderRoute: typeof MocksSimulationSimIdRouteImport
+      parentRoute: typeof MocksRoute
+    }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
       path: '/lovable/email/queue/process'
@@ -565,6 +584,16 @@ const FocusRouteChildren: FocusRouteChildren = {
 
 const FocusRouteWithChildren = FocusRoute._addFileChildren(FocusRouteChildren)
 
+interface MocksRouteChildren {
+  MocksSimulationSimIdRoute: typeof MocksSimulationSimIdRoute
+}
+
+const MocksRouteChildren: MocksRouteChildren = {
+  MocksSimulationSimIdRoute: MocksSimulationSimIdRoute,
+}
+
+const MocksRouteWithChildren = MocksRoute._addFileChildren(MocksRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnalyticsRoute: AnalyticsRoute,
@@ -575,7 +604,7 @@ const rootRouteChildren: RootRouteChildren = {
   FlashcardsRoute: FlashcardsRoute,
   FocusRoute: FocusRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
-  MocksRoute: MocksRoute,
+  MocksRoute: MocksRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
   PracticeRoute: PracticeRoute,
   PrivacyRoute: PrivacyRoute,

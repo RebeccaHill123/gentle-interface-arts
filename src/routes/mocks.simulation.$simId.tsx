@@ -433,7 +433,7 @@ function SectionRunner({
   }, [bpSection.kind, questions]);
 
   const [idx, setIdx] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(bpSection.duration_seconds ?? bpSection.durationSeconds);
+  const [secondsLeft, setSecondsLeft] = useState(bpSection.durationSeconds);
   const [paused, setPaused] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const startedAt = useRef(Date.now());
