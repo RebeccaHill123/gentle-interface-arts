@@ -1,26 +1,43 @@
-# Fix "Unlock Pro free" error
+# Why jasleenpawar@hotmail.co.uk isn't receiving the confirmation email
 
-## Root cause
+## Diagnosis (already verified)
 
-Clicking "Unlock Pro free" calls the `activateEarlyAccessPro` server function. It fails with `Error: [object Response]` (visible in runtime errors) because the request reaches the server without an `Authorization` header, so `requireSupabaseAuth` rejects with a 401 `Response`.
+All 7 confirmation emails for this address are logged as `status = sent` in `email_send_log` with no `error_message`. The address is **not** in `suppressed_emails`. That means:
 
-Two problems:
+- Our queue processed them.
+- The email provider accepted them for delivery.
+- Nothing on our side is broken or rate-limited.
 
-1. **`attachSupabaseAuth` is not registered globally.** A search for `functionMiddleware` / `attachSupabaseAuth` finds only the attacher file itself — there is no `src/start.ts` calling `createStart({ functionMiddleware: [attachSupabaseAuth, ...] })`. Without it, no server function call from the browser carries the user's bearer token, so every `.middleware([requireSupabaseAuth])` fn 401s.
-2. **`supabaseAdmin` is imported at module scope in `src/lib/pro.functions.ts`.** Server-function modules are part of the client module graph (only handler bodies are stripped). A top-level `import { supabaseAdmin } from "@/integrations/supabase/client.server"` can leak the service-role module into client chunks and break the build/runtime. It must be loaded inside the handler with `await import(...)`.
+The failure is **downstream delivery to Hotmail/Outlook**, which is a well-known issue:
 
-## Changes
+1. Microsoft (hotmail.co.uk, outlook.com, live.com) runs very aggressive spam filtering and frequently routes auth confirmation emails to **Junk** or silently drops them, especially from newer sending domains.
+2. Each "Resend" click creates a new email; Microsoft is more likely to throttle/drop subsequent ones from the same sender to the same recipient in a short window.
+3. We get no bounce signal back, because Microsoft typically accepts the SMTP transaction then filters silently.
 
-### 1. Create `src/start.ts`
-Register the existing `attachSupabaseAuth` (from `@/integrations/supabase/auth-attacher`) as a global `functionMiddleware`, keeping `errorMiddleware` on `requestMiddleware`. This is the canonical wiring required whenever any server fn uses `requireSupabaseAuth`.
+## What to tell this specific user
 
-### 2. Edit `src/lib/pro.functions.ts`
-- Remove the top-level `import { supabaseAdmin } from "@/integrations/supabase/client.server"`.
-- Inside `.handler()`, do `const { supabaseAdmin } = await import("@/integrations/supabase/client.server")` before the update.
+Ask them to:
+- Check **Junk Email** and **Other** (Focused/Other inbox split) folders.
+- Search inbox for the sender domain `tentraapp.com` (or whatever the configured sender domain is).
+- Add the sender to safe senders / contacts and request **one** more confirmation.
+- If still nothing, sign up with a non-Microsoft address (Gmail works reliably).
 
-No other files change. No DB or UI changes.
+## Recommended product-side changes
 
-## Verification
+1. **Add a "Having trouble?" helper** on the "Check your email" screen after signup that:
+   - Tells users to check Junk/Spam.
+   - Calls out Hotmail/Outlook specifically as known-problematic.
+   - Suggests retrying with a different email if 2+ resends fail.
+2. **Throttle the resend button** in the UI (e.g. 60s cooldown + max 3 resends per session) so users don't pile up 8 identical sends — each extra attempt makes Microsoft more likely to filter the next one.
+3. **Optional follow-up**: monitor `email_send_log` for repeated sends to the same recipient with no subsequent sign-in event and surface it in the email dashboard as a "likely undelivered" signal.
 
-- Sign in, click "Unlock Pro free": toast should show success and Pro becomes active (no "Couldn't activate Pro right now" error).
-- Network tab: the `_serverFn/...activateEarlyAccessPro` POST returns 200 instead of 401.
+## Code touch points (for implementation phase)
+
+- Signup confirmation screen component (the one with the "Resend email" button) — add helper copy + cooldown state.
+- Resend handler — enforce client-side cooldown and a max attempts counter (sessionStorage).
+- No backend/migration changes required for the immediate fix.
+
+## Not changing
+
+- Email infrastructure, templates, sender domain, DNS — all working correctly per the logs.
+- No need to switch providers; this is a Hotmail-specific deliverability quirk, not a Lovable Emails issue.
