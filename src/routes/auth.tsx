@@ -83,6 +83,10 @@ function AuthPage() {
   const [resending, setResending] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendAttempts, setResendAttempts] = useState(0);
+  const MAX_RESEND_ATTEMPTS = 4;
+  const isMicrosoftEmail = (e: string | null) =>
+    !!e && /@(hotmail|outlook|live|msn|hotmail\.co\.uk|outlook\.co\.uk)\./i.test(e + ".");
   const otpAutoSubmitted = useRef(false);
 
   const [remember, setRemember] = useState<boolean>(getRememberMe());
