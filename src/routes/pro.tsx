@@ -503,7 +503,7 @@ function ProDashboard({
 
       {/* Heatmap + Burnout */}
       <section className="mt-8 grid gap-4 md:grid-cols-3">
-        <div className="md:col-span-2 rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+        <div className="md:col-span-2 rounded-xl border border-border/70 bg-card p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
               Revision heatmap · last 7 days
@@ -514,7 +514,7 @@ function ProDashboard({
           </div>
           <Heatmap values={heatmap} />
         </div>
-        <div className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+        <div className="rounded-xl border border-border/70 bg-card p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
             Burnout radar
           </h2>
@@ -533,7 +533,7 @@ function ProDashboard({
 
       {/* Forecast + Weak topics */}
       <section className="mt-8 grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+        <div className="rounded-xl border border-border/70 bg-card p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
               Mock exam forecast
@@ -554,7 +554,7 @@ function ProDashboard({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+        <div className="rounded-xl border border-border/70 bg-card p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
             Weak topic detection
           </h2>
@@ -586,7 +586,7 @@ function ProDashboard({
       </section>
 
       {/* Smart schedule */}
-      <section className="mt-8 rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+      <section className="mt-8 rounded-xl border border-border/70 bg-card p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
             Smart revision schedule
@@ -626,7 +626,7 @@ function ProDashboard({
       </section>
 
       {/* Manage */}
-      <section className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card/60 p-5">
+      <section className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-5">
         <div>
           <div className="text-sm font-semibold text-foreground">Tentra Pro membership</div>
           <div className="text-xs text-muted-foreground">
@@ -709,7 +709,7 @@ function StatRing({
 
 function StreakChip({ days }: { days: number }) {
   return (
-    <div className="relative flex items-center gap-2 rounded-2xl border border-border bg-background/70 px-4 py-3">
+    <div className="relative flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-4 py-3">
       <Flame className="h-5 w-5 text-pink drop-shadow-[0_0_8px_oklch(0.72_0.24_350/0.6)] animate-pulse" />
       <div>
         <div className="font-display text-2xl font-light text-gradient-tentra leading-none">
@@ -725,7 +725,7 @@ function StreakChip({ days }: { days: number }) {
 
 function ScoreGauge({ predicted }: { predicted: number }) {
   return (
-    <div className="rounded-2xl border border-border bg-background/70 px-4 py-3">
+    <div className="rounded-xl border border-border/70 bg-background/60 px-4 py-3">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         Predicted score
       </div>
