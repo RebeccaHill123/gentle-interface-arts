@@ -407,6 +407,8 @@ function AuthPage() {
               >
                 {resending
                   ? "Resending…"
+                  : resendAttempts >= MAX_RESEND_ATTEMPTS
+                  ? "Try a different email"
                   : resendCooldown > 0
                   ? `Resend code in ${resendCooldown}s`
                   : "Resend code"}
