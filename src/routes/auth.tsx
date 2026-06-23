@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { getRememberMe, setRememberMe } from "@/lib/remember-me";
