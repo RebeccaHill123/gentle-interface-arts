@@ -387,13 +387,13 @@ function LockedCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-card/70 p-5 backdrop-blur">
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="relative overflow-hidden rounded-xl border border-border/70 bg-card p-5">
+      <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {title}
       </div>
-      <div className="mt-3 select-none opacity-60 blur-[2px]">{children}</div>
-      <div className="absolute inset-0 grid place-items-center bg-gradient-to-t from-background/60 via-background/10 to-transparent">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-card">
+      <div className="mt-3 select-none opacity-50 blur-[2px]">{children}</div>
+      <div className="absolute inset-0 grid place-items-center bg-gradient-to-t from-card/85 via-card/30 to-transparent">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-medium text-foreground">
           <Lock className="h-3 w-3" />
           Pro
         </div>
@@ -401,6 +401,7 @@ function LockedCard({
     </div>
   );
 }
+
 
 /* -------------------- PRO DASHBOARD -------------------- */
 
