@@ -389,11 +389,20 @@ function AuthPage() {
               </div>
             )}
 
+            {isMicrosoftEmail(otpEmail) && (
+              <div className="mt-5 rounded-xl border border-amber-300/50 bg-amber-50/60 p-3 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
+                <strong className="font-medium">Using Hotmail or Outlook?</strong> These providers
+                often route verification emails to <em>Junk</em>, <em>Other</em>, or the
+                <em> Blocked</em> folder. Please check those first. If nothing arrives after one
+                resend, try signing up with a different address — Gmail is most reliable.
+              </div>
+            )}
+
             <div className="mt-6 flex flex-col items-center gap-3 text-center text-sm">
               <button
                 type="button"
                 onClick={handleResendOtp}
-                disabled={resending || resendCooldown > 0}
+                disabled={resending || resendCooldown > 0 || resendAttempts >= MAX_RESEND_ATTEMPTS}
                 className="font-medium text-foreground hover:underline disabled:cursor-not-allowed disabled:text-muted-foreground disabled:no-underline"
               >
                 {resending
