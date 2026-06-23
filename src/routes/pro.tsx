@@ -16,7 +16,7 @@ import {
   Trophy,
   Zap,
   ArrowRight,
-  
+  Check,
   Loader2,
   MessageCircle,
   BarChart3,
@@ -40,15 +40,16 @@ export const Route = createFileRoute("/pro")({
   component: ProPage,
   head: () => ({
     meta: [
-      { title: "Tentra Pro · Premium intelligence for ambitious students" },
+      { title: "Tentra Pro · Smarter study for serious candidates" },
       {
         name: "description",
         content:
-          "AI-powered insights, mock exam forecasts, burnout alerts and smart revision scheduling.",
+          "Adaptive planning, weak-spot detection, mock feedback and real-time study insights for serious exam candidates.",
       },
     ],
   }),
 });
+
 
 function ProPage() {
   const [isPro, setIsPro] = useState<boolean | null>(null);
