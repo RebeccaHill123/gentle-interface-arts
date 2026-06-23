@@ -476,15 +476,19 @@ function ProDashboard({
   return (
     <div>
       {/* Hero strip */}
-      <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-7 backdrop-blur md:p-10">
-        <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-gradient-tentra opacity-25 blur-3xl" />
+      <section className="relative overflow-hidden rounded-xl border border-border/70 bg-card p-6 md:p-8 shadow-[var(--shadow-soft)]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-32 -top-32 h-56 w-56 rounded-full opacity-[0.08] blur-3xl"
+          style={{ background: "var(--gradient-pink-violet)" }}
+        />
         <div className="relative flex flex-wrap items-end justify-between gap-6">
           <div>
             <ProBadge active />
-            <h1 className="mt-4 text-3xl font-light tracking-tight text-foreground md:text-5xl">
-              Welcome back to <span className="text-gradient-pink-violet font-sans inline-block pr-2">Pro</span>.
+            <h1 className="mt-3 font-display text-[1.75rem] font-medium leading-[1.1] tracking-tight text-foreground md:text-[2rem]">
+              Welcome back to <span className="text-gradient-pink-violet">Pro</span>.
             </h1>
-            <p className="mt-2 max-w-lg text-sm text-muted-foreground md:text-base">
+            <p className="mt-2 max-w-lg text-[13.5px] leading-relaxed text-muted-foreground md:text-[14.5px]">
               Your intelligence layer is live. Insights refresh in real time as you study.
             </p>
           </div>
@@ -495,6 +499,7 @@ function ProDashboard({
           </div>
         </div>
       </section>
+
 
       {/* AI insights */}
       <section className="mt-8">
