@@ -1,7 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
-import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   Flame,
@@ -13,10 +12,10 @@ import {
   ArrowLeft,
   Menu,
   X,
-  TrendingUp,
 } from "lucide-react";
 import { ProfileMenu } from "@/components/profile-menu";
 import { TooltipProvider } from "@/components/ui/tooltip";
+
 
 export type AppRoute =
   | "/dashboard"
