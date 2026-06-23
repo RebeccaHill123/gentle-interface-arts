@@ -166,6 +166,12 @@ function AuthPage() {
 
   const handleResendOtp = async () => {
     if (!otpEmail || resending || resendCooldown > 0) return;
+    if (resendAttempts >= MAX_RESEND_ATTEMPTS) {
+      setResendMsg(
+        "You've requested several codes. If none have arrived, they're almost certainly being filtered by your email provider — please check Junk/Spam, or try signing up with a different email address (Gmail is most reliable).",
+      );
+      return;
+    }
     setResendMsg(null);
     setOtpError(null);
     setResending(true);
@@ -178,8 +184,15 @@ function AuthPage() {
       if (rErr) {
         setOtpError(rErr.message);
       } else {
-        setResendMsg("New verification email sent — older codes no longer work. Check your inbox and junk/spam folder for the latest code.");
-        setResendCooldown(30);
+        const nextAttempts = resendAttempts + 1;
+        setResendAttempts(nextAttempts);
+        // Escalate cooldown: 60s, then 120s, then 180s+
+        setResendCooldown(Math.min(60 * nextAttempts, 180));
+        setResendMsg(
+          isMicrosoftEmail(otpEmail)
+            ? "New verification email sent. Hotmail/Outlook often filter these — please check your Junk/Spam and Other folders, and add the sender to your safe list."
+            : "New verification email sent — older codes no longer work. Check your inbox and junk/spam folder for the latest code.",
+        );
       }
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : "Failed to resend");
