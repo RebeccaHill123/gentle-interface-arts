@@ -105,7 +105,7 @@ function ProPage() {
   return (
     <AppShell
       title="Tentra Pro"
-      subtitle="Premium intelligence for ambitious students"
+      subtitle="Smarter study for serious candidates"
       actions={<ProBadge active={isPro} />}
     >
       {isPro ? (
@@ -116,6 +116,7 @@ function ProPage() {
     </AppShell>
   );
 }
+
 
 /* -------------------- PRO BADGE -------------------- */
 
