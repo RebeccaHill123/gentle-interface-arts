@@ -391,12 +391,38 @@ function AuthPage() {
             )}
 
             {isMicrosoftEmail(otpEmail) && (
-              <div className="mt-5 rounded-xl border border-amber-300/50 bg-amber-50/60 p-3 text-sm text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
-                <strong className="font-medium">Using Hotmail or Outlook?</strong> These providers
-                often route verification emails to <em>Junk</em>, <em>Other</em>, or the
-                <em> Blocked</em> folder. Please check those first. If nothing arrives after one
-                resend, try signing up with a different address — Gmail is most reliable.
-              </div>
+              <Accordion type="single" collapsible defaultValue="troubleshooting" className="mt-5 rounded-xl border border-amber-300/50 bg-amber-50/60 dark:border-amber-400/30 dark:bg-amber-400/10">
+                <AccordionItem value="troubleshooting" className="border-none">
+                  <AccordionTrigger className="px-4 py-3 text-sm font-medium text-amber-900 hover:no-underline dark:text-amber-200">
+                    <span className="flex items-center gap-2">
+                      <HelpCircle className="h-4 w-4" />
+                      Didn't receive it? Hotmail/Outlook help
+                    </span>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4 pt-0">
+                    <ol className="list-decimal space-y-2 pl-4 text-sm text-amber-900 dark:text-amber-200">
+                      <li>
+                        <strong>Check Junk/Spam.</strong> Hotmail and Outlook often filter verification emails straight to the Junk Email folder.
+                      </li>
+                      <li>
+                        <strong>Check the "Other" tab.</strong> Outlook splits mail into Focused and Other — your code may be under Other.
+                      </li>
+                      <li>
+                        <strong>Add us to your safe-sender list.</strong> In Outlook, go to Settings → Mail → Junk email → Safe senders and domains, then add <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900/40">tentraapp.com</code>.
+                      </li>
+                      <li>
+                        <strong>Search your inbox.</strong> Look for "Tentra" or "verification" in your mail search.
+                      </li>
+                      <li>
+                        <strong>Wait 1–3 minutes.</strong> Microsoft can delay emails from new senders.
+                      </li>
+                      <li>
+                        <strong>Still no code?</strong> Try signing up with a Gmail address — it's usually the most reliable.
+                      </li>
+                    </ol>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             )}
 
             <div className="mt-6 flex flex-col items-center gap-3 text-center text-sm">
