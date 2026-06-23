@@ -131,9 +131,9 @@ export function AppShell({
 function DesktopSidebar() {
   const path = useRouterState({ select: (s) => s.location.pathname });
   return (
-    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-60 shrink-0 flex-col rounded-2xl border border-border/60 bg-sidebar/60 p-5 backdrop-blur md:flex">
+    <aside className="sticky top-6 hidden h-[calc(100vh-3rem)] w-[13.5rem] shrink-0 flex-col rounded-xl border border-border/70 bg-sidebar/70 p-4 backdrop-blur md:flex">
       <BrandMark />
-      <nav className="mt-9 flex-1 space-y-0.5 overflow-y-auto">
+      <nav className="mt-7 flex-1 space-y-px overflow-y-auto">
         {NAV.map((item) => {
           const Icon = item.icon;
           const active = path === item.to || path.startsWith(item.to + "/");
@@ -141,49 +141,39 @@ function DesktopSidebar() {
             <Link
               key={item.to}
               to={item.to}
-              className={`group relative flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] tracking-[-0.005em] transition-colors ${
+              className={`group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] tracking-[-0.005em] transition-colors ${
                 active
-                  ? "bg-foreground/[0.04] font-medium text-foreground"
-                  : "font-normal text-muted-foreground hover:bg-foreground/[0.025] hover:text-foreground"
+                  ? "bg-foreground/[0.05] font-medium text-foreground"
+                  : "font-normal text-muted-foreground hover:bg-foreground/[0.03] hover:text-foreground"
               }`}
             >
-              {active && (
-                <span
-                  className="absolute left-0 top-1/2 h-5 w-[2px] -translate-y-1/2 rounded-full"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, oklch(0.72 0.20 350), oklch(0.60 0.20 270))",
-                  }}
-                />
-              )}
-              <Icon className={`h-[15px] w-[15px] ${active ? "text-pink" : "text-muted-foreground/80 group-hover:text-foreground"}`} />
+              <Icon className={`h-[15px] w-[15px] ${active ? "text-foreground" : "text-muted-foreground/80 group-hover:text-foreground"}`} />
               {item.label}
             </Link>
           );
         })}
       </nav>
-      <div className="mt-4 rounded-xl border border-border/60 bg-foreground/[0.02] p-4">
-        <div className="flex items-center gap-2">
-          <TrendingUp className="h-3.5 w-3.5 text-pink" />
-          <div className="text-[12.5px] font-medium tracking-[-0.005em] text-foreground">
-            Tentra Pro
+      <Link
+        to="/pro"
+        className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-foreground/[0.02] px-3 py-2.5 transition-colors hover:bg-foreground/[0.04]"
+      >
+        <div className="min-w-0">
+          <div className="flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3 text-pink" />
+            <span className="text-[12.5px] font-medium tracking-[-0.005em] text-foreground">
+              Tentra Pro
+            </span>
           </div>
+          <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+            Adaptive plans · mock feedback
+          </p>
         </div>
-        <p className="mt-1.5 text-[11.5px] leading-snug text-muted-foreground">
-          Mock exams, AI feedback and smart re-planning.
-        </p>
-        <Button
-          asChild
-          size="sm"
-          variant="ghost"
-          className="mt-3 h-8 w-full rounded-lg border border-border/60 text-[12.5px] font-normal text-foreground hover:bg-foreground/[0.04]"
-        >
-          <Link to="/pro">Upgrade</Link>
-        </Button>
-      </div>
+        <ArrowLeft className="h-3.5 w-3.5 shrink-0 rotate-180 text-muted-foreground" />
+      </Link>
     </aside>
   );
 }
+
 
 function MobileBottomNav() {
   const path = useRouterState({ select: (s) => s.location.pathname });
