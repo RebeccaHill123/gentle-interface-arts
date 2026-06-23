@@ -16,7 +16,7 @@ import {
   Trophy,
   Zap,
   ArrowRight,
-  
+  Check,
   Loader2,
   MessageCircle,
   BarChart3,
@@ -40,15 +40,16 @@ export const Route = createFileRoute("/pro")({
   component: ProPage,
   head: () => ({
     meta: [
-      { title: "Tentra Pro · Premium intelligence for ambitious students" },
+      { title: "Tentra Pro · Smarter study for serious candidates" },
       {
         name: "description",
         content:
-          "AI-powered insights, mock exam forecasts, burnout alerts and smart revision scheduling.",
+          "Adaptive planning, weak-spot detection, mock feedback and real-time study insights for serious exam candidates.",
       },
     ],
   }),
 });
+
 
 function ProPage() {
   const [isPro, setIsPro] = useState<boolean | null>(null);
@@ -104,7 +105,7 @@ function ProPage() {
   return (
     <AppShell
       title="Tentra Pro"
-      subtitle="Premium intelligence for ambitious students"
+      subtitle="Smarter study for serious candidates"
       actions={<ProBadge active={isPro} />}
     >
       {isPro ? (
@@ -116,15 +117,16 @@ function ProPage() {
   );
 }
 
+
 /* -------------------- PRO BADGE -------------------- */
 
 function ProBadge({ active }: { active: boolean }) {
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] ${
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${
         active
-          ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
-          : "border border-border bg-card/60 text-muted-foreground"
+          ? "bg-gradient-pink-blue text-primary-foreground"
+          : "border border-border bg-card text-muted-foreground"
       }`}
     >
       <Sparkles className="h-3 w-3" />
@@ -149,92 +151,164 @@ function ProUpgrade({
   }, []);
   const pathwayLabel = isUbe ? "UBE" : "SQE";
 
-  const features = [
-    { icon: <Brain className="h-4 w-4" />, title: "AI-powered study insights", body: "Daily intelligence on what's working and what's slipping." },
-    { icon: <BarChart3 className="h-4 w-4" />, title: "Mock exam score forecast", body: isUbe ? "Predicted UBE scores with confidence bands." : "Predicted SQE1 and SQE2 scores with confidence bands." },
-    { icon: <Target className="h-4 w-4" />, title: "Weak topic detection", body: "We surface the three things to fix this week." },
-    { icon: <CalendarClock className="h-4 w-4" />, title: "Smart revision scheduling", body: "Your plan re-tunes itself as you study." },
-    { icon: <ShieldAlert className="h-4 w-4" />, title: "Burnout & risk alerts", body: "We protect your streak — and your sanity." },
-    { icon: <Trophy className="h-4 w-4" />, title: "Peer leaderboards", body: `See where you rank among ${pathwayLabel} candidates this week.` },
-    { icon: <Mic className="h-4 w-4" />, title: "Voice study coach", body: "Spoken recaps and quick-fire MCQs while you commute." },
-    { icon: <Activity className="h-4 w-4" />, title: "Advanced analytics", body: "Heatmaps, focus consistency, retention curves." },
+  const headlineFeatures = [
+    {
+      icon: <CalendarClock className="h-4 w-4" />,
+      title: "Smart re-planning",
+      body: "Your weekly plan re-tunes itself as you study.",
+    },
+    {
+      icon: <Target className="h-4 w-4" />,
+      title: "Weak-spot detection",
+      body: "We surface the three things to fix this week.",
+    },
+    {
+      icon: <BarChart3 className="h-4 w-4" />,
+      title: "Mock exam feedback",
+      body: "Predicted scores and per-topic guidance after every mock.",
+    },
+    {
+      icon: <ShieldAlert className="h-4 w-4" />,
+      title: "Burnout alerts",
+      body: "Early warnings when your pace pushes into the red zone.",
+    },
+  ];
+
+  const unlocks = [
+    "AI-powered daily study insights",
+    isUbe ? "Predicted UBE scores with confidence bands" : "Predicted SQE1 & SQE2 scores with confidence bands",
+    "Per-topic mock exam feedback",
+    "Adaptive weekly revision schedule",
+    "Burnout & recovery alerts",
+    `Peer leaderboards across ${pathwayLabel} candidates`,
+    "Voice study coach for commutes",
+    "Advanced analytics: heatmaps, retention curves, focus consistency",
   ];
 
   return (
-    <div>
-      {/* Hero */}
-      <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-8 backdrop-blur md:p-14">
-        <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-gradient-tentra opacity-30 blur-3xl" />
-        <div className="absolute -bottom-32 -left-20 h-72 w-72 rounded-full bg-gradient-pink-blue opacity-25 blur-3xl" />
+    <div className="space-y-12">
+      {/* Hero — compact, editorial */}
+      <section className="relative overflow-hidden rounded-xl border border-border/70 bg-card p-6 md:p-8 shadow-[var(--shadow-soft)]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-32 -top-32 h-64 w-64 rounded-full opacity-[0.08] blur-3xl"
+          style={{ background: "var(--gradient-pink-violet)" }}
+        />
+        <div className="relative grid gap-8 md:grid-cols-[1.4fr_1fr] md:items-center">
+          <div className="max-w-xl">
+            <ProBadge active />
+            <h1 className="mt-4 font-display text-[1.75rem] font-medium leading-[1.1] tracking-tight text-foreground md:text-[2.25rem]">
+              Study smarter with{" "}
+              <span className="text-gradient-pink-violet">Tentra Pro</span>
+            </h1>
+            <p className="mt-3 max-w-[58ch] text-[14px] leading-relaxed text-muted-foreground md:text-[15px]">
+              Adaptive planning, weak-spot detection, mock feedback and real-time
+              study insights for serious {pathwayLabel} candidates.
+            </p>
+          </div>
 
-        <div className="relative max-w-2xl">
-          <ProBadge active />
-          <h1 className="mt-5 text-4xl font-light tracking-tight text-foreground md:text-6xl">
-            Train like the{" "}
-            <span className="text-gradient-pink-violet font-sans">top 1%</span> of {pathwayLabel} candidates.
-          </h1>
-          <p className="mt-5 text-base text-muted-foreground md:text-lg">
-            Tentra Pro turns your study data into intelligence — forecasts, weak-spot detection,
-            burnout alerts and a coach that re-tunes your plan in real time.
-          </p>
-
-          <div className="mt-8 flex flex-wrap items-end gap-6">
-            <div>
-              <div className="font-display text-5xl font-light text-gradient-tentra md:text-6xl">
-                Free
+          <div className="md:justify-self-end">
+            <div className="rounded-lg border border-border/70 bg-background/60 p-4 md:min-w-[240px]">
+              <div className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.14em] text-foreground/80">
+                <Sparkles className="h-3 w-3 text-pink" />
+                Free · Early Access
               </div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                Included free during Tentra Early Access ✨
-              </div>
+              <Button
+                size="lg"
+                disabled={busy}
+                onClick={onUpgrade}
+                className="mt-3 w-full rounded-lg bg-gradient-pink-blue text-primary-foreground shadow-[var(--shadow-soft)] transition-all hover:brightness-[1.04]"
+              >
+                {busy ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" /> Activating…
+                  </>
+                ) : (
+                  <>
+                    Unlock Pro free <ArrowRight className="ml-1 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+              <p className="mt-2 text-center text-[11.5px] text-muted-foreground">
+                Included during Early Access.
+              </p>
             </div>
-            <Button
-              size="lg"
-              disabled={busy}
-              onClick={onUpgrade}
-              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+          </div>
+        </div>
+      </section>
+
+      {/* What Pro unlocks — 4 calm cards */}
+      <section>
+        <SectionHeader
+          eyebrow="Overview"
+          title="What Pro unlocks"
+          sub="Four ways Pro keeps your prep adaptive."
+        />
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {headlineFeatures.map((f) => (
+            <div
+              key={f.title}
+              className="flex h-full flex-col rounded-xl border border-border/70 bg-card p-5"
             >
-              {busy ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" /> Activating…
-                </>
-              ) : (
-                <>
-                  Unlock Pro free <ArrowRight className="ml-1 h-4 w-4" />
-                </>
-              )}
-            </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Feature grid */}
-      <section className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {features.map((f) => (
-          <div
-            key={f.title}
-            className="rounded-2xl border border-border bg-card/70 p-5 backdrop-blur transition-all hover:-translate-y-0.5 hover:shadow-glow"
-          >
-            <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground">
-              {f.icon}
+              <div className="grid h-8 w-8 place-items-center rounded-lg bg-muted text-foreground/70">
+                {f.icon}
+              </div>
+              <h3 className="mt-4 text-[13.5px] font-semibold tracking-[-0.005em] text-foreground">
+                {f.title}
+              </h3>
+              <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+                {f.body}
+              </p>
             </div>
-            <h3 className="mt-4 text-sm font-semibold text-foreground">{f.title}</h3>
-            <p className="mt-1.5 text-xs text-muted-foreground">{f.body}</p>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
 
-      {/* Locked preview row */}
-      <section className="mt-10">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-2xl font-light text-foreground">A glimpse inside.</h2>
-          <span className="text-xs text-muted-foreground">Unlocks instantly with Pro</span>
-        </div>
-        <div className="grid gap-4 md:grid-cols-3">
+      <Divider />
+
+      {/* Inside Pro — checklist */}
+      <section>
+        <SectionHeader
+          eyebrow="Inside Pro"
+          title="Everything in the membership"
+          sub="The full intelligence layer for your exam prep."
+        />
+        <ul className="mt-5 grid gap-x-8 gap-y-2.5 sm:grid-cols-2">
+          {unlocks.map((u) => (
+            <li
+              key={u}
+              className="flex items-start gap-2.5 text-[13.5px] text-foreground"
+            >
+              <span className="mt-[3px] grid h-4 w-4 shrink-0 place-items-center rounded-full bg-foreground/[0.06]">
+                <Check className="h-2.5 w-2.5 text-foreground/70" />
+              </span>
+              <span className="leading-snug">{u}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <Divider />
+
+      {/* Glimpse inside — locked previews */}
+      <section>
+        <SectionHeader
+          eyebrow="Preview"
+          title="A glimpse inside"
+          sub="Unlocks instantly with Pro."
+        />
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
           <LockedCard title="AI insights">
-            <div className="space-y-2 text-xs">
-              <div className="rounded-xl bg-background/60 p-3">🔥 Retention on <b>Tort</b> dropped 12% — recap scheduled.</div>
-              <div className="rounded-xl bg-background/60 p-3">⚡ Your sharpest focus is between 8–10am.</div>
-              <div className="rounded-xl bg-background/60 p-3">📈 You're trending toward a <b>74%</b> SQE1 mock.</div>
+            <div className="space-y-2 text-[12px] leading-relaxed">
+              <div className="rounded-lg bg-background/60 p-3">
+                Retention on <b>Tort</b> dropped 12% — recap scheduled.
+              </div>
+              <div className="rounded-lg bg-background/60 p-3">
+                Sharpest focus window: 8–10am.
+              </div>
+              <div className="rounded-lg bg-background/60 p-3">
+                Trending toward a <b>74%</b> SQE1 mock.
+              </div>
             </div>
           </LockedCard>
           <LockedCard title="Mock score forecast">
@@ -246,32 +320,64 @@ function ProUpgrade({
         </div>
       </section>
 
-      {/* Bottom CTA */}
-      <section className="mt-12 rounded-[2rem] border border-border bg-gradient-soft p-8 text-center backdrop-blur md:p-12">
-        <h2 className="text-3xl font-light text-foreground md:text-4xl">
-          Ready to study like an athlete?
-        </h2>
-        <p className="mx-auto mt-3 max-w-xl text-sm text-muted-foreground">
-          Pro features are currently free during Tentra Early Access ✨ — unlock the full intelligence layer in one tap.
-        </p>
+      {/* Footer CTA — compact */}
+      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border/70 bg-card px-5 py-4">
+        <div>
+          <div className="text-[13.5px] font-semibold text-foreground">
+            Unlock Pro free
+          </div>
+          <div className="text-[12px] text-muted-foreground">
+            Included during Early Access — no card required.
+          </div>
+        </div>
         <Button
-          size="lg"
           disabled={busy}
           onClick={onUpgrade}
-          className="mt-6 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+          className="rounded-lg bg-gradient-pink-blue text-primary-foreground shadow-[var(--shadow-soft)] transition-all hover:brightness-[1.04]"
         >
           {busy ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" /> Activating…
             </>
           ) : (
-            "Unlock Pro free"
+            <>
+              Unlock Pro <ArrowRight className="ml-1 h-4 w-4" />
+            </>
           )}
         </Button>
       </section>
     </div>
   );
 }
+
+function SectionHeader({
+  eyebrow,
+  title,
+  sub,
+}: {
+  eyebrow: string;
+  title: string;
+  sub?: string;
+}) {
+  return (
+    <div>
+      <div className="text-[10.5px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+        {eyebrow}
+      </div>
+      <h2 className="mt-1.5 font-display text-[20px] font-medium tracking-[-0.01em] text-foreground md:text-[22px]">
+        {title}
+      </h2>
+      {sub && (
+        <p className="mt-1 text-[13px] text-muted-foreground">{sub}</p>
+      )}
+    </div>
+  );
+}
+
+function Divider() {
+  return <div className="h-px w-full bg-border/70" />;
+}
+
 
 function LockedCard({
   title,
@@ -281,13 +387,13 @@ function LockedCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border bg-card/70 p-5 backdrop-blur">
-      <div className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <div className="relative overflow-hidden rounded-xl border border-border/70 bg-card p-5">
+      <div className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
         {title}
       </div>
-      <div className="mt-3 select-none opacity-60 blur-[2px]">{children}</div>
-      <div className="absolute inset-0 grid place-items-center bg-gradient-to-t from-background/60 via-background/10 to-transparent">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-card">
+      <div className="mt-3 select-none opacity-50 blur-[2px]">{children}</div>
+      <div className="absolute inset-0 grid place-items-center bg-gradient-to-t from-card/85 via-card/30 to-transparent">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-card px-2.5 py-1 text-[11px] font-medium text-foreground">
           <Lock className="h-3 w-3" />
           Pro
         </div>
@@ -295,6 +401,7 @@ function LockedCard({
     </div>
   );
 }
+
 
 /* -------------------- PRO DASHBOARD -------------------- */
 
@@ -369,15 +476,19 @@ function ProDashboard({
   return (
     <div>
       {/* Hero strip */}
-      <section className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-7 backdrop-blur md:p-10">
-        <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-gradient-tentra opacity-25 blur-3xl" />
+      <section className="relative overflow-hidden rounded-xl border border-border/70 bg-card p-6 md:p-8 shadow-[var(--shadow-soft)]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -right-32 -top-32 h-56 w-56 rounded-full opacity-[0.08] blur-3xl"
+          style={{ background: "var(--gradient-pink-violet)" }}
+        />
         <div className="relative flex flex-wrap items-end justify-between gap-6">
           <div>
             <ProBadge active />
-            <h1 className="mt-4 text-3xl font-light tracking-tight text-foreground md:text-5xl">
-              Welcome back to <span className="text-gradient-pink-violet font-sans inline-block pr-2">Pro</span>.
+            <h1 className="mt-3 font-display text-[1.75rem] font-medium leading-[1.1] tracking-tight text-foreground md:text-[2rem]">
+              Welcome back to <span className="text-gradient-pink-violet">Pro</span>.
             </h1>
-            <p className="mt-2 max-w-lg text-sm text-muted-foreground md:text-base">
+            <p className="mt-2 max-w-lg text-[13.5px] leading-relaxed text-muted-foreground md:text-[14.5px]">
               Your intelligence layer is live. Insights refresh in real time as you study.
             </p>
           </div>
@@ -389,6 +500,7 @@ function ProDashboard({
         </div>
       </section>
 
+
       {/* AI insights */}
       <section className="mt-8">
         <AIInsights weakTopics={weakTopics} predicted={predicted} burnout={burnoutLevel} />
@@ -396,7 +508,7 @@ function ProDashboard({
 
       {/* Heatmap + Burnout */}
       <section className="mt-8 grid gap-4 md:grid-cols-3">
-        <div className="md:col-span-2 rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+        <div className="md:col-span-2 rounded-xl border border-border/70 bg-card p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
               Revision heatmap · last 7 days
@@ -407,7 +519,7 @@ function ProDashboard({
           </div>
           <Heatmap values={heatmap} />
         </div>
-        <div className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+        <div className="rounded-xl border border-border/70 bg-card p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
             Burnout radar
           </h2>
@@ -426,7 +538,7 @@ function ProDashboard({
 
       {/* Forecast + Weak topics */}
       <section className="mt-8 grid gap-4 md:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+        <div className="rounded-xl border border-border/70 bg-card p-6">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
               Mock exam forecast
@@ -447,7 +559,7 @@ function ProDashboard({
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+        <div className="rounded-xl border border-border/70 bg-card p-6">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
             Weak topic detection
           </h2>
@@ -479,7 +591,7 @@ function ProDashboard({
       </section>
 
       {/* Smart schedule */}
-      <section className="mt-8 rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+      <section className="mt-8 rounded-xl border border-border/70 bg-card p-6">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wider text-gradient-tentra">
             Smart revision schedule
@@ -519,7 +631,7 @@ function ProDashboard({
       </section>
 
       {/* Manage */}
-      <section className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card/60 p-5">
+      <section className="mt-10 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-5">
         <div>
           <div className="text-sm font-semibold text-foreground">Tentra Pro membership</div>
           <div className="text-xs text-muted-foreground">
@@ -602,7 +714,7 @@ function StatRing({
 
 function StreakChip({ days }: { days: number }) {
   return (
-    <div className="relative flex items-center gap-2 rounded-2xl border border-border bg-background/70 px-4 py-3">
+    <div className="relative flex items-center gap-2 rounded-xl border border-border/70 bg-background/60 px-4 py-3">
       <Flame className="h-5 w-5 text-pink drop-shadow-[0_0_8px_oklch(0.72_0.24_350/0.6)] animate-pulse" />
       <div>
         <div className="font-display text-2xl font-light text-gradient-tentra leading-none">
@@ -618,7 +730,7 @@ function StreakChip({ days }: { days: number }) {
 
 function ScoreGauge({ predicted }: { predicted: number }) {
   return (
-    <div className="rounded-2xl border border-border bg-background/70 px-4 py-3">
+    <div className="rounded-xl border border-border/70 bg-background/60 px-4 py-3">
       <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         Predicted score
       </div>
