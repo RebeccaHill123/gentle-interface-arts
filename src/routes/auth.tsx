@@ -408,7 +408,7 @@ function AuthPage() {
                         <strong>Check the "Other" tab.</strong> Outlook splits mail into Focused and Other — your code may be under Other.
                       </li>
                       <li>
-                        <strong>Add us to your safe-sender list.</strong> In Outlook, go to Settings → Mail → Junk email → Safe senders and domains, then add <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900/40">tentraapp.com</code>.
+                        <strong>Add us to your safe-sender list.</strong> In Outlook, go to Settings → Mail → Junk email → Safe senders and domains, then add <code className="rounded bg-amber-100 px-1 py-0.5 text-xs dark:bg-amber-900/40">notify.tentraapp.com</code>.
                       </li>
                       <li>
                         <strong>Search your inbox.</strong> Look for "Tentra" or "verification" in your mail search.
