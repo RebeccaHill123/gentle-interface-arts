@@ -129,6 +129,7 @@ function AuthPage() {
         return;
       }
       if (result.redirected) return; // browser will navigate away
+      trackEvent("sign_up_completed", { method: "google", mode });
       await goAfterAuth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign in with Google");
