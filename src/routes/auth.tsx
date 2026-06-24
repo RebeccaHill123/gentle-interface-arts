@@ -330,14 +330,17 @@ function AuthPage() {
         {otpEmail ? (
           <div className="rounded-2xl border border-border/60 bg-card/60 p-8 backdrop-blur md:p-10">
             <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-              Verify your email
+              Almost there
             </div>
             <h1 className="mt-4 text-[1.9rem] font-light leading-[1.1] tracking-[-0.025em] text-foreground">
-              Enter the <span className="text-gradient-pink-violet font-light">6-digit code</span>
+              Confirm your email to <span className="text-gradient-pink-violet font-light">save your plan</span>
             </h1>
             <p className="mt-4 text-[14.5px] leading-[1.6] text-muted-foreground">
-              We sent a verification email to <span className="font-medium text-foreground">{otpEmail}</span>.
-              Enter the latest 6-digit code below to finish setting up your account.
+              We sent a 6-digit code to <span className="font-medium text-foreground">{otpEmail}</span>.
+              Enter it below to finish setting up your account and unlock your personalised dashboard.
+            </p>
+            <p className="mt-2 text-[12.5px] text-muted-foreground">
+              Tip — if it doesn't arrive within a minute, check your <span className="font-medium text-foreground">Junk/Spam</span> folder.
             </p>
 
             <div className="mt-7 flex justify-center">
@@ -453,6 +456,12 @@ function AuthPage() {
               >
                 Use a different email
               </button>
+              <a
+                href="mailto:hello@tentraapp.com?subject=Verification%20help"
+                className="text-muted-foreground hover:text-foreground hover:underline"
+              >
+                Need help? Contact support
+              </a>
             </div>
           </div>
         ) : (

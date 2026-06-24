@@ -27,17 +27,17 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
     meta: [
-      { title: "Tentra — SQE & NY UBE revision app with personalised study plan" },
+      { title: "Tentra — Adaptive study planner for SQE, NY Bar & MPRE" },
       {
         name: "description",
         content:
-          "The revision app for SQE1, SQE2 and the NY UBE (MBE, MEE, MPT). Personalised study planner, MCQ practice, mock exams, AI coach and progress tracking for future lawyers.",
+          "An adaptive study planner for SQE1, SQE2, NY Bar and MPRE candidates that tells you exactly what to study each day.",
       },
-      { property: "og:title", content: "Tentra — SQE & NY UBE revision app with personalised study plan" },
+      { property: "og:title", content: "Tentra — Adaptive study planner for SQE, NY Bar & MPRE" },
       {
         property: "og:description",
         content:
-          "Personalised study schedule, MCQ practice and mock exams. Built for SQE and NY UBE candidates.",
+          "Personalised plan, focus sessions, weak-area drills and AI coaching — built for SQE1, SQE2, NY Bar and MPRE candidates.",
       },
       { property: "og:url", content: "https://tentraapp.com/" },
       { property: "og:type", content: "website" },
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/")({
           operatingSystem: "Web",
           url: "https://tentraapp.com/",
           description:
-            "Personalised revision app with study planner, MCQ practice, mock exams and AI coach for SQE1, SQE2 and NY UBE candidates.",
+            "Adaptive study planner with focus sessions, weak-area drills and AI coaching for SQE1, SQE2, NY Bar and MPRE candidates.",
           offers: { "@type": "Offer", price: "0", priceCurrency: "GBP" },
         }),
       },
@@ -100,7 +100,8 @@ function PremiumCta({
 function LandingPage() {
   const { isAuthenticated, loading } = useAuth();
   const ctaTo = isAuthenticated ? "/dashboard" : "/onboarding";
-  const ctaLabel = isAuthenticated ? "View Dashboard" : "Build My Plan";
+  const ctaLabel = isAuthenticated ? "View Dashboard" : "Build my study plan";
+
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
@@ -165,9 +166,9 @@ function LandingPage() {
                 </h1>
 
                 <p className="mx-auto mt-6 max-w-[30rem] text-[15px] leading-[1.65] text-muted-foreground md:mx-0 md:text-[16.5px]">
-                  Adaptive study plans, performance analytics and AI coaching — built for the SQE
-                  and the New York UBE.
+                  An adaptive study planner for SQE, NY Bar and MPRE students that tells you exactly what to study each day.
                 </p>
+
 
                 <div className="mt-9 flex flex-col items-center gap-3 md:flex-row md:items-center md:justify-start">
                   <PremiumCta to={ctaTo} size="lg" className="w-full md:w-auto">
@@ -236,7 +237,7 @@ function LandingPage() {
           {/* TRUST STRIP — elegant hairline row */}
           <section className="mx-auto max-w-5xl px-5 pb-16 md:px-8 md:pb-28">
             <div className="grid grid-cols-2 gap-y-4 border-y border-border/60 py-5 md:grid-cols-4 md:divide-x md:divide-border/60 md:py-6">
-              <TrustItem icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE & NY UBE" />
+              <TrustItem icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE, NY Bar & MPRE" />
               <TrustItem icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive study planning" />
               <TrustItem icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance analytics" />
               <TrustItem icon={<Sparkles className="h-3.5 w-3.5" />} label="For future lawyers" />
@@ -272,7 +273,7 @@ function LandingPage() {
               </h2>
             </div>
             <div className="grid gap-4 md:grid-cols-3 md:gap-6">
-              <StepCard num="01" icon={<Calendar className="h-4 w-4" />} title="Set your exam date" body="Anchor the plan to your SQE or NY UBE sitting." />
+              <StepCard num="01" icon={<Calendar className="h-4 w-4" />} title="Set your exam date" body="Anchor the plan to your SQE, NY Bar or MPRE sitting." />
               <StepCard num="02" icon={<Brain className="h-4 w-4" />} title="Map your confidence" body="A quick diagnostic across every module." />
               <StepCard num="03" icon={<Target className="h-4 w-4" />} title="Execute daily" body="A precise schedule that adapts as you progress." />
             </div>
@@ -354,7 +355,7 @@ function LandingPage() {
       {!isAuthenticated && !loading && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 px-4 py-3 backdrop-blur-xl md:hidden">
           <PremiumCta to="/onboarding" size="lg" className="w-full">
-            Build My Plan <ArrowRight className="ml-1.5 h-4 w-4" />
+            Build my study plan <ArrowRight className="ml-1.5 h-4 w-4" />
           </PremiumCta>
         </div>
       )}

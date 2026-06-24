@@ -46,6 +46,7 @@ import {
   pathToExamType,
   isUbePath,
 } from "@/lib/exam-paths";
+import { buildStoredPreview, savePreviewToLocal } from "@/lib/preview-plan";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/onboarding")({
@@ -66,103 +67,51 @@ export const Route = createFileRoute("/onboarding")({
 
 const STEPS = [
   { id: 1, label: "Exam" },
-  { id: 2, label: "Path" },
-  { id: 3, label: "Intensity" },
-  { id: 4, label: "Coverage" },
-  { id: 5, label: "Focus" },
-  { id: 6, label: "Review" },
+  { id: 2, label: "You" },
+  { id: 3, label: "Coverage" },
+  { id: 4, label: "Focus" },
+  { id: 5, label: "Review" },
 ] as const;
 
-interface PathOption {
-  value: ExamPath;
+interface ExamOption {
+  value: ExamType;
+  path: ExamPath;
   title: string;
   blurb: string;
   icon: typeof GraduationCap;
 }
 
-const SQE_PATH_OPTIONS: PathOption[] = [
+const EXAM_OPTIONS: ExamOption[] = [
   {
-    value: "SQE1_FULL",
-    title: "SQE1 — Full Course",
-    blurb: "FLK1 + FLK2 in one adaptive plan.",
-    icon: Layers3,
-  },
-  {
-    value: "FLK1",
-    title: "FLK1 Only",
-    blurb: "Contract, Tort, BLP, Dispute Res, Public Law, Ethics.",
-    icon: Target,
-  },
-  {
-    value: "FLK2",
-    title: "FLK2 Only",
-    blurb: "Land, Property, Trusts, Crime, Wills, Accounts.",
-    icon: Target,
+    value: "SQE1",
+    path: "SQE1_FULL",
+    title: "SQE1",
+    blurb: "FLK1 + FLK2 — England & Wales Solicitors Qualifying Exam.",
+    icon: Scale,
   },
   {
     value: "SQE2",
+    path: "SQE2",
     title: "SQE2",
     blurb: "Skills assessments — interviewing, advocacy, drafting.",
     icon: GraduationCap,
   },
   {
-    value: "CUSTOM",
-    title: "Custom Plan",
-    blurb: "Pick your own subject mix — perfect for resitters.",
-    icon: Sparkles,
-  },
-];
-
-const UBE_PATH_OPTIONS: PathOption[] = [
-  {
-    value: "UBE_FULL",
-    title: "UBE — Full Bar",
-    blurb: "MBE + MEE essays + MPT in one adaptive plan.",
-    icon: Layers3,
-  },
-  {
-    value: "UBE_MBE",
-    title: "MBE Only",
-    blurb: "200 multiple-choice across the 7 MBE subjects.",
-    icon: Target,
-  },
-  {
-    value: "UBE_ESSAYS",
-    title: "MEE Essays",
-    blurb: "12 MEE-eligible subjects, 30-min IRAC essays.",
-    icon: Scale,
-  },
-  {
-    value: "UBE_MPT",
-    title: "MPT Only",
-    blurb: "90-min performance tasks — closed-library skills drill.",
-    icon: GraduationCap,
-  },
-];
-
-function pathOptionsForExam(examType: ExamType): PathOption[] {
-  return examType === "UBE" ? UBE_PATH_OPTIONS : SQE_PATH_OPTIONS;
-}
-
-const EXAM_OPTIONS: {
-  value: ExamType;
-  title: string;
-  blurb: string;
-  icon: typeof GraduationCap;
-}[] = [
-  {
-    value: "SQE1",
-    title: "SQE (UK)",
-    blurb: "Solicitors Qualifying Exam — SQE1 (FLK1/FLK2) or SQE2 skills.",
-    icon: Scale,
-  },
-  {
     value: "UBE",
-    title: "NY Bar — UBE",
-    blurb: "Uniform Bar Exam: MBE + MEE essays + MPT (qualifies for NY admission).",
+    path: "UBE_FULL",
+    title: "NY Bar",
+    blurb: "Uniform Bar Exam (MBE + MEE + MPT) — qualifies for NY admission.",
     icon: Landmark,
   },
+  {
+    value: "MPRE",
+    path: "MPRE_FULL",
+    title: "MPRE",
+    blurb: "Multistate Professional Responsibility Exam — 60 MCQs on ABA ethics rules.",
+    icon: Target,
+  },
 ];
+
 
 const INTENSITY_OPTIONS: {
   value: IntensityTier;
@@ -257,11 +206,12 @@ function OnboardingPage() {
     })();
   }, [draft?.name, navigate]);
 
-  // If user switches exam, snap to a sensible default path for that exam.
+  // Each exam now maps to exactly one path. Keep them in sync.
   useEffect(() => {
-    const valid = pathOptionsForExam(examType).some((o) => o.value === examPath);
-    if (!valid) setExamPath(defaultPathForExam(examType));
+    const opt = EXAM_OPTIONS.find((o) => o.value === examType);
+    if (opt && opt.path !== examPath) setExamPath(opt.path);
   }, [examType, examPath]);
+
 
   // Reset module list when path changes
   useEffect(() => {
@@ -324,7 +274,7 @@ function OnboardingPage() {
   );
 
   const canContinue = (): string | null => {
-    if (step === 3) {
+    if (step === 2) {
       if (!name.trim()) return "Please tell us your name.";
       if (!examDate) return "Please pick your exam date.";
       if (new Date(examDate).getTime() <= Date.now())
@@ -332,7 +282,7 @@ function OnboardingPage() {
       if (hoursPerWeek < 1 || hoursPerWeek > 40)
         return "Hours per week should be between 1 and 40.";
     }
-    if (step === 5 && modules.length === 0) return "Choose at least one subject to continue.";
+    if (step === 4 && modules.length === 0) return "Choose at least one subject to continue.";
     return null;
   };
 
@@ -355,8 +305,22 @@ function OnboardingPage() {
         setError("Please check your name and choose a future exam date before continuing.");
         return;
       }
+      const resolvedExamType = pathToExamType(examPath);
+      const baseInput = {
+        name: name.trim(),
+        examType: resolvedExamType,
+        examPath,
+        intensity,
+        coverageMode,
+        examDate,
+        hoursPerWeek,
+        modules,
+      };
+
       const { data: userData, error: authError } = await supabase.auth.getUser();
       if (authError || !userData.user) {
+        // Anonymous visitor — build a LOCAL preview plan and let them see it
+        // before being asked to sign up.
         saveOnboardingDraft({
           step,
           examType,
@@ -368,31 +332,21 @@ function OnboardingPage() {
           coverageMode,
           modules,
         });
-        navigate({
-          to: "/auth",
-          search: { mode: "signup", from: "onboarding" },
-        });
+        const preview = buildStoredPreview(baseInput);
+        savePreviewToLocal(preview);
+        navigate({ to: "/plan-preview" });
         return;
       }
-      const resolvedExamType = pathToExamType(examPath);
       const timeout = new Promise<never>((_, reject) => {
         window.setTimeout(() => reject(new Error("Plan generation took too long. Please try again.")), 45_000);
       });
       const { data, error: fnErr } = await Promise.race([
         supabase.functions.invoke("generate-plan", {
-          body: {
-            name: name.trim(),
-            examType: resolvedExamType,
-            examPath,
-            intensity,
-            coverageMode,
-            examDate,
-            hoursPerWeek,
-            modules,
-          },
+          body: baseInput,
         }),
         timeout,
       ]);
+
       if (fnErr) {
         console.error("generate-plan invoke error", fnErr);
         setError(fnErr.message || "Couldn't reach the plan generator. Please try again.");
@@ -493,14 +447,6 @@ function OnboardingPage() {
                 <StepExam value={examType} onChange={setExamType} />
               )}
               {step === 2 && (
-                <StepPath
-                  value={examPath}
-                  onChange={setExamPath}
-                  options={pathOptionsForExam(examType)}
-                  examType={examType}
-                />
-              )}
-              {step === 3 && (
                 <StepIntensity
                   name={name}
                   setName={setName}
@@ -513,10 +459,10 @@ function OnboardingPage() {
                   sessionShape={sessionShape}
                 />
               )}
-              {step === 4 && (
+              {step === 3 && (
                 <StepCoverage value={coverageMode} onChange={setCoverageMode} />
               )}
-              {step === 5 && (
+              {step === 4 && (
                 <StepFocus
                   modules={modules}
                   coverageMode={coverageMode}
@@ -526,7 +472,7 @@ function OnboardingPage() {
                   toggleWeakSubtopic={toggleWeakSubtopic}
                 />
               )}
-              {step === 6 && (
+              {step === 5 && (
                 <StepReview
                   name={name}
                   examType={examType}
@@ -541,6 +487,7 @@ function OnboardingPage() {
               )}
             </motion.div>
           </AnimatePresence>
+
 
           {error && (
             <div
@@ -709,67 +656,8 @@ function StepExam({
   );
 }
 
-function StepPath({
-  value,
-  onChange,
-  options,
-  examType,
-}: {
-  value: ExamPath;
-  onChange: (v: ExamPath) => void;
-  options: PathOption[];
-  examType: ExamType;
-}) {
-  const sub = examType === "UBE"
-    ? "Targeting just the MBE or just the MPT? Pick one component — we'll skip the rest."
-    : "Resitting one paper? Pick just FLK1 or FLK2 — we'll skip everything else.";
-  return (
-    <div className="space-y-6">
-      <StepHeader
-        kicker="Step 2"
-        title={<>Which {examType === "UBE" ? "component" : "paper"} are you focused on?</>}
-        sub={sub}
-      />
-      <div className="grid gap-3">
-        {options.map((opt) => {
-          const Icon = opt.icon;
-          const active = value === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onChange(opt.value)}
-              className={cn(
-                "group flex items-center gap-4 rounded-2xl border p-4 text-left transition-all",
-                active
-                  ? "border-pink bg-gradient-pink-blue/10 shadow-glow"
-                  : "border-border bg-background/40 hover:border-muted-foreground",
-              )}
-            >
-              <div
-                className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
-                  active
-                    ? "bg-gradient-pink-blue text-primary-foreground"
-                    : "bg-card text-muted-foreground",
-                )}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-foreground">{opt.title}</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
-                  {opt.blurb}
-                </div>
-              </div>
-              {active && <CheckCircle2 className="h-5 w-5 text-pink" />}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+// (StepPath removed — each supported exam maps to exactly one path.)
+
 
 function StepIntensity({
   name,
@@ -795,7 +683,7 @@ function StepIntensity({
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 3"
+        kicker="Step 2"
         title={<>Tell us about <span className="text-gradient-pink-violet">you</span></>}
         sub="We'll calibrate the plan's intensity, pacing and task mix to match."
       />
@@ -925,7 +813,7 @@ function StepCoverage({
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 4"
+        kicker="Step 3"
         title={<>How should we shape your coverage?</>}
         sub="Both modes use Tentra's adaptive engine — Advanced just listens harder to your weak spots."
       />
@@ -1001,7 +889,7 @@ function StepFocus({
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 5"
+        kicker="Step 4"
         title={<>How confident are you in each area?</>}
         sub={
           coverageMode === "advanced"
@@ -1133,8 +1021,6 @@ function StepReview({
   weakModules: ModuleConfidence[];
   totalModules: number;
 }) {
-  const pathOpts = pathOptionsForExam(examType);
-  const pathLabel = pathOpts.find((p) => p.value === examPath)?.title ?? examPath;
   const examLabel = EXAM_OPTIONS.find((e) => e.value === examType)?.title ?? examType;
   const intensityLabel =
     INTENSITY_OPTIONS.find((i) => i.value === intensity)?.title ?? intensity;
@@ -1142,11 +1028,11 @@ function StepReview({
     1,
     Math.ceil((new Date(examDate).getTime() - Date.now()) / 86400000),
   );
+  void examPath;
 
   const rows: { k: string; v: React.ReactNode }[] = [
     { k: "Name", v: name || "—" },
     { k: "Exam", v: examLabel },
-    { k: "Path", v: pathLabel },
     { k: "Exam date", v: `${examDate} · ${days} days` },
     { k: "Hours / week", v: `${hoursPerWeek}h` },
     { k: "Intensity", v: intensityLabel },
@@ -1157,10 +1043,11 @@ function StepReview({
     { k: "Subjects", v: `${totalModules} selected` },
   ];
 
+
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 6"
+        kicker="Step 5"
         title={
           <>
             Ready to build your <span className="text-gradient-pink-violet">plan</span>

@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { hasRecentAuthCallback, waitForAuthUser } from "@/lib/auth-session";
 
-export type ExamType = "SQE1" | "SQE2" | "UBE";
+export type ExamType = "SQE1" | "SQE2" | "UBE" | "MPRE";
 
 export type ExamPath =
   | "SQE1_FULL"
@@ -14,6 +14,7 @@ export type ExamPath =
   | "UBE_MBE"
   | "UBE_ESSAYS"
   | "UBE_MPT"
+  | "MPRE_FULL"
   | "CUSTOM";
 
 export type IntensityTier =
