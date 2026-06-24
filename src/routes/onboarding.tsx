@@ -46,6 +46,7 @@ import {
   pathToExamType,
   isUbePath,
 } from "@/lib/exam-paths";
+import { buildStoredPreview, savePreviewToLocal } from "@/lib/preview-plan";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/onboarding")({
