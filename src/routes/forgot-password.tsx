@@ -10,6 +10,10 @@ import { BackgroundBlobs } from "@/components/background-blobs";
 import { Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+// Must match the Supabase Auth `mailer_otp_length` setting.
+const OTP_LENGTH = 6;
+const OTP_SLOTS = Array.from({ length: OTP_LENGTH }, (_, i) => i);
+
 export const Route = createFileRoute("/forgot-password")({
   component: ForgotPasswordPage,
   head: () => ({
@@ -80,7 +84,12 @@ function ForgotPasswordPage() {
   };
 
   const handleVerify = async (token: string) => {
-    if (token.length !== 6 || verifying) return;
+    if (verifying) return;
+    if (token.length !== OTP_LENGTH) {
+      setOtpError(`Please enter the ${OTP_LENGTH}-digit code from your latest email.`);
+      autoSubmitted.current = false;
+      return;
+    }
     setOtpError(null);
     setVerifying(true);
     try {
@@ -90,10 +99,12 @@ function ForgotPasswordPage() {
         type: "recovery",
       });
       if (vErr) {
+        const lower = vErr.message.toLowerCase();
+        const isExpired = lower.includes("expired") || lower.includes("otp_expired");
         setOtpError(
-          vErr.message.toLowerCase().includes("expired")
+          isExpired
             ? "That code has expired. Tap resend below."
-            : "That code doesn't match. Double-check and try again.",
+            : "That code doesn't match. If you've resent a new code, older codes no longer work — use the most recent one in your inbox.",
         );
         setCode("");
         autoSubmitted.current = false;
@@ -144,14 +155,14 @@ function ForgotPasswordPage() {
             {step === "email" ? (
               <>Reset your <span className="text-gradient-pink-violet font-light">password</span></>
             ) : (
-              <>Enter the <span className="text-gradient-pink-violet font-light">6-digit code</span></>
+              <>Enter the <span className="text-gradient-pink-violet font-light">{OTP_LENGTH}-digit code</span></>
             )}
           </h1>
 
           {step === "email" ? (
             <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
               <p className="text-[14px] leading-[1.6] text-muted-foreground">
-                Enter your email and we'll send you a 6-digit code to reset your password.
+                Enter your email and we'll send you a {OTP_LENGTH}-digit code to reset your password.
               </p>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
@@ -209,13 +220,13 @@ function ForgotPasswordPage() {
 
               <div className="mt-6 flex justify-center">
                 <InputOTP
-                  maxLength={6}
+                  maxLength={OTP_LENGTH}
                   value={code}
                   onChange={(v) => {
-                    const digits = v.replace(/\D/g, "").slice(0, 6);
+                    const digits = v.replace(/\D/g, "").slice(0, OTP_LENGTH);
                     setCode(digits);
                     setOtpError(null);
-                    if (digits.length === 6 && !autoSubmitted.current) {
+                    if (digits.length === OTP_LENGTH && !autoSubmitted.current) {
                       autoSubmitted.current = true;
                       void handleVerify(digits);
                     }
@@ -223,14 +234,12 @@ function ForgotPasswordPage() {
                   disabled={verifying}
                   inputMode="numeric"
                   autoFocus
+                  aria-label={`${OTP_LENGTH}-digit verification code`}
                 >
                   <InputOTPGroup>
-                    <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={4} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={5} className="h-12 w-12 text-lg" />
+                    {OTP_SLOTS.map((i) => (
+                      <InputOTPSlot key={i} index={i} className="h-12 w-12 text-lg" />
+                    ))}
                   </InputOTPGroup>
                 </InputOTP>
               </div>

@@ -16,6 +16,13 @@ import { getAuthRedirectURL } from "@/lib/auth-redirect";
 import { loadPlan, pullPlanFromCloud, pushPlanToCloud } from "@/lib/plan-store";
 import { trackEvent } from "@/lib/analytics";
 
+// Single source of truth for the email verification code length.
+// MUST match the Supabase Auth `mailer_otp_length` setting (Cloud → Users →
+// Auth Settings → Email settings). If you change one, change the other —
+// otherwise users get an "invalid code" loop on sign-up.
+const OTP_LENGTH = 6;
+const OTP_SLOTS = Array.from({ length: OTP_LENGTH }, (_, i) => i);
+
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
     mode: search.mode === "signin" ? ("signin" as const) : ("signup" as const),
@@ -138,7 +145,12 @@ function AuthPage() {
   };
 
   const handleVerifyOtp = async (code: string) => {
-    if (!otpEmail || code.length !== 6 || verifyingOtp) return;
+    if (!otpEmail || verifyingOtp) return;
+    if (code.length !== OTP_LENGTH) {
+      setOtpError(`Please enter the ${OTP_LENGTH}-digit code from your latest email.`);
+      otpAutoSubmitted.current = false;
+      return;
+    }
     setOtpError(null);
     setVerifyingOtp(true);
     try {
@@ -149,10 +161,15 @@ function AuthPage() {
       });
       if (vErr) {
         const lower = vErr.message.toLowerCase();
+        const isExpired = lower.includes("expired") || lower.includes("otp_expired");
+        const isInvalid =
+          lower.includes("invalid") || lower.includes("incorrect") || lower.includes("token");
         setOtpError(
-          lower.includes("expired")
+          isExpired
             ? "That code has expired. Tap resend below to get a new one."
-            : "That code didn't work. If you've resent a new code, older codes no longer work — use the most recent one in your inbox.",
+            : isInvalid
+            ? "That code didn't work. If you've resent a new code, older codes no longer work — use the most recent one in your inbox."
+            : vErr.message,
         );
         setOtpCode("");
         otpAutoSubmitted.current = false;
@@ -167,6 +184,7 @@ function AuthPage() {
       setVerifyingOtp(false);
     }
   };
+
 
   const handleResendOtp = async () => {
     if (!otpEmail || resending || resendCooldown > 0) return;
@@ -296,7 +314,7 @@ function AuthPage() {
             setOtpCode("");
             setOtpError(null);
             setResendMsg(
-              "Your email isn't verified yet — we just sent a fresh 6-digit code. Enter it below to finish signing in.",
+              `Your email isn't verified yet — we just sent a fresh ${OTP_LENGTH}-digit code. Enter it below to finish signing in.`,
             );
             setResendCooldown(30);
             otpAutoSubmitted.current = false;
@@ -340,7 +358,7 @@ function AuthPage() {
               Confirm your email to <span className="text-gradient-pink-violet font-light">save your plan</span>
             </h1>
             <p className="mt-4 text-[14.5px] leading-[1.6] text-muted-foreground">
-              We sent a 6-digit code to <span className="font-medium text-foreground">{otpEmail}</span>.
+              We sent a {OTP_LENGTH}-digit code to <span className="font-medium text-foreground">{otpEmail}</span>.
               Enter it below to finish setting up your account and unlock your personalised dashboard.
             </p>
             <p className="mt-2 text-[12.5px] text-muted-foreground">
@@ -349,13 +367,13 @@ function AuthPage() {
 
             <div className="mt-7 flex justify-center">
               <InputOTP
-                maxLength={6}
+                maxLength={OTP_LENGTH}
                 value={otpCode}
                 onChange={(v) => {
-                  const digits = v.replace(/\D/g, "").slice(0, 6);
+                  const digits = v.replace(/\D/g, "").slice(0, OTP_LENGTH);
                   setOtpCode(digits);
                   setOtpError(null);
-                  if (digits.length === 6 && !otpAutoSubmitted.current) {
+                  if (digits.length === OTP_LENGTH && !otpAutoSubmitted.current) {
                     otpAutoSubmitted.current = true;
                     void handleVerifyOtp(digits);
                   }
@@ -363,17 +381,16 @@ function AuthPage() {
                 disabled={verifyingOtp}
                 inputMode="numeric"
                 autoFocus
+                aria-label={`${OTP_LENGTH}-digit verification code`}
               >
                 <InputOTPGroup>
-                  <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
-                  <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
-                  <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
-                  <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
-                  <InputOTPSlot index={4} className="h-12 w-12 text-lg" />
-                  <InputOTPSlot index={5} className="h-12 w-12 text-lg" />
+                  {OTP_SLOTS.map((i) => (
+                    <InputOTPSlot key={i} index={i} className="h-12 w-12 text-lg" />
+                  ))}
                 </InputOTPGroup>
               </InputOTP>
             </div>
+
 
             {verifyingOtp && (
               <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
