@@ -14,6 +14,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { getRememberMe, setRememberMe } from "@/lib/remember-me";
 import { getAuthRedirectURL } from "@/lib/auth-redirect";
 import { loadPlan, pullPlanFromCloud, pushPlanToCloud } from "@/lib/plan-store";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
