@@ -1520,10 +1520,14 @@ function RecordSessionDialog({
   moduleNames,
   onSessionLogged,
   todayTasks,
+  variant = "primary",
+  label = "Record session",
 }: {
   moduleNames: string[];
   onSessionLogged: () => void;
   todayTasks: { title: string; module: string; minutes: number }[];
+  variant?: "primary" | "secondary";
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [minutes, setMinutes] = useState("30");
@@ -1565,13 +1569,24 @@ function RecordSessionDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          size="sm"
-          className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
-        >
-          <Plus className="h-4 w-4" /> Record session
-        </Button>
+        {variant === "primary" ? (
+          <Button
+            size="sm"
+            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+          >
+            <Plus className="h-4 w-4" /> {label}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="rounded-full border border-border/60 bg-background/40 text-foreground hover:bg-foreground/[0.04]"
+          >
+            <Plus className="h-4 w-4" /> {label}
+          </Button>
+        )}
       </DialogTrigger>
+
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Log a study session</DialogTitle>
