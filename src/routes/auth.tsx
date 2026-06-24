@@ -145,7 +145,12 @@ function AuthPage() {
   };
 
   const handleVerifyOtp = async (code: string) => {
-    if (!otpEmail || code.length !== 6 || verifyingOtp) return;
+    if (!otpEmail || verifyingOtp) return;
+    if (code.length !== OTP_LENGTH) {
+      setOtpError(`Please enter the ${OTP_LENGTH}-digit code from your latest email.`);
+      otpAutoSubmitted.current = false;
+      return;
+    }
     setOtpError(null);
     setVerifyingOtp(true);
     try {
@@ -156,10 +161,15 @@ function AuthPage() {
       });
       if (vErr) {
         const lower = vErr.message.toLowerCase();
+        const isExpired = lower.includes("expired") || lower.includes("otp_expired");
+        const isInvalid =
+          lower.includes("invalid") || lower.includes("incorrect") || lower.includes("token");
         setOtpError(
-          lower.includes("expired")
+          isExpired
             ? "That code has expired. Tap resend below to get a new one."
-            : "That code didn't work. If you've resent a new code, older codes no longer work — use the most recent one in your inbox.",
+            : isInvalid
+            ? "That code didn't work. If you've resent a new code, older codes no longer work — use the most recent one in your inbox."
+            : vErr.message,
         );
         setOtpCode("");
         otpAutoSubmitted.current = false;
@@ -174,6 +184,7 @@ function AuthPage() {
       setVerifyingOtp(false);
     }
   };
+
 
   const handleResendOtp = async () => {
     if (!otpEmail || resending || resendCooldown > 0) return;
