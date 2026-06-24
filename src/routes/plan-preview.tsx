@@ -65,6 +65,11 @@ function PlanPreviewPage() {
     }
     setStored(local);
     setReady(true);
+    trackEvent("preview_viewed", {
+      examType: local.input.examType,
+      examPath: local.input.examPath,
+      hoursPerWeek: local.input.hoursPerWeek,
+    });
   }, [navigate]);
 
   const data = useMemo(() => {
