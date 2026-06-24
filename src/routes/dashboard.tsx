@@ -30,6 +30,11 @@ import {
   Loader2,
   Check,
   X,
+  Play,
+  ArrowRight,
+  Calendar,
+  Target,
+  TrendingUp,
 } from "lucide-react";
 import {
   loadPlan,
@@ -47,10 +52,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
 
 interface QuizQuestion {
   prompt: string;
@@ -192,10 +204,20 @@ function DashboardPage() {
 
   const refresh = () => setTick((t) => t + 1);
 
+  const nextTaskIdx = plan.todayTasks.findIndex(
+    (_, i) => !completedTaskIds.includes(String(i)),
+  );
+  const nextTask = nextTaskIdx >= 0 ? plan.todayTasks[nextTaskIdx] : null;
+  const upNextItems = plan.todayTasks
+    .map((t, i) => ({ t, i, done: completedTaskIds.includes(String(i)) }))
+    .filter((x) => !x.done)
+    .slice(0, 3);
+  const currentWeek = plan.weeklyFocus?.[0];
+
   return (
     <AppShell
       title="Dashboard"
-      subtitle="Your focus, your plan, your countdown."
+      subtitle="Your calm command centre."
       actions={
         <RecordSessionDialog
           moduleNames={input.modules.map((m) => m.name)}
@@ -204,128 +226,80 @@ function DashboardPage() {
         />
       }
     >
-      <div className="space-y-10">
-        <HeroBanner
+      <div className="space-y-12">
+        <TodaysPlanCard
           name={input.name}
-          examType={input.examType}
-          daysUntilExam={daysUntilExam}
-          overview={plan.overview}
-          streak={streak}
-          weeklyDoneMins={weeklyDoneMins}
-          weeklyTargetMins={weeklyTargetMins}
-          weeklyPct={weeklyPct}
-          readiness={readiness}
+          currentWeekLabel={currentWeek ? `Week ${currentWeek.week} · ${currentWeek.theme}` : "This week"}
+          plannedMins={plannedMins}
+          completedPlannedMins={completedPlannedMins}
+          blocksDone={blocksDone}
+          blocksPlanned={blocksPlanned}
+          nextTask={nextTask}
+          moduleNames={input.modules.map((m) => m.name)}
+          todayTasks={plan.todayTasks}
+          onSessionLogged={refresh}
         />
 
+        <MetricsRow
+          daysUntilExam={daysUntilExam}
+          readinessScore={readiness?.score ?? null}
+          streak={streak}
+          weeklyPct={weeklyPct}
+          weeklyDoneMins={weeklyDoneMins}
+          weeklyTargetMins={weeklyTargetMins}
+        />
 
-        <div className="flex gap-1 w-fit">
-          {([
-            { id: "week", label: "This week" },
-            { id: "mastery", label: "Mastery" },
-          ] as const).map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
-                tab === t.id
-                  ? "bg-foreground/[0.06] text-foreground"
-                  : "text-muted-foreground/70 hover:text-foreground"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-
-        {tab === "week" && (
-          <div className="grid gap-8 lg:grid-cols-3">
-            <div className="space-y-8 lg:col-span-2">
-              <WeeklyProgressPanel
-                doneMins={weeklyDoneMins}
-                targetMins={weeklyTargetMins}
-                remainingMins={weeklyRemainingMins}
-                pct={weeklyPct}
-                activeDays={activeDays}
-                blocksDone={blocksDone}
-                blocksPlanned={blocksPlanned}
-                plannedMins={plannedMins}
-                completedPlannedMins={completedPlannedMins}
-                streak={streak}
-              />
-
-              {plan.weeklyStrategy && (
-                <Panel
-                  title="Weekly study strategy"
-                  subtitle={plan.weeklyStrategy.summary}
-                >
-                  <AllocationBars allocations={plan.weeklyStrategy.allocations} />
-                </Panel>
-              )}
-
-              <Panel
-                title="Adaptive study blocks"
-                subtitle="Grouped by priority. Tackle Must-do first; Should-do strengthens the week; Optional is stretch or catch-up."
-              >
-                <BlockGroups
-                  tasks={plan.todayTasks}
-                  completedTaskIds={completedTaskIds}
-                  onToggle={handleToggle}
-                />
-              </Panel>
-            </div>
-
-            <div className="space-y-8">
-              <Panel title="Weekly focus" subtitle="Your plan, week by week.">
-                <WeeklyFocusList weeks={plan.weeklyFocus} />
-              </Panel>
-            </div>
-          </div>
+        {plan.weeklyStrategy && plan.weeklyStrategy.allocations.length > 0 && (
+          <section className="space-y-4">
+            <SectionHeader
+              title="This week's focus"
+              subtitle={plan.weeklyStrategy.summary}
+            />
+            <WeekFocusAccordion allocations={plan.weeklyStrategy.allocations} />
+          </section>
         )}
 
-        {tab === "mastery" && (
-          <div className="grid gap-8 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <Panel
-                title="Topic mastery"
-                subtitle="Heat shows current confidence. Cooler = needs work."
+        <section className="space-y-4">
+          <SectionHeader
+            title="Up next"
+            subtitle="Your next recommended blocks for today."
+            action={
+              <Link
+                to="/focus"
+                className="inline-flex items-center gap-1 text-xs font-medium text-foreground/80 hover:text-foreground transition-colors"
               >
-                <MasteryHeatmap stored={stored} />
-              </Panel>
+                View full week plan <ArrowRight className="h-3 w-3" />
+              </Link>
+            }
+          />
+          {upNextItems.length === 0 ? (
+            <div className="rounded-2xl border border-border/40 bg-card p-8 text-center text-sm text-muted-foreground">
+              All caught up for today. Nice work.
             </div>
-            <div>
-              <Panel title="Mastery targets">
-                <ul className="divide-y divide-border/40">
-                  {plan.masteryTargets.slice(0, 8).map((t) => (
-                    <li
-                      key={t.module}
-                      className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium text-foreground">
-                          {t.module}
-                        </div>
-                        <div className="text-[11px] text-muted-foreground/80">
-                          target {t.targetConfidence}/5
-                        </div>
-                      </div>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                          t.priority === "high"
-                            ? "bg-pink/10 text-pink/90"
-                            : t.priority === "medium"
-                              ? "bg-cyan/10 text-cyan/90"
-                              : "bg-foreground/[0.04] text-muted-foreground"
-                        }`}
-                      >
-                        {t.priority}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </Panel>
-            </div>
-          </div>
-        )}
+          ) : (
+            <ul className="grid gap-3 md:grid-cols-3">
+              {upNextItems.map(({ t, i }) => (
+                <UpNextBlock key={i} task={t} onClick={() => handleToggle(i)} />
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="space-y-4">
+          <SectionHeader
+            title="Roadmap"
+            subtitle="Your plan, week by week."
+            action={
+              <Link
+                to="/focus"
+                className="inline-flex items-center gap-1 text-xs font-medium text-foreground/80 hover:text-foreground transition-colors"
+              >
+                View full plan <ArrowRight className="h-3 w-3" />
+              </Link>
+            }
+          />
+          <MiniRoadmap weeks={plan.weeklyFocus} />
+        </section>
       </div>
 
       {quizTask && (
@@ -343,73 +317,437 @@ function DashboardPage() {
   );
 }
 
-function HeroBanner({
+function SectionHeader({
+  title,
+  subtitle,
+  action,
+}: {
+  title: string;
+  subtitle?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-end justify-between gap-4">
+      <div>
+        <h2 className="text-base font-medium text-foreground">{title}</h2>
+        {subtitle && (
+          <p className="mt-1 text-xs text-muted-foreground/80">{subtitle}</p>
+        )}
+      </div>
+      {action}
+    </div>
+  );
+}
+
+function TodaysPlanCard({
   name,
-  examType,
-  daysUntilExam,
-  overview,
-  streak,
-  weeklyDoneMins,
-  weeklyTargetMins,
-  weeklyPct,
-  readiness,
+  currentWeekLabel,
+  plannedMins,
+  completedPlannedMins,
+  blocksDone,
+  blocksPlanned,
+  nextTask,
+  moduleNames,
+  todayTasks,
+  onSessionLogged,
 }: {
   name: string;
-  examType: string;
-  daysUntilExam: number;
-  overview: string;
-  streak: { current: number; longest: number; studiedToday: boolean; totalMinutesToday: number };
-  weeklyDoneMins: number;
-  weeklyTargetMins: number;
-  weeklyPct: number;
-  readiness: ReadinessResult | null;
+  currentWeekLabel: string;
+  plannedMins: number;
+  completedPlannedMins: number;
+  blocksDone: number;
+  blocksPlanned: number;
+  nextTask: { title: string; module: string; minutes: number } | null;
+  moduleNames: string[];
+  todayTasks: { title: string; module: string; minutes: number }[];
+  onSessionLogged: () => void;
 }) {
-  const doneH = (weeklyDoneMins / 60).toFixed(1).replace(/\.0$/, "");
-  const targetH = Math.round(weeklyTargetMins / 60);
+  const fmtH = (m: number) => {
+    if (m < 60) return `${m}m`;
+    const h = m / 60;
+    return `${h.toFixed(1).replace(/\.0$/, "")}h`;
+  };
+  const pct =
+    plannedMins > 0 ? Math.round((completedPlannedMins / plannedMins) * 100) : 0;
   return (
-    <section className="relative overflow-hidden rounded-[2rem] bg-card p-8 md:p-12">
-      <div className="absolute inset-0 bg-gradient-hero opacity-40" />
-      <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
-        <div className="max-w-xl">
-          <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground/80">
-            {examType} · adaptive plan
-          </div>
-          <h1 className="mt-3 text-4xl font-normal text-foreground md:text-5xl">
-            Welcome back,{" "}
-            <span className="text-gradient-tentra inline-block italic pr-2">
-              {name}
+    <section className="relative overflow-hidden rounded-3xl border border-border/40 bg-card p-6 md:p-8 shadow-card">
+      <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-gradient-pink-blue opacity-[0.08] blur-3xl" />
+      <div className="relative flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-muted-foreground/80">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-2.5 py-1">
+              <Calendar className="h-3 w-3" /> {currentWeekLabel}
             </span>
-          </h1>
-          <p className="mt-3 text-sm text-muted-foreground md:text-[15px]">{overview}</p>
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <CountdownRing days={daysUntilExam} />
-          <ReadinessCard readiness={readiness} />
-          <StreakCard streak={streak} />
-          <div className="rounded-2xl bg-foreground/[0.025] p-5">
-            <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
-              This week
-            </div>
-            <div className="mt-2 flex items-baseline gap-2">
-              <div className="font-display text-4xl text-foreground">
-                {weeklyPct}%
-              </div>
-              <div className="text-xs text-muted-foreground/80">
-                {doneH}/{targetH}h
-              </div>
-            </div>
-            <div className="mt-3 h-1 w-32 overflow-hidden rounded-full bg-foreground/[0.06]">
-              <div
-                className="h-full rounded-full bg-gradient-pink-blue transition-all"
-                style={{ width: `${weeklyPct}%` }}
-              />
-            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-2.5 py-1">
+              {fmtH(plannedMins)} planned today
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-2.5 py-1">
+              {blocksDone}/{blocksPlanned} blocks done
+            </span>
           </div>
+          <div>
+            <h2 className="text-xl font-medium text-foreground md:text-2xl">
+              Today's plan, {name.split(" ")[0]}.
+            </h2>
+            {nextTask ? (
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                Next up:{" "}
+                <span className="text-foreground/90">{nextTask.title}</span>{" "}
+                · {nextTask.module} · {nextTask.minutes}m
+              </p>
+            ) : (
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                You've cleared today's plan. Stretch, review, or rest.
+              </p>
+            )}
+            {plannedMins > 0 && (
+              <div className="mt-4 h-1 w-full max-w-xs overflow-hidden rounded-full bg-foreground/[0.06]">
+                <div
+                  className="h-full rounded-full bg-gradient-pink-blue transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 md:flex-col md:items-stretch md:gap-2">
+          <Button
+            asChild
+            size="sm"
+            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+          >
+            <Link to="/focus">
+              <Play className="h-4 w-4" /> Start focus block
+            </Link>
+          </Button>
+          <RecordSessionDialog
+            moduleNames={moduleNames}
+            onSessionLogged={onSessionLogged}
+            todayTasks={todayTasks}
+            variant="secondary"
+            label="Log session"
+          />
         </div>
       </div>
     </section>
   );
 }
+
+function MetricsRow({
+  daysUntilExam,
+  readinessScore,
+  streak,
+  weeklyPct,
+  weeklyDoneMins,
+  weeklyTargetMins,
+}: {
+  daysUntilExam: number;
+  readinessScore: number | null;
+  streak: { current: number; longest: number; studiedToday: boolean };
+  weeklyPct: number;
+  weeklyDoneMins: number;
+  weeklyTargetMins: number;
+}) {
+  const doneH = (weeklyDoneMins / 60).toFixed(1).replace(/\.0$/, "");
+  const targetH = Math.round(weeklyTargetMins / 60);
+  return (
+    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <MetricCard
+        label="Exam in"
+        value={String(daysUntilExam)}
+        sub="days"
+        icon={<Calendar className="h-3.5 w-3.5" />}
+        accent="pink"
+      />
+      <MetricCard
+        label="Readiness"
+        value={readinessScore !== null ? `${readinessScore}` : "—"}
+        sub={readinessScore !== null ? "/ 100" : "log 3+ sessions"}
+        icon={<Target className="h-3.5 w-3.5" />}
+        accent="violet"
+      />
+      <MetricCard
+        label="Streak"
+        value={String(streak.current)}
+        sub={streak.studiedToday ? "active today" : streak.current > 0 ? "log to keep" : "start today"}
+        icon={
+          <Flame
+            className="h-3.5 w-3.5"
+            fill={streak.studiedToday ? "currentColor" : "none"}
+          />
+        }
+        accent={streak.studiedToday ? "pink" : "muted"}
+      />
+      <MetricCard
+        label="This week"
+        value={`${weeklyPct}%`}
+        sub={`${doneH}/${targetH}h`}
+        icon={<TrendingUp className="h-3.5 w-3.5" />}
+        accent="cyan"
+        progress={weeklyPct}
+      />
+    </div>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  sub,
+  icon,
+  accent,
+  progress,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  icon?: React.ReactNode;
+  accent?: "pink" | "violet" | "cyan" | "muted";
+  progress?: number;
+}) {
+  const accentBg =
+    accent === "pink"
+      ? "bg-pink/[0.06] text-pink/90"
+      : accent === "violet"
+        ? "bg-violet-500/[0.07] text-violet-400/90"
+        : accent === "cyan"
+          ? "bg-cyan/[0.07] text-cyan/90"
+          : "bg-foreground/[0.04] text-muted-foreground";
+  return (
+    <div className="rounded-2xl border border-border/40 bg-card p-4 shadow-card">
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
+          {label}
+        </span>
+        <span className={`grid h-6 w-6 place-items-center rounded-full ${accentBg}`}>
+          {icon}
+        </span>
+      </div>
+      <div className="mt-3 flex items-baseline gap-1.5">
+        <span className="font-display text-2xl text-foreground">{value}</span>
+        {sub && <span className="text-[11px] text-muted-foreground/80">{sub}</span>}
+      </div>
+      {typeof progress === "number" && (
+        <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-foreground/[0.06]">
+          <div
+            className="h-full rounded-full bg-gradient-pink-blue transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WeekFocusAccordion({
+  allocations,
+}: {
+  allocations: {
+    module: string;
+    hours: number;
+    rationale: string;
+    note: string;
+    subtopics?: string[];
+    method?: string;
+    outcome?: string;
+  }[];
+}) {
+  const total = Math.max(1, allocations.reduce((acc, a) => acc + a.hours, 0));
+  return (
+    <div className="rounded-2xl border border-border/40 bg-card shadow-card">
+      <Accordion type="single" collapsible className="divide-y divide-border/40">
+        {allocations.map((a) => {
+          const pct = Math.round((a.hours / total) * 100);
+          const meta = RATIONALE_META[a.rationale];
+          return (
+            <AccordionItem
+              key={a.module}
+              value={a.module}
+              className="border-b-0 px-5"
+            >
+              <AccordionTrigger className="hover:no-underline py-4">
+                <div className="flex flex-1 items-center justify-between gap-4 pr-3">
+                  <div className="min-w-0 flex-1 text-left">
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {a.module}
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-2">
+                      {meta && (
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}>
+                          {meta.label}
+                        </span>
+                      )}
+                      <span className="text-[11px] text-muted-foreground/70">
+                        {a.hours}h · {pct}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="space-y-3 pt-1 pb-5 text-xs text-muted-foreground/85">
+                <p>
+                  <span className="font-medium text-foreground/80">Why this week: </span>
+                  {a.note}
+                </p>
+                {a.subtopics && a.subtopics.length > 0 && (
+                  <div>
+                    <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+                      Focus subtopics
+                    </div>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {a.subtopics.slice(0, 4).map((s) => (
+                        <span
+                          key={s}
+                          className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
+                        >
+                          {s}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {a.method && (
+                  <p>
+                    <span className="font-medium text-foreground/80">Suggested approach: </span>
+                    {a.method}
+                  </p>
+                )}
+                {a.outcome && (
+                  <p>
+                    <span className="font-medium text-foreground/80">Outcome: </span>
+                    {a.outcome}
+                  </p>
+                )}
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
+      </Accordion>
+    </div>
+  );
+}
+
+function UpNextBlock({
+  task,
+  onClick,
+}: {
+  task: import("@/lib/plan-store").StrategyTask;
+  onClick: () => void;
+}) {
+  const priority = task.bucket ?? (task.priority === "high" ? "must" : task.priority === "low" ? "optional" : "should");
+  const meta = BUCKET_META[priority];
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onClick}
+        className="group flex h-full w-full flex-col items-stretch gap-3 rounded-2xl border border-border/40 bg-card p-4 text-left shadow-card transition-all hover:border-pink/30 hover:shadow-glow"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.cls}`}>
+            {meta.label.replace(" this week", "")}
+          </span>
+          <span
+            aria-label="Mark complete"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-muted-foreground/30 text-muted-foreground transition-colors group-hover:border-pink group-hover:text-pink"
+          >
+            <Check className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={3} />
+          </span>
+        </div>
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
+            {task.title}
+          </p>
+          <p className="text-[11px] text-muted-foreground/80">{task.module}</p>
+        </div>
+        <div className="flex items-center justify-between border-t border-border/40 pt-3 text-[11px] text-muted-foreground/80">
+          <span>{task.minutes}m</span>
+          {task.taskType && <span>{TYPE_LABELS[task.taskType] ?? task.taskType}</span>}
+        </div>
+      </button>
+    </li>
+  );
+}
+
+function MiniRoadmap({
+  weeks,
+}: {
+  weeks: import("@/lib/plan-store").WeeklyFocusEntry[];
+}) {
+  const [openWeek, setOpenWeek] = useState<number>(weeks[0]?.week ?? 1);
+  const limited = weeks.slice(0, 6);
+  return (
+    <div className="rounded-2xl border border-border/40 bg-card p-2 shadow-card">
+      <ol className="divide-y divide-border/40">
+        {limited.map((w, i) => {
+          const isActive = i === 0;
+          const isOpen = openWeek === w.week;
+          return (
+            <li key={w.week}>
+              <button
+                type="button"
+                onClick={() => setOpenWeek(isOpen ? -1 : w.week)}
+                className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-left transition-colors hover:bg-foreground/[0.02]"
+              >
+                <div
+                  className={`grid h-8 w-8 shrink-0 place-items-center rounded-full text-[11px] font-semibold ${
+                    isActive
+                      ? "bg-gradient-pink-blue text-primary-foreground"
+                      : "bg-foreground/[0.05] text-muted-foreground"
+                  }`}
+                >
+                  {w.week}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="truncate text-sm font-medium text-foreground">
+                      {w.theme}
+                    </span>
+                    {isActive && (
+                      <span className="rounded-full bg-pink/10 px-1.5 py-0.5 text-[10px] font-medium text-pink/90">
+                        This week
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-0.5 truncate text-[11px] text-muted-foreground/80">
+                    {w.hours}h · {w.modules.slice(0, 2).join(", ")}
+                    {w.modules.length > 2 ? ` +${w.modules.length - 2}` : ""}
+                  </div>
+                </div>
+                <ArrowRight
+                  className={`h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform ${
+                    isOpen ? "rotate-90" : ""
+                  }`}
+                />
+              </button>
+              {isOpen && (
+                <div className="space-y-2 px-14 pb-4 pt-1 text-xs text-muted-foreground/85">
+                  {w.reason && (
+                    <p>
+                      <span className="font-medium text-foreground/80">Why this week: </span>
+                      {w.reason}
+                    </p>
+                  )}
+                  <div className="flex flex-wrap gap-1.5">
+                    {w.modules.map((m) => (
+                      <span
+                        key={m}
+                        className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
+                      >
+                        {m}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+}
+
 
 function ReadinessCard({ readiness }: { readiness: ReadinessResult | null }) {
   const score = readiness?.score ?? null;
@@ -1182,10 +1520,14 @@ function RecordSessionDialog({
   moduleNames,
   onSessionLogged,
   todayTasks,
+  variant = "primary",
+  label = "Record session",
 }: {
   moduleNames: string[];
   onSessionLogged: () => void;
   todayTasks: { title: string; module: string; minutes: number }[];
+  variant?: "primary" | "secondary";
+  label?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [minutes, setMinutes] = useState("30");
@@ -1227,13 +1569,24 @@ function RecordSessionDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          size="sm"
-          className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
-        >
-          <Plus className="h-4 w-4" /> Record session
-        </Button>
+        {variant === "primary" ? (
+          <Button
+            size="sm"
+            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+          >
+            <Plus className="h-4 w-4" /> {label}
+          </Button>
+        ) : (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="rounded-full border border-border/60 bg-background/40 text-foreground hover:bg-foreground/[0.04]"
+          >
+            <Plus className="h-4 w-4" /> {label}
+          </Button>
+        )}
       </DialogTrigger>
+
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Log a study session</DialogTitle>
