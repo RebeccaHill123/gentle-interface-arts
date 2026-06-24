@@ -1,107 +1,98 @@
-## Sprint 1 — Conversion, Onboarding, First-Use Value
+# Sprint 4 — Exam credibility & structured topic mapping
 
-A large, multi-file sprint. Plan first so we agree on scope before I touch ~3k lines.
+Make Tentra feel exam-specific for SQE1, SQE2, NY Bar, MPRE. One source of truth for exam structure, used everywhere.
 
-### Exam scope (applies everywhere)
+## 1. New central config: `src/lib/exam-config.ts`
 
-Supported exams only: **SQE1, SQE2, NY Bar, MPRE**. Remove "Other legal exam" and any "more exams coming soon" copy across landing, onboarding, dashboard, settings, and SEO meta. Plan generator gated to these four.
+Single source of truth. Replaces ad-hoc lookups in onboarding/dashboard/preview. Existing `sqe-syllabus.ts`, `ube-syllabus.ts`, `mpre-syllabus.ts` stay as low-level data; the new config layers user-facing structure on top (groupings, skills, dashboard cards, credibility metadata).
 
-Mapping to existing `ExamPath` in `src/lib/exam-paths.ts`:
-- SQE1 → `sqe1`
-- SQE2 → `sqe2`
-- NY Bar → `ube-ny` (existing UBE/NY content)
-- MPRE → new `mpre` path with a focused topic list (Conflicts, Confidentiality, Competence, Client Funds, Fees, Litigation Conduct, Different Roles, Safekeeping, Judicial Conduct, Regulation of the Profession). Adds an `examType: "mpre"` and routing through existing plan generator using the same allocation logic but a shorter syllabus.
+Shape per exam (`SQE1` | `SQE2` | `NY_BAR` | `MPRE`):
 
-### 1. Landing page (`src/routes/index.tsx`)
+```ts
+type ExamConfig = {
+  key: "SQE1" | "SQE2" | "NY_BAR" | "MPRE";
+  name: string;                // "SQE1"
+  shortDescription: string;
+  components: { key: string; name: string; weight?: number }[];
+  topicGroups: {               // user-facing groupings
+    key: string;
+    name: string;              // display label
+    component?: string;        // e.g. "FLK1"
+    subtopics: string[];
+    sourceLabel?: string;      // official/internal label (may differ from display)
+  }[];
+  skills?: { key: string; name: string; mode: "oral" | "written" }[]; // SQE2 + MPT
+  pathwayRequirements?: { key: string; name: string; note?: string }[]; // NY Bar
+  assessmentStyle: string;
+  planLogicNotes: string[];
+  exampleTasks: string[];
+  dashboardCards: { key: string; label: string }[];
+  credibilityBadge: string;    // "Mapped to SQE1 FLK structure" etc.
+  source: { label: string; version: string; lastReviewed: string };
+  internalNotes: string;
+};
+```
 
-- Primary CTA → **"Build my study plan"** → `/onboarding` (no auth gate).
-- Secondary → **"Log in"** → `/auth`.
-- One-line value prop: "An adaptive study planner for SQE, NY Bar and MPRE students that tells you exactly what to study each day."
-- Five-bullet value list (personalised plan / track time / weak areas / AI-guided / daily consistency).
-- Strip generic "legal exam" / coming-soon language. Update `head()` meta + JSON-LD to name the four exams.
+Helpers:
+- `getExamConfig(examType)` — main accessor
+- `getOnboardingWeakAreas(examType)` — flat list of user-facing topic labels
+- `getDashboardCards(examType)`
+- `getTopicGroupForSubtopic(examType, subtopic)`
 
-### 2. Pre-signup onboarding (`src/routes/onboarding.tsx`)
+### Structures
 
-Refactor existing onboarding into 6 lean steps, **no auth required** to walk through:
+**SQE1** — components FLK1 + FLK2, plus pervasive Ethics layer (not a 13th group, but flagged via `pervasiveLayers`).
+- FLK1 groups: Business Law & Practice, Dispute Resolution, Contract Law, Tort, Legal System Constitutional & Administrative Law (subtopics include EU Law / retained EU law), Legal Services
+- FLK2 groups: Property Law & Practice, Wills & Administration of Estates, Solicitors Accounts, Land Law, Trusts Law, Criminal Law & Practice (subtopics include Criminal liability, Offences, Defences, Police powers, Bail, Mode of trial, Sentencing, Appeals)
+- `sourceLabel` may still reference "EU Law" / "Criminal Liability" — display labels do not.
 
-1. Exam — SQE1 / SQE2 / NY Bar / MPRE (radio cards).
-2. Exam timing — exact date OR target month toggle.
-3. Weekly availability — `<5`, `5–10`, `10–15`, `15–20`, `20+` hours.
-4. Weak areas — checklist from the selected exam's syllabus.
-5. Confidence — Low / Medium / High with subtitles.
-6. Study style — Short sprints / Longer deep work / Mixed.
+**SQE2** — `skills` array (6 skills, oral/written) + `topicGroups` for practice areas (Criminal Litigation, Dispute Resolution, Property Practice, Wills & Probate, Business organisations).
 
-Mobile-first, 1 question per screen, progress bar, Back/Next. Persist answers to a new `pendingOnboarding` localStorage key (independent of the existing authenticated draft) so a signed-out user can complete the flow.
+**NY Bar** — components MBE (50%), MEE (30%), MPT (20%). MBE + MEE subjects per brief (post-Jul 2026 MEE list). `pathwayRequirements`: UBE, NYLC, NYLE, MPRE, 50hr pro bono. MPT `skills`. `internalNotes` carries the Jul 2026 MEE-scope note.
 
-On finish → compute a `StudyPlan` locally via existing generator → route to `/plan-preview` without writing to Supabase.
+**MPRE** — 10 topic groups per brief.
 
-### 3. Plan preview (new route `src/routes/plan-preview.tsx`)
+## 2. Refactor consumers
 
-Public route. Reads `pendingOnboarding` + generated plan from storage. Shows:
+Update to read from `getExamConfig`:
+- `src/routes/onboarding.tsx` — weak-area step uses `getOnboardingWeakAreas`. Map to existing `ModuleConfidence` shape so plan-store contract is unchanged. Preserve saved draft answers; if a draft references a now-renamed module, keep the user's confidence value by best-effort name match.
+- `src/lib/preview-plan.ts` — preview plan template uses exam config (FLK split for SQE1, skills+areas for SQE2, MBE/MEE/MPT for NY Bar, PR topics for MPRE).
+- `src/routes/plan-preview.tsx` — section headings reflect exam structure; show credibility badge + trust copy.
+- `src/routes/dashboard.tsx` — top metric cards driven by `dashboardCards`. Show credibility badge in header subtle. Keep current layout/visual rhythm; just swap the labels and which data feeds each card based on exam.
+- `src/routes/coach.tsx` — inject exam config summary into AI tutor system context; render trust copy footer.
+- `src/lib/exam-paths.ts` — keep as thin adapter so existing `plan-store` `ExamPath` semantics survive. `getSubjectsForExamPath` now derives from exam config topic groups rather than syllabus files directly.
 
-- Today's recommended session
-- This week's focus areas
-- Weekly study hours
-- Weak-area priority chips
-- Simple week-by-week timeline (read-only mini roadmap)
-- Suggested first focus session card
-- Primary CTA **"Create account to save my plan"** → `/auth?intent=save-plan`
-- Secondary **"Edit my answers"** → `/onboarding`
-- Locked-feature strip: saving / tracking / focus sessions / AI tutor / analytics / adaptive adjustments / history — each with a small lock icon and tooltip.
-- Microcopy: "Create an account to save this plan and let Tentra adapt it as you study."
+## 3. Plan generator credibility
 
-### 4. Sign-up persistence
+`buildStoredPreview` and the cloud `generate-plan` edge function prompt both reference exam-config `planLogicNotes` and `exampleTasks` so generated tasks read as exam-specific (e.g. "25 mixed FLK1 MCQs: Contract + Tort" not "Study Contract Law"). Edge function: pass the structured config into the prompt; do not change response schema.
 
-`/auth` reads `pendingOnboarding` from localStorage. After successful sign-up + session, in the existing post-auth bootstrap (already in onboarding/dashboard load path) we hydrate the authenticated plan draft from `pendingOnboarding`, run `savePlanAndSync`, then clear the pending key. User lands directly on a personalised dashboard — onboarding flow is skipped if a plan exists.
+## 4. Trust + credibility UI
 
-### 5. Email confirmation UX (`src/routes/auth.tsx`)
+- Small `<CredibilityBadge>` component (subtle pill, gradient border) used on preview header, dashboard header, onboarding review step.
+- `<TrustNote>` component rendered in coach footer and plan preview footer:
+  > "Tentra helps structure your revision and track your progress. Always check current official exam specifications and provider materials for authoritative syllabus detail."
+- No "coming soon" / "other exam" copy anywhere — sweep with ripgrep and remove.
 
-Replace the current post-signup state with a dedicated confirmation panel:
+## 5. Versioning & internal notes
 
-- Headline: "Almost there — confirm your email to save and access your plan."
-- Shows the email it was sent to.
-- **Resend confirmation** button (rate-limited 30s, uses `supabase.auth.resend`).
-- **Change email** link → resets the form.
-- "Check your junk/spam folder" note.
-- Support link (mailto).
-- Inline states: sent / resent / invalid email / already confirmed / expired link (parsed from URL hash error params on `/auth_/callback`).
+Each exam config carries `source.label`, `source.version`, `source.lastReviewed`, `internalNotes`. Surface `source.lastReviewed` quietly in a footer ("Exam structure reviewed: …") on the preview and dashboard.
 
-### 6. Dashboard first-use (`src/routes/dashboard.tsx`)
+## 6. Out of scope
 
-Already restructured around three questions in a recent pass. Light additions for first-use:
+- No DB migration (plan-store shape unchanged; weak-area names persist as strings).
+- No new auth/profile fields.
+- No real adaptive engine rewrite — only structural credibility.
 
-- If `plan.completedSessions === 0`, show a one-time welcome banner above `TodaysPlanCard` with the user's first name + exam, dismissible.
-- Confirm section order: Today's Plan → Metrics → This Week Focus → Up Next → Mini roadmap. Move "Materials / Mocks / Analytics / Settings" deeper navigation (already in `AppShell` sidebar — no change needed). No structural rewrite.
+## 7. Acceptance check
 
-### 7–8. Positioning & visual style
+After implementation:
+- Onboarding weak areas differ per exam and never show "EU Law" / "Criminal Liability" standalone for SQE1.
+- Preview + dashboard headings match exam structure (FLK1/FLK2/Ethics; Skills/Areas; MBE/MEE/MPT; PR topics).
+- Credibility badge visible on preview + dashboard.
+- Trust copy visible in coach + preview.
+- `rg "coming soon|Other legal exam|generic legal"` returns nothing.
+- `bunx tsgo --noEmit` passes.
 
-Keep current premium gradient + typography. Copy pass on landing, onboarding, preview, and auth screens to sound exam-specific (SQE/NY Bar/MPRE) and like a coach, not a generic SaaS.
+## Verification
 
-### 9. Technical guardrails
-
-- No Supabase schema changes. No auth flow rewiring. No changes to existing `profiles` / `is_pro` rules.
-- Reuse `plan-store.ts` generator. Add `mpre` to `ExamPath` union + path → exam mapping + a small MPRE syllabus block in `sqe-syllabus.ts` (or sibling).
-- Existing users with a saved plan are unaffected; pending-onboarding flow is opt-in via the landing CTA.
-- Routes added: `/plan-preview`. Routes touched: `/`, `/onboarding`, `/auth`, `/dashboard`.
-
-### 10. Out of scope (call out)
-
-- Real adaptive re-planning engine (already present, untouched).
-- Full SEO/landing redesign beyond CTA + value bullets.
-- New analytics events (can follow in Sprint 2).
-- Localisation.
-
-### Technical notes
-
-- New storage key: `tentra:pending-onboarding:v1` — `{ exam, examTiming: {kind:'date'|'month', value}, weeklyHours, weakAreas[], confidence, style }`.
-- Plan generator call shape: map onboarding answers → existing `StudyPlan` builder inputs; reuse `getSubjectsForExamPath` for weak-area options and to gate MPRE.
-- `/plan-preview` is fully client-rendered (no loader, no server fn) so it works signed-out without SSR auth issues.
-- Email resend uses `supabase.auth.resend({ type: 'signup', email })`; change-email resets local state and clears stored `pendingEmail`.
-
-### Verification
-
-- `bunx tsgo --noEmit`
-- Playwright run: landing → onboarding (all 4 exams selectable, no "other") → preview shows plan → auth screen → confirmation state with resend.
-- Manual: returning signed-in user with existing plan still lands on dashboard with no regression.
-
-Approve and I'll implement in one pass.
+`bunx tsgo --noEmit` + Playwright walk: anonymous → onboarding (each exam) → preview → sign-up → dashboard, screenshot each exam's labels.
