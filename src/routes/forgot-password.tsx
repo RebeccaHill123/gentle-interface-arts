@@ -162,7 +162,7 @@ function ForgotPasswordPage() {
           {step === "email" ? (
             <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
               <p className="text-[14px] leading-[1.6] text-muted-foreground">
-                Enter your email and we'll send you a 6-digit code to reset your password.
+                Enter your email and we'll send you a {OTP_LENGTH}-digit code to reset your password.
               </p>
               <div className="space-y-1.5">
                 <Label htmlFor="email">Email</Label>
