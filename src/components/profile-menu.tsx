@@ -146,7 +146,13 @@ export function ProfileMenu() {
       >
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-border/60 p-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-pink-blue text-base font-semibold text-primary-foreground shadow-glow">
+          <div
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-base font-semibold text-primary-foreground shadow-glow ring-1 ring-inset ring-white/20"
+            style={{
+              background:
+                "radial-gradient(120% 120% at 30% 20%, oklch(0.96 0.04 340) 0%, oklch(0.66 0.20 320) 55%, oklch(0.58 0.20 265) 100%)",
+            }}
+          >
             {info.initial}
           </div>
           <div className="min-w-0 flex-1">
