@@ -155,7 +155,7 @@ function ForgotPasswordPage() {
             {step === "email" ? (
               <>Reset your <span className="text-gradient-pink-violet font-light">password</span></>
             ) : (
-              <>Enter the <span className="text-gradient-pink-violet font-light">6-digit code</span></>
+              <>Enter the <span className="text-gradient-pink-violet font-light">{OTP_LENGTH}-digit code</span></>
             )}
           </h1>
 
