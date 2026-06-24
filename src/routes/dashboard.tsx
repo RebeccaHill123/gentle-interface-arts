@@ -30,6 +30,11 @@ import {
   Loader2,
   Check,
   X,
+  Play,
+  ArrowRight,
+  Calendar,
+  Target,
+  TrendingUp,
 } from "lucide-react";
 import {
   loadPlan,
@@ -47,10 +52,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
 import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+
 
 interface QuizQuestion {
   prompt: string;
