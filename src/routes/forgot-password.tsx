@@ -10,6 +10,10 @@ import { BackgroundBlobs } from "@/components/background-blobs";
 import { Loader2, AlertCircle, ArrowLeft } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
+// Must match the Supabase Auth `mailer_otp_length` setting.
+const OTP_LENGTH = 6;
+const OTP_SLOTS = Array.from({ length: OTP_LENGTH }, (_, i) => i);
+
 export const Route = createFileRoute("/forgot-password")({
   component: ForgotPasswordPage,
   head: () => ({
