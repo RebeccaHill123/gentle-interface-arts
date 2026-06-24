@@ -48,6 +48,7 @@ import {
 } from "@/lib/exam-paths";
 import { buildStoredPreview, savePreviewToLocal } from "@/lib/preview-plan";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/onboarding")({
   // No auth gate — onboarding runs for anonymous visitors so they can
