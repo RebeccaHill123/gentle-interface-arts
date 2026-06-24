@@ -260,6 +260,7 @@ function AuthPage() {
           otpAutoSubmitted.current = false;
           return;
         }
+        trackEvent("sign_up_completed", { method: "email_password" });
         await goAfterAuth();
       } else {
         const parsed = signInSchema.safeParse({ email, password });
