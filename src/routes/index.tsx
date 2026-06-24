@@ -85,9 +85,9 @@ function PremiumCta({
       className={`group relative ${h} rounded-full px-7 text-[14.5px] font-medium tracking-[-0.005em] text-primary-foreground transition-all duration-300 hover:brightness-[1.06] ${className}`}
       style={{
         background:
-          "linear-gradient(120deg, oklch(0.72 0.22 350) 0%, oklch(0.66 0.20 320) 45%, oklch(0.60 0.20 270) 100%)",
+          "linear-gradient(120deg, oklch(0.80 0.15 350) 0%, oklch(0.74 0.15 330) 45%, oklch(0.70 0.15 270) 100%)",
         boxShadow:
-          "0 1px 0 0 oklch(1 0 0 / 0.25) inset, 0 12px 30px -12px oklch(0.55 0.20 320 / 0.45)",
+          "0 1px 0 0 oklch(1 0 0 / 0.25) inset, 0 12px 30px -12px oklch(0.55 0.15 320 / 0.40)",
       }}
     >
       <Link to={to as never} search={search as never}>
