@@ -1704,7 +1704,7 @@ function QuizDialog({
   onComplete,
 }: {
   task: { index: number; title: string; module: string; minutes: number };
-  examType: "SQE1" | "SQE2" | "UBE";
+  examType: "SQE1" | "SQE2" | "UBE" | "MPRE";
   confidence: number;
   onClose: () => void;
   onComplete: (accuracy: number, minutesSpent: number) => void;

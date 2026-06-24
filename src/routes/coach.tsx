@@ -114,7 +114,7 @@ function CoachPage() {
   const [mode, setMode] = useState<Mode>("coach");
   const [thinkingIdx, setThinkingIdx] = useState(0);
   const [hasPrior, setHasPrior] = useState(false);
-  const [examType, setExamType] = useState<"SQE1" | "SQE2" | "UBE" | null>(null);
+  const [examType, setExamType] = useState<"SQE1" | "SQE2" | "UBE" | "MPRE" | null>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);

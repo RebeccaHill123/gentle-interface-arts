@@ -16,6 +16,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ProRouteImport } from './routes/pro'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PracticeRouteImport } from './routes/practice'
+import { Route as PlanPreviewRouteImport } from './routes/plan-preview'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -70,6 +71,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const PracticeRoute = PracticeRouteImport.update({
   id: '/practice',
   path: '/practice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanPreviewRoute = PlanPreviewRouteImport.update({
+  id: '/plan-preview',
+  path: '/plan-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/plan-preview': typeof PlanPreviewRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/pro': typeof ProRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/plan-preview': typeof PlanPreviewRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/pro': typeof ProRoute
@@ -244,6 +252,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
+  '/plan-preview': typeof PlanPreviewRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/pro': typeof ProRoute
@@ -275,6 +284,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/mocks'
     | '/onboarding'
+    | '/plan-preview'
     | '/practice'
     | '/privacy'
     | '/pro'
@@ -303,6 +313,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/mocks'
     | '/onboarding'
+    | '/plan-preview'
     | '/practice'
     | '/privacy'
     | '/pro'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/mocks'
     | '/onboarding'
+    | '/plan-preview'
     | '/practice'
     | '/privacy'
     | '/pro'
@@ -362,6 +374,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   MocksRoute: typeof MocksRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
+  PlanPreviewRoute: typeof PlanPreviewRoute
   PracticeRoute: typeof PracticeRoute
   PrivacyRoute: typeof PrivacyRoute
   ProRoute: typeof ProRoute
@@ -425,6 +438,13 @@ declare module '@tanstack/react-router' {
       path: '/practice'
       fullPath: '/practice'
       preLoaderRoute: typeof PracticeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan-preview': {
+      id: '/plan-preview'
+      path: '/plan-preview'
+      fullPath: '/plan-preview'
+      preLoaderRoute: typeof PlanPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -606,6 +626,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   MocksRoute: MocksRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
+  PlanPreviewRoute: PlanPreviewRoute,
   PracticeRoute: PracticeRoute,
   PrivacyRoute: PrivacyRoute,
   ProRoute: ProRoute,
