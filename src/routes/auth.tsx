@@ -453,16 +453,6 @@ function AuthPage() {
                   otpAutoSubmitted.current = false;
                 }}
                 className="text-muted-foreground hover:text-foreground hover:underline"
-              <button
-                type="button"
-                onClick={() => {
-                  setOtpEmail(null);
-                  setOtpCode("");
-                  setOtpError(null);
-                  setResendMsg(null);
-                  otpAutoSubmitted.current = false;
-                }}
-                className="text-muted-foreground hover:text-foreground hover:underline"
               >
                 Use a different email
               </button>
