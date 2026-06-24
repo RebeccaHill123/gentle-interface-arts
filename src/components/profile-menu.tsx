@@ -122,9 +122,21 @@ export function ProfileMenu() {
       <PopoverTrigger asChild>
         <button
           aria-label="Open profile menu"
-          className="group relative grid h-9 w-9 cursor-pointer place-items-center rounded-full bg-gradient-pink-blue text-sm font-semibold text-primary-foreground shadow-card transition-all duration-200 hover:scale-105 hover:shadow-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/60"
+          className="group relative grid h-9 w-9 cursor-pointer place-items-center rounded-full p-[1.5px] shadow-card transition-all duration-200 hover:scale-105 hover:shadow-glow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink/60"
+          style={{
+            background:
+              "conic-gradient(from 200deg, oklch(0.74 0.20 350), oklch(0.62 0.22 295), oklch(0.58 0.20 260), oklch(0.74 0.20 350))",
+          }}
         >
-          {info.initial}
+          <span
+            className="grid h-full w-full place-items-center rounded-full text-sm font-semibold text-primary-foreground"
+            style={{
+              background:
+                "radial-gradient(120% 120% at 30% 20%, oklch(0.96 0.04 340) 0%, oklch(0.66 0.20 320) 55%, oklch(0.58 0.20 265) 100%)",
+            }}
+          >
+            {info.initial}
+          </span>
         </button>
       </PopoverTrigger>
       <PopoverContent
@@ -134,7 +146,13 @@ export function ProfileMenu() {
       >
         {/* Header */}
         <div className="flex items-center gap-3 border-b border-border/60 p-4">
-          <div className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-pink-blue text-base font-semibold text-primary-foreground shadow-glow">
+          <div
+            className="grid h-11 w-11 shrink-0 place-items-center rounded-full text-base font-semibold text-primary-foreground shadow-glow ring-1 ring-inset ring-white/20"
+            style={{
+              background:
+                "radial-gradient(120% 120% at 30% 20%, oklch(0.96 0.04 340) 0%, oklch(0.66 0.20 320) 55%, oklch(0.58 0.20 265) 100%)",
+            }}
+          >
             {info.initial}
           </div>
           <div className="min-w-0 flex-1">
