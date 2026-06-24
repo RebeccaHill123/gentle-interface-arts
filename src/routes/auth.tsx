@@ -358,7 +358,7 @@ function AuthPage() {
               Confirm your email to <span className="text-gradient-pink-violet font-light">save your plan</span>
             </h1>
             <p className="mt-4 text-[14.5px] leading-[1.6] text-muted-foreground">
-              We sent a 6-digit code to <span className="font-medium text-foreground">{otpEmail}</span>.
+              We sent a {OTP_LENGTH}-digit code to <span className="font-medium text-foreground">{otpEmail}</span>.
               Enter it below to finish setting up your account and unlock your personalised dashboard.
             </p>
             <p className="mt-2 text-[12.5px] text-muted-foreground">
@@ -367,13 +367,13 @@ function AuthPage() {
 
             <div className="mt-7 flex justify-center">
               <InputOTP
-                maxLength={6}
+                maxLength={OTP_LENGTH}
                 value={otpCode}
                 onChange={(v) => {
-                  const digits = v.replace(/\D/g, "").slice(0, 6);
+                  const digits = v.replace(/\D/g, "").slice(0, OTP_LENGTH);
                   setOtpCode(digits);
                   setOtpError(null);
-                  if (digits.length === 6 && !otpAutoSubmitted.current) {
+                  if (digits.length === OTP_LENGTH && !otpAutoSubmitted.current) {
                     otpAutoSubmitted.current = true;
                     void handleVerifyOtp(digits);
                   }
@@ -381,17 +381,16 @@ function AuthPage() {
                 disabled={verifyingOtp}
                 inputMode="numeric"
                 autoFocus
+                aria-label={`${OTP_LENGTH}-digit verification code`}
               >
                 <InputOTPGroup>
-                  <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
-                  <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
-                  <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
-                  <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
-                  <InputOTPSlot index={4} className="h-12 w-12 text-lg" />
-                  <InputOTPSlot index={5} className="h-12 w-12 text-lg" />
+                  {OTP_SLOTS.map((i) => (
+                    <InputOTPSlot key={i} index={i} className="h-12 w-12 text-lg" />
+                  ))}
                 </InputOTPGroup>
               </InputOTP>
             </div>
+
 
             {verifyingOtp && (
               <div className="mt-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
