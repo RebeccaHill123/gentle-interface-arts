@@ -291,6 +291,12 @@ function OnboardingPage() {
     const err = canContinue();
     if (err) return setError(err);
     setError(null);
+    trackEvent("onboarding_step_complete", {
+      step,
+      stepLabel: STEPS[step - 1]?.label ?? null,
+      examType,
+      examPath,
+    });
     setStep((s) => Math.min(STEPS.length, s + 1));
   };
   const back = () => {
