@@ -207,6 +207,17 @@ function OnboardingPage() {
     })();
   }, [draft?.name, navigate]);
 
+  // Fire onboarding_start exactly once when an anonymous/new visitor lands
+  // on step 1 with no saved progress. Resumes don't re-fire.
+  useEffect(() => {
+    if (checking) return;
+    const hasProgress = (draft?.step ?? 1) > 1 || (draft?.modules?.length ?? 0) > 0;
+    if (!hasProgress) {
+      trackEvent("onboarding_start", { examType });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checking]);
+
   // Each exam now maps to exactly one path. Keep them in sync.
   useEffect(() => {
     const opt = EXAM_OPTIONS.find((o) => o.value === examType);
