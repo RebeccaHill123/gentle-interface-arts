@@ -554,24 +554,32 @@ function WeekFocusAccordion({
 }) {
   const total = Math.max(1, allocations.reduce((acc, a) => acc + a.hours, 0));
   return (
-    <div className="rounded-2xl border border-border/40 bg-card shadow-card">
+    <div
+      role="region"
+      aria-label="This week focus by module"
+      className="rounded-2xl border border-border/40 bg-card shadow-card"
+    >
       <Accordion type="single" collapsible className="divide-y divide-border/40">
         {allocations.map((a) => {
           const pct = Math.round((a.hours / total) * 100);
           const meta = RATIONALE_META[a.rationale];
+          const slug = a.module.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+          const itemId = `week-focus-${slug}`;
+          const triggerLabel = `${a.module}, ${a.hours} hours, ${pct}% of week${meta ? `, ${meta.label}` : ""}. Expand to see focus subtopics and approach.`;
           return (
             <AccordionItem
               key={a.module}
               value={a.module}
+              id={itemId}
               className="border-b-0 px-5"
             >
-              <AccordionTrigger className="hover:no-underline py-4">
+              <AccordionTrigger aria-label={triggerLabel} className="hover:no-underline py-4">
                 <div className="flex flex-1 items-center justify-between gap-4 pr-3">
                   <div className="min-w-0 flex-1 text-left">
                     <div className="truncate text-sm font-medium text-foreground">
                       {a.module}
                     </div>
-                    <div className="mt-0.5 flex items-center gap-2">
+                    <div aria-hidden="true" className="mt-0.5 flex items-center gap-2">
                       {meta && (
                         <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}>
                           {meta.label}
@@ -584,40 +592,46 @@ function WeekFocusAccordion({
                   </div>
                 </div>
               </AccordionTrigger>
-              <AccordionContent className="space-y-3 pt-1 pb-5 text-xs text-muted-foreground/85">
-                <p>
-                  <span className="font-medium text-foreground/80">Why this week: </span>
-                  {a.note}
-                </p>
-                {a.subtopics && a.subtopics.length > 0 && (
+              <AccordionContent className="pt-1 pb-5 text-xs text-muted-foreground/85">
+                <dl className="space-y-3">
                   <div>
-                    <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
-                      Focus subtopics
-                    </div>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {a.subtopics.slice(0, 4).map((s) => (
-                        <span
-                          key={s}
-                          className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
-                        >
-                          {s}
-                        </span>
-                      ))}
-                    </div>
+                    <dt className="inline font-medium text-foreground/80">Why this week: </dt>
+                    <dd className="inline">{a.note}</dd>
                   </div>
-                )}
-                {a.method && (
-                  <p>
-                    <span className="font-medium text-foreground/80">Suggested approach: </span>
-                    {a.method}
-                  </p>
-                )}
-                {a.outcome && (
-                  <p>
-                    <span className="font-medium text-foreground/80">Outcome: </span>
-                    {a.outcome}
-                  </p>
-                )}
+                  {a.subtopics && a.subtopics.length > 0 && (
+                    <div>
+                      <h4 className="sr-only">Focus subtopics</h4>
+                      <div
+                        aria-hidden="true"
+                        className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70"
+                      >
+                        Focus subtopics
+                      </div>
+                      <ul role="list" className="mt-1.5 flex flex-wrap gap-1.5">
+                        {a.subtopics.slice(0, 4).map((s) => (
+                          <li
+                            key={s}
+                            className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
+                          >
+                            {s}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {a.method && (
+                    <div>
+                      <dt className="inline font-medium text-foreground/80">Suggested approach: </dt>
+                      <dd className="inline">{a.method}</dd>
+                    </div>
+                  )}
+                  {a.outcome && (
+                    <div>
+                      <dt className="inline font-medium text-foreground/80">Outcome: </dt>
+                      <dd className="inline">{a.outcome}</dd>
+                    </div>
+                  )}
+                </dl>
               </AccordionContent>
             </AccordionItem>
           );
@@ -626,6 +640,7 @@ function WeekFocusAccordion({
     </div>
   );
 }
+
 
 function UpNextBlock({
   task,
