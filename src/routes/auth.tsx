@@ -158,6 +158,7 @@ function AuthPage() {
         otpAutoSubmitted.current = false;
         return;
       }
+      trackEvent("sign_up_completed", { method: "email_otp" });
       await goAfterAuth();
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : "Verification failed");
