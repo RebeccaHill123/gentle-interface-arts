@@ -404,6 +404,14 @@ function OnboardingPage() {
       };
       await savePlanAndSync(stored);
       clearOnboardingDraft();
+      trackEvent("onboarding_completed", {
+        examType: resolvedExamType,
+        examPath,
+        hoursPerWeek,
+        intensity,
+        coverageMode,
+        authed: true,
+      });
       navigate({ to: "/dashboard" });
     } catch (err) {
       console.error("handleGenerate error", err);
