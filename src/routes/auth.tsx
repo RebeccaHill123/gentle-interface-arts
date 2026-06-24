@@ -16,6 +16,13 @@ import { getAuthRedirectURL } from "@/lib/auth-redirect";
 import { loadPlan, pullPlanFromCloud, pushPlanToCloud } from "@/lib/plan-store";
 import { trackEvent } from "@/lib/analytics";
 
+// Single source of truth for the email verification code length.
+// MUST match the Supabase Auth `mailer_otp_length` setting (Cloud → Users →
+// Auth Settings → Email settings). If you change one, change the other —
+// otherwise users get an "invalid code" loop on sign-up.
+const OTP_LENGTH = 6;
+const OTP_SLOTS = Array.from({ length: OTP_LENGTH }, (_, i) => i);
+
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
     mode: search.mode === "signin" ? ("signin" as const) : ("signup" as const),
