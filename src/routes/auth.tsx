@@ -314,7 +314,7 @@ function AuthPage() {
             setOtpCode("");
             setOtpError(null);
             setResendMsg(
-              "Your email isn't verified yet — we just sent a fresh 6-digit code. Enter it below to finish signing in.",
+              `Your email isn't verified yet — we just sent a fresh ${OTP_LENGTH}-digit code. Enter it below to finish signing in.`,
             );
             setResendCooldown(30);
             otpAutoSubmitted.current = false;
