@@ -84,7 +84,12 @@ function ForgotPasswordPage() {
   };
 
   const handleVerify = async (token: string) => {
-    if (token.length !== 6 || verifying) return;
+    if (verifying) return;
+    if (token.length !== OTP_LENGTH) {
+      setOtpError(`Please enter the ${OTP_LENGTH}-digit code from your latest email.`);
+      autoSubmitted.current = false;
+      return;
+    }
     setOtpError(null);
     setVerifying(true);
     try {
@@ -94,10 +99,12 @@ function ForgotPasswordPage() {
         type: "recovery",
       });
       if (vErr) {
+        const lower = vErr.message.toLowerCase();
+        const isExpired = lower.includes("expired") || lower.includes("otp_expired");
         setOtpError(
-          vErr.message.toLowerCase().includes("expired")
+          isExpired
             ? "That code has expired. Tap resend below."
-            : "That code doesn't match. Double-check and try again.",
+            : "That code doesn't match. If you've resent a new code, older codes no longer work — use the most recent one in your inbox.",
         );
         setCode("");
         autoSubmitted.current = false;
