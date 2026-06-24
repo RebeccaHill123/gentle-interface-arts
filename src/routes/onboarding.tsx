@@ -48,6 +48,7 @@ import {
 } from "@/lib/exam-paths";
 import { buildStoredPreview, savePreviewToLocal } from "@/lib/preview-plan";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/onboarding")({
   // No auth gate — onboarding runs for anonymous visitors so they can
@@ -206,6 +207,17 @@ function OnboardingPage() {
     })();
   }, [draft?.name, navigate]);
 
+  // Fire onboarding_start exactly once when an anonymous/new visitor lands
+  // on step 1 with no saved progress. Resumes don't re-fire.
+  useEffect(() => {
+    if (checking) return;
+    const hasProgress = (draft?.step ?? 1) > 1 || (draft?.modules?.length ?? 0) > 0;
+    if (!hasProgress) {
+      trackEvent("onboarding_start", { examType });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checking]);
+
   // Each exam now maps to exactly one path. Keep them in sync.
   useEffect(() => {
     const opt = EXAM_OPTIONS.find((o) => o.value === examType);
@@ -290,6 +302,12 @@ function OnboardingPage() {
     const err = canContinue();
     if (err) return setError(err);
     setError(null);
+    trackEvent("onboarding_step_complete", {
+      step,
+      stepLabel: STEPS[step - 1]?.label ?? null,
+      examType,
+      examPath,
+    });
     setStep((s) => Math.min(STEPS.length, s + 1));
   };
   const back = () => {
@@ -334,6 +352,14 @@ function OnboardingPage() {
         });
         const preview = buildStoredPreview(baseInput);
         savePreviewToLocal(preview);
+        trackEvent("onboarding_completed", {
+          examType: resolvedExamType,
+          examPath,
+          hoursPerWeek,
+          intensity,
+          coverageMode,
+          authed: false,
+        });
         navigate({ to: "/plan-preview" });
         return;
       }
@@ -378,6 +404,14 @@ function OnboardingPage() {
       };
       await savePlanAndSync(stored);
       clearOnboardingDraft();
+      trackEvent("onboarding_completed", {
+        examType: resolvedExamType,
+        examPath,
+        hoursPerWeek,
+        intensity,
+        coverageMode,
+        authed: true,
+      });
       navigate({ to: "/dashboard" });
     } catch (err) {
       console.error("handleGenerate error", err);

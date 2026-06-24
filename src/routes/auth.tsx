@@ -14,6 +14,7 @@ import { lovable } from "@/integrations/lovable/index";
 import { getRememberMe, setRememberMe } from "@/lib/remember-me";
 import { getAuthRedirectURL } from "@/lib/auth-redirect";
 import { loadPlan, pullPlanFromCloud, pushPlanToCloud } from "@/lib/plan-store";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -128,6 +129,7 @@ function AuthPage() {
         return;
       }
       if (result.redirected) return; // browser will navigate away
+      trackEvent("sign_up_completed", { method: "google", mode });
       await goAfterAuth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign in with Google");
@@ -156,6 +158,7 @@ function AuthPage() {
         otpAutoSubmitted.current = false;
         return;
       }
+      trackEvent("sign_up_completed", { method: "email_otp" });
       await goAfterAuth();
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : "Verification failed");
@@ -257,6 +260,7 @@ function AuthPage() {
           otpAutoSubmitted.current = false;
           return;
         }
+        trackEvent("sign_up_completed", { method: "email_password" });
         await goAfterAuth();
       } else {
         const parsed = signInSchema.safeParse({ email, password });

@@ -23,6 +23,7 @@ import {
 } from "@/lib/plan-store";
 import { loadPreviewFromLocal } from "@/lib/preview-plan";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/plan-preview")({
   component: PlanPreviewPage,
@@ -64,6 +65,11 @@ function PlanPreviewPage() {
     }
     setStored(local);
     setReady(true);
+    trackEvent("preview_viewed", {
+      examType: local.input.examType,
+      examPath: local.input.examPath,
+      hoursPerWeek: local.input.hoursPerWeek,
+    });
   }, [navigate]);
 
   const data = useMemo(() => {
