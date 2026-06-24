@@ -352,6 +352,14 @@ function OnboardingPage() {
         });
         const preview = buildStoredPreview(baseInput);
         savePreviewToLocal(preview);
+        trackEvent("onboarding_completed", {
+          examType: resolvedExamType,
+          examPath,
+          hoursPerWeek,
+          intensity,
+          coverageMode,
+          authed: false,
+        });
         navigate({ to: "/plan-preview" });
         return;
       }
