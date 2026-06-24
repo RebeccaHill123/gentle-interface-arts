@@ -220,13 +220,13 @@ function ForgotPasswordPage() {
 
               <div className="mt-6 flex justify-center">
                 <InputOTP
-                  maxLength={6}
+                  maxLength={OTP_LENGTH}
                   value={code}
                   onChange={(v) => {
-                    const digits = v.replace(/\D/g, "").slice(0, 6);
+                    const digits = v.replace(/\D/g, "").slice(0, OTP_LENGTH);
                     setCode(digits);
                     setOtpError(null);
-                    if (digits.length === 6 && !autoSubmitted.current) {
+                    if (digits.length === OTP_LENGTH && !autoSubmitted.current) {
                       autoSubmitted.current = true;
                       void handleVerify(digits);
                     }
@@ -234,14 +234,12 @@ function ForgotPasswordPage() {
                   disabled={verifying}
                   inputMode="numeric"
                   autoFocus
+                  aria-label={`${OTP_LENGTH}-digit verification code`}
                 >
                   <InputOTPGroup>
-                    <InputOTPSlot index={0} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={1} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={2} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={3} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={4} className="h-12 w-12 text-lg" />
-                    <InputOTPSlot index={5} className="h-12 w-12 text-lg" />
+                    {OTP_SLOTS.map((i) => (
+                      <InputOTPSlot key={i} index={i} className="h-12 w-12 text-lg" />
+                    ))}
                   </InputOTPGroup>
                 </InputOTP>
               </div>
