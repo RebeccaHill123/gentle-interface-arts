@@ -1,0 +1,1 @@
+REVOKE UPDATE (is_pro, pro_since) ON public.profiles FROM authenticated, anon;
