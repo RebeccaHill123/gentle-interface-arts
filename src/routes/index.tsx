@@ -19,6 +19,8 @@ import {
   Activity,
   Timer,
   Trophy,
+  BookOpen,
+  FileText,
 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
