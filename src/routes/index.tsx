@@ -467,6 +467,19 @@ function TrustItem({ icon, label }: { icon: React.ReactNode; label: string }) {
   );
 }
 
+function IncludedItem({ icon, label }: { icon: React.ReactNode; label: string }) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md text-pink">
+        {icon}
+      </span>
+      <span className="text-[13px] font-normal leading-[1.45] text-muted-foreground">
+        {label}
+      </span>
+    </div>
+  );
+}
+
 function StepCard({
   num,
   icon,
