@@ -297,29 +297,118 @@ function LandingPage() {
           </section>
 
           {/* PRICING */}
-          <section id="pricing" className="mx-auto max-w-3xl px-5 pb-24 md:px-8 md:pb-32">
-            <div className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-card/60 p-8 text-center backdrop-blur md:p-14">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-                <Trophy className="h-3 w-3 text-pink" /> Early access
+          <section id="pricing" className="mx-auto max-w-5xl px-5 pb-24 md:px-8 md:pb-32">
+            <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
+              <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                Pricing
               </div>
-              <h2 className="mt-6 text-[2rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.75rem]">
-                Free, while we{" "}
+              <h2 className="mt-5 text-[2rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.75rem]">
+                Start free while we{" "}
                 <span className="text-gradient-pink-violet font-light">build</span>.
               </h2>
-              <p className="mx-auto mt-5 max-w-md text-[15px] leading-[1.65] text-muted-foreground md:text-[16px]">
-                Every feature unlocked for early candidates. No card required.
+              <p className="mx-auto mt-5 max-w-xl text-[15px] leading-[1.65] text-muted-foreground md:text-[16px]">
+                Tentra is currently free to use while we refine the platform with early users.
+                Future pricing is likely to be around the options below — but for now, you can
+                access the full dashboard free.
               </p>
-              <div className="mt-9 flex justify-center">
-                <PremiumCta
-                  to={ctaTo}
-                  search={isAuthenticated ? undefined : { mode: "signup" }}
-                  size="lg"
-                  className="w-full max-w-xs"
-                >
-                  {ctaLabel}
-                  <ArrowRight className="ml-1.5 h-4 w-4" />
-                </PremiumCta>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2 md:gap-6">
+              {/* Monthly */}
+              <div className="relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-7 backdrop-blur md:p-8">
+                <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
+                  Planned price
+                </div>
+                <h3 className="text-[1.35rem] font-medium tracking-[-0.02em] text-foreground md:text-[1.5rem]">
+                  Monthly
+                </h3>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-[2.5rem] font-light tracking-[-0.03em] text-foreground md:text-[3rem]">
+                    £16.99
+                  </span>
+                  <span className="text-[13px] font-normal text-muted-foreground">/ month</span>
+                </div>
+                <p className="mt-4 text-[14px] leading-[1.55] text-muted-foreground">
+                  Flexible access for focused SQE and NY Bar prep.
+                </p>
+                <div className="mt-8 flex flex-col gap-3">
+                  <PremiumCta
+                    to={ctaTo}
+                    search={isAuthenticated ? undefined : { mode: "signup" }}
+                    size="lg"
+                    className="w-full"
+                  >
+                    Start free today
+                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </PremiumCta>
+                  <span className="text-center text-[12px] font-normal text-muted-foreground">
+                    No payment required right now.
+                  </span>
+                </div>
               </div>
+
+              {/* 6-month — highlighted */}
+              <div className="relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-7 shadow-glow backdrop-blur md:p-8">
+                <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-pink-blue opacity-60" />
+                <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-gradient-pink-blue px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-primary-foreground">
+                  Recommended
+                </div>
+                <h3 className="text-[1.35rem] font-medium tracking-[-0.02em] text-foreground md:text-[1.5rem]">
+                  6-month access
+                </h3>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="text-[2.5rem] font-light tracking-[-0.03em] text-foreground md:text-[3rem]">
+                    £72.99
+                  </span>
+                </div>
+                <p className="mt-4 text-[14px] leading-[1.55] text-muted-foreground">
+                  Best for a full revision block or exam cycle.
+                </p>
+                <p className="mt-2 text-[12px] font-normal text-muted-foreground">
+                  Works out at around £12.17/month
+                </p>
+                <div className="mt-8 flex flex-col gap-3">
+                  <PremiumCta
+                    to={ctaTo}
+                    search={isAuthenticated ? undefined : { mode: "signup" }}
+                    size="lg"
+                    className="w-full"
+                  >
+                    Start free today
+                    <ArrowRight className="ml-1.5 h-4 w-4" />
+                  </PremiumCta>
+                  <span className="text-center text-[12px] font-normal text-muted-foreground">
+                    No payment required right now.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* What's included */}
+            <div className="mt-10 rounded-2xl border border-border/60 bg-card/40 p-6 backdrop-blur md:p-8">
+              <h3 className="text-center text-[1.05rem] font-medium tracking-[-0.01em] text-foreground md:text-left">
+                What's included
+              </h3>
+              <div className="mt-6 grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                <IncludedItem icon={<LayoutDashboard className="h-4 w-4" />} label="Personal study dashboard" />
+                <IncludedItem icon={<Calendar className="h-4 w-4" />} label="Build a Plan tool" />
+                <IncludedItem icon={<MessageSquareText className="h-4 w-4" />} label="AI Coach for daily and weekly study guidance" />
+                <IncludedItem icon={<Timer className="h-4 w-4" />} label="Focus/session timer" />
+                <IncludedItem icon={<ClipboardCheck className="h-4 w-4" />} label="Topic-based study logging" />
+                <IncludedItem icon={<Flame className="h-4 w-4" />} label="Streaks and progress tracking" />
+                <IncludedItem icon={<BarChart3 className="h-4 w-4" />} label="Analytics showing time studied by subject and topic" />
+                <IncludedItem icon={<Activity className="h-4 w-4" />} label="Weak-area insights from your study activity" />
+                <IncludedItem icon={<BookOpen className="h-4 w-4" />} label="Practice questions and mini tests" />
+                <IncludedItem icon={<FileText className="h-4 w-4" />} label="Mocks & materials area (coming soon)" />
+              </div>
+            </div>
+
+            {/* Early access banner */}
+            <div className="mt-6 rounded-2xl border border-border/60 bg-gradient-soft p-5 text-center md:p-6">
+              <p className="text-[14px] leading-[1.55] text-foreground">
+                <span className="font-medium">Early users get free access</span>{" "}
+                while Tentra is in its build phase.
+              </p>
             </div>
           </section>
         </main>
