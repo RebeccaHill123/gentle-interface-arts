@@ -392,7 +392,7 @@ function LandingPage() {
               <div className="mt-6 grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
                 <IncludedItem icon={<LayoutDashboard className="h-4 w-4" />} label="Personal study dashboard" />
                 <IncludedItem icon={<Calendar className="h-4 w-4" />} label="Build a Plan tool" />
-                <IncludedItem icon={<MessageSquareText className="h-4 w-4" />} label="AI Coach for daily and weekly study guidance" />
+                <IncludedItem icon={<MessageSquareText className="h-4 w-4" />} label="AI Coach & AI Tutor — in-app or connect to ChatGPT" />
                 <IncludedItem icon={<Timer className="h-4 w-4" />} label="Focus/session timer" />
                 <IncludedItem icon={<ClipboardCheck className="h-4 w-4" />} label="Topic-based study logging" />
                 <IncludedItem icon={<Flame className="h-4 w-4" />} label="Streaks and progress tracking" />

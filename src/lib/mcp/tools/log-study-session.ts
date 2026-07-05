@@ -1,67 +1,85 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
+import { loadPlan, requireAuth, todayIso } from "../shared";
 import { supabaseForUser } from "../supabase";
+import type { StoredPlan, StudySession } from "@/lib/plan-store";
 
-// Appends a study session entry to the user's plan JSON (client-side storage
-// mirrors the same shape via user_plans.plan.sessions).
 export default defineTool({
   name: "log_study_session",
-  title: "Log study session",
+  title: "Log a study session",
   description:
-    "Log a completed study session for the signed-in user (module, minutes, session type). Appended to their Tentra study plan.",
+    "WRITE action. Logs a completed study session for the signed-in user (subject, duration in minutes, optional topic/notes, date). Source is recorded as 'ChatGPT' so it's distinguishable from the in-app timer. Requires explicit user confirmation before saving — always read the details back to the user and confirm before calling this tool.",
   inputSchema: {
-    module: z.string().trim().min(1).describe("Module name, e.g. 'Contract' or 'Trusts'."),
-    minutes: z.number().int().min(1).max(600).describe("Duration in minutes (1-600)."),
-    sessionType: z
-      .enum(["revision", "practice", "mock", "flashcards", "reading"])
+    subject: z
+      .string()
+      .trim()
+      .min(1)
+      .describe("Subject / module, e.g. 'Contract', 'Trusts', 'Torts'."),
+    durationMinutes: z
+      .number()
+      .int()
+      .min(1)
+      .max(600)
+      .describe("Duration studied, in minutes (1–600)."),
+    topic: z.string().trim().min(1).max(200).optional().describe("Optional narrower topic/note."),
+    notes: z.string().max(500).optional().describe("Optional freeform notes."),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
       .optional()
-      .describe("Kind of study session (default 'revision')."),
-    focus: z.number().int().min(1).max(5).optional().describe("Focus/quality rating 1-5."),
-    notes: z.string().max(500).optional(),
+      .describe("Session date (YYYY-MM-DD). Defaults to today."),
+    sessionType: z
+      .enum(["study", "quiz", "mock", "review", "flashcards", "focus"])
+      .optional()
+      .describe("Kind of session (default 'study')."),
   },
-  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
-  handler: async ({ module, minutes, sessionType, focus, notes }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
-    const supabase = supabaseForUser(ctx);
-    const userId = ctx.getUserId();
-    const { data: row, error: readErr } = await supabase
-      .from("user_plans")
-      .select("plan")
-      .eq("user_id", userId)
-      .maybeSingle();
-    if (readErr) return { content: [{ type: "text", text: readErr.message }], isError: true };
-    if (!row) {
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false,
+  },
+  handler: async ({ subject, durationMinutes, topic, notes, date, sessionType }, ctx) => {
+    const auth = requireAuth(ctx);
+    if (auth) return auth;
+    const { plan, error } = await loadPlan(ctx);
+    if (error) return { content: [{ type: "text", text: error }], isError: true };
+    if (!plan) {
       return {
         content: [
-          { type: "text", text: "No study plan yet. The user must complete onboarding before logging sessions." },
+          {
+            type: "text",
+            text: "No study plan yet — the user must complete onboarding before logging sessions.",
+          },
         ],
         isError: true,
       };
     }
-    const plan = (row.plan ?? {}) as Record<string, unknown>;
-    const sessions = Array.isArray((plan as { sessions?: unknown[] }).sessions)
-      ? [...((plan as { sessions: unknown[] }).sessions)]
-      : [];
-    const entry = {
-      date: new Date().toISOString(),
-      module,
-      minutes,
-      sessionType: sessionType ?? "revision",
-      focus,
-      notes,
-      source: "mcp",
+    const noteParts = [topic, notes].filter((s): s is string => Boolean(s));
+    const entry: StudySession = {
+      date: date ?? todayIso(),
+      minutes: durationMinutes,
+      module: subject,
+      note: [noteParts.join(" — "), "(via ChatGPT)"].filter(Boolean).join(" "),
+      loggedAt: new Date().toISOString(),
+      sessionType: sessionType ?? "study",
     };
-    sessions.push(entry);
-    const nextPlan = { ...plan, sessions };
+    const sessions = [...(plan.sessions ?? []), entry];
+    const nextPlan: StoredPlan = { ...plan, sessions };
+    const supabase = supabaseForUser(ctx);
     const { error: writeErr } = await supabase
       .from("user_plans")
-      .update({ plan: nextPlan, updated_at: new Date().toISOString() })
-      .eq("user_id", userId);
-    if (writeErr) return { content: [{ type: "text", text: writeErr.message }], isError: true };
+      .update({ plan: nextPlan as unknown as Record<string, unknown>, updated_at: new Date().toISOString() })
+      .eq("user_id", ctx.getUserId());
+    if (writeErr)
+      return { content: [{ type: "text", text: writeErr.message }], isError: true };
     return {
-      content: [{ type: "text", text: `Logged ${minutes} min of ${module}.` }],
+      content: [
+        {
+          type: "text",
+          text: `Logged ${durationMinutes} min of ${subject}${topic ? ` — ${topic}` : ""} on ${entry.date}.`,
+        },
+      ],
       structuredContent: { session: entry, totalSessions: sessions.length },
     };
   },

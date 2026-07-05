@@ -11,6 +11,7 @@ import {
   Keyboard,
   GraduationCap,
   Check,
+  Plug,
 } from "lucide-react";
 import {
   Popover,
@@ -186,6 +187,11 @@ export function ProfileMenu() {
               </span>
             }
             onSelect={toggleTheme}
+          />
+          <Item
+            icon={Plug}
+            label="Connect to ChatGPT"
+            onSelect={() => go("/connect")}
           />
           <Item
             icon={Bell}

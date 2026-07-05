@@ -24,6 +24,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FocusRouteImport } from './routes/focus'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as CommunityRouteImport } from './routes/community'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -116,6 +117,11 @@ const FlashcardsRoute = FlashcardsRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConnectRoute = ConnectRouteImport.update({
+  id: '/connect',
+  path: '/connect',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CommunityRoute = CommunityRouteImport.update({
@@ -219,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
   '/community': typeof CommunityRoute
+  '/connect': typeof ConnectRoute
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
@@ -254,6 +261,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
   '/community': typeof CommunityRoute
+  '/connect': typeof ConnectRoute
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -289,6 +297,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
   '/community': typeof CommunityRoute
+  '/connect': typeof ConnectRoute
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
@@ -326,6 +335,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/coach'
     | '/community'
+    | '/connect'
     | '/dashboard'
     | '/flashcards'
     | '/focus'
@@ -361,6 +371,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/coach'
     | '/community'
+    | '/connect'
     | '/dashboard'
     | '/flashcards'
     | '/forgot-password'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/coach'
     | '/community'
+    | '/connect'
     | '/dashboard'
     | '/flashcards'
     | '/focus'
@@ -431,6 +443,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CoachRoute: typeof CoachRoute
   CommunityRoute: typeof CommunityRoute
+  ConnectRoute: typeof ConnectRoute
   DashboardRoute: typeof DashboardRoute
   FlashcardsRoute: typeof FlashcardsRoute
   FocusRoute: typeof FocusRouteWithChildren
@@ -562,6 +575,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/connect': {
+      id: '/connect'
+      path: '/connect'
+      fullPath: '/connect'
+      preLoaderRoute: typeof ConnectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/community': {
@@ -723,6 +743,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CoachRoute: CoachRoute,
   CommunityRoute: CommunityRoute,
+  ConnectRoute: ConnectRoute,
   DashboardRoute: DashboardRoute,
   FlashcardsRoute: FlashcardsRoute,
   FocusRoute: FocusRouteWithChildren,

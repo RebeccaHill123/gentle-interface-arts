@@ -12,14 +12,14 @@
   "mcp": {
     "server": {
       "name": "tentra-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Tentra"
     },
     "tools": [
       {
         "name": "get_profile",
         "title": "Get profile",
-        "description": "Get the signed-in Tentra user's profile (name, email, Pro status).",
+        "description": "Read-only. Returns the signed-in Tentra user's study-focused profile: name, exam type/path, exam date, target weekly hours, selected modules, and whether they have a study plan. No sensitive personal data is exposed. Requires the user to be signed in.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -35,7 +35,7 @@
       {
         "name": "get_study_plan",
         "title": "Get study plan",
-        "description": "Get the signed-in user's current Tentra study plan (exam type, target date, weekly hours, modules, generated sessions and mocks).",
+        "description": "Read-only. Returns the signed-in user's current Tentra study plan: overview, this week's focus, today's planned sessions (subject, topic, suggested duration, completion status), weekly strategy allocations, and mastery targets. Requires the user to be signed in.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -45,6 +45,168 @@
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_recent_study_sessions",
+        "title": "Get recent study sessions",
+        "description": "Read-only. Returns recent logged study sessions for the signed-in user (date, duration in minutes, subject, notes, session type). Useful for reviewing what has been studied lately. Requires the user to be signed in.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "description": "Max sessions to return (default 20).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "days": {
+              "description": "Only include sessions from the last N days (default 30).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 365
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_subject_progress",
+        "title": "Get subject progress",
+        "description": "Read-only. Returns per-subject progress derived from the signed-in user's study activity: total minutes studied, confidence, recency (days since last session), estimated accuracy trend, and syllabus weight. Requires the user to be signed in.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_weak_areas",
+        "title": "Get weak areas",
+        "description": "Read-only. Identifies the signed-in user's likely weak or neglected subjects using logged sessions, confidence, recency and mock performance. Returns up to 5 subjects with the reason each is flagged. If data is thin, returns a friendly empty state. Requires the user to be signed in.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_next_recommended_session",
+        "title": "Get next recommended session",
+        "description": "Read-only. Suggests one practical next study session for the signed-in user, factoring in today's plan, missed sessions, recent activity, weak areas and days remaining to the exam. Returns subject, topic, duration, format and the reason it was chosen. Requires the user to be signed in.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "ask_ai_coach",
+        "title": "Ask the AI Coach",
+        "description": "Read-only. Ask the Tentra AI Coach a planning or accountability question. The Coach answers using the signed-in user's real Tentra study data (plan, weak areas, weekly hours, recent sessions, days to exam). Best for prompts like 'what should I study today?', 'I missed yesterday, fix my week', 'how am I doing this week?', 'give me a 45-minute session'. Requires the user to be signed in. Does not write to the plan.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 1000,
+              "description": "The user's question or request for the AI Coach."
+            }
+          },
+          "required": [
+            "question"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "ask_ai_tutor",
+        "title": "Ask the AI Tutor",
+        "description": "Read-only. Ask the Tentra AI Tutor a subject-learning or testing question. Uses the signed-in user's exam type and weak areas to personalise explanations, generate quick MCQs, review mistakes, or drill a topic. Best for 'explain this topic', 'quiz me on my weakest area', 'why did I get this wrong?', 'give me practice questions on X'. Requires the user to be signed in. Does not write to the plan.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 2000,
+              "description": "The user's question, topic, or 'quiz me' request for the AI Tutor."
+            }
+          },
+          "required": [
+            "question"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "generate_mini_test",
+        "title": "Generate a mini test",
+        "description": "Read-only. Generates a short single-best-answer mini test (default 5 questions) for the signed-in user. If no subject is provided, targets the user's weakest area. Uses their exam type (SQE1 / SQE2 / UBE / MPRE) automatically. Returns questions with 4 options each, the correct index, and a brief explanation.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "subject": {
+              "description": "Module/subject to test. Omit to auto-pick the user's weakest area.",
+              "type": "string",
+              "minLength": 1
+            },
+            "topic": {
+              "description": "Optional narrower topic within the subject.",
+              "type": "string",
+              "minLength": 1
+            },
+            "questionCount": {
+              "description": "Number of questions (default 5).",
+              "type": "integer",
+              "minimum": 3,
+              "maximum": 10
+            }
+          }
         },
         "outputSchema": null
       },
@@ -73,8 +235,8 @@
       },
       {
         "name": "log_study_session",
-        "title": "Log study session",
-        "description": "Log a completed study session for the signed-in user (module, minutes, session type). Appended to their Tentra study plan.",
+        "title": "Log a study session",
+        "description": "WRITE action. Logs a completed study session for the signed-in user (subject, duration in minutes, optional topic/notes, date). Source is recorded as 'ChatGPT' so it's distinguishable from the in-app timer. Requires explicit user confirmation before saving — always read the details back to the user and confirm before calling this tool.",
         "annotations": {
           "readOnlyHint": false,
           "destructiveHint": false,
@@ -85,43 +247,98 @@
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
-            "module": {
+            "subject": {
               "type": "string",
               "minLength": 1,
-              "description": "Module name, e.g. 'Contract' or 'Trusts'."
+              "description": "Subject / module, e.g. 'Contract', 'Trusts', 'Torts'."
             },
-            "minutes": {
+            "durationMinutes": {
               "type": "integer",
               "minimum": 1,
               "maximum": 600,
-              "description": "Duration in minutes (1-600)."
+              "description": "Duration studied, in minutes (1–600)."
             },
-            "sessionType": {
-              "description": "Kind of study session (default 'revision').",
+            "topic": {
+              "description": "Optional narrower topic/note.",
               "type": "string",
-              "enum": [
-                "revision",
-                "practice",
-                "mock",
-                "flashcards",
-                "reading"
-              ]
-            },
-            "focus": {
-              "description": "Focus/quality rating 1-5.",
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 5
+              "minLength": 1,
+              "maxLength": 200
             },
             "notes": {
+              "description": "Optional freeform notes.",
               "type": "string",
               "maxLength": 500
+            },
+            "date": {
+              "description": "Session date (YYYY-MM-DD). Defaults to today.",
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "sessionType": {
+              "description": "Kind of session (default 'study').",
+              "type": "string",
+              "enum": [
+                "study",
+                "quiz",
+                "mock",
+                "review",
+                "flashcards",
+                "focus"
+              ]
             }
           },
           "required": [
-            "module",
-            "minutes"
+            "subject",
+            "durationMinutes"
           ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "update_study_plan",
+        "title": "Update study plan (limited)",
+        "description": "WRITE action. Updates a small, safe subset of the signed-in user's study plan: target weekly hours, exam date, or the confidence rating for a specific module. Does NOT rewrite the AI-generated strategy, tasks or logged sessions. Requires explicit user confirmation before saving — always read the change back to the user and confirm before calling this tool.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "hoursPerWeek": {
+              "description": "New weekly study-hour target.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 80
+            },
+            "examDate": {
+              "description": "New exam date (YYYY-MM-DD).",
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "moduleConfidence": {
+              "description": "Update a single module's confidence (1–5).",
+              "type": "object",
+              "properties": {
+                "module": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "confidence": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 5
+                }
+              },
+              "required": [
+                "module",
+                "confidence"
+              ]
+            }
+          }
         },
         "outputSchema": null
       }
