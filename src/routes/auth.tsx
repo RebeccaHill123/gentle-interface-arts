@@ -60,7 +60,7 @@ const signUpSchema = z
     password: z.string().min(8, "Password must be at least 8 characters").max(128),
     confirmPassword: z.string().min(1, "Please confirm your password").max(128),
     agreeTerms: z.literal(true, {
-      errorMap: () => ({ message: "You must agree to the Terms of Use to continue" }),
+      message: "You must agree to the Terms of Use to continue",
     }),
   })
   .refine((d) => d.password === d.confirmPassword, {
