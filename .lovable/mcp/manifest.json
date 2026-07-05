@@ -19,7 +19,7 @@
       {
         "name": "get_profile",
         "title": "Get profile",
-        "description": "Get the signed-in Tentra user's profile (name, email, Pro status).",
+        "description": "Read-only. Returns the signed-in Tentra user's study-focused profile: name, exam type/path, exam date, target weekly hours, selected modules, and whether they have a study plan. No sensitive personal data is exposed. Requires the user to be signed in.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,

@@ -1,26 +1,38 @@
 import { defineTool } from "@lovable.dev/mcp-js";
-import { supabaseForUser } from "../supabase";
+import { loadPlan, loadProfile, requireAuth, todayIso, daysBetween } from "../shared";
 
 export default defineTool({
   name: "get_profile",
   title: "Get profile",
-  description: "Get the signed-in Tentra user's profile (name, email, Pro status).",
+  description:
+    "Read-only. Returns the signed-in Tentra user's study-focused profile: name, exam type/path, exam date, target weekly hours, selected modules, and whether they have a study plan. No sensitive personal data is exposed. Requires the user to be signed in.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
-    const supabase = supabaseForUser(ctx);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("first_name, last_name, display_name, email, is_pro, pro_since, created_at")
-      .eq("user_id", ctx.getUserId())
-      .maybeSingle();
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    const auth = requireAuth(ctx);
+    if (auth) return auth;
+    const [{ profile }, { plan }] = await Promise.all([loadProfile(ctx), loadPlan(ctx)]);
+    const input = plan?.input;
+    const daysToExam = input?.examDate ? daysBetween(todayIso(), input.examDate) : null;
+    const payload = {
+      name:
+        (profile?.first_name as string | undefined) ??
+        (profile?.display_name as string | undefined) ??
+        null,
+      examType: input?.examType ?? null,
+      examPath: input?.examPath ?? null,
+      examDate: input?.examDate ?? null,
+      daysToExam,
+      targetHoursPerWeek: input?.hoursPerWeek ?? null,
+      intensity: input?.intensity ?? null,
+      modules:
+        input?.modules?.map((m) => ({ name: m.name, confidence: m.confidence })) ?? [],
+      hasStudyPlan: Boolean(plan),
+      isPro: Boolean(profile?.is_pro),
+    };
     return {
-      content: [{ type: "text", text: JSON.stringify(data ?? {}, null, 2) }],
-      structuredContent: { profile: data },
+      content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+      structuredContent: payload,
     };
   },
 });
