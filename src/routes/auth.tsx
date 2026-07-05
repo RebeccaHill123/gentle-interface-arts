@@ -27,6 +27,10 @@ export const Route = createFileRoute("/auth")({
   validateSearch: (search: Record<string, unknown>) => ({
     mode: search.mode === "signin" ? ("signin" as const) : ("signup" as const),
     from: search.from === "onboarding" ? ("onboarding" as const) : undefined,
+    next:
+      typeof search.next === "string" && search.next.startsWith("/") && !search.next.startsWith("//")
+        ? (search.next as string)
+        : undefined,
   }),
   component: AuthPage,
   head: () => ({
@@ -56,7 +60,7 @@ const signUpSchema = z
     password: z.string().min(8, "Password must be at least 8 characters").max(128),
     confirmPassword: z.string().min(1, "Please confirm your password").max(128),
     agreeTerms: z.literal(true, {
-      errorMap: () => ({ message: "You must agree to the Terms of Use to continue" }),
+      message: "You must agree to the Terms of Use to continue",
     }),
   })
   .refine((d) => d.password === d.confirmPassword, {
@@ -71,7 +75,7 @@ const signInSchema = z.object({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { mode: initialMode, from } = Route.useSearch();
+  const { mode: initialMode, from, next } = Route.useSearch();
   const [mode, setMode] = useState<"signup" | "signin">(initialMode);
   const fromOnboarding = from === "onboarding";
   const [firstName, setFirstName] = useState("");
@@ -109,6 +113,10 @@ function AuthPage() {
   const reset = () => setError(null);
 
   const goAfterAuth = async () => {
+    if (next) {
+      window.location.assign(next);
+      return;
+    }
     const local = loadPlan();
     if (local) {
       await pushPlanToCloud(local);
@@ -128,7 +136,9 @@ function AuthPage() {
     setGoogleLoading(true);
     try {
       const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
+        redirect_uri: next
+          ? `${window.location.origin}/auth?next=${encodeURIComponent(next)}`
+          : window.location.origin,
       });
       if (result.error) {
         setError(result.error.message ?? "Could not sign in with Google");
