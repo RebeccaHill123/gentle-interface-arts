@@ -35,7 +35,7 @@
       {
         "name": "get_study_plan",
         "title": "Get study plan",
-        "description": "Get the signed-in user's current Tentra study plan (exam type, target date, weekly hours, modules, generated sessions and mocks).",
+        "description": "Read-only. Returns the signed-in user's current Tentra study plan: overview, this week's focus, today's planned sessions (subject, topic, suggested duration, completion status), weekly strategy allocations, and mastery targets. Requires the user to be signed in.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
