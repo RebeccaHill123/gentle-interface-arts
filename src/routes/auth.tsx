@@ -113,6 +113,10 @@ function AuthPage() {
   const reset = () => setError(null);
 
   const goAfterAuth = async () => {
+    if (next) {
+      window.location.assign(next);
+      return;
+    }
     const local = loadPlan();
     if (local) {
       await pushPlanToCloud(local);
