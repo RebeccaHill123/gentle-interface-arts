@@ -19,6 +19,7 @@ import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as PlanPreviewRouteImport } from './routes/plan-preview'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as FocusRouteImport } from './routes/focus'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
@@ -33,7 +34,10 @@ import { Route as FocusSummaryRouteImport } from './routes/focus.summary'
 import { Route as FocusSprintRouteImport } from './routes/focus.sprint'
 import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as MocksSimulationSimIdRouteImport } from './routes/mocks.simulation.$simId'
+import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
@@ -86,6 +90,11 @@ const OnboardingRoute = OnboardingRouteImport.update({
 const MocksRoute = MocksRouteImport.update({
   id: '/mocks',
   path: '/mocks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
@@ -158,11 +167,29 @@ const ApiCoachRoute = ApiCoachRouteImport.update({
   path: '/api/coach',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const Char91DotmcpChar93ListToolsRoute =
+  Char91DotmcpChar93ListToolsRouteImport.update({
+    id: '/.mcp/list-tools',
+    path: '/.mcp/list-tools',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const MocksSimulationSimIdRoute = MocksSimulationSimIdRouteImport.update({
   id: '/simulation/$simId',
   path: '/simulation/$simId',
   getParentRoute: () => MocksRoute,
 } as any)
+const Char91DotmcpChar93InvokeToolToolRoute =
+  Char91DotmcpChar93InvokeToolToolRouteImport.update({
+    id: '/.mcp/invoke-tool/$tool',
+    path: '/.mcp/invoke-tool/$tool',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const LovableEmailQueueProcessRoute =
   LovableEmailQueueProcessRouteImport.update({
     id: '/lovable/email/queue/process',
@@ -190,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/mcp': typeof McpRoute
   '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/plan-preview': typeof PlanPreviewRoute
@@ -200,11 +228,14 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
   '/focus/summary': typeof FocusSummaryRoute
   '/focus/': typeof FocusIndexRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/mocks/simulation/$simId': typeof MocksSimulationSimIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -219,6 +250,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/mcp': typeof McpRoute
   '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/plan-preview': typeof PlanPreviewRoute
@@ -229,11 +261,14 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
   '/focus/summary': typeof FocusSummaryRoute
   '/focus': typeof FocusIndexRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/mocks/simulation/$simId': typeof MocksSimulationSimIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -250,6 +285,7 @@ export interface FileRoutesById {
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/mcp': typeof McpRoute
   '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/plan-preview': typeof PlanPreviewRoute
@@ -260,11 +296,14 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
+  '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth_/callback': typeof AuthCallbackRoute
   '/focus/sprint': typeof FocusSprintRoute
   '/focus/summary': typeof FocusSummaryRoute
   '/focus/': typeof FocusIndexRoute
+  '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
   '/mocks/simulation/$simId': typeof MocksSimulationSimIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -282,6 +321,7 @@ export interface FileRouteTypes {
     | '/flashcards'
     | '/focus'
     | '/forgot-password'
+    | '/mcp'
     | '/mocks'
     | '/onboarding'
     | '/plan-preview'
@@ -292,11 +332,14 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/terms'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/api/coach'
     | '/auth/callback'
     | '/focus/sprint'
     | '/focus/summary'
     | '/focus/'
+    | '/.mcp/invoke-tool/$tool'
     | '/mocks/simulation/$simId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -311,6 +354,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/flashcards'
     | '/forgot-password'
+    | '/mcp'
     | '/mocks'
     | '/onboarding'
     | '/plan-preview'
@@ -321,11 +365,14 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/terms'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/api/coach'
     | '/auth/callback'
     | '/focus/sprint'
     | '/focus/summary'
     | '/focus'
+    | '/.mcp/invoke-tool/$tool'
     | '/mocks/simulation/$simId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -341,6 +388,7 @@ export interface FileRouteTypes {
     | '/flashcards'
     | '/focus'
     | '/forgot-password'
+    | '/mcp'
     | '/mocks'
     | '/onboarding'
     | '/plan-preview'
@@ -351,11 +399,14 @@ export interface FileRouteTypes {
     | '/settings'
     | '/sitemap.xml'
     | '/terms'
+    | '/.mcp/list-tools'
+    | '/.well-known/oauth-protected-resource'
     | '/api/coach'
     | '/auth_/callback'
     | '/focus/sprint'
     | '/focus/summary'
     | '/focus/'
+    | '/.mcp/invoke-tool/$tool'
     | '/mocks/simulation/$simId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -372,6 +423,7 @@ export interface RootRouteChildren {
   FlashcardsRoute: typeof FlashcardsRoute
   FocusRoute: typeof FocusRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  McpRoute: typeof McpRoute
   MocksRoute: typeof MocksRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
   PlanPreviewRoute: typeof PlanPreviewRoute
@@ -382,8 +434,11 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
+  Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiCoachRoute: typeof ApiCoachRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -459,6 +514,13 @@ declare module '@tanstack/react-router' {
       path: '/mocks'
       fullPath: '/mocks'
       preLoaderRoute: typeof MocksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/forgot-password': {
@@ -559,12 +621,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCoachRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.mcp/list-tools': {
+      id: '/.mcp/list-tools'
+      path: '/.mcp/list-tools'
+      fullPath: '/.mcp/list-tools'
+      preLoaderRoute: typeof Char91DotmcpChar93ListToolsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/mocks/simulation/$simId': {
       id: '/mocks/simulation/$simId'
       path: '/simulation/$simId'
       fullPath: '/mocks/simulation/$simId'
       preLoaderRoute: typeof MocksSimulationSimIdRouteImport
       parentRoute: typeof MocksRoute
+    }
+    '/.mcp/invoke-tool/$tool': {
+      id: '/.mcp/invoke-tool/$tool'
+      path: '/.mcp/invoke-tool/$tool'
+      fullPath: '/.mcp/invoke-tool/$tool'
+      preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/lovable/email/queue/process': {
       id: '/lovable/email/queue/process'
@@ -624,6 +707,7 @@ const rootRouteChildren: RootRouteChildren = {
   FlashcardsRoute: FlashcardsRoute,
   FocusRoute: FocusRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  McpRoute: McpRoute,
   MocksRoute: MocksRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
   PlanPreviewRoute: PlanPreviewRoute,
@@ -634,8 +718,12 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
+  Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiCoachRoute: ApiCoachRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
