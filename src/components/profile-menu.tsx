@@ -189,6 +189,11 @@ export function ProfileMenu() {
             onSelect={toggleTheme}
           />
           <Item
+            icon={Plug}
+            label="Connect to ChatGPT"
+            onSelect={() => go("/connect")}
+          />
+          <Item
             icon={Bell}
             label="Notifications"
             onSelect={() => soon("Notifications")}
