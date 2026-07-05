@@ -25,7 +25,7 @@ export default defineTool({
         content: [
           { type: "text", text: "No plan yet — ask the user to complete onboarding." },
         ],
-        structuredContent: null,
+        structuredContent: { recommendation: null },
       };
     }
     const { analytics } = buildSnapshot(plan, profile);
