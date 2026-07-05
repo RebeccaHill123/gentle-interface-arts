@@ -11,6 +11,7 @@ import {
   Keyboard,
   GraduationCap,
   Check,
+  Plug,
 } from "lucide-react";
 import {
   Popover,
