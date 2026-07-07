@@ -6,6 +6,7 @@ import {
   Flame,
   Sparkles,
   Scale,
+  Compass,
   BarChart3,
   Users,
   Settings as SettingsIcon,
@@ -22,6 +23,7 @@ export type AppRoute =
   | "/focus"
   | "/coach"
   | "/mocks"
+  | "/topics"
   | "/analytics"
   | "/community"
   | "/settings";
@@ -31,13 +33,14 @@ const NAV: { to: AppRoute; label: string; icon: typeof LayoutDashboard }[] = [
   { to: "/focus", label: "Focus", icon: Flame },
   { to: "/coach", label: "AI Coach", icon: Sparkles },
   { to: "/mocks", label: "Mocks & Practice", icon: Scale },
+  { to: "/topics", label: "Topics", icon: Compass },
   { to: "/analytics", label: "Analytics", icon: BarChart3 },
   { to: "/community", label: "Community", icon: Users },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
 const MOBILE_NAV = NAV.filter((n) =>
-  ["/dashboard", "/focus", "/coach", "/analytics", "/settings"].includes(n.to),
+  ["/dashboard", "/focus", "/coach", "/topics", "/settings"].includes(n.to),
 );
 
 interface AppShellProps {
