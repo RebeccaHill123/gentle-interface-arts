@@ -18,20 +18,24 @@ import {
   ProgressPill,
   StatusPill,
 } from "@/components/dashboard/command-centre";
+import { loadPlan, pullPlanFromCloud, type StoredPlan } from "@/lib/plan-store";
 import {
-  TOPIC_MAPS,
+  aggregateSubjectMinutes,
+  buildExamMap,
   examSummary,
+  getUserExamId,
   matchesFilter,
   matchesSearch,
+  SYLLABUSES,
   type Chapter,
   type ExamId,
   type ExamMap,
   type RecommendedAction,
   type SubTopic,
-  type SubTopicStatus,
   type Subject,
   type TopicFilter,
 } from "@/lib/topic-map";
+import { useEffect } from "react";
 
 export const Route = createFileRoute("/topics")({
   beforeLoad: async () => {
@@ -48,25 +52,17 @@ export const Route = createFileRoute("/topics")({
       {
         name: "description",
         content:
-          "Full SQE1 & UBE syllabus map — track confidence, weak spots and next actions by subject, chapter and sub-topic.",
+          "Full SQE1 & UBE syllabus map — track confidence, weak spots and next actions by subject, chapter and sub-topic as you study.",
       },
     ],
   }),
 });
 
-/* -------------------- Pills / helpers -------------------- */
-
-const CONFIDENCE_LABEL: Record<SubTopicStatus, { label: string; cls: string }> = {
-  untouched: { label: "Untouched", cls: "bg-foreground/[0.05] text-muted-foreground" },
-  weak: { label: "Weak", cls: "bg-pink/10 text-pink/90" },
-  medium: { label: "Medium", cls: "bg-cyan/10 text-cyan/90" },
-  strong: { label: "Strong", cls: "bg-emerald-500/10 text-emerald-500/90" },
-};
-
 const ACTION_LABEL: Record<RecommendedAction, string> = {
-  quiz: "Quiz",
+  quiz: "Start quiz",
   revise: "Revise",
   "add-to-plan": "Add to plan",
+  start: "Start topic",
 };
 
 /* -------------------- Filters + search -------------------- */
@@ -168,14 +164,14 @@ function SummaryRow({ map }: { map: ExamMap }) {
       <SummaryCard
         label="Overall coverage"
         value={`${s.coveragePct}%`}
-        sub="of syllabus started"
+        sub={s.coveragePct > 0 ? "of syllabus started" : "Not started yet"}
         icon={<Compass className="h-3 w-3" />}
         accent="violet"
       />
       <SummaryCard
         label="Weak spots"
-        value={String(s.weakSpots)}
-        sub="low confidence topics"
+        value={s.weakSpots > 0 ? String(s.weakSpots) : "—"}
+        sub={s.weakSpots > 0 ? "identified from quizzes" : "No quiz data yet"}
         icon={<AlertTriangle className="h-3 w-3" />}
         accent="pink"
       />
@@ -188,8 +184,8 @@ function SummaryRow({ map }: { map: ExamMap }) {
       />
       <SummaryCard
         label="Due this week"
-        value={String(s.dueThisWeek)}
-        sub="need recall"
+        value={s.dueThisWeek > 0 ? String(s.dueThisWeek) : "—"}
+        sub={s.dueThisWeek > 0 ? "need recall" : "No recall data yet"}
         icon={<Clock className="h-3 w-3" />}
         accent="cyan"
       />
@@ -199,12 +195,19 @@ function SummaryRow({ map }: { map: ExamMap }) {
 
 /* -------------------- Rows -------------------- */
 
+function subMetaLine(sub: SubTopic): string {
+  if (!sub.progress) return "No activity yet";
+  const bits: string[] = [];
+  if (sub.progress.timeSpentMinutes > 0) bits.push(`${sub.progress.timeSpentMinutes}m spent`);
+  else bits.push("No study time logged");
+  if (sub.accuracy !== null) bits.push(`${sub.accuracy}% accuracy`);
+  else bits.push("No quiz data yet");
+  if (sub.lastRevisedDaysAgo !== null)
+    bits.push(`Last revised ${sub.lastRevisedDaysAgo}d ago`);
+  return bits.join(" · ");
+}
+
 function SubTopicRow({ sub }: { sub: SubTopic }) {
-  const meta = CONFIDENCE_LABEL[sub.confidence];
-  const revised =
-    sub.lastRevisedDaysAgo === null
-      ? "Untouched"
-      : `Last revised ${sub.lastRevisedDaysAgo}d ago`;
   return (
     <li className="flex items-start justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-foreground/[0.02]">
       <div className="min-w-0 flex-1">
@@ -212,21 +215,15 @@ function SubTopicRow({ sub }: { sub: SubTopic }) {
           <span className="truncate text-[13px] font-medium text-foreground">
             {sub.name}
           </span>
-          <span
-            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}
-          >
-            {meta.label}
-          </span>
-          {sub.highYield && (
+          <StatusPill status={sub.status} />
+          {sub.isHighYield && sub.status !== "high-yield" && (
             <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-medium text-violet-400/90">
               <Zap className="h-2.5 w-2.5" /> High yield
             </span>
           )}
         </div>
         <div className="mt-0.5 text-[11px] text-muted-foreground/80">
-          {revised}
-          {sub.accuracy !== null && ` · ${sub.accuracy}% accuracy`}
-          {sub.timeSpentMin > 0 && ` · ${sub.timeSpentMin}m spent`}
+          {subMetaLine(sub)}
         </div>
         {sub.microTopics && sub.microTopics.length > 0 && (
           <div className="mt-1.5 flex flex-wrap gap-1">
@@ -271,9 +268,7 @@ function ChapterBlock({
           {chapter.name}{" "}
           <span className="text-muted-foreground/60">({visibleSubTopics.length})</span>
         </span>
-        <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`}
-        />
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <ul className="mt-1 space-y-0.5">
@@ -284,6 +279,17 @@ function ChapterBlock({
       )}
     </div>
   );
+}
+
+function subjectMetaLine(subject: Subject): string {
+  if (!subject.hasActivity) return "No activity yet";
+  const bits: string[] = [];
+  if (subject.timeSpentMinutes > 0) bits.push(`${subject.timeSpentMinutes}m logged`);
+  const started = subject.chapters
+    .flatMap((c) => c.subTopics)
+    .filter((s) => s.progress !== null).length;
+  if (started > 0) bits.push(`${started} sub-topic${started === 1 ? "" : "s"} touched`);
+  return bits.join(" · ") || "No activity yet";
 }
 
 function SubjectBlock({
@@ -299,6 +305,11 @@ function SubjectBlock({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   if (totalVisible === 0) return null;
+  const startedCount = subject.chapters
+    .flatMap((c) => c.subTopics)
+    .filter((s) => s.progress !== null).length;
+  const total = subject.chapters.flatMap((c) => c.subTopics).length;
+  const startedPct = total > 0 ? Math.round((startedCount / total) * 100) : 0;
   return (
     <li>
       <button
@@ -317,13 +328,14 @@ function SubjectBlock({
               {totalVisible} sub-topic{totalVisible === 1 ? "" : "s"}
             </span>
           </div>
-          <div className="mt-1.5">
-            <ProgressPill pct={subject.progress} />
+          <div className="mt-1.5 flex items-center gap-3">
+            <ProgressPill pct={startedPct} hasActivity={subject.hasActivity} />
+            <span className="text-[11px] text-muted-foreground/80">
+              {subjectMetaLine(subject)}
+            </span>
           </div>
         </div>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
-        />
+        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <div className="mb-2 ml-3 mt-1 border-l border-border/40 pl-3">
@@ -348,11 +360,36 @@ const EXAMS: { id: ExamId; label: string }[] = [
 ];
 
 function TopicsPage() {
-  const [exam, setExam] = useState<ExamId>("SQE1");
+  const [stored, setStored] = useState<StoredPlan | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const cloud = await pullPlanFromCloud();
+      if (!active) return;
+      setStored(cloud ?? loadPlan());
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const userExamId: ExamId = getUserExamId(stored?.input.examType);
+  const [exam, setExam] = useState<ExamId | null>(null);
+  const activeExam: ExamId = exam ?? userExamId;
+
   const [filter, setFilter] = useState<TopicFilter>("all");
   const [q, setQ] = useState("");
 
-  const map = TOPIC_MAPS[exam];
+  const subjectMinutes = useMemo(
+    () => aggregateSubjectMinutes(stored?.sessions ?? []),
+    [stored],
+  );
+
+  const map = useMemo(
+    () => buildExamMap(activeExam, new Map(), subjectMinutes),
+    [activeExam, subjectMinutes],
+  );
 
   const filtered = useMemo(() => {
     const perSubject = new Map<
@@ -379,6 +416,7 @@ function TopicsPage() {
   }, [map, filter, q]);
 
   const activeFilter = filter !== "all" || q.length > 0;
+  const isSwitched = exam !== null && exam !== userExamId;
 
   return (
     <AppShell title="Topic Map" subtitle="Every subject, chapter and sub-topic.">
@@ -395,32 +433,44 @@ function TopicsPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                <Sparkles className="h-3 w-3 text-pink" /> Your full syllabus
+                <Sparkles className="h-3 w-3 text-pink" /> Currently tracking: {userExamId}
               </div>
               <h2 className="mt-3 font-display text-2xl tracking-[-0.01em] text-foreground md:text-[1.75rem]">
-                {map.label} Topic Map
+                {SYLLABUSES[activeExam].label} Topic Map
               </h2>
               <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
                 Track progress by component, subject, chapter and sub-topic.
                 Expand any subject for chapters, and any chapter for individual
                 sub-topics with quick actions.
               </p>
+              {isSwitched && (
+                <p className="mt-3 max-w-2xl rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[12px] text-amber-500/90">
+                  You're viewing the {activeExam} map. This doesn't change your
+                  active study route ({userExamId}) — confirm in Settings if you
+                  want to switch.
+                </p>
+              )}
             </div>
-            <div className="flex gap-1 rounded-full border border-border/50 bg-background p-1">
-              {EXAMS.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  onClick={() => setExam(e.id)}
-                  className={`rounded-full px-4 py-1.5 text-[12px] font-medium transition-colors ${
-                    exam === e.id
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {e.label}
-                </button>
-              ))}
+            <div className="flex flex-col items-end gap-1">
+              <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
+                Switch exam map
+              </span>
+              <div className="flex gap-1 rounded-full border border-border/50 bg-background p-1">
+                {EXAMS.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => setExam(e.id)}
+                    className={`rounded-full px-4 py-1.5 text-[12px] font-medium transition-colors ${
+                      activeExam === e.id
+                        ? "bg-foreground text-background"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {e.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </section>
@@ -482,8 +532,10 @@ function TopicsPage() {
 
           {Array.from(filtered.values()).every((v) => v.total === 0) && (
             <div className="rounded-3xl border border-border/40 bg-card p-10 text-center shadow-card">
-              <p className="text-sm text-muted-foreground">
-                No topics match this filter or search.
+              <p className="text-sm text-foreground">This topic has no activity yet.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Start a session, complete a quiz or add it to your plan to begin
+                tracking confidence, accuracy and recall.
               </p>
             </div>
           )}

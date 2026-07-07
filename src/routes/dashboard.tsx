@@ -52,6 +52,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
 import { CommandCentre } from "@/components/dashboard/command-centre";
+import { getUserExamId, aggregateSubjectMinutes } from "@/lib/topic-map";
 import {
   Accordion,
   AccordionContent,
@@ -230,8 +231,12 @@ function DashboardPage() {
       <div className="space-y-8">
         <CommandCentre
           userName={input.name}
+          examId={getUserExamId(input.examType)}
+          subjectMinutes={aggregateSubjectMinutes(sessions ?? [])}
           onReviewWeak={() => navigate({ to: "/topics" })}
           onStartPriority={() => navigate({ to: "/focus" })}
+          onStartFocus={() => navigate({ to: "/focus" })}
+          onStartDiagnostic={() => navigate({ to: "/practice" })}
           onStartItem={() => {
             if (nextTaskIdx >= 0) handleToggle(nextTaskIdx);
             else navigate({ to: "/focus" });

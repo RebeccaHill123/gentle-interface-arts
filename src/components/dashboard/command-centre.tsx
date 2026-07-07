@@ -1,60 +1,45 @@
-import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   ArrowRight,
-  ChevronDown,
+  Circle,
   Compass,
   Flame,
   Play,
   Sparkles,
   Target,
   Timer,
+  Zap,
 } from "lucide-react";
 import {
-  MOCK_TOPIC_MAP,
+  buildExamMap,
   coverage,
-  dueForRecall,
-  todaysPriority,
+  realDueForRecall,
+  realWeakSpots,
+  suggestedPriority,
   untouchedTopics,
-  weakSubTopicNames,
-  weakestSubject,
-  weakestSubTopics,
+  type ExamId,
   type RecommendedAction,
   type SubTopic,
-  type SubTopicStatus,
   type Subject,
-  type SubjectStatus,
+  type TopicStatus,
+  type UserTopicProgress,
 } from "@/lib/topic-map";
 
 /* -------------------- Pills -------------------- */
 
-const STATUS_LABEL: Record<SubjectStatus, { label: string; cls: string }> = {
-  "weak-spot": { label: "Weak spot", cls: "bg-pink/10 text-pink/90" },
+const STATUS_LABEL: Record<TopicStatus, { label: string; cls: string }> = {
+  "not-started": { label: "Not started", cls: "bg-foreground/[0.05] text-muted-foreground" },
+  studied: { label: "Studied", cls: "bg-foreground/[0.05] text-foreground/80" },
+  "not-enough-data": { label: "Not enough data", cls: "bg-foreground/[0.05] text-muted-foreground" },
+  weak: { label: "Weak spot", cls: "bg-pink/10 text-pink/90" },
   improving: { label: "Improving", cls: "bg-cyan/10 text-cyan/90" },
-  "needs-practice": {
-    label: "Needs practice",
-    cls: "bg-amber-500/10 text-amber-500/90",
-  },
-  "on-track": { label: "On track", cls: "bg-emerald-500/10 text-emerald-500/90" },
-};
-
-const CONFIDENCE_LABEL: Record<SubTopicStatus, { label: string; cls: string }> = {
-  untouched: { label: "Untouched", cls: "bg-foreground/[0.05] text-muted-foreground" },
-  weak: { label: "Weak", cls: "bg-pink/10 text-pink/90" },
-  medium: { label: "Medium", cls: "bg-cyan/10 text-cyan/90" },
   strong: { label: "Strong", cls: "bg-emerald-500/10 text-emerald-500/90" },
-};
-
-const PRIORITY_LABEL: Record<string, { label: string; cls: string }> = {
-  must: { label: "Must do", cls: "bg-pink/10 text-pink/90" },
-  "weak-spot": { label: "Weak spot", cls: "bg-amber-500/10 text-amber-500/90" },
+  "due-for-recall": { label: "Due for recall", cls: "bg-amber-500/10 text-amber-500/90" },
   "high-yield": { label: "High yield", cls: "bg-violet-500/10 text-violet-400/90" },
-  should: { label: "Should do", cls: "bg-cyan/10 text-cyan/90" },
-  optional: { label: "Optional", cls: "bg-foreground/[0.05] text-muted-foreground" },
 };
 
-export function StatusPill({ status }: { status: SubjectStatus }) {
+export function StatusPill({ status }: { status: TopicStatus }) {
   const meta = STATUS_LABEL[status];
   return (
     <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.cls}`}>
@@ -63,7 +48,25 @@ export function StatusPill({ status }: { status: SubjectStatus }) {
   );
 }
 
-export function ProgressPill({ pct }: { pct: number }) {
+const ACTION_LABEL: Record<RecommendedAction, string> = {
+  quiz: "Start quiz",
+  revise: "Revise",
+  "add-to-plan": "Add to plan",
+  start: "Start topic",
+};
+
+export function ProgressPill({
+  pct,
+  hasActivity,
+}: {
+  pct: number;
+  hasActivity: boolean;
+}) {
+  if (!hasActivity) {
+    return (
+      <span className="text-[11px] text-muted-foreground/70">No activity yet</span>
+    );
+  }
   return (
     <div className="flex items-center gap-2">
       <div className="h-1.5 w-20 overflow-hidden rounded-full bg-foreground/[0.06]">
@@ -150,11 +153,19 @@ export interface TodayPlanItem {
   subject: string;
   subTopic?: string;
   minutes: number;
-  format: string; // e.g. "Timed practice"
+  format: string;
   priority: "must" | "weak-spot" | "high-yield";
   reason: string;
   done?: boolean;
 }
+
+const PRIORITY_LABEL: Record<string, { label: string; cls: string }> = {
+  must: { label: "Must do", cls: "bg-pink/10 text-pink/90" },
+  "weak-spot": { label: "Weak spot", cls: "bg-amber-500/10 text-amber-500/90" },
+  "high-yield": { label: "High yield", cls: "bg-violet-500/10 text-violet-400/90" },
+  should: { label: "Should do", cls: "bg-cyan/10 text-cyan/90" },
+  optional: { label: "Optional", cls: "bg-foreground/[0.05] text-muted-foreground" },
+};
 
 export function TodayPlanCard({
   item,
@@ -173,9 +184,7 @@ export function TodayPlanCard({
       >
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex flex-wrap items-center gap-1.5">
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.cls}`}
-            >
+            <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.cls}`}>
               {meta.label}
             </span>
             <span className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground">
@@ -210,102 +219,20 @@ export function TodayPlanCard({
   );
 }
 
-/* -------------------- Topic Map snapshot -------------------- */
+/* -------------------- Snapshot rows -------------------- */
 
-const ACTION_LABEL: Record<RecommendedAction, string> = {
-  quiz: "Quiz",
-  revise: "Revise",
-  "add-to-plan": "Add to plan",
-};
-
-export function SubTopicRow({ sub }: { sub: SubTopic }) {
-  const meta = CONFIDENCE_LABEL[sub.confidence];
-  const revised =
-    sub.lastRevisedDaysAgo === null
-      ? "Untouched"
-      : `Last revised ${sub.lastRevisedDaysAgo}d ago`;
-  return (
-    <li className="flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-foreground/[0.02]">
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="truncate text-[13px] font-medium text-foreground">
-            {sub.name}
-          </span>
-          <span
-            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}
-          >
-            {meta.label}
-          </span>
-        </div>
-        <div className="mt-0.5 text-[11px] text-muted-foreground/80">
-          {revised}
-          {sub.accuracy !== null && ` · ${sub.accuracy}% accuracy`}
-        </div>
-      </div>
-      <button
-        type="button"
-        className="shrink-0 rounded-full border border-border/60 px-3 py-1 text-[11px] font-medium text-foreground/85 transition-colors hover:border-pink/40 hover:text-pink"
-      >
-        {ACTION_LABEL[sub.recommendedAction]}
-      </button>
-    </li>
-  );
-}
-
-export function TopicRow({ subject }: { subject: Subject }) {
-  const [open, setOpen] = useState(false);
-  const allSubs = subject.chapters.flatMap((c) => c.subTopics);
-  const chips = allSubs
-    .filter((s) => s.confidence === "weak" || s.confidence === "untouched")
-    .slice(0, 3);
-  return (
-    <li>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-4 rounded-xl px-3 py-3 text-left transition-colors hover:bg-foreground/[0.02]"
-      >
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="truncate text-sm font-medium text-foreground">
-              {subject.name}
-            </span>
-            <StatusPill status={subject.status} />
-          </div>
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
-            <ProgressPill pct={subject.progress} />
-            {chips.map((s) => (
-              <span
-                key={s.id}
-                className="rounded-full bg-foreground/[0.04] px-2 py-0.5 text-[10px] text-muted-foreground"
-              >
-                {s.name}
-              </span>
-            ))}
-          </div>
-        </div>
-        <ChevronDown
-          className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-      {open && (
-        <ul className="mb-2 ml-3 mt-1 space-y-1 border-l border-border/40 pl-3">
-          {allSubs.map((s) => (
-            <SubTopicRow key={s.id} sub={s} />
-          ))}
-        </ul>
-      )}
-    </li>
-  );
+function subMetaLine(sub: SubTopic): string {
+  if (!sub.progress) return "No activity yet";
+  const bits: string[] = [];
+  if (sub.progress.timeSpentMinutes > 0) bits.push(`${sub.progress.timeSpentMinutes}m spent`);
+  if (sub.accuracy !== null) bits.push(`${sub.accuracy}% accuracy`);
+  else if (sub.progress.timeSpentMinutes > 0) bits.push("No quiz data yet");
+  if (sub.lastRevisedDaysAgo !== null)
+    bits.push(`Last revised ${sub.lastRevisedDaysAgo}d ago`);
+  return bits.join(" · ") || "No activity yet";
 }
 
 function SnapshotItem({ sub }: { sub: SubTopic }) {
-  const meta = CONFIDENCE_LABEL[sub.confidence];
-  const revised =
-    sub.lastRevisedDaysAgo === null
-      ? "Untouched"
-      : `Last revised ${sub.lastRevisedDaysAgo}d ago`;
   return (
     <li className="flex items-center justify-between gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-foreground/[0.02]">
       <div className="min-w-0 flex-1">
@@ -313,15 +240,10 @@ function SnapshotItem({ sub }: { sub: SubTopic }) {
           <span className="truncate text-[12.5px] font-medium text-foreground">
             {sub.name}
           </span>
-          <span
-            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}
-          >
-            {meta.label}
-          </span>
+          <StatusPill status={sub.status} />
         </div>
         <div className="mt-0.5 truncate text-[11px] text-muted-foreground/80">
-          {sub.subject} · {revised}
-          {sub.accuracy !== null && ` · ${sub.accuracy}%`}
+          {sub.subject} · {subMetaLine(sub)}
         </div>
       </div>
       <button
@@ -361,18 +283,28 @@ function SnapshotBucket({
   );
 }
 
-export function TopicMapSnapshot() {
-  const map = MOCK_TOPIC_MAP;
-  const weak = weakestSubTopics(map, 3);
-  const due = dueForRecall(map, 3);
+export function TopicMapSnapshot({
+  examId,
+  progress,
+  subjectMinutes,
+}: {
+  examId: ExamId;
+  progress?: Map<string, UserTopicProgress>;
+  subjectMinutes?: Map<string, number>;
+}) {
+  const map = buildExamMap(examId, progress, subjectMinutes);
+  const weak = realWeakSpots(map, 3);
+  const due = realDueForRecall(map, 3);
   const untouched = untouchedTopics(map, 3);
   return (
     <section className="flex h-full flex-col rounded-3xl border border-border/40 bg-card p-6 shadow-card">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-medium text-foreground">Topic Map snapshot</h3>
+          <h3 className="text-base font-medium text-foreground">
+            {examId} Topic Map snapshot
+          </h3>
           <p className="mt-1 text-xs text-muted-foreground/80">
-            The smallest set of topics to act on today.
+            Real activity only — no invented metrics.
           </p>
         </div>
         <span className="grid h-8 w-8 place-items-center rounded-full bg-violet-500/10 text-violet-400/90">
@@ -381,17 +313,17 @@ export function TopicMapSnapshot() {
       </div>
       <div className="mt-4 space-y-4">
         <SnapshotBucket
-          title="Weakest sub-topics"
+          title="Weak spots"
           items={weak}
-          emptyLabel="No weak spots yet — nice."
+          emptyLabel="Your weak spots will appear here once you complete quizzes or study sessions."
         />
         <SnapshotBucket
           title="Due for recall"
           items={due}
-          emptyLabel="Nothing overdue this week."
+          emptyLabel="Nothing due yet — start a study session to activate recall tracking."
         />
         <SnapshotBucket
-          title="Untouched"
+          title="Untouched (high-yield first)"
           items={untouched}
           emptyLabel="Every priority topic has been started."
         />
@@ -412,32 +344,46 @@ export function TopicMapSnapshot() {
 
 export function CommandCentre({
   userName,
+  examId,
+  progress,
+  subjectMinutes,
   onReviewWeak,
   onStartPriority,
+  onStartFocus,
+  onStartDiagnostic,
   todayItems,
   onStartItem,
 }: {
   userName: string;
+  examId: ExamId;
+  progress?: Map<string, UserTopicProgress>;
+  subjectMinutes?: Map<string, number>;
   onReviewWeak?: () => void;
   onStartPriority?: () => void;
+  onStartFocus?: () => void;
+  onStartDiagnostic?: () => void;
   todayItems?: TodayPlanItem[];
   onStartItem?: (id: string) => void;
 }) {
-  const map = MOCK_TOPIC_MAP;
-  const weakest = weakestSubject(map);
+  const map = buildExamMap(examId, progress, subjectMinutes);
   const cov = coverage(map);
-  const priority = todaysPriority(map);
-  
+  const weakList = realWeakSpots(map, 1);
+  const priority = suggestedPriority(map);
+  const hasAnyActivity = cov.startedCount > 0;
 
-  const weakSubs = weakest ? weakSubTopicNames(weakest) : [];
-  const weakSubtext = weakSubs.length
-    ? `${weakSubs.join(" and ")} need attention`
-    : "Log a session to surface weak spots";
+  const weakValue = weakList[0]?.name ?? "None yet";
+  const weakSubtext = weakList[0]
+    ? `${weakList[0].subject} · ${weakList[0].accuracy}% accuracy`
+    : hasAnyActivity
+      ? "No weak spots detected yet"
+      : "Complete a quiz to identify weak areas";
 
-  const items: TodayPlanItem[] =
-    todayItems && todayItems.length > 0
-      ? todayItems
-      : DEFAULT_TODAY_ITEMS;
+  const priorityValue = priority?.name ?? "Pick a topic";
+  const prioritySubtext = !priority
+    ? "Open the Topic Map to add one"
+    : priority.isHighYield
+      ? `${priority.subject} · High-yield · Not started`
+      : `${priority.subject} · Suggested next`;
 
   return (
     <div className="space-y-6">
@@ -448,20 +394,46 @@ export function CommandCentre({
         <div className="relative">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
             <Sparkles className="h-3 w-3 text-pink" />
-            {userName ? `Hi ${userName.split(" ")[0]},` : "Welcome back,"} here's your snapshot
+            {userName ? `Hi ${userName.split(" ")[0]},` : "Welcome back,"} you're on the {examId} route
           </div>
           <h2 className="mt-3 font-display text-2xl tracking-[-0.01em] text-foreground md:text-[1.75rem]">
-            Your exam command centre
+            {hasAnyActivity ? "Your exam command centre" : `Start building your ${examId} map`}
           </h2>
           <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-            See what needs attention, what's improving, and what Tentra recommends
-            you revise next.
+            {hasAnyActivity
+              ? "See what needs attention, what's improving, and what to revise next."
+              : `Complete a focus session or quiz to let Tentra identify your weak areas, track recall gaps and recommend what to study next.`}
           </p>
+
+          {!hasAnyActivity && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={onStartFocus}
+                className="rounded-full bg-gradient-pink-blue px-4 py-2 text-[12.5px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+              >
+                Start {examId} focus session
+              </button>
+              <button
+                type="button"
+                onClick={onStartDiagnostic}
+                className="rounded-full border border-border/60 bg-background px-4 py-2 text-[12.5px] font-medium text-foreground transition-colors hover:border-pink/40"
+              >
+                Take diagnostic quiz
+              </button>
+              <Link
+                to="/topics"
+                className="rounded-full border border-border/60 bg-background px-4 py-2 text-[12.5px] font-medium text-foreground transition-colors hover:border-pink/40"
+              >
+                Open {examId} Topic Map
+              </Link>
+            </div>
+          )}
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <InsightCard
               title="Weakest area"
-              value={weakest?.name ?? "—"}
+              value={weakValue}
               subtext={weakSubtext}
               ctaLabel="Review weak spots"
               onCta={onReviewWeak}
@@ -470,8 +442,8 @@ export function CommandCentre({
             />
             <InsightCard
               title="Coverage"
-              value={`${cov.mappedPct}% mapped`}
-              subtext={`${cov.untouchedCount} topics untouched this month`}
+              value={`${cov.startedPct}% started`}
+              subtext={`${cov.untouchedCount} of ${cov.totalCount} topics not started`}
               ctaLabel="Open Topic Map"
               ctaTo="/topics"
               icon={<Compass className="h-3 w-3" />}
@@ -479,15 +451,15 @@ export function CommandCentre({
             />
             <InsightCard
               title="Today's priority"
-              value={priority?.sub.name ?? "Pick a topic"}
-              subtext={
-                priority?.sub.highYield
-                  ? "High-yield and due for recall"
-                  : "Recommended next by Tentra"
+              value={priorityValue}
+              subtext={prioritySubtext}
+              ctaLabel={
+                priority?.recommendedAction === "start" || !hasAnyActivity
+                  ? "Start topic"
+                  : "Continue"
               }
-              ctaLabel={`Start ${items[0]?.minutes ?? 25}-min block`}
-              onCta={onStartPriority ?? (() => onStartItem?.(items[0]?.id ?? ""))}
-              icon={<Target className="h-3 w-3" />}
+              onCta={onStartPriority}
+              icon={priority?.isHighYield ? <Zap className="h-3 w-3" /> : <Target className="h-3 w-3" />}
               accent="cyan"
             />
           </div>
@@ -501,61 +473,38 @@ export function CommandCentre({
             <div>
               <h3 className="text-base font-medium text-foreground">Today's plan</h3>
               <p className="mt-1 text-xs text-muted-foreground/80">
-                Three recommended blocks, chosen from your weak spots and today's priorities.
+                {todayItems && todayItems.length > 0
+                  ? "Blocks from your study plan."
+                  : "Your study plan will populate here as you generate one and log activity."}
               </p>
             </div>
             <span className="grid h-8 w-8 place-items-center rounded-full bg-pink/10 text-pink/90">
               <Flame className="h-4 w-4" />
             </span>
           </div>
-          <ul className="mt-4 space-y-3">
-            {items.map((item) => (
-              <TodayPlanCard
-                key={item.id}
-                item={item}
-                onStart={() => onStartItem?.(item.id)}
-              />
-            ))}
-          </ul>
+          {todayItems && todayItems.length > 0 ? (
+            <ul className="mt-4 space-y-3">
+              {todayItems.map((item) => (
+                <TodayPlanCard
+                  key={item.id}
+                  item={item}
+                  onStart={() => onStartItem?.(item.id)}
+                />
+              ))}
+            </ul>
+          ) : (
+            <div className="mt-6 flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 p-6 text-center">
+              <Circle className="h-5 w-5 text-muted-foreground/70" />
+              <p className="mt-3 text-sm text-foreground">No blocks scheduled today</p>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Start a focus session or generate a plan to see recommended blocks here.
+              </p>
+            </div>
+          )}
         </section>
 
-        <TopicMapSnapshot />
+        <TopicMapSnapshot examId={examId} progress={progress} subjectMinutes={subjectMinutes} />
       </div>
     </div>
   );
 }
-
-/* -------------------- Default mock plan items -------------------- */
-
-const DEFAULT_TODAY_ITEMS: TodayPlanItem[] = [
-  {
-    id: "t1",
-    title: "Timed SBA set: Contract formation & vitiating factors",
-    subject: "Contract",
-    subTopic: "Formation",
-    minutes: 25,
-    format: "Timed practice",
-    priority: "must",
-    reason: "High-yield and due for recall",
-  },
-  {
-    id: "t2",
-    title: "Active recall: Directors' duties",
-    subject: "BLP",
-    subTopic: "Directors' duties",
-    minutes: 20,
-    format: "Active recall",
-    priority: "weak-spot",
-    reason: "Low accuracy last time (42%)",
-  },
-  {
-    id: "t3",
-    title: "Scenario drill: occupiers' liability",
-    subject: "Tort",
-    subTopic: "Occupiers' liability",
-    minutes: 25,
-    format: "Application",
-    priority: "high-yield",
-    reason: "Not revised in 9 days",
-  },
-];
