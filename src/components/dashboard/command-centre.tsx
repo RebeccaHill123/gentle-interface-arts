@@ -519,7 +519,7 @@ export function CommandCentre({
           </ul>
         </section>
 
-        <TopicMapSnapshot subjects={subjects} />
+        <TopicMapSnapshot />
       </div>
     </div>
   );
