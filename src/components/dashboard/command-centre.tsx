@@ -300,31 +300,108 @@ export function TopicRow({ subject }: { subject: Subject }) {
   );
 }
 
-export function TopicMapSnapshot({ subjects }: { subjects: Subject[] }) {
+function SnapshotItem({ sub }: { sub: SubTopic }) {
+  const meta = CONFIDENCE_LABEL[sub.confidence];
+  const revised =
+    sub.lastRevisedDaysAgo === null
+      ? "Untouched"
+      : `Last revised ${sub.lastRevisedDaysAgo}d ago`;
+  return (
+    <li className="flex items-center justify-between gap-3 rounded-xl px-2.5 py-2 transition-colors hover:bg-foreground/[0.02]">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="truncate text-[12.5px] font-medium text-foreground">
+            {sub.name}
+          </span>
+          <span
+            className={`shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}
+          >
+            {meta.label}
+          </span>
+        </div>
+        <div className="mt-0.5 truncate text-[11px] text-muted-foreground/80">
+          {sub.subject} · {revised}
+          {sub.accuracy !== null && ` · ${sub.accuracy}%`}
+        </div>
+      </div>
+      <button
+        type="button"
+        className="shrink-0 rounded-full border border-border/60 px-2.5 py-1 text-[11px] font-medium text-foreground/85 transition-colors hover:border-pink/40 hover:text-pink"
+      >
+        {ACTION_LABEL[sub.recommendedAction]}
+      </button>
+    </li>
+  );
+}
+
+function SnapshotBucket({
+  title,
+  items,
+  emptyLabel,
+}: {
+  title: string;
+  items: SubTopic[];
+  emptyLabel: string;
+}) {
+  return (
+    <div>
+      <div className="mb-1 px-2.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
+        {title}
+      </div>
+      {items.length === 0 ? (
+        <p className="px-2.5 py-2 text-[12px] text-muted-foreground/80">{emptyLabel}</p>
+      ) : (
+        <ul className="space-y-0.5">
+          {items.map((s) => (
+            <SnapshotItem key={s.id} sub={s} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+export function TopicMapSnapshot() {
+  const map = MOCK_TOPIC_MAP;
+  const weak = weakestSubTopics(map, 3);
+  const due = dueForRecall(map, 3);
+  const untouched = untouchedTopics(map, 3);
   return (
     <section className="flex h-full flex-col rounded-3xl border border-border/40 bg-card p-6 shadow-card">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-base font-medium text-foreground">Topic Map</h3>
+          <h3 className="text-base font-medium text-foreground">Topic Map snapshot</h3>
           <p className="mt-1 text-xs text-muted-foreground/80">
-            Track progress by subject, chapter and sub-topic.
+            The smallest set of topics to act on today.
           </p>
         </div>
         <span className="grid h-8 w-8 place-items-center rounded-full bg-violet-500/10 text-violet-400/90">
           <Compass className="h-4 w-4" />
         </span>
       </div>
-      <ul className="mt-4 divide-y divide-border/40">
-        {subjects.map((s) => (
-          <TopicRow key={s.id} subject={s} />
-        ))}
-      </ul>
-      <div className="mt-4 border-t border-border/40 pt-4">
+      <div className="mt-4 space-y-4">
+        <SnapshotBucket
+          title="Weakest sub-topics"
+          items={weak}
+          emptyLabel="No weak spots yet — nice."
+        />
+        <SnapshotBucket
+          title="Due for recall"
+          items={due}
+          emptyLabel="Nothing overdue this week."
+        />
+        <SnapshotBucket
+          title="Untouched"
+          items={untouched}
+          emptyLabel="Every priority topic has been started."
+        />
+      </div>
+      <div className="mt-5 border-t border-border/40 pt-4">
         <Link
           to="/topics"
           className="inline-flex items-center gap-1 text-xs font-medium text-foreground/85 hover:text-foreground"
         >
-          View full Topic Map <ArrowRight className="h-3 w-3" />
+          Open full Topic Map <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
     </section>
