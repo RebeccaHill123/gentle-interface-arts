@@ -52,6 +52,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
 import { CommandCentre } from "@/components/dashboard/command-centre";
+import { getUserExamId, aggregateSubjectMinutes } from "@/lib/topic-map";
 import {
   Accordion,
   AccordionContent,
