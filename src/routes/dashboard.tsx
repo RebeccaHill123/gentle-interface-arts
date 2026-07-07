@@ -230,8 +230,12 @@ function DashboardPage() {
       <div className="space-y-8">
         <CommandCentre
           userName={input.name}
+          examId={getUserExamId(input.examType)}
+          subjectMinutes={aggregateSubjectMinutes(sessions ?? [])}
           onReviewWeak={() => navigate({ to: "/topics" })}
           onStartPriority={() => navigate({ to: "/focus" })}
+          onStartFocus={() => navigate({ to: "/focus" })}
+          onStartDiagnostic={() => navigate({ to: "/practice" })}
           onStartItem={() => {
             if (nextTaskIdx >= 0) handleToggle(nextTaskIdx);
             else navigate({ to: "/focus" });
