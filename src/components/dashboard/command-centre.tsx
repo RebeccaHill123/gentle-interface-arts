@@ -427,7 +427,7 @@ export function CommandCentre({
   const weakest = weakestSubject(map);
   const cov = coverage(map);
   const priority = todaysPriority(map);
-  const subjects = flatSubjects(map);
+  
 
   const weakSubs = weakest ? weakSubTopicNames(weakest) : [];
   const weakSubtext = weakSubs.length
