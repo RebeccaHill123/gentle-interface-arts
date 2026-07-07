@@ -1,34 +1,101 @@
-// Full SQE1 + UBE topic-map data. The syllabus structure is declared as a
-// compact raw definition then expanded into typed `ExamMap` objects with
-// deterministic mock values for confidence / accuracy / recency etc.
-// Deterministic = same topic always gets the same mock values, so the UI
-// looks stable across renders without needing persistence yet.
+// Static syllabus + user-progress layer.
+//
+// Layer 1 (`SyllabusSubTopic`, etc.) is exam structure only — no accuracy,
+// no confidence, no study time. Safe to render for any user.
+//
+// Layer 2 (`UserTopicProgress`) is real activity, keyed by sub-topic id.
+// A `SubTopic` view is Layer 1 + optional Layer 2 + derived status.
+// If a user has no activity, the derived fields stay null so the UI can
+// show honest empty states instead of invented metrics.
 
-export type SubTopicStatus = "untouched" | "weak" | "medium" | "strong";
-export type SubjectStatus =
-  | "weak-spot"
-  | "improving"
-  | "needs-practice"
-  | "on-track";
+export type UserExamType = "SQE1" | "SQE2" | "UBE" | "MPRE";
+export type ExamId = "SQE1" | "UBE";
+
+/** Map the onboarding `examType` to a Topic Map id. */
+export function getUserExamId(examType?: string | null): ExamId {
+  if (!examType) return "SQE1";
+  if (examType === "UBE" || examType === "MPRE") return "UBE";
+  return "SQE1";
+}
+
 export type SubTopicPriority = "must" | "should" | "optional";
-export type RecommendedAction = "quiz" | "revise" | "add-to-plan";
+export type RecommendedAction = "quiz" | "revise" | "add-to-plan" | "start";
 
-export interface SubTopic {
+/** Honest, evidence-based status labels. */
+export type TopicStatus =
+  | "not-started"
+  | "studied"
+  | "not-enough-data"
+  | "weak"
+  | "improving"
+  | "strong"
+  | "due-for-recall"
+  | "high-yield";
+
+// ---------- Layer 1: syllabus ------------------------------------------------
+
+export interface SyllabusSubTopic {
   id: string;
   name: string;
   microTopics?: string[];
-  confidence: SubTopicStatus;
-  accuracy: number | null; // 0..100
-  timeSpentMin: number;
-  lastRevisedDaysAgo: number | null; // null = untouched
-  priority: SubTopicPriority;
-  highYield?: boolean;
-  recommendedAction: RecommendedAction;
-  // Denormalised for filter/search:
+  isHighYield: boolean;
+  defaultPriority: SubTopicPriority;
   subject: string;
   chapter: string;
   component: string;
   exam: ExamId;
+}
+
+export interface SyllabusChapter {
+  id: string;
+  name: string;
+  subTopics: SyllabusSubTopic[];
+}
+
+export interface SyllabusSubject {
+  id: string;
+  name: string;
+  shortName?: string;
+  chapters: SyllabusChapter[];
+}
+
+export interface SyllabusComponent {
+  id: string;
+  name: string;
+  subjects: SyllabusSubject[];
+}
+
+export interface Syllabus {
+  exam: ExamId;
+  label: string;
+  components: SyllabusComponent[];
+}
+
+// ---------- Layer 2: user progress -------------------------------------------
+
+export interface UserTopicProgress {
+  timeSpentMinutes: number;
+  questionsAttempted: number;
+  questionsCorrect: number;
+  lastStudiedAt: string | null; // ISO
+  manualConfidence: "weak" | "improving" | "strong" | null;
+  bookmarked?: boolean;
+  addedToPlan?: boolean;
+  completedSessionsCount?: number;
+}
+
+/** Recall threshold in days. */
+export const RECALL_THRESHOLD_DAYS = 7;
+export const MIN_QUESTIONS_FOR_CONFIDENCE = 10;
+
+// ---------- Views (Layer 1 + Layer 2 + derived) ------------------------------
+
+export interface SubTopic extends SyllabusSubTopic {
+  progress: UserTopicProgress | null;
+  accuracy: number | null;
+  lastRevisedDaysAgo: number | null;
+  status: TopicStatus;
+  recommendedAction: RecommendedAction;
 }
 
 export interface Chapter {
@@ -41,9 +108,12 @@ export interface Subject {
   id: string;
   name: string;
   shortName?: string;
-  progress: number; // 0..100
-  status: SubjectStatus;
   chapters: Chapter[];
+  /** minutes summed from real sessions on this subject; 0 = none */
+  timeSpentMinutes: number;
+  /** true if any sub-topic has activity or subject-level minutes */
+  hasActivity: boolean;
+  status: TopicStatus;
 }
 
 export interface ExamComponent {
@@ -51,8 +121,6 @@ export interface ExamComponent {
   name: string;
   subjects: Subject[];
 }
-
-export type ExamId = "SQE1" | "UBE";
 
 export interface ExamMap {
   exam: ExamId;
@@ -64,7 +132,7 @@ export interface ExamMap {
 
 type RawSubTopic = string | [string, string[]]; // name or [name, microTopics]
 type RawChapter = [string, RawSubTopic[]];
-type RawSubject = [string, string | undefined, RawChapter[]]; // name, short, chapters
+type RawSubject = [string, string | undefined, RawChapter[]];
 type RawComponent = [string, RawSubject[]];
 type RawExam = { label: string; components: RawComponent[] };
 
@@ -158,10 +226,7 @@ const RAW: Record<ExamId, RawExam> = {
             "Dispute Resolution",
             "DR",
             [
-              [
-                "Pre-action",
-                ["Limitation", "ADR", "Pre-action protocols"],
-              ],
+              ["Pre-action", ["Limitation", "ADR", "Pre-action protocols"]],
               [
                 "Commencing proceedings",
                 [
@@ -172,10 +237,7 @@ const RAW: Record<ExamId, RawExam> = {
                   "Statements of case",
                 ],
               ],
-              [
-                "Case management",
-                ["Interim applications", "Case management", "Disclosure"],
-              ],
+              ["Case management", ["Interim applications", "Case management", "Disclosure"]],
               [
                 "Evidence & trial",
                 [
@@ -218,18 +280,9 @@ const RAW: Record<ExamId, RawExam> = {
               ],
               [
                 "Vitiating factors",
-                [
-                  "Misrepresentation",
-                  "Mistake",
-                  "Duress",
-                  "Undue influence",
-                  "Illegality",
-                ],
+                ["Misrepresentation", "Mistake", "Duress", "Undue influence", "Illegality"],
               ],
-              [
-                "Discharge",
-                ["Performance", "Breach", "Frustration", "Agreement"],
-              ],
+              ["Discharge", ["Performance", "Breach", "Frustration", "Agreement"]],
               [
                 "Remedies",
                 [
@@ -249,13 +302,7 @@ const RAW: Record<ExamId, RawExam> = {
             [
               [
                 "Negligence",
-                [
-                  "Duty of care",
-                  "Breach",
-                  "Causation",
-                  "Remoteness",
-                  "Defences",
-                ],
+                ["Duty of care", "Breach", "Causation", "Remoteness", "Defences"],
               ],
               ["Occupiers' liability", ["Occupiers' liability"]],
               ["Vicarious liability", ["Vicarious liability"]],
@@ -273,17 +320,9 @@ const RAW: Record<ExamId, RawExam> = {
             [
               [
                 "Sources & courts",
-                [
-                  "Sources of law",
-                  "Court hierarchy",
-                  "Precedent",
-                  "Statutory interpretation",
-                ],
+                ["Sources of law", "Court hierarchy", "Precedent", "Statutory interpretation"],
               ],
-              [
-                "Personnel",
-                ["Judiciary", "Legal profession", "Legal aid"],
-              ],
+              ["Personnel", ["Judiciary", "Legal profession", "Legal aid"]],
             ],
           ],
           [
@@ -301,18 +340,9 @@ const RAW: Record<ExamId, RawExam> = {
               ],
               [
                 "Judicial review",
-                [
-                  "Standing",
-                  "Illegality",
-                  "Irrationality",
-                  "Procedural impropriety",
-                  "Remedies",
-                ],
+                ["Standing", "Illegality", "Irrationality", "Procedural impropriety", "Remedies"],
               ],
-              [
-                "Human rights",
-                ["HRA 1998", "Convention rights", "Proportionality"],
-              ],
+              ["Human rights", ["HRA 1998", "Convention rights", "Proportionality"]],
             ],
           ],
           [
@@ -358,29 +388,14 @@ const RAW: Record<ExamId, RawExam> = {
             [
               [
                 "Transactions",
-                [
-                  "Freehold transactions",
-                  "Leasehold transactions",
-                  "Commercial leases",
-                ],
+                ["Freehold transactions", "Leasehold transactions", "Commercial leases"],
               ],
               [
                 "Title & searches",
-                [
-                  "Registered title",
-                  "Unregistered title",
-                  "Searches and enquiries",
-                  "Land Registry",
-                ],
+                ["Registered title", "Unregistered title", "Searches and enquiries", "Land Registry"],
               ],
-              [
-                "Completion",
-                ["Exchange", "Completion", "Post-completion"],
-              ],
-              [
-                "Tax & finance",
-                ["SDLT", "Mortgages", "Property taxation", "Planning"],
-              ],
+              ["Completion", ["Exchange", "Completion", "Post-completion"]],
+              ["Tax & finance", ["SDLT", "Mortgages", "Property taxation", "Planning"]],
             ],
           ],
           [
@@ -389,26 +404,13 @@ const RAW: Record<ExamId, RawExam> = {
             [
               [
                 "Wills",
-                [
-                  "Valid wills",
-                  "Testamentary capacity",
-                  "Formalities",
-                  "Codicils",
-                  "Revocation",
-                ],
+                ["Valid wills", "Testamentary capacity", "Formalities", "Codicils", "Revocation"],
               ],
               [
                 "Intestacy & PRs",
-                [
-                  "Intestacy",
-                  "Personal representatives",
-                  "Grants of representation",
-                ],
+                ["Intestacy", "Personal representatives", "Grants of representation"],
               ],
-              [
-                "Administration",
-                ["IHT", "Estate administration", "Claims against estates"],
-              ],
+              ["Administration", ["IHT", "Estate administration", "Claims against estates"]],
             ],
           ],
           [
@@ -417,122 +419,41 @@ const RAW: Record<ExamId, RawExam> = {
             [
               [
                 "Client money",
-                [
-                  "Client money",
-                  "Client account",
-                  "Business account",
-                  "Office money",
-                  "Mixed payments",
-                ],
+                ["Client money", "Client account", "Business account", "Office money", "Mixed payments"],
               ],
-              [
-                "Movements",
-                ["Withdrawals", "Bills", "Transfers", "Interest"],
-              ],
-              [
-                "Controls",
-                ["Breaches", "Reconciliations", "Ledgers"],
-              ],
+              ["Movements", ["Withdrawals", "Bills", "Transfers", "Interest"]],
+              ["Controls", ["Breaches", "Reconciliations", "Ledgers"]],
             ],
           ],
           [
             "Land Law",
             undefined,
             [
-              [
-                "Estates & interests",
-                [
-                  "Estates and interests",
-                  "Registered land",
-                  "Unregistered land",
-                ],
-              ],
-              [
-                "Ownership",
-                ["Co-ownership", "Trusts of land", "Adverse possession"],
-              ],
-              [
-                "Third-party rights",
-                [
-                  "Easements",
-                  "Freehold covenants",
-                  "Mortgages",
-                  "Leases",
-                ],
-              ],
+              ["Estates & interests", ["Estates and interests", "Registered land", "Unregistered land"]],
+              ["Ownership", ["Co-ownership", "Trusts of land", "Adverse possession"]],
+              ["Third-party rights", ["Easements", "Freehold covenants", "Mortgages", "Leases"]],
             ],
           ],
           [
             "Trusts",
             undefined,
             [
-              [
-                "Creation",
-                [
-                  "Express trusts",
-                  "Three certainties",
-                  "Formalities",
-                  "Constitution",
-                ],
-              ],
+              ["Creation", ["Express trusts", "Three certainties", "Formalities", "Constitution"]],
               [
                 "Types of trust",
-                [
-                  "Resulting trusts",
-                  "Constructive trusts",
-                  "Proprietary estoppel",
-                  "Charitable trusts",
-                ],
+                ["Resulting trusts", "Constructive trusts", "Proprietary estoppel", "Charitable trusts"],
               ],
-              [
-                "Administration",
-                [
-                  "Trustees' duties",
-                  "Trustees' powers",
-                  "Breach of trust",
-                  "Tracing",
-                ],
-              ],
+              ["Administration", ["Trustees' duties", "Trustees' powers", "Breach of trust", "Tracing"]],
             ],
           ],
           [
             "Criminal Liability",
             "Crim Law",
             [
-              [
-                "General principles",
-                [
-                  "Actus reus",
-                  "Mens rea",
-                  "Causation",
-                  "Strict liability",
-                ],
-              ],
-              [
-                "Homicide & assaults",
-                [
-                  "Murder",
-                  "Manslaughter",
-                  "Assault",
-                  "Battery",
-                  "ABH",
-                  "GBH",
-                ],
-              ],
-              [
-                "Property offences",
-                [
-                  "Theft",
-                  "Robbery",
-                  "Burglary",
-                  "Fraud",
-                  "Criminal damage",
-                ],
-              ],
-              [
-                "Extensions & defences",
-                ["Defences", "Attempts", "Parties"],
-              ],
+              ["General principles", ["Actus reus", "Mens rea", "Causation", "Strict liability"]],
+              ["Homicide & assaults", ["Murder", "Manslaughter", "Assault", "Battery", "ABH", "GBH"]],
+              ["Property offences", ["Theft", "Robbery", "Burglary", "Fraud", "Criminal damage"]],
+              ["Extensions & defences", ["Defences", "Attempts", "Parties"]],
             ],
           ],
           [
@@ -551,27 +472,10 @@ const RAW: Record<ExamId, RawExam> = {
               ],
               [
                 "Bail & first hearings",
-                [
-                  "Bail",
-                  "First hearings",
-                  "Mode of trial",
-                  "Allocation",
-                  "Plea before venue",
-                ],
+                ["Bail", "First hearings", "Mode of trial", "Allocation", "Plea before venue"],
               ],
-              [
-                "Trial preparation",
-                ["Disclosure", "Bad character", "Hearsay"],
-              ],
-              [
-                "Trial & after",
-                [
-                  "Trial procedure",
-                  "Sentencing",
-                  "Appeals",
-                  "Youth court",
-                ],
-              ],
+              ["Trial preparation", ["Disclosure", "Bad character", "Hearsay"]],
+              ["Trial & after", ["Trial procedure", "Sentencing", "Appeals", "Youth court"]],
             ],
           ],
           [
@@ -605,30 +509,14 @@ const RAW: Record<ExamId, RawExam> = {
             [
               [
                 "Jurisdiction & venue",
-                [
-                  "Personal jurisdiction",
-                  "Subject matter jurisdiction",
-                  "Venue",
-                  "Erie doctrine",
-                ],
+                ["Personal jurisdiction", "Subject matter jurisdiction", "Venue", "Erie doctrine"],
               ],
-              [
-                "Pleadings & parties",
-                ["Pleadings", "Joinder", "Discovery"],
-              ],
+              ["Pleadings & parties", ["Pleadings", "Joinder", "Discovery"]],
               [
                 "Adjudication",
-                [
-                  "Summary judgment",
-                  "Jury trial",
-                  "Motions",
-                  "Verdicts and judgments",
-                ],
+                ["Summary judgment", "Jury trial", "Motions", "Verdicts and judgments"],
               ],
-              [
-                "Review & preclusion",
-                ["Appeals", "Claim preclusion", "Issue preclusion"],
-              ],
+              ["Review & preclusion", ["Appeals", "Claim preclusion", "Issue preclusion"]],
             ],
           ],
           [
@@ -637,22 +525,11 @@ const RAW: Record<ExamId, RawExam> = {
             [
               [
                 "Structure of government",
-                [
-                  "Judicial review",
-                  "Federalism",
-                  "Separation of powers",
-                  "Commerce Clause",
-                ],
+                ["Judicial review", "Federalism", "Separation of powers", "Commerce Clause"],
               ],
               [
                 "Individual rights",
-                [
-                  "State action",
-                  "Due process",
-                  "Equal protection",
-                  "First Amendment",
-                  "Takings",
-                ],
+                ["State action", "Due process", "Equal protection", "First Amendment", "Takings"],
               ],
             ],
           ],
@@ -660,33 +537,9 @@ const RAW: Record<ExamId, RawExam> = {
             "Contracts & Sales",
             "K & Sales",
             [
-              [
-                "Formation & defences",
-                [
-                  "Formation",
-                  "Consideration",
-                  "Defences",
-                  "Statute of Frauds",
-                ],
-              ],
-              [
-                "Terms & performance",
-                [
-                  "Parol evidence",
-                  "Interpretation",
-                  "Conditions",
-                  "Breach",
-                ],
-              ],
-              [
-                "UCC Article 2",
-                [
-                  "UCC Article 2",
-                  "Warranties",
-                  "Risk of loss",
-                  "Remedies",
-                ],
-              ],
+              ["Formation & defences", ["Formation", "Consideration", "Defences", "Statute of Frauds"]],
+              ["Terms & performance", ["Parol evidence", "Interpretation", "Conditions", "Breach"]],
+              ["UCC Article 2", ["UCC Article 2", "Warranties", "Risk of loss", "Remedies"]],
             ],
           ],
           [
@@ -695,23 +548,11 @@ const RAW: Record<ExamId, RawExam> = {
             [
               [
                 "Substantive crimes",
-                [
-                  "Homicide",
-                  "Theft crimes",
-                  "Inchoate offences",
-                  "Parties",
-                  "Defences",
-                ],
+                ["Homicide", "Theft crimes", "Inchoate offences", "Parties", "Defences"],
               ],
               [
                 "Constitutional criminal procedure",
-                [
-                  "Fourth Amendment",
-                  "Fifth Amendment",
-                  "Sixth Amendment",
-                  "Miranda",
-                  "Exclusionary rule",
-                ],
+                ["Fourth Amendment", "Fifth Amendment", "Sixth Amendment", "Miranda", "Exclusionary rule"],
               ],
             ],
           ],
@@ -719,86 +560,28 @@ const RAW: Record<ExamId, RawExam> = {
             "Evidence",
             undefined,
             [
-              [
-                "Relevance & character",
-                [
-                  "Relevance",
-                  "Character evidence",
-                  "Impeachment",
-                ],
-              ],
-              [
-                "Witnesses & hearsay",
-                [
-                  "Witnesses",
-                  "Hearsay",
-                  "Hearsay exceptions",
-                  "Privileges",
-                ],
-              ],
-              [
-                "Documents & experts",
-                [
-                  "Expert evidence",
-                  "Authentication",
-                  "Best evidence",
-                ],
-              ],
+              ["Relevance & character", ["Relevance", "Character evidence", "Impeachment"]],
+              ["Witnesses & hearsay", ["Witnesses", "Hearsay", "Hearsay exceptions", "Privileges"]],
+              ["Documents & experts", ["Expert evidence", "Authentication", "Best evidence"]],
             ],
           ],
           [
             "Real Property",
             "Property",
             [
-              [
-                "Ownership & estates",
-                [
-                  "Ownership",
-                  "Present estates",
-                  "Future interests",
-                  "Co-ownership",
-                ],
-              ],
-              [
-                "Land use",
-                [
-                  "Landlord and tenant",
-                  "Easements",
-                  "Covenants",
-                  "Zoning",
-                ],
-              ],
-              [
-                "Transfers & title",
-                ["Mortgages", "Recording acts", "Adverse possession"],
-              ],
+              ["Ownership & estates", ["Ownership", "Present estates", "Future interests", "Co-ownership"]],
+              ["Land use", ["Landlord and tenant", "Easements", "Covenants", "Zoning"]],
+              ["Transfers & title", ["Mortgages", "Recording acts", "Adverse possession"]],
             ],
           ],
           [
             "Torts",
             undefined,
             [
-              [
-                "Intentional torts",
-                ["Intentional torts", "Defences"],
-              ],
-              [
-                "Negligence",
-                ["Negligence", "Causation"],
-              ],
-              [
-                "Strict & products",
-                ["Strict liability", "Products liability"],
-              ],
-              [
-                "Other torts",
-                [
-                  "Nuisance",
-                  "Defamation",
-                  "Privacy torts",
-                  "Economic torts",
-                ],
-              ],
+              ["Intentional torts", ["Intentional torts", "Defences"]],
+              ["Negligence", ["Negligence", "Causation"]],
+              ["Strict & products", ["Strict liability", "Products liability"]],
+              ["Other torts", ["Nuisance", "Defamation", "Privacy torts", "Economic torts"]],
             ],
           ],
         ],
@@ -820,23 +603,12 @@ const RAW: Record<ExamId, RawExam> = {
                   "Vicarious liability",
                 ],
               ],
-              [
-                "Entities",
-                ["Partnerships", "Corporations", "LLCs"],
-              ],
+              ["Entities", ["Partnerships", "Corporations", "LLCs"]],
               [
                 "Governance",
-                [
-                  "Fiduciary duties",
-                  "Directors and officers",
-                  "Shareholders",
-                  "Derivative suits",
-                ],
+                ["Fiduciary duties", "Directors and officers", "Shareholders", "Derivative suits"],
               ],
-              [
-                "Corporate events",
-                ["Piercing the corporate veil", "Mergers and dissolution"],
-              ],
+              ["Corporate events", ["Piercing the corporate veil", "Mergers and dissolution"]],
             ],
           ],
           [
@@ -845,50 +617,20 @@ const RAW: Record<ExamId, RawExam> = {
             [
               [
                 "Jurisdiction & Erie",
-                [
-                  "Personal jurisdiction",
-                  "Subject matter jurisdiction",
-                  "Venue",
-                  "Erie doctrine",
-                ],
+                ["Personal jurisdiction", "Subject matter jurisdiction", "Venue", "Erie doctrine"],
               ],
-              [
-                "Litigation lifecycle",
-                [
-                  "Pleadings",
-                  "Joinder",
-                  "Discovery",
-                  "Summary judgment",
-                ],
-              ],
-              [
-                "Post-trial",
-                ["Appeals", "Claim preclusion", "Issue preclusion"],
-              ],
+              ["Litigation lifecycle", ["Pleadings", "Joinder", "Discovery", "Summary judgment"]],
+              ["Post-trial", ["Appeals", "Claim preclusion", "Issue preclusion"]],
             ],
           ],
           [
             "Constitutional Law",
             "Con Law",
             [
-              [
-                "Structure",
-                [
-                  "Judicial review",
-                  "Federalism",
-                  "Separation of powers",
-                  "Commerce Clause",
-                ],
-              ],
+              ["Structure", ["Judicial review", "Federalism", "Separation of powers", "Commerce Clause"]],
               [
                 "Rights",
-                [
-                  "State action",
-                  "Due process",
-                  "Equal protection",
-                  "First Amendment",
-                  "Takings",
-                ],
+                ["State action", "Due process", "Equal protection", "First Amendment", "Takings"],
               ],
             ],
           ],
@@ -896,29 +638,12 @@ const RAW: Record<ExamId, RawExam> = {
             "Contracts & Sales",
             "K & Sales",
             [
-              [
-                "Formation",
-                [
-                  "Formation",
-                  "Consideration",
-                  "Defences",
-                  "Statute of Frauds",
-                ],
-              ],
+              ["Formation", ["Formation", "Consideration", "Defences", "Statute of Frauds"]],
               [
                 "Interpretation & breach",
-                [
-                  "Parol evidence",
-                  "Interpretation",
-                  "Conditions",
-                  "Breach",
-                  "Remedies",
-                ],
+                ["Parol evidence", "Interpretation", "Conditions", "Breach", "Remedies"],
               ],
-              [
-                "UCC Article 2",
-                ["UCC Article 2", "Warranties", "Risk of loss"],
-              ],
+              ["UCC Article 2", ["UCC Article 2", "Warranties", "Risk of loss"]],
             ],
           ],
           [
@@ -927,23 +652,11 @@ const RAW: Record<ExamId, RawExam> = {
             [
               [
                 "Substantive crimes",
-                [
-                  "Homicide",
-                  "Theft crimes",
-                  "Inchoate offences",
-                  "Parties",
-                  "Defences",
-                ],
+                ["Homicide", "Theft crimes", "Inchoate offences", "Parties", "Defences"],
               ],
               [
                 "Constitutional criminal procedure",
-                [
-                  "Fourth Amendment",
-                  "Fifth Amendment",
-                  "Sixth Amendment",
-                  "Miranda",
-                  "Exclusionary rule",
-                ],
+                ["Fourth Amendment", "Fifth Amendment", "Sixth Amendment", "Miranda", "Exclusionary rule"],
               ],
             ],
           ],
@@ -951,78 +664,27 @@ const RAW: Record<ExamId, RawExam> = {
             "Evidence",
             undefined,
             [
-              [
-                "Relevance & witnesses",
-                [
-                  "Relevance",
-                  "Character evidence",
-                  "Impeachment",
-                  "Witnesses",
-                ],
-              ],
-              [
-                "Hearsay & privileges",
-                ["Hearsay", "Hearsay exceptions", "Privileges"],
-              ],
-              [
-                "Documents",
-                [
-                  "Expert evidence",
-                  "Authentication",
-                  "Best evidence",
-                ],
-              ],
+              ["Relevance & witnesses", ["Relevance", "Character evidence", "Impeachment", "Witnesses"]],
+              ["Hearsay & privileges", ["Hearsay", "Hearsay exceptions", "Privileges"]],
+              ["Documents", ["Expert evidence", "Authentication", "Best evidence"]],
             ],
           ],
           [
             "Real Property",
             "Property",
             [
-              [
-                "Estates",
-                [
-                  "Ownership",
-                  "Present estates",
-                  "Future interests",
-                  "Co-ownership",
-                ],
-              ],
-              [
-                "Land use",
-                ["Landlord and tenant", "Easements", "Covenants"],
-              ],
-              [
-                "Transfers",
-                ["Mortgages", "Recording acts", "Adverse possession"],
-              ],
+              ["Estates", ["Ownership", "Present estates", "Future interests", "Co-ownership"]],
+              ["Land use", ["Landlord and tenant", "Easements", "Covenants"]],
+              ["Transfers", ["Mortgages", "Recording acts", "Adverse possession"]],
             ],
           ],
           [
             "Torts",
             undefined,
             [
-              [
-                "Intentional & negligence",
-                [
-                  "Intentional torts",
-                  "Negligence",
-                  "Causation",
-                  "Defences",
-                ],
-              ],
-              [
-                "Strict & products",
-                ["Strict liability", "Products liability"],
-              ],
-              [
-                "Other",
-                [
-                  "Nuisance",
-                  "Defamation",
-                  "Privacy torts",
-                  "Economic torts",
-                ],
-              ],
+              ["Intentional & negligence", ["Intentional torts", "Negligence", "Causation", "Defences"]],
+              ["Strict & products", ["Strict liability", "Products liability"]],
+              ["Other", ["Nuisance", "Defamation", "Privacy torts", "Economic torts"]],
             ],
           ],
         ],
@@ -1034,36 +696,17 @@ const RAW: Record<ExamId, RawExam> = {
             "Written work products",
             "Documents",
             [
-              [
-                "Memos & briefs",
-                [
-                  "Objective memo",
-                  "Persuasive brief",
-                  "Brief writing",
-                ],
-              ],
-              [
-                "Letters",
-                ["Client letter", "Demand letter"],
-              ],
-              [
-                "Drafting",
-                ["Contract drafting"],
-              ],
+              ["Memos & briefs", ["Objective memo", "Persuasive brief", "Brief writing"]],
+              ["Letters", ["Client letter", "Demand letter"]],
+              ["Drafting", ["Contract drafting"]],
             ],
           ],
           [
             "Analytical skills",
             "Skills",
             [
-              [
-                "File & library",
-                ["File analysis", "Library analysis", "Rule extraction"],
-              ],
-              [
-                "Application",
-                ["Factual application", "Time management"],
-              ],
+              ["File & library", ["File analysis", "Library analysis", "Rule extraction"]],
+              ["Application", ["Factual application", "Time management"]],
             ],
           ],
         ],
@@ -1072,7 +715,7 @@ const RAW: Record<ExamId, RawExam> = {
   },
 };
 
-// ---------- Deterministic mock generator -------------------------------------
+// ---------- Building the static syllabus ------------------------------------
 
 function slug(s: string): string {
   return s
@@ -1080,23 +723,6 @@ function slug(s: string): string {
     .replace(/&/g, "and")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
-}
-
-function hash(str: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return Math.abs(h);
-}
-
-function pick<T>(str: string, arr: T[], offset = 0): T {
-  return arr[(hash(str) + offset) % arr.length];
-}
-function pickInt(str: string, min: number, max: number, offset = 0): number {
-  const range = max - min + 1;
-  return min + ((hash(str) + offset) % range);
 }
 
 const HIGH_YIELD_KEYWORDS = [
@@ -1119,6 +745,9 @@ const HIGH_YIELD_KEYWORDS = [
   "iht",
   "damages",
   "easement",
+  "agency",
+  "future interests",
+  "equal protection",
 ];
 
 function isHighYield(name: string): boolean {
@@ -1126,218 +755,217 @@ function isHighYield(name: string): boolean {
   return HIGH_YIELD_KEYWORDS.some((k) => n.includes(k));
 }
 
-function makeSubTopic(
-  raw: RawSubTopic,
-  parents: { exam: ExamId; component: string; subject: string; chapter: string },
-): SubTopic {
-  const [name, micros] = Array.isArray(raw) ? raw : [raw, undefined];
-  const key = `${parents.exam}|${parents.subject}|${parents.chapter}|${name}`;
-  const confidence = pick<SubTopicStatus>(key, [
-    "untouched",
-    "weak",
-    "weak",
-    "medium",
-    "medium",
-    "strong",
-  ]);
-  const highYield = isHighYield(name);
-  const priority: SubTopicPriority = highYield
-    ? "must"
-    : pick<SubTopicPriority>(key, ["should", "should", "must", "optional"], 3);
-  const accuracy =
-    confidence === "untouched"
-      ? null
-      : confidence === "weak"
-        ? pickInt(key, 32, 55, 1)
-        : confidence === "medium"
-          ? pickInt(key, 56, 74, 1)
-          : pickInt(key, 75, 94, 1);
-  const timeSpentMin =
-    confidence === "untouched" ? 0 : pickInt(key, 15, 180, 2);
-  const lastRevisedDaysAgo =
-    confidence === "untouched"
-      ? null
-      : confidence === "weak"
-        ? pickInt(key, 8, 22, 4)
-        : confidence === "medium"
-          ? pickInt(key, 3, 12, 4)
-          : pickInt(key, 1, 7, 4);
-  const recommendedAction: RecommendedAction =
-    confidence === "untouched"
-      ? "add-to-plan"
-      : confidence === "weak"
-        ? "quiz"
-        : "revise";
-  return {
-    id: `${parents.exam}-${slug(parents.subject)}-${slug(parents.chapter)}-${slug(name)}`,
-    name,
-    microTopics: micros,
-    confidence,
-    accuracy,
-    timeSpentMin,
-    lastRevisedDaysAgo,
-    priority,
-    highYield,
-    recommendedAction,
-    subject: parents.subject,
-    chapter: parents.chapter,
-    component: parents.component,
-    exam: parents.exam,
-  };
-}
-
-function subjectStatus(chapters: Chapter[]): {
-  status: SubjectStatus;
-  progress: number;
-} {
-  const subs = chapters.flatMap((c) => c.subTopics);
-  const total = subs.length || 1;
-  const strong = subs.filter((s) => s.confidence === "strong").length;
-  const medium = subs.filter((s) => s.confidence === "medium").length;
-  const weak = subs.filter((s) => s.confidence === "weak").length;
-  const untouched = subs.filter((s) => s.confidence === "untouched").length;
-  const progress = Math.round(
-    ((strong * 100 + medium * 65 + weak * 30) / (total * 100)) * 100,
-  );
-  let status: SubjectStatus;
-  if (weak + untouched > total * 0.5) status = "weak-spot";
-  else if (weak > total * 0.3) status = "needs-practice";
-  else if (medium > strong) status = "improving";
-  else status = "on-track";
-  return { status, progress };
-}
-
-function buildExamMap(examId: ExamId): ExamMap {
+function buildSyllabus(examId: ExamId): Syllabus {
   const raw = RAW[examId];
-  const components: ExamComponent[] = raw.components.map(
+  const components: SyllabusComponent[] = raw.components.map(
     ([componentName, subjects]) => ({
       id: `${examId}-${slug(componentName)}`,
       name: componentName,
-      subjects: subjects.map(([subjectName, shortName, chapters]) => {
-        const chapterObjs: Chapter[] = chapters.map(([chapterName, subTopics]) => ({
+      subjects: subjects.map(([subjectName, shortName, chapters]) => ({
+        id: `${examId}-${slug(subjectName)}`,
+        name: subjectName,
+        shortName,
+        chapters: chapters.map(([chapterName, subTopics]) => ({
           id: `${examId}-${slug(subjectName)}-${slug(chapterName)}`,
           name: chapterName,
-          subTopics: subTopics.map((st) =>
-            makeSubTopic(st, {
-              exam: examId,
-              component: componentName,
+          subTopics: subTopics.map((st) => {
+            const [name, micros] = Array.isArray(st) ? st : [st, undefined];
+            const highYield = isHighYield(name);
+            return {
+              id: `${examId}-${slug(subjectName)}-${slug(chapterName)}-${slug(name)}`,
+              name,
+              microTopics: micros,
+              isHighYield: highYield,
+              defaultPriority: highYield ? "must" : "should",
               subject: subjectName,
               chapter: chapterName,
-            }),
-          ),
-        }));
-        const { status, progress } = subjectStatus(chapterObjs);
-        return {
-          id: `${examId}-${slug(subjectName)}`,
-          name: subjectName,
-          shortName,
-          progress,
-          status,
-          chapters: chapterObjs,
-        };
-      }),
+              component: componentName,
+              exam: examId,
+            };
+          }),
+        })),
+      })),
     }),
   );
   return { exam: examId, label: raw.label, components };
 }
 
-export const TOPIC_MAPS: Record<ExamId, ExamMap> = {
-  SQE1: buildExamMap("SQE1"),
-  UBE: buildExamMap("UBE"),
+export const SYLLABUSES: Record<ExamId, Syllabus> = {
+  SQE1: buildSyllabus("SQE1"),
+  UBE: buildSyllabus("UBE"),
 };
 
-// Back-compat alias — earlier code imports MOCK_TOPIC_MAP.
-export const MOCK_TOPIC_MAP: ExamMap = TOPIC_MAPS.SQE1;
+// ---------- Deriving status from real progress ------------------------------
 
-// ---------- Derivations ------------------------------------------------------
+function daysAgo(iso: string | null): number | null {
+  if (!iso) return null;
+  const d = new Date(iso).getTime();
+  if (Number.isNaN(d)) return null;
+  return Math.max(0, Math.floor((Date.now() - d) / 86_400_000));
+}
+
+function deriveSubTopic(
+  s: SyllabusSubTopic,
+  p: UserTopicProgress | null,
+): SubTopic {
+  if (!p) {
+    return {
+      ...s,
+      progress: null,
+      accuracy: null,
+      lastRevisedDaysAgo: null,
+      status: s.isHighYield ? "high-yield" : "not-started",
+      recommendedAction: p === null && s.isHighYield ? "add-to-plan" : "start",
+    };
+  }
+  const accuracy =
+    p.questionsAttempted > 0
+      ? Math.round((p.questionsCorrect / p.questionsAttempted) * 100)
+      : null;
+  const last = daysAgo(p.lastStudiedAt);
+  const dueForRecall =
+    last !== null && last >= RECALL_THRESHOLD_DAYS && (p.timeSpentMinutes > 0 || p.questionsAttempted > 0);
+  let status: TopicStatus;
+  if (p.manualConfidence) {
+    status = p.manualConfidence;
+  } else if (p.questionsAttempted >= MIN_QUESTIONS_FOR_CONFIDENCE && accuracy !== null) {
+    if (accuracy >= 75) status = "strong";
+    else if (accuracy >= 60) status = "improving";
+    else status = "weak";
+  } else if (p.questionsAttempted > 0) {
+    status = "not-enough-data";
+  } else if (p.timeSpentMinutes > 0) {
+    status = "studied";
+  } else {
+    status = s.isHighYield ? "high-yield" : "not-started";
+  }
+  // "Due for recall" overrides only when there's existing study/quiz activity.
+  if (dueForRecall && status !== "weak" && status !== "not-started") {
+    status = "due-for-recall";
+  }
+  let recommendedAction: RecommendedAction;
+  if (status === "weak" || status === "not-enough-data") recommendedAction = "quiz";
+  else if (status === "due-for-recall" || status === "improving" || status === "strong")
+    recommendedAction = "revise";
+  else if (status === "studied") recommendedAction = "quiz";
+  else recommendedAction = "start";
+  return {
+    ...s,
+    progress: p,
+    accuracy,
+    lastRevisedDaysAgo: last,
+    status,
+    recommendedAction,
+  };
+}
+
+function deriveSubjectStatus(subs: SubTopic[], subjectMinutes: number): TopicStatus {
+  const started = subs.filter((s) => s.progress !== null);
+  if (started.length === 0 && subjectMinutes === 0) return "not-started";
+  const weak = started.filter((s) => s.status === "weak").length;
+  const strong = started.filter((s) => s.status === "strong").length;
+  const improving = started.filter((s) => s.status === "improving").length;
+  const due = started.filter((s) => s.status === "due-for-recall").length;
+  if (weak >= Math.max(2, started.length * 0.3)) return "weak";
+  if (due > 0) return "due-for-recall";
+  if (improving > strong) return "improving";
+  if (strong > 0) return "strong";
+  return "studied";
+}
+
+/** Build a full ExamMap view from the static syllabus + a progress map. */
+export function buildExamMap(
+  examId: ExamId,
+  progress: Map<string, UserTopicProgress> = new Map(),
+  subjectMinutes: Map<string, number> = new Map(),
+): ExamMap {
+  const s = SYLLABUSES[examId];
+  const components: ExamComponent[] = s.components.map((c) => ({
+    id: c.id,
+    name: c.name,
+    subjects: c.subjects.map((subj) => {
+      const chapters: Chapter[] = subj.chapters.map((ch) => ({
+        id: ch.id,
+        name: ch.name,
+        subTopics: ch.subTopics.map((st) => deriveSubTopic(st, progress.get(st.id) ?? null)),
+      }));
+      const allSubs = chapters.flatMap((c) => c.subTopics);
+      const mins = subjectMinutes.get(subj.name) ?? 0;
+      const hasActivity = mins > 0 || allSubs.some((s) => s.progress !== null);
+      return {
+        id: subj.id,
+        name: subj.name,
+        shortName: subj.shortName,
+        chapters,
+        timeSpentMinutes: mins,
+        hasActivity,
+        status: deriveSubjectStatus(allSubs, mins),
+      };
+    }),
+  }));
+  return { exam: examId, label: s.label, components };
+}
+
+// ---------- Derivations for UI ----------------------------------------------
 
 export function flatSubjects(map: ExamMap): Subject[] {
   return map.components.flatMap((c) => c.subjects);
 }
-
 export function flatSubTopics(map: ExamMap): SubTopic[] {
-  return flatSubjects(map).flatMap((s) =>
-    s.chapters.flatMap((c) => c.subTopics),
-  );
+  return flatSubjects(map).flatMap((s) => s.chapters.flatMap((c) => c.subTopics));
 }
 
 export function coverage(map: ExamMap): {
-  mappedPct: number;
+  startedPct: number;
+  startedCount: number;
   untouchedCount: number;
   totalCount: number;
 } {
   const all = flatSubTopics(map);
-  const untouched = all.filter((s) => s.confidence === "untouched").length;
-  const mappedPct = all.length
-    ? Math.round(((all.length - untouched) / all.length) * 100)
-    : 0;
-  return { mappedPct, untouchedCount: untouched, totalCount: all.length };
+  const started = all.filter((s) => s.progress !== null).length;
+  return {
+    startedPct: all.length ? Math.round((started / all.length) * 100) : 0,
+    startedCount: started,
+    untouchedCount: all.length - started,
+    totalCount: all.length,
+  };
 }
 
-export function weakestSubject(map: ExamMap): Subject | null {
-  const subjects = flatSubjects(map);
-  const ranked = [...subjects].sort((a, b) => a.progress - b.progress);
-  return ranked[0] ?? null;
-}
-
-export function weakSubTopicNames(subject: Subject, limit = 2): string[] {
-  return subject.chapters
-    .flatMap((c) => c.subTopics)
-    .filter((s) => s.confidence === "weak" || s.confidence === "untouched")
-    .slice(0, limit)
-    .map((s) => s.name);
-}
-
-export function todaysPriority(
-  map: ExamMap,
-): { subject: Subject; sub: SubTopic } | null {
-  const subjects = flatSubjects(map);
-  for (const s of subjects) {
-    for (const c of s.chapters) {
-      for (const sub of c.subTopics) {
-        if (sub.priority === "must" && sub.highYield && sub.confidence !== "strong") {
-          return { subject: s, sub };
-        }
-      }
-    }
-  }
-  const first = subjects[0]?.chapters[0]?.subTopics[0];
-  return first ? { subject: subjects[0], sub: first } : null;
-}
-
-/** Weakest sub-topics across the whole map, sorted by (weak > untouched > medium) and low accuracy. */
-export function weakestSubTopics(map: ExamMap, limit = 3): SubTopic[] {
-  const weight = (s: SubTopic) =>
-    s.confidence === "weak" ? 0 : s.confidence === "untouched" ? 1 : 2;
-  return [...flatSubTopics(map)]
-    .sort((a, b) => {
-      const w = weight(a) - weight(b);
-      if (w !== 0) return w;
-      return (a.accuracy ?? 100) - (b.accuracy ?? 100);
-    })
+/** Real weak spots: only sub-topics with actual weak-status derived from real data. */
+export function realWeakSpots(map: ExamMap, limit = 3): SubTopic[] {
+  return flatSubTopics(map)
+    .filter((s) => s.status === "weak")
+    .sort((a, b) => (a.accuracy ?? 100) - (b.accuracy ?? 100))
     .slice(0, limit);
 }
 
-/** Topics that have been studied but not revisited recently (>=7 days). */
-export function dueForRecall(map: ExamMap, limit = 3): SubTopic[] {
-  return [...flatSubTopics(map)]
-    .filter((s) => (s.lastRevisedDaysAgo ?? 0) >= 7 && s.confidence !== "untouched")
+/** Real due-for-recall: prior study/quiz activity + last revised >= threshold. */
+export function realDueForRecall(map: ExamMap, limit = 3): SubTopic[] {
+  return flatSubTopics(map)
+    .filter((s) => s.status === "due-for-recall")
     .sort((a, b) => (b.lastRevisedDaysAgo ?? 0) - (a.lastRevisedDaysAgo ?? 0))
     .slice(0, limit);
 }
 
-/** Untouched high-priority topics. */
+/** Untouched — syllabus coverage is real, always safe to show. */
 export function untouchedTopics(map: ExamMap, limit = 3): SubTopic[] {
-  return [...flatSubTopics(map)]
-    .filter((s) => s.confidence === "untouched")
+  return flatSubTopics(map)
+    .filter((s) => s.progress === null)
     .sort((a, b) => {
-      // must-do first, then high-yield
-      const p = (x: SubTopic) => (x.priority === "must" ? 0 : x.priority === "should" ? 1 : 2);
+      // must + high-yield first
+      const p = (x: SubTopic) => (x.defaultPriority === "must" ? 0 : x.defaultPriority === "should" ? 1 : 2);
       const pd = p(a) - p(b);
       if (pd !== 0) return pd;
-      return Number(b.highYield ?? false) - Number(a.highYield ?? false);
+      return Number(b.isHighYield) - Number(a.isHighYield);
     })
     .slice(0, limit);
+}
+
+/** Suggested "priority" for a new user with no activity — a high-yield untouched topic. */
+export function suggestedPriority(map: ExamMap): SubTopic | null {
+  const started = flatSubTopics(map).find((s) => s.status === "weak" || s.status === "due-for-recall");
+  if (started) return started;
+  return untouchedTopics(map, 1)[0] ?? null;
 }
 
 /** Filter helpers used by the Topic Map page. */
@@ -1354,15 +982,15 @@ export function matchesFilter(s: SubTopic, filter: TopicFilter): boolean {
     case "all":
       return true;
     case "weak-spots":
-      return s.confidence === "weak";
+      return s.status === "weak";
     case "untouched":
-      return s.confidence === "untouched";
+      return s.progress === null;
     case "due-for-recall":
-      return (s.lastRevisedDaysAgo ?? 0) >= 7 && s.confidence !== "untouched";
+      return s.status === "due-for-recall";
     case "high-yield":
-      return Boolean(s.highYield);
+      return s.isHighYield;
     case "improving":
-      return s.confidence === "medium";
+      return s.status === "improving";
   }
 }
 
@@ -1387,11 +1015,27 @@ export function examSummary(map: ExamMap): {
   const all = flatSubTopics(map);
   const cov = coverage(map);
   return {
-    coveragePct: cov.mappedPct,
-    weakSpots: all.filter((s) => s.confidence === "weak").length,
+    coveragePct: cov.startedPct,
+    weakSpots: all.filter((s) => s.status === "weak").length,
     untouched: cov.untouchedCount,
-    dueThisWeek: all.filter(
-      (s) => (s.lastRevisedDaysAgo ?? 0) >= 7 && s.confidence !== "untouched",
-    ).length,
+    dueThisWeek: all.filter((s) => s.status === "due-for-recall").length,
   };
+}
+
+// ---------- Progress helpers from existing plan-store sessions ---------------
+
+/**
+ * Aggregate subject-level minutes from raw sessions. Sub-topic level metrics
+ * are not derived because we don't yet track topics on sessions.
+ */
+export function aggregateSubjectMinutes(
+  sessions: { minutes: number; module?: string | null }[] | undefined,
+): Map<string, number> {
+  const m = new Map<string, number>();
+  if (!sessions) return m;
+  for (const s of sessions) {
+    if (!s.module) continue;
+    m.set(s.module, (m.get(s.module) ?? 0) + s.minutes);
+  }
+  return m;
 }
