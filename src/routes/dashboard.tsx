@@ -226,18 +226,15 @@ function DashboardPage() {
         />
       }
     >
-      <div className="space-y-12">
-        <TodaysPlanCard
-          name={input.name}
-          currentWeekLabel={currentWeek ? `Week ${currentWeek.week} · ${currentWeek.theme}` : "This week"}
-          plannedMins={plannedMins}
-          completedPlannedMins={completedPlannedMins}
-          blocksDone={blocksDone}
-          blocksPlanned={blocksPlanned}
-          nextTask={nextTask}
-          moduleNames={input.modules.map((m) => m.name)}
-          todayTasks={plan.todayTasks}
-          onSessionLogged={refresh}
+      <div className="space-y-8">
+        <CommandCentre
+          userName={input.name}
+          onReviewWeak={() => navigate({ to: "/topics" })}
+          onStartPriority={() => navigate({ to: "/focus" })}
+          onStartItem={() => {
+            if (nextTaskIdx >= 0) handleToggle(nextTaskIdx);
+            else navigate({ to: "/focus" });
+          }}
         />
 
         <MetricsRow
@@ -248,58 +245,6 @@ function DashboardPage() {
           weeklyDoneMins={weeklyDoneMins}
           weeklyTargetMins={weeklyTargetMins}
         />
-
-        {plan.weeklyStrategy && plan.weeklyStrategy.allocations.length > 0 && (
-          <section className="space-y-4">
-            <SectionHeader
-              title="This week's focus"
-              subtitle={plan.weeklyStrategy.summary}
-            />
-            <WeekFocusAccordion allocations={plan.weeklyStrategy.allocations} />
-          </section>
-        )}
-
-        <section className="space-y-4">
-          <SectionHeader
-            title="Up next"
-            subtitle="Your next recommended blocks for today."
-            action={
-              <Link
-                to="/focus"
-                className="inline-flex items-center gap-1 text-xs font-medium text-foreground/80 hover:text-foreground transition-colors"
-              >
-                View full week plan <ArrowRight className="h-3 w-3" />
-              </Link>
-            }
-          />
-          {upNextItems.length === 0 ? (
-            <div className="rounded-2xl border border-border/40 bg-card p-8 text-center text-sm text-muted-foreground">
-              All caught up for today. Nice work.
-            </div>
-          ) : (
-            <ul className="grid gap-3 md:grid-cols-3">
-              {upNextItems.map(({ t, i }) => (
-                <UpNextBlock key={i} task={t} onClick={() => handleToggle(i)} />
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="space-y-4">
-          <SectionHeader
-            title="Roadmap"
-            subtitle="Your plan, week by week."
-            action={
-              <Link
-                to="/focus"
-                className="inline-flex items-center gap-1 text-xs font-medium text-foreground/80 hover:text-foreground transition-colors"
-              >
-                View full plan <ArrowRight className="h-3 w-3" />
-              </Link>
-            }
-          />
-          <MiniRoadmap weeks={plan.weeklyFocus} />
-        </section>
       </div>
 
       {quizTask && (
