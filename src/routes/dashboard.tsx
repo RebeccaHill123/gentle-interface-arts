@@ -51,6 +51,7 @@ import { deriveAnalytics, READINESS_LABELS, type ReadinessResult } from "@/lib/a
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
+import { CommandCentre } from "@/components/dashboard/command-centre";
 import {
   Accordion,
   AccordionContent,
