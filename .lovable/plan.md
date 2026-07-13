@@ -1,73 +1,94 @@
 
-# Transition Tentra Pro to paid (Stripe)
+# Tentra: paid-only, subscription at signup
 
-Goal: replace the "free during Early Access" flow with real Stripe checkout at **£16.99/month** and **£72.99/6 months**, while keeping every current Pro user on Pro forever (grandfathered).
+Every user pays to access Tentra. No Pro tier, no free tier, no "unlock". Existing Early Access users are grandfathered forever.
 
-## 1. Payments setup
+## 1. New user flow
 
-1. Enable **seamless Stripe payments** (`enable_stripe_payments`). No account setup or API keys needed from you.
-2. Default tax handling: **full compliance handling** (Stripe as merchant of record for digital SaaS in ~80 buyer countries, +3.5% per transaction, changeable later).
-3. Create two products/prices via `batch_create_product`:
-   - `Tentra Pro — Monthly` · £16.99 GBP, recurring monthly, tax code `txcd_10103001` (SaaS)
-   - `Tentra Pro — 6 months` · £72.99 GBP, recurring every 6 months, same tax code
-4. Landing page pricing section already advertises these prices — no copy changes needed.
+```
+Sign up → Choose plan → Stripe Checkout → Onboarding → Personalised plan → App
+        (email / Google)   (Monthly / 6mo)     (embedded)
+```
 
-## 2. Grandfather existing Early Access users
+- After sign-up, the app routes the user to `/subscribe` (new page) instead of `/onboarding`.
+- Two plan cards: **£16.99 / month** and **£72.99 / 6 months** (save ~28%, most popular).
+- Stripe Embedded Checkout renders inline. `return_url` = `/onboarding?checkout=success&session_id={CHECKOUT_SESSION_ID}`.
+- On return, we poll `subscription_status` until the webhook confirms `active|trialing`, then unlock `/onboarding`.
+- Onboarding, dashboard, topics, coach, focus, mocks, flashcards — all move under the existing `_authenticated` gate **and** a new subscription gate. Anyone signed in without an active subscription (and not grandfathered) is redirected to `/subscribe`.
 
-Add a migration that marks anyone currently `is_pro = true` with a new flag so they keep Pro forever without a subscription:
+## 2. Existing users — grandfathered
 
-- New column `profiles.grandfathered_pro boolean not null default false`.
-- One-time backfill: `UPDATE profiles SET grandfathered_pro = true WHERE is_pro = true`.
-- All Pro-gate checks continue to read `is_pro`. Grandfathered users are never downgraded when they have no active Stripe subscription.
-- Settings page shows a small "Early Access member — Pro on us, forever" badge instead of a "Manage subscription" button for these users.
+Migration:
+- New `profiles.grandfathered_pro boolean default false`.
+- Backfill: every current row with `is_pro = true` gets `grandfathered_pro = true` (so all Early Access users keep access forever with no card on file).
+- Access check becomes: `grandfathered_pro OR subscription_status IN ('active','trialing') OR (subscription_status = 'canceled' AND current_period_end > now())`.
+
+Grandfathered users see a small "Founding member · lifetime access" badge in Settings, no "Manage billing" button, no upgrade CTAs anywhere.
 
 ## 3. Subscription state
 
-New columns on `profiles` (server-only writes via `supabaseAdmin`, blocked from clients by existing trigger — extend the trigger to also block these):
+New columns on `profiles` (server-only writes, blocked from clients by extended `prevent_pro_self_upgrade` trigger):
 - `stripe_customer_id text`
 - `stripe_subscription_id text`
-- `stripe_price_id text`
-- `subscription_status text` (`active`, `trialing`, `past_due`, `canceled`, `incomplete`, null)
+- `stripe_price_id text` — `pro_monthly` or `pro_six_month`
+- `subscription_status text`
 - `current_period_end timestamptz`
 - `cancel_at_period_end boolean default false`
 
-`is_pro` becomes derived at write-time: `grandfathered_pro OR subscription_status IN ('active','trialing')`. Set by the webhook after each Stripe event.
+`is_pro` is deprecated as a concept but the column stays and is derived by the webhook (`grandfathered_pro OR active-subscription`) so no downstream code breaks.
 
-## 4. Checkout + portal server functions
+## 4. Products & prices in Stripe
 
-Replace `activateEarlyAccessPro` and flip `PRO_EARLY_ACCESS_FREE` to `false`.
+- Product: **Tentra** (tax code `txcd_10103001`, SaaS).
+- Price `pro_monthly` — £16.99 GBP, monthly (created via `batch_create_product`).
+- Price `pro_six_month` — £72.99 GBP, every 6 months. The product tool only supports `day|week|month|year` intervals, so this specific price is created idempotently at first use via the Stripe SDK inside a server function (`ensureSemiAnnualPrice`) with `interval: 'month', interval_count: 6, lookup_key: 'pro_six_month'`. Lookup keys are stable across sandbox and live, so the same code creates it in whichever environment first calls it.
 
-New authenticated server functions in `src/lib/pro.functions.ts`:
-- `createProCheckoutSession({ interval: 'month' | 'six_month' })` → creates a Stripe Checkout Session for the signed-in user (creates/reuses `stripe_customer_id`), returns `{ url }`. Client redirects to `url`.
-- `createBillingPortalSession()` → Stripe Billing Portal URL for managing/canceling.
-- `getSubscriptionSummary()` → returns plan name, renewal date, cancel-at-period-end, grandfathered flag for the Settings/Pro UI.
+## 5. Server functions & webhook
 
-## 5. Stripe webhook
+Replace `activateEarlyAccessPro`. New authenticated `createServerFn`s in `src/lib/pro.functions.ts`:
+- `createSubscriptionCheckoutSession({ priceId })` — resolves the price via lookup_key (calling `ensureSemiAnnualPrice` if needed), resolves/creates a Stripe Customer with `metadata.userId`, returns `{ clientSecret }` for Embedded Checkout with `managed_payments: { enabled: true }`.
+- `createBillingPortalSession()` — Stripe Billing Portal URL.
+- `getSubscriptionSummary()` — plan name, next renewal, cancel-at-period-end, grandfathered flag, has-access boolean. Used by the subscription gate, Settings, and `/subscribe`.
 
-New public route `src/routes/api/public/stripe-webhook.ts`:
-- Verifies Stripe signature with `STRIPE_WEBHOOK_SECRET`.
-- Handles `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.paid`, `invoice.payment_failed`.
-- Updates the subscription columns and recomputes `is_pro` via `supabaseAdmin`.
-- Never trusts client input; matches customer → user via `stripe_customer_id`.
+Webhook: `src/routes/api/public/payments/webhook.ts`. Verifies Stripe signature, handles `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.paid`, `invoice.payment_failed`; updates the profile columns and recomputes `is_pro` via `supabaseAdmin`. Matches customer → user via `stripe_customer_id`.
 
-## 6. UI changes
+## 6. Subscription gate
 
-- **`/pro`**: replace "Unlock Pro — free in Early Access" with two plan cards (Monthly £16.99 / 6-month £72.99, "Save ~28%" pill on the 6-month). Buttons call `createProCheckoutSession`. Current Pro users see plan summary + "Manage billing" (portal). Grandfathered users see "You have lifetime Pro from Early Access ❤️".
-- **Profile menu**: "Unlock Pro" chip stays for non-Pro; label changes from "free in Early Access" to "£16.99/mo".
-- **Settings → Subscription card**: shows current plan, renewal date, and either "Manage billing" or the grandfathered badge.
-- **Landing page pricing CTAs**: point signed-in users to `/pro`, signed-out users to `/auth?mode=signup&next=/pro`.
+New `useSubscription()` hook (browser) reads `profiles` with realtime subscription for the current user and exposes `{ hasAccess, isGrandfathered, plan, renewsAt, cancelAtPeriodEnd, loading }`.
 
-## 7. Cutover checklist
+New wrapper in `src/routes/_authenticated/route.tsx` (or a nested `_paid.tsx` layout):
+- Grandfathered → pass through.
+- `hasAccess === true` → pass through.
+- Otherwise → `redirect({ to: '/subscribe' })`.
 
-- Enable Stripe → create products → set `PRO_EARLY_ACCESS_FREE = false`.
-- Run migration (columns + backfill + trigger update).
-- Configure Stripe webhook to `https://project--c0d0fdd1-6a49-47d4-acb7-092208251a0f.lovable.app/api/public/stripe-webhook` and save `STRIPE_WEBHOOK_SECRET`.
-- Verify: existing Pro accounts stay Pro; new signup can subscribe monthly and 6-month; cancel via portal flips `is_pro` at period end.
+`/subscribe` and `/settings` are the only authenticated routes that stay reachable without a subscription (so users can subscribe or sign out). `/auth`, `/`, `/pro` (deleted), legal pages stay public.
+
+## 7. UI changes
+
+- **New `/subscribe`**: two plan cards + Embedded Checkout, a compact benefits list, "Sign out" and "Contact support" links. Uses same premium visual language as `/pro`. No "start for free" copy.
+- **Delete `/pro`** route entirely.
+- **Profile menu**: remove "Unlock Pro — free in Early Access" and "Membership" pointing at `/pro`. Replace with "Billing" → Stripe Billing Portal (or, for grandfathered users, "Founding member" badge only, no billing link).
+- **Settings → Subscription card**: shows current plan, renewal date, "Manage billing" button (portal), or the founding-member badge. `Re-plan` and account cards unchanged.
+- **Landing page**:
+  - Pricing section CTAs → signed-out: `/auth?mode=signup&next=/subscribe`; signed-in without access: `/subscribe`; signed-in with access: `/dashboard`.
+  - Remove any "Free during Early Access" copy.
+- **Post-signup routing** (`src/routes/auth.tsx` / OAuth callback): after `SIGNED_IN`, if the user has no access → go to `/subscribe`; else onboarding or dashboard.
+- **Onboarding return handler**: on `/onboarding?checkout=success`, show a "Payment received — building your plan…" state and poll `getSubscriptionSummary` until `hasAccess` is true (webhook has fired), then continue into onboarding.
+- Remove: `activateEarlyAccessPro`, `upgradeToPro`, `cancelPro`, `PRO_EARLY_ACCESS_FREE`, pro-changed toast events, "Unlock Pro" buttons, `<PlanBadge isPro />` (or repurpose as founding-member badge only).
+
+## 8. Cutover checklist
+
+- Migration: columns + trigger extension + grandfather backfill.
+- `batch_create_product` for `pro_monthly`.
+- Server function `ensureSemiAnnualPrice` creates `pro_six_month` on first checkout.
+- Webhook already registered by `enable_stripe_payments`; nothing to configure manually.
+- Sandbox: sign up a new test user → `/subscribe` → pay with `4242 4242 4242 4242` → confirm webhook fires and access unlocks → onboarding → dashboard.
+- Sandbox: sign in as existing `is_pro=true` user → land on dashboard directly, no `/subscribe` detour.
+- Sandbox: cancel via Billing Portal → access persists until `current_period_end` → then redirects to `/subscribe`.
 
 ## Technical notes
 
-- Stripe integration is Lovable-managed (`enable_stripe_payments`) — no `STRIPE_SECRET_KEY` needed in code; the seamless SDK exposes helpers for checkout/portal/webhook verification.
-- All Pro-mutation paths go through `supabaseAdmin` inside server functions/webhook only; the existing `prevent_pro_self_upgrade` trigger is extended to also block client writes to the new subscription columns.
-- No changes to the AI-gate or feature checks — they keep reading `profiles.is_pro`.
-
-Shall I proceed?
+- All Stripe API calls go through `createStripeClient(env)` from `@/lib/stripe.server` (gateway-proxied). Environment derived from `VITE_PAYMENTS_CLIENT_TOKEN` prefix.
+- `managed_payments: { enabled: true }` on every checkout session — Stripe handles UK/EU VAT, tax filing, disputes, fraud, receipts. +3.5% per transaction on top of standard Stripe fees. Bank statements show `LINK.COM* TENTRA`. Configurable later.
+- Publishable Stripe/Supabase keys stay in code; secrets (`STRIPE_SANDBOX_API_KEY`, `PAYMENTS_SANDBOX_WEBHOOK_SECRET`, live equivalents) are already provisioned.
+- Grandfather backfill is idempotent (`WHERE grandfathered_pro = false AND is_pro = true`).
