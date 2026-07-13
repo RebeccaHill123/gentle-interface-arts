@@ -204,18 +204,10 @@ export function ProfileMenu() {
 
         {/* Future-ready */}
         <Section>
-          {!info.isPro && (
-            <Item
-              icon={Sparkles}
-              label="Unlock Pro — free in Early Access"
-              accent
-              onSelect={() => go("/pro")}
-            />
-          )}
           <Item
             icon={CreditCard}
-            label="Membership"
-            onSelect={() => go("/pro")}
+            label="Billing"
+            onSelect={() => go("/settings")}
           />
           <Item
             icon={Keyboard}
@@ -295,16 +287,11 @@ function Kbd({ children }: { children: React.ReactNode }) {
 }
 
 function PlanBadge({ isPro }: { isPro: boolean }) {
+  if (!isPro) return null;
   return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${
-        isPro
-          ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
-          : "border border-border/60 bg-background/40 text-muted-foreground"
-      }`}
-    >
-      {isPro ? <Check className="h-2.5 w-2.5" /> : null}
-      {isPro ? "Pro" : "Free"}
+    <span className="inline-flex items-center gap-1 rounded-full bg-gradient-pink-blue px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-primary-foreground shadow-glow">
+      <Check className="h-2.5 w-2.5" />
+      Member
     </span>
   );
 }

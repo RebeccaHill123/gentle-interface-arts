@@ -1,0 +1,232 @@
+import { useEffect, useState } from "react";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { Check, Loader2, LogOut, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import { AppShell } from "@/components/app-shell";
+import { Button } from "@/components/ui/button";
+import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
+import { StripeEmbeddedCheckout } from "@/components/stripe-embedded-checkout";
+import { waitForAuthUser } from "@/lib/auth-session";
+import { supabase } from "@/integrations/supabase/client";
+import { signOut } from "@/lib/use-auth";
+import { useSubscription } from "@/hooks/useSubscription";
+import type { SubscriptionPlanId } from "@/lib/pro.functions";
+
+export const Route = createFileRoute("/subscribe")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    next:
+      typeof search.next === "string" && search.next.startsWith("/")
+        ? (search.next as string)
+        : undefined,
+  }),
+  beforeLoad: async () => {
+    if (typeof window === "undefined") return;
+    const user = await waitForAuthUser();
+    if (!user) {
+      throw redirect({
+        to: "/auth",
+        search: { mode: "signup", next: "/subscribe" },
+      });
+    }
+  },
+  component: SubscribePage,
+  head: () => ({
+    meta: [
+      { title: "Choose your plan — Tentra" },
+      {
+        name: "description",
+        content:
+          "Start your Tentra subscription. Full access to your personalised SQE/UBE study plan, AI coach, mocks and analytics.",
+      },
+    ],
+  }),
+});
+
+const PLANS: {
+  id: SubscriptionPlanId;
+  title: string;
+  price: string;
+  cadence: string;
+  perMonth: string;
+  save?: string;
+  highlight?: boolean;
+}[] = [
+  {
+    id: "pro_monthly",
+    title: "Monthly",
+    price: "£16.99",
+    cadence: "per month · billed monthly",
+    perMonth: "£16.99 / month",
+  },
+  {
+    id: "pro_six_month",
+    title: "6 months",
+    price: "£72.99",
+    cadence: "billed every 6 months",
+    perMonth: "≈ £12.16 / month",
+    save: "Save 28%",
+    highlight: true,
+  },
+];
+
+function SubscribePage() {
+  const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  const sub = useSubscription();
+  const [selected, setSelected] = useState<SubscriptionPlanId | null>(null);
+  const [showCheckout, setShowCheckout] = useState(false);
+
+  // If access is granted (webhook fired after return), forward to the app.
+  useEffect(() => {
+    if (sub.loading) return;
+    if (sub.hasAccess) {
+      navigate({ to: next ?? "/onboarding", replace: true });
+    }
+  }, [sub.loading, sub.hasAccess, navigate, next]);
+
+  const returnUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/subscribe?checkout=success`
+      : "";
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      toast.success("Signed out");
+      navigate({ to: "/", replace: true });
+    } catch {
+      toast.error("Could not sign out");
+    }
+  };
+
+  if (sub.loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <PaymentTestModeBanner />
+      <AppShell title="Choose your plan" subtitle="Full access to Tentra. Cancel anytime.">
+        <div className="mx-auto max-w-4xl space-y-8">
+          {!showCheckout && (
+            <>
+              <section className="rounded-2xl border border-border/70 bg-card p-6 md:p-8">
+                <div className="mb-6">
+                  <div className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                    <Sparkles className="h-3 w-3 text-pink" />
+                    Subscribe to continue
+                  </div>
+                  <h2 className="mt-3 font-display text-[1.6rem] font-medium leading-tight tracking-tight md:text-[2rem]">
+                    Everything you need for the exam,
+                    <br className="hidden md:block" />
+                    in one intelligent study platform.
+                  </h2>
+                  <p className="mt-2 max-w-xl text-[13.5px] leading-relaxed text-muted-foreground">
+                    Personalised plan, AI coach, adaptive quizzes, full mocks and
+                    analytics — updated weekly as you study.
+                  </p>
+                </div>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {PLANS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setSelected(p.id)}
+                      className={`relative rounded-xl border p-5 text-left transition-all ${
+                        selected === p.id
+                          ? "border-pink shadow-[var(--shadow-soft)] ring-1 ring-pink/40"
+                          : "border-border/70 hover:border-border"
+                      } ${p.highlight ? "bg-gradient-to-br from-card to-card/80" : "bg-card"}`}
+                    >
+                      {p.save && (
+                        <span className="absolute right-4 top-4 rounded-full bg-gradient-pink-blue px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary-foreground">
+                          {p.save}
+                        </span>
+                      )}
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                        {p.title}
+                      </div>
+                      <div className="mt-2 font-display text-[1.8rem] font-medium tracking-tight text-foreground">
+                        {p.price}
+                      </div>
+                      <div className="text-[12px] text-muted-foreground">
+                        {p.cadence}
+                      </div>
+                      <div className="mt-1 text-[12px] font-medium text-foreground/80">
+                        {p.perMonth}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <ul className="mt-6 grid gap-2 text-[13px] text-foreground/90 sm:grid-cols-2">
+                  {[
+                    "Personalised SQE1 or UBE study plan",
+                    "AI coach — chat, voice, quizzes",
+                    "Full mock exams with per-topic feedback",
+                    "Adaptive weekly re-planning",
+                    "Weak-spot detection & recall scheduling",
+                    "Analytics, forecasts and streaks",
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <span className="mt-[3px] grid h-4 w-4 shrink-0 place-items-center rounded-full bg-foreground/[0.06]">
+                        <Check className="h-2.5 w-2.5" />
+                      </span>
+                      <span>{f}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
+                  <Button
+                    size="lg"
+                    disabled={!selected}
+                    onClick={() => setShowCheckout(true)}
+                    className="rounded-lg bg-gradient-pink-blue text-primary-foreground shadow-[var(--shadow-soft)] transition-all hover:brightness-[1.04]"
+                  >
+                    Continue to payment
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    <LogOut className="h-3.5 w-3.5" /> Sign out
+                  </button>
+                </div>
+                <p className="mt-3 text-[11.5px] text-muted-foreground">
+                  Secure payment by Stripe. Cancel anytime from Settings.
+                </p>
+              </section>
+            </>
+          )}
+
+          {showCheckout && selected && (
+            <section className="rounded-2xl border border-border/70 bg-card p-4 md:p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowCheckout(false)}
+                  className="text-[12.5px] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  ← Back to plans
+                </button>
+                <div className="text-[12px] font-medium text-foreground">
+                  {PLANS.find((p) => p.id === selected)?.perMonth}
+                </div>
+              </div>
+              <StripeEmbeddedCheckout priceId={selected} returnUrl={returnUrl} />
+              <p className="mt-3 text-center text-[11.5px] text-muted-foreground">
+                After payment, you'll be taken to build your personalised plan.
+              </p>
+            </section>
+          )}
+        </div>
+      </AppShell>
+    </div>
+  );
+}
