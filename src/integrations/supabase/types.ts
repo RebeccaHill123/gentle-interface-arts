@@ -273,38 +273,59 @@ export type Database = {
       }
       profiles: {
         Row: {
+          cancel_at_period_end: boolean
           created_at: string
+          current_period_end: string | null
           display_name: string | null
           email: string | null
           first_name: string | null
+          grandfathered_pro: boolean
           id: string
           is_pro: boolean
           last_name: string | null
           pro_since: string | null
+          stripe_customer_id: string | null
+          stripe_price_id: string | null
+          stripe_subscription_id: string | null
+          subscription_status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          cancel_at_period_end?: boolean
           created_at?: string
+          current_period_end?: string | null
           display_name?: string | null
           email?: string | null
           first_name?: string | null
+          grandfathered_pro?: boolean
           id?: string
           is_pro?: boolean
           last_name?: string | null
           pro_since?: string | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          cancel_at_period_end?: boolean
           created_at?: string
+          current_period_end?: string | null
           display_name?: string | null
           email?: string | null
           first_name?: string | null
+          grandfathered_pro?: boolean
           id?: string
           is_pro?: boolean
           last_name?: string | null
           pro_since?: string | null
+          stripe_customer_id?: string | null
+          stripe_price_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_status?: string | null
           updated_at?: string
           user_id?: string
         }
