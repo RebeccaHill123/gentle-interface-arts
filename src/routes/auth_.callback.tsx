@@ -137,6 +137,29 @@ function AuthCallbackPage() {
           navigate({ to: "/dashboard", replace: true });
           return;
         }
+
+        // Paid model: new sign-ups must complete payment before they can build a plan.
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_pro, grandfathered_pro, subscription_status, current_period_end")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
+        const status = profile?.subscription_status;
+        const graceActive =
+          status === "canceled" &&
+          !!profile?.current_period_end &&
+          new Date(profile.current_period_end).getTime() > Date.now();
+        const hasAccess =
+          !!profile?.grandfathered_pro ||
+          !!profile?.is_pro ||
+          status === "active" ||
+          status === "trialing" ||
+          graceActive;
+
+        if (!hasAccess) {
+          navigate({ to: "/subscribe", replace: true });
+          return;
+        }
         navigate({ to: "/onboarding", replace: true });
       } catch (err) {
         if (cancelled) return;

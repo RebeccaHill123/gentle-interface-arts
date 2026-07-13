@@ -39,7 +39,7 @@ export const Route = createFileRoute("/auth")({
       {
         name: "description",
         content:
-          "Sign in or create your free Tentra account to access your personalised SQE study plan, MCQ practice and mock exams.",
+          "Sign in or create your Tentra account to access your personalised SQE study plan, MCQ practice and mock exams.",
       },
       { property: "og:title", content: "Sign in to Tentra — your SQE revision dashboard" },
       {
@@ -156,6 +156,22 @@ function AuthPage() {
     navigate({ to: "/onboarding", replace: true });
   };
 
+  const autoRedirected = useRef(false);
+
+  useEffect(() => {
+    if (otpEmail || autoRedirected.current) return;
+    let active = true;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session || !active) return;
+      autoRedirected.current = true;
+      await goAfterAuth();
+    })();
+    return () => {
+      active = false;
+    };
+  }, [otpEmail, goAfterAuth]);
+
   const handleGoogle = async () => {
     setError(null);
     setGoogleLoading(true);
@@ -172,6 +188,7 @@ function AuthPage() {
       }
       if (result.redirected) return; // browser will navigate away
       trackEvent("sign_up_completed", { method: "google", mode });
+      autoRedirected.current = true;
       await goAfterAuth();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not sign in with Google");
@@ -211,6 +228,7 @@ function AuthPage() {
         return;
       }
       trackEvent("sign_up_completed", { method: "email_otp" });
+      autoRedirected.current = true;
       await goAfterAuth();
     } catch (err) {
       setOtpError(err instanceof Error ? err.message : "Verification failed");
@@ -314,6 +332,7 @@ function AuthPage() {
           return;
         }
         trackEvent("sign_up_completed", { method: "email_password" });
+        autoRedirected.current = true;
         await goAfterAuth();
       } else {
         const parsed = signInSchema.safeParse({ email, password });
@@ -358,6 +377,7 @@ function AuthPage() {
           }
           return;
         }
+        autoRedirected.current = true;
         const local = fromOnboarding ? loadPlan() : null;
         if (local) {
           await pushPlanToCloud(local);
@@ -539,7 +559,7 @@ function AuthPage() {
                 Your personalised plan is ready
               </div>
               <p className="mt-1 leading-[1.55] text-muted-foreground">
-                Create a free account to save it, track your streak, and unlock your dashboard. Free during early access.
+                Create an account to save it, track your streak, and unlock your dashboard.
               </p>
             </div>
           )}
