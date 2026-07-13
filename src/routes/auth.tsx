@@ -378,14 +378,7 @@ function AuthPage() {
           return;
         }
         autoRedirected.current = true;
-        const local = fromOnboarding ? loadPlan() : null;
-        if (local) {
-          await pushPlanToCloud(local);
-        }
-        navigate({
-          to: fromOnboarding && !local ? "/onboarding" : "/dashboard",
-          replace: true,
-        });
+        await goAfterAuth();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");

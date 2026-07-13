@@ -23,7 +23,12 @@ export async function requireAccess(currentPath?: string) {
     .select("is_pro, grandfathered_pro, subscription_status, current_period_end")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (!data) return;
+  if (!data) {
+    throw redirect({
+      to: "/subscribe",
+      search: { next: currentPath },
+    });
+  }
   const status = data.subscription_status;
   const graceActive =
     status === "canceled" &&
