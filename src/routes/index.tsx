@@ -101,9 +101,9 @@ function PremiumCta({
 
 function LandingPage() {
   const { isAuthenticated, loading } = useAuth();
-  const ctaTo = isAuthenticated ? "/dashboard" : "/auth";
+  const ctaTo = isAuthenticated ? "/dashboard" : "/subscribe";
   const ctaLabel = isAuthenticated ? "View Dashboard" : "Get started";
-  const ctaSearch = isAuthenticated ? undefined : { mode: "signup", next: "/subscribe" };
+  const ctaSearch = undefined;
 
 
   return (
@@ -141,7 +141,7 @@ function LandingPage() {
                 >
                   Sign in
                 </Link>
-                <PremiumCta to="/auth" search={{ mode: "signup", next: "/subscribe" }} className="px-5">
+                <PremiumCta to="/subscribe" className="px-5">
                   Get started
                 </PremiumCta>
               </>
@@ -333,8 +333,8 @@ function LandingPage() {
                 </p>
                 <div className="mt-8 flex flex-col gap-3">
                   <PremiumCta
-                    to={isAuthenticated ? "/subscribe" : "/auth"}
-                    search={isAuthenticated ? undefined : { mode: "signup", next: "/subscribe" }}
+                    to="/subscribe"
+                    search={undefined}
                     size="lg"
                     className="w-full"
                   >
@@ -369,8 +369,8 @@ function LandingPage() {
                 </p>
                 <div className="mt-8 flex flex-col gap-3">
                   <PremiumCta
-                    to={isAuthenticated ? "/subscribe" : "/auth"}
-                    search={isAuthenticated ? undefined : { mode: "signup", next: "/subscribe" }}
+                    to="/subscribe"
+                    search={undefined}
                     size="lg"
                     className="w-full"
                   >
@@ -445,7 +445,7 @@ function LandingPage() {
       {/* MOBILE STICKY CTA */}
       {!isAuthenticated && !loading && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 px-4 py-3 backdrop-blur-xl md:hidden">
-          <PremiumCta to="/auth" search={{ mode: "signup", next: "/subscribe" }} size="lg" className="w-full">
+          <PremiumCta to="/subscribe" size="lg" className="w-full">
             Get started <ArrowRight className="ml-1.5 h-4 w-4" />
           </PremiumCta>
         </div>
