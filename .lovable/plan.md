@@ -1,98 +1,73 @@
-# Sprint 4 — Exam credibility & structured topic mapping
 
-Make Tentra feel exam-specific for SQE1, SQE2, NY Bar, MPRE. One source of truth for exam structure, used everywhere.
+# Transition Tentra Pro to paid (Stripe)
 
-## 1. New central config: `src/lib/exam-config.ts`
+Goal: replace the "free during Early Access" flow with real Stripe checkout at **£16.99/month** and **£72.99/6 months**, while keeping every current Pro user on Pro forever (grandfathered).
 
-Single source of truth. Replaces ad-hoc lookups in onboarding/dashboard/preview. Existing `sqe-syllabus.ts`, `ube-syllabus.ts`, `mpre-syllabus.ts` stay as low-level data; the new config layers user-facing structure on top (groupings, skills, dashboard cards, credibility metadata).
+## 1. Payments setup
 
-Shape per exam (`SQE1` | `SQE2` | `NY_BAR` | `MPRE`):
+1. Enable **seamless Stripe payments** (`enable_stripe_payments`). No account setup or API keys needed from you.
+2. Default tax handling: **full compliance handling** (Stripe as merchant of record for digital SaaS in ~80 buyer countries, +3.5% per transaction, changeable later).
+3. Create two products/prices via `batch_create_product`:
+   - `Tentra Pro — Monthly` · £16.99 GBP, recurring monthly, tax code `txcd_10103001` (SaaS)
+   - `Tentra Pro — 6 months` · £72.99 GBP, recurring every 6 months, same tax code
+4. Landing page pricing section already advertises these prices — no copy changes needed.
 
-```ts
-type ExamConfig = {
-  key: "SQE1" | "SQE2" | "NY_BAR" | "MPRE";
-  name: string;                // "SQE1"
-  shortDescription: string;
-  components: { key: string; name: string; weight?: number }[];
-  topicGroups: {               // user-facing groupings
-    key: string;
-    name: string;              // display label
-    component?: string;        // e.g. "FLK1"
-    subtopics: string[];
-    sourceLabel?: string;      // official/internal label (may differ from display)
-  }[];
-  skills?: { key: string; name: string; mode: "oral" | "written" }[]; // SQE2 + MPT
-  pathwayRequirements?: { key: string; name: string; note?: string }[]; // NY Bar
-  assessmentStyle: string;
-  planLogicNotes: string[];
-  exampleTasks: string[];
-  dashboardCards: { key: string; label: string }[];
-  credibilityBadge: string;    // "Mapped to SQE1 FLK structure" etc.
-  source: { label: string; version: string; lastReviewed: string };
-  internalNotes: string;
-};
-```
+## 2. Grandfather existing Early Access users
 
-Helpers:
-- `getExamConfig(examType)` — main accessor
-- `getOnboardingWeakAreas(examType)` — flat list of user-facing topic labels
-- `getDashboardCards(examType)`
-- `getTopicGroupForSubtopic(examType, subtopic)`
+Add a migration that marks anyone currently `is_pro = true` with a new flag so they keep Pro forever without a subscription:
 
-### Structures
+- New column `profiles.grandfathered_pro boolean not null default false`.
+- One-time backfill: `UPDATE profiles SET grandfathered_pro = true WHERE is_pro = true`.
+- All Pro-gate checks continue to read `is_pro`. Grandfathered users are never downgraded when they have no active Stripe subscription.
+- Settings page shows a small "Early Access member — Pro on us, forever" badge instead of a "Manage subscription" button for these users.
 
-**SQE1** — components FLK1 + FLK2, plus pervasive Ethics layer (not a 13th group, but flagged via `pervasiveLayers`).
-- FLK1 groups: Business Law & Practice, Dispute Resolution, Contract Law, Tort, Legal System Constitutional & Administrative Law (subtopics include EU Law / retained EU law), Legal Services
-- FLK2 groups: Property Law & Practice, Wills & Administration of Estates, Solicitors Accounts, Land Law, Trusts Law, Criminal Law & Practice (subtopics include Criminal liability, Offences, Defences, Police powers, Bail, Mode of trial, Sentencing, Appeals)
-- `sourceLabel` may still reference "EU Law" / "Criminal Liability" — display labels do not.
+## 3. Subscription state
 
-**SQE2** — `skills` array (6 skills, oral/written) + `topicGroups` for practice areas (Criminal Litigation, Dispute Resolution, Property Practice, Wills & Probate, Business organisations).
+New columns on `profiles` (server-only writes via `supabaseAdmin`, blocked from clients by existing trigger — extend the trigger to also block these):
+- `stripe_customer_id text`
+- `stripe_subscription_id text`
+- `stripe_price_id text`
+- `subscription_status text` (`active`, `trialing`, `past_due`, `canceled`, `incomplete`, null)
+- `current_period_end timestamptz`
+- `cancel_at_period_end boolean default false`
 
-**NY Bar** — components MBE (50%), MEE (30%), MPT (20%). MBE + MEE subjects per brief (post-Jul 2026 MEE list). `pathwayRequirements`: UBE, NYLC, NYLE, MPRE, 50hr pro bono. MPT `skills`. `internalNotes` carries the Jul 2026 MEE-scope note.
+`is_pro` becomes derived at write-time: `grandfathered_pro OR subscription_status IN ('active','trialing')`. Set by the webhook after each Stripe event.
 
-**MPRE** — 10 topic groups per brief.
+## 4. Checkout + portal server functions
 
-## 2. Refactor consumers
+Replace `activateEarlyAccessPro` and flip `PRO_EARLY_ACCESS_FREE` to `false`.
 
-Update to read from `getExamConfig`:
-- `src/routes/onboarding.tsx` — weak-area step uses `getOnboardingWeakAreas`. Map to existing `ModuleConfidence` shape so plan-store contract is unchanged. Preserve saved draft answers; if a draft references a now-renamed module, keep the user's confidence value by best-effort name match.
-- `src/lib/preview-plan.ts` — preview plan template uses exam config (FLK split for SQE1, skills+areas for SQE2, MBE/MEE/MPT for NY Bar, PR topics for MPRE).
-- `src/routes/plan-preview.tsx` — section headings reflect exam structure; show credibility badge + trust copy.
-- `src/routes/dashboard.tsx` — top metric cards driven by `dashboardCards`. Show credibility badge in header subtle. Keep current layout/visual rhythm; just swap the labels and which data feeds each card based on exam.
-- `src/routes/coach.tsx` — inject exam config summary into AI tutor system context; render trust copy footer.
-- `src/lib/exam-paths.ts` — keep as thin adapter so existing `plan-store` `ExamPath` semantics survive. `getSubjectsForExamPath` now derives from exam config topic groups rather than syllabus files directly.
+New authenticated server functions in `src/lib/pro.functions.ts`:
+- `createProCheckoutSession({ interval: 'month' | 'six_month' })` → creates a Stripe Checkout Session for the signed-in user (creates/reuses `stripe_customer_id`), returns `{ url }`. Client redirects to `url`.
+- `createBillingPortalSession()` → Stripe Billing Portal URL for managing/canceling.
+- `getSubscriptionSummary()` → returns plan name, renewal date, cancel-at-period-end, grandfathered flag for the Settings/Pro UI.
 
-## 3. Plan generator credibility
+## 5. Stripe webhook
 
-`buildStoredPreview` and the cloud `generate-plan` edge function prompt both reference exam-config `planLogicNotes` and `exampleTasks` so generated tasks read as exam-specific (e.g. "25 mixed FLK1 MCQs: Contract + Tort" not "Study Contract Law"). Edge function: pass the structured config into the prompt; do not change response schema.
+New public route `src/routes/api/public/stripe-webhook.ts`:
+- Verifies Stripe signature with `STRIPE_WEBHOOK_SECRET`.
+- Handles `checkout.session.completed`, `customer.subscription.created|updated|deleted`, `invoice.paid`, `invoice.payment_failed`.
+- Updates the subscription columns and recomputes `is_pro` via `supabaseAdmin`.
+- Never trusts client input; matches customer → user via `stripe_customer_id`.
 
-## 4. Trust + credibility UI
+## 6. UI changes
 
-- Small `<CredibilityBadge>` component (subtle pill, gradient border) used on preview header, dashboard header, onboarding review step.
-- `<TrustNote>` component rendered in coach footer and plan preview footer:
-  > "Tentra helps structure your revision and track your progress. Always check current official exam specifications and provider materials for authoritative syllabus detail."
-- No "coming soon" / "other exam" copy anywhere — sweep with ripgrep and remove.
+- **`/pro`**: replace "Unlock Pro — free in Early Access" with two plan cards (Monthly £16.99 / 6-month £72.99, "Save ~28%" pill on the 6-month). Buttons call `createProCheckoutSession`. Current Pro users see plan summary + "Manage billing" (portal). Grandfathered users see "You have lifetime Pro from Early Access ❤️".
+- **Profile menu**: "Unlock Pro" chip stays for non-Pro; label changes from "free in Early Access" to "£16.99/mo".
+- **Settings → Subscription card**: shows current plan, renewal date, and either "Manage billing" or the grandfathered badge.
+- **Landing page pricing CTAs**: point signed-in users to `/pro`, signed-out users to `/auth?mode=signup&next=/pro`.
 
-## 5. Versioning & internal notes
+## 7. Cutover checklist
 
-Each exam config carries `source.label`, `source.version`, `source.lastReviewed`, `internalNotes`. Surface `source.lastReviewed` quietly in a footer ("Exam structure reviewed: …") on the preview and dashboard.
+- Enable Stripe → create products → set `PRO_EARLY_ACCESS_FREE = false`.
+- Run migration (columns + backfill + trigger update).
+- Configure Stripe webhook to `https://project--c0d0fdd1-6a49-47d4-acb7-092208251a0f.lovable.app/api/public/stripe-webhook` and save `STRIPE_WEBHOOK_SECRET`.
+- Verify: existing Pro accounts stay Pro; new signup can subscribe monthly and 6-month; cancel via portal flips `is_pro` at period end.
 
-## 6. Out of scope
+## Technical notes
 
-- No DB migration (plan-store shape unchanged; weak-area names persist as strings).
-- No new auth/profile fields.
-- No real adaptive engine rewrite — only structural credibility.
+- Stripe integration is Lovable-managed (`enable_stripe_payments`) — no `STRIPE_SECRET_KEY` needed in code; the seamless SDK exposes helpers for checkout/portal/webhook verification.
+- All Pro-mutation paths go through `supabaseAdmin` inside server functions/webhook only; the existing `prevent_pro_self_upgrade` trigger is extended to also block client writes to the new subscription columns.
+- No changes to the AI-gate or feature checks — they keep reading `profiles.is_pro`.
 
-## 7. Acceptance check
-
-After implementation:
-- Onboarding weak areas differ per exam and never show "EU Law" / "Criminal Liability" standalone for SQE1.
-- Preview + dashboard headings match exam structure (FLK1/FLK2/Ethics; Skills/Areas; MBE/MEE/MPT; PR topics).
-- Credibility badge visible on preview + dashboard.
-- Trust copy visible in coach + preview.
-- `rg "coming soon|Other legal exam|generic legal"` returns nothing.
-- `bunx tsgo --noEmit` passes.
-
-## Verification
-
-`bunx tsgo --noEmit` + Playwright walk: anonymous → onboarding (each exam) → preview → sign-up → dashboard, screenshot each exam's labels.
+Shall I proceed?
