@@ -70,7 +70,7 @@ function SubscribePage() {
   const navigate = useNavigate();
   const { next } = Route.useSearch();
   const sub = useSubscription();
-  const [selected, setSelected] = useState<SubscriptionPlanId | null>(null);
+  const [selected, setSelected] = useState<SubscriptionPlanId>("pro_monthly");
   const [showCheckout, setShowCheckout] = useState(false);
 
   // If access is granted (webhook fired after return), forward to the app.
