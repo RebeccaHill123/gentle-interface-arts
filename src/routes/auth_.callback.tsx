@@ -9,6 +9,7 @@ import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
 import { markAuthCallbackComplete, waitForAuthSession } from "@/lib/auth-session";
 import { getAuthRedirectURL } from "@/lib/auth-redirect";
+import { clearPreviewFromLocal, loadPreviewFromLocal } from "@/lib/preview-plan";
 
 export const Route = createFileRoute("/auth_/callback")({
   component: AuthCallbackPage,
@@ -125,7 +126,15 @@ function AuthCallbackPage() {
         window.history.replaceState({}, document.title, "/auth/callback");
         markAuthCallbackComplete();
 
-        // Paid model: new sign-ups must complete payment before they can build a plan.
+        const { loadPlan, pullPlanFromCloud, pushPlanToCloud, savePlanAndSync } = await import("@/lib/plan-store");
+        const preview = loadPreviewFromLocal();
+        const savedPreviewPlan = !!preview;
+        if (preview) {
+          await savePlanAndSync(preview);
+          clearPreviewFromLocal();
+        }
+
+        // Paid model: new sign-ups must complete payment after building/saving a plan.
         const { data: profile } = await supabase
           .from("profiles")
           .select("is_pro, grandfathered_pro, subscription_status, current_period_end")
@@ -144,11 +153,10 @@ function AuthCallbackPage() {
           graceActive;
 
         if (!hasAccess) {
-          navigate({ to: "/subscribe", replace: true });
+          navigate({ to: "/subscribe", replace: true, search: { next: savedPreviewPlan ? "/dashboard" : undefined } });
           return;
         }
 
-        const { loadPlan, pullPlanFromCloud, pushPlanToCloud } = await import("@/lib/plan-store");
         const local = loadPlan();
         if (local) {
           await pushPlanToCloud(local);

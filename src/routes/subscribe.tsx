@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/use-auth";
 import { useAuth } from "@/lib/use-auth";
 import { useSubscription } from "@/hooks/useSubscription";
+import { loadPlan } from "@/lib/plan-store";
 import type { SubscriptionPlanId } from "@/lib/pro.functions";
 
 export const Route = createFileRoute("/subscribe")({
@@ -72,13 +73,13 @@ function SubscribePage() {
   useEffect(() => {
     if (auth.loading || !auth.user || sub.loading) return;
     if (sub.hasAccess) {
-      navigate({ to: next ?? "/onboarding", replace: true });
+      navigate({ to: next ?? (loadPlan() ? "/dashboard" : "/onboarding"), replace: true });
     }
   }, [auth.loading, auth.user, sub.loading, sub.hasAccess, navigate, next]);
 
   const returnUrl =
     typeof window !== "undefined"
-      ? `${window.location.origin}/subscribe?checkout=success`
+      ? `${window.location.origin}/subscribe?checkout=success${next ? `&next=${encodeURIComponent(next)}` : ""}`
       : "";
 
   const handleSignOut = async () => {

@@ -51,6 +51,7 @@ function PlanPreviewPage() {
   const navigate = useNavigate();
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [ready, setReady] = useState(false);
+  const authSearch = { mode: "signup", from: "onboarding", next: "/subscribe?next=/dashboard" } as const;
 
   useEffect(() => {
     const local = loadPreviewFromLocal();
@@ -257,7 +258,7 @@ function PlanPreviewPage() {
         {/* Locked features */}
         <section className="mt-8 rounded-2xl border border-border/60 bg-background/40 p-6 backdrop-blur">
           <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-            <Lock className="h-3 w-3" /> Unlocks with a free account
+            <Lock className="h-3 w-3" /> Unlocks after signup and payment
           </div>
           <ul className="mt-4 grid grid-cols-1 gap-2 text-sm text-foreground sm:grid-cols-2">
             {[
@@ -281,14 +282,14 @@ function PlanPreviewPage() {
         {/* CTAs */}
         <section className="mt-10 flex flex-col items-center gap-3 text-center">
           <p className="max-w-md text-sm text-muted-foreground">
-            Create an account to save this plan and let Tentra adapt it as you study.
+            Create an account to save this plan, then choose your subscription to unlock the dashboard.
           </p>
           <Button
             asChild
             size="lg"
             className="h-12 w-full max-w-sm rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
           >
-            <Link to="/auth" search={{ mode: "signup", from: "onboarding" }}>
+            <Link to="/auth" search={authSearch}>
               Create account to save my plan
               <ArrowRight className="ml-1.5 h-4 w-4" />
             </Link>
@@ -309,7 +310,7 @@ function PlanPreviewPage() {
           size="lg"
           className="h-12 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
         >
-          <Link to="/auth" search={{ mode: "signup", from: "onboarding" }}>
+          <Link to="/auth" search={authSearch}>
             Save my plan <ArrowRight className="ml-1.5 h-4 w-4" />
           </Link>
         </Button>
@@ -337,7 +338,7 @@ function LockedAction({ icon, label }: { icon: React.ReactNode; label: string })
       variant="outline"
       className="h-11 flex-1 rounded-full border-border/70 bg-background/60 text-sm font-medium text-foreground hover:bg-foreground/[0.04]"
     >
-      <Link to="/auth" search={{ mode: "signup", from: "onboarding" }}>
+      <Link to="/auth" search={{ mode: "signup", from: "onboarding", next: "/subscribe?next=/dashboard" }}>
         {icon}
         <span className="ml-2">{label}</span>
         <Lock className="ml-2 h-3.5 w-3.5 text-muted-foreground" />

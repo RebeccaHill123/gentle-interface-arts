@@ -101,7 +101,7 @@ function PremiumCta({
 
 function LandingPage() {
   const { isAuthenticated, loading } = useAuth();
-  const ctaTo = isAuthenticated ? "/dashboard" : "/subscribe";
+  const ctaTo = isAuthenticated ? "/dashboard" : "/onboarding";
   const ctaLabel = isAuthenticated ? "View Dashboard" : "Get started";
   const ctaSearch = undefined;
 
@@ -141,7 +141,7 @@ function LandingPage() {
                 >
                   Sign in
                 </Link>
-                <PremiumCta to="/subscribe" className="px-5">
+                <PremiumCta to="/onboarding" className="px-5">
                   Get started
                 </PremiumCta>
               </>
@@ -333,12 +333,12 @@ function LandingPage() {
                 </p>
                 <div className="mt-8 flex flex-col gap-3">
                   <PremiumCta
-                    to="/subscribe"
+                    to="/onboarding"
                     search={undefined}
                     size="lg"
                     className="w-full"
                   >
-                    Subscribe now
+                    Build your plan
                     <ArrowRight className="ml-1.5 h-4 w-4" />
                   </PremiumCta>
                   <span className="text-center text-[12px] font-normal text-muted-foreground">
@@ -369,12 +369,12 @@ function LandingPage() {
                 </p>
                 <div className="mt-8 flex flex-col gap-3">
                   <PremiumCta
-                    to="/subscribe"
+                    to="/onboarding"
                     search={undefined}
                     size="lg"
                     className="w-full"
                   >
-                    Subscribe now
+                    Build your plan
                     <ArrowRight className="ml-1.5 h-4 w-4" />
                   </PremiumCta>
                   <span className="text-center text-[12px] font-normal text-muted-foreground">
@@ -445,7 +445,7 @@ function LandingPage() {
       {/* MOBILE STICKY CTA */}
       {!isAuthenticated && !loading && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 px-4 py-3 backdrop-blur-xl md:hidden">
-          <PremiumCta to="/subscribe" size="lg" className="w-full">
+          <PremiumCta to="/onboarding" size="lg" className="w-full">
             Get started <ArrowRight className="ml-1.5 h-4 w-4" />
           </PremiumCta>
         </div>
