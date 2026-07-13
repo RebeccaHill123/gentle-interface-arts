@@ -125,19 +125,6 @@ function AuthCallbackPage() {
         window.history.replaceState({}, document.title, "/auth/callback");
         markAuthCallbackComplete();
 
-        const { loadPlan, pullPlanFromCloud, pushPlanToCloud } = await import("@/lib/plan-store");
-        const local = loadPlan();
-        if (local) {
-          await pushPlanToCloud(local);
-          navigate({ to: "/dashboard", replace: true });
-          return;
-        }
-        const cloud = await pullPlanFromCloud();
-        if (cloud) {
-          navigate({ to: "/dashboard", replace: true });
-          return;
-        }
-
         // Paid model: new sign-ups must complete payment before they can build a plan.
         const { data: profile } = await supabase
           .from("profiles")
@@ -158,6 +145,19 @@ function AuthCallbackPage() {
 
         if (!hasAccess) {
           navigate({ to: "/subscribe", replace: true });
+          return;
+        }
+
+        const { loadPlan, pullPlanFromCloud, pushPlanToCloud } = await import("@/lib/plan-store");
+        const local = loadPlan();
+        if (local) {
+          await pushPlanToCloud(local);
+          navigate({ to: "/dashboard", replace: true });
+          return;
+        }
+        const cloud = await pullPlanFromCloud();
+        if (cloud) {
+          navigate({ to: "/dashboard", replace: true });
           return;
         }
         navigate({ to: "/onboarding", replace: true });
