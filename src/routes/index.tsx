@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import { BackgroundBlobs } from "@/components/background-blobs";
@@ -8,7 +8,6 @@ import {
   Sparkles,
   Calendar,
   Target,
-  Brain,
   LayoutDashboard,
   MessageSquareText,
   BarChart3,
@@ -16,11 +15,7 @@ import {
   ClipboardCheck,
   TrendingUp,
   CheckCircle2,
-  Activity,
   Timer,
-  Trophy,
-  BookOpen,
-  FileText,
 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
@@ -33,16 +28,17 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "An adaptive study planner for SQE1, SQE2, NY Bar and MPRE candidates that tells you exactly what to study each day.",
+          "Tentra builds your daily study plan around your exam date, available time and progress. Built for SQE, NY Bar and MPRE students.",
       },
       { property: "og:title", content: "Tentra — Adaptive study planner for SQE, NY Bar & MPRE" },
       {
         property: "og:description",
         content:
-          "Personalised plan, focus sessions, weak-area drills and AI coaching — built for SQE1, SQE2, NY Bar and MPRE candidates.",
+          "Stop planning. Start studying. An adaptive daily study plan for SQE, NY Bar and MPRE candidates.",
       },
       { property: "og:url", content: "https://tentraapp.com/" },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://tentraapp.com/" }],
     scripts: [
@@ -56,7 +52,7 @@ export const Route = createFileRoute("/")({
           operatingSystem: "Web",
           url: "https://tentraapp.com/",
           description:
-            "Adaptive study planner with focus sessions, weak-area drills and AI coaching for SQE1, SQE2, NY Bar and MPRE candidates.",
+            "Adaptive study planner with focus sessions, weak-area drills and AI coaching for SQE, NY Bar and MPRE candidates.",
           offers: { "@type": "Offer", price: "16.99", priceCurrency: "GBP" },
         }),
       },
@@ -66,7 +62,6 @@ export const Route = createFileRoute("/")({
 
 /* ---------- Premium primitives ---------- */
 
-/** Refined gradient CTA — smoother gradient, inset highlight, soft glow. */
 function PremiumCta({
   to,
   search,
@@ -84,7 +79,7 @@ function PremiumCta({
   return (
     <Button
       asChild
-      className={`group relative ${h} rounded-full px-7 text-[14.5px] font-medium tracking-[-0.005em] text-primary-foreground transition-all duration-300 hover:brightness-[1.06] ${className}`}
+      className={`group relative ${h} min-h-11 rounded-full px-7 text-[14.5px] font-medium tracking-[-0.005em] text-primary-foreground transition-all duration-200 hover:brightness-[1.06] active:scale-[0.985] active:brightness-95 ${className}`}
       style={{
         background:
           "linear-gradient(120deg, oklch(0.80 0.15 350) 0%, oklch(0.74 0.15 330) 45%, oklch(0.70 0.15 270) 100%)",
@@ -102,30 +97,35 @@ function PremiumCta({
 function LandingPage() {
   const { isAuthenticated, loading } = useAuth();
   const ctaTo = isAuthenticated ? "/dashboard" : "/onboarding";
-  const ctaLabel = isAuthenticated ? "View Dashboard" : "Get started";
-  const ctaSearch = undefined;
 
+  // Sticky CTA visibility — only show once the hero CTA leaves the viewport.
+  const heroCtaRef = useRef<HTMLDivElement | null>(null);
+  const [showStickyCta, setShowStickyCta] = useState(false);
+  useEffect(() => {
+    const el = heroCtaRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(
+      ([entry]) => setShowStickyCta(!entry.isIntersecting),
+      { rootMargin: "0px 0px -20px 0px", threshold: 0 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-background">
+    <div className="relative min-h-screen overflow-x-hidden bg-background">
       <BackgroundBlobs />
 
-      <div className="relative pb-28 md:pb-0">
-        {/* HEADER */}
-        <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 md:px-8 md:py-7">
+      <div className="relative pb-24 md:pb-0">
+        {/* HEADER — compact on mobile */}
+        <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-8 md:py-6">
           <BrandMark />
           <nav className="hidden items-center gap-9 text-[13px] font-normal text-muted-foreground md:flex">
-            <a href="#features" className="relative transition-colors hover:text-foreground">
-              Features
-            </a>
-            <a href="#how" className="relative transition-colors hover:text-foreground">
-              How it works
-            </a>
-            <a href="#pricing" className="relative transition-colors hover:text-foreground">
-              Pricing
-            </a>
+            <a href="#features" className="transition-colors hover:text-foreground">Features</a>
+            <a href="#how" className="transition-colors hover:text-foreground">How it works</a>
+            <a href="#pricing" className="transition-colors hover:text-foreground">Pricing</a>
           </nav>
-          <div className="flex items-center gap-3 md:gap-4">
+          <div className="flex items-center gap-2 md:gap-4">
             {loading ? (
               <div className="h-9 w-24 animate-pulse rounded-full bg-card/60" />
             ) : isAuthenticated ? (
@@ -137,11 +137,11 @@ function LandingPage() {
                 <Link
                   to="/auth"
                   search={{ mode: "signin" }}
-                  className="hidden text-[13px] font-normal text-muted-foreground transition-colors hover:text-foreground sm:inline-block"
+                  className="inline-flex min-h-11 items-center px-2 text-[13px] font-normal text-muted-foreground transition-colors hover:text-foreground"
                 >
                   Sign in
                 </Link>
-                <PremiumCta to="/onboarding" className="px-5">
+                <PremiumCta to="/onboarding" className="px-4 md:px-5">
                   Get started
                 </PremiumCta>
               </>
@@ -150,115 +150,69 @@ function LandingPage() {
         </header>
 
         <main>
-          {/* HERO */}
-          <section className="mx-auto max-w-6xl px-5 pt-4 pb-12 md:px-8 md:pt-16 md:pb-24">
-            <div className="grid items-center gap-12 md:grid-cols-[1.05fr_1fr] md:gap-16">
-              <div className="text-center md:text-left">
-                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-card/60 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground backdrop-blur">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-primary opacity-70" />
-                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-                  </span>
-                  Now available
-                </span>
-
-                <h1 className="mt-7 text-[2rem] font-light leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.4rem] md:text-[2.85rem] lg:text-[3.1rem]">
-                  The performance platform for{" "}
-                  <span className="text-gradient-pink-violet font-light">future lawyers</span>
-                  <span className="text-foreground">.</span>
-                </h1>
-
-                <p className="mx-auto mt-6 max-w-[30rem] text-[15px] leading-[1.65] text-muted-foreground md:mx-0 md:text-[16.5px]">
-                  An adaptive study planner for SQE, NY Bar and MPRE students that tells you exactly what to study each day.
-                </p>
-
-
-                <div className="mt-9 flex flex-col items-center gap-3 md:flex-row md:items-center md:justify-start">
-                  <PremiumCta to={ctaTo} search={ctaSearch} size="lg" className="w-full md:w-auto">
-                    {ctaLabel}
-                    <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
-                  </PremiumCta>
-                  {!isAuthenticated && (
-                    <Link
-                      to="/auth"
-                      search={{ mode: "signin" }}
-                      className="text-[13.5px] font-normal text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      Sign in
-                    </Link>
-                  )}
+          {/* HERO — mobile first */}
+          <section className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:px-8 md:pt-12 md:pb-20">
+            <div className="grid items-center gap-8 md:grid-cols-[1.05fr_1fr] md:gap-16">
+              <div className="text-left">
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+                  SQE · NY Bar · MPRE
                 </div>
 
+                <h1 className="mt-4 text-[2.35rem] font-light leading-[1.02] tracking-[-0.03em] text-foreground sm:text-[2.6rem] md:text-[2.85rem] lg:text-[3.15rem]">
+                  Stop planning.
+                  <br />
+                  <span className="text-gradient-pink-violet font-light">Start studying.</span>
+                </h1>
+
+                <p className="mt-5 max-w-[32rem] text-[15.5px] leading-[1.55] text-muted-foreground md:text-[16.5px]">
+                  Tentra builds your daily study plan around your exam date, available time and progress.
+                </p>
+
+                <div ref={heroCtaRef} className="mt-7 flex flex-col items-stretch gap-3 md:flex-row md:items-center">
+                  {isAuthenticated ? (
+                    <PremiumCta to={ctaTo} size="lg" className="w-full md:w-auto">
+                      View dashboard
+                      <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </PremiumCta>
+                  ) : (
+                    <PremiumCta to="/onboarding" size="lg" className="w-full md:w-auto">
+                      Build my plan
+                      <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                    </PremiumCta>
+                  )}
+                  <a
+                    href="#features"
+                    className="inline-flex min-h-11 items-center justify-center text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground md:ml-2"
+                  >
+                    See Tentra in action ↓
+                  </a>
+                </div>
+
+                <p className="mt-3 text-[13px] leading-snug text-muted-foreground/80">
+                  Your first plan takes under 2 minutes.
+                </p>
               </div>
 
-              {/* Hero phone mockup */}
-              <div className="relative mx-auto w-full max-w-[300px] md:max-w-[340px]">
-                <div className="absolute -inset-8 -z-10 rounded-[3rem] bg-gradient-pink-violet opacity-[0.18] blur-3xl" />
-                <PhoneFrame>
-                  <DashboardPanel />
-                </PhoneFrame>
-                <FloatingChip className="-right-4 top-10 hidden sm:flex" style={{ animationDelay: "-1s" }}>
-                  <TrendingUp className="h-3.5 w-3.5 text-pink" />
-                  <span className="flex flex-col leading-tight">
-                    <span className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                      Plan adherence
-                    </span>
-                    <span className="text-[12.5px] font-medium text-foreground">92%</span>
-                  </span>
-                </FloatingChip>
-                <FloatingChip className="-left-5 top-1/3 hidden sm:flex" style={{ animationDelay: "-2.5s" }}>
-                  <Flame className="h-3.5 w-3.5 text-pink" />
-                  <span className="flex flex-col leading-tight">
-                    <span className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                      Streak
-                    </span>
-                    <span className="text-[12.5px] font-medium text-foreground">14 days</span>
-                  </span>
-                </FloatingChip>
-                <FloatingChip className="-right-6 bottom-32 hidden sm:flex" style={{ animationDelay: "-4s" }}>
-                  <Target className="h-3.5 w-3.5 text-pink" />
-                  <span className="flex flex-col leading-tight">
-                    <span className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                      Predicted readiness
-                    </span>
-                    <span className="text-[12.5px] font-medium text-foreground">78%</span>
-                  </span>
-                </FloatingChip>
-                <FloatingChip className="-left-3 bottom-16 hidden sm:flex" style={{ animationDelay: "-5.5s" }}>
-                  <Sparkles className="h-3.5 w-3.5 text-pink" />
-                  <span className="flex flex-col leading-tight">
-                    <span className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                      Schedule
-                    </span>
-                    <span className="text-[12.5px] font-medium text-foreground">+2.1h ahead</span>
-                  </span>
-                </FloatingChip>
+              {/* Hero product preview — edge-to-edge card on mobile */}
+              <div className="relative -mx-1 mt-2 sm:mx-0 md:mt-0">
+                <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-pink-violet opacity-[0.16] blur-3xl motion-reduce:hidden" />
+                <HeroPreviewCard />
               </div>
             </div>
           </section>
 
-          {/* TRUST STRIP — elegant hairline row */}
-          <section className="mx-auto max-w-5xl px-5 pb-16 md:px-8 md:pb-28">
-            <div className="grid grid-cols-2 gap-y-4 border-y border-border/60 py-5 md:grid-cols-4 md:divide-x md:divide-border/60 md:py-6">
-              <TrustItem icon={<Target className="h-3.5 w-3.5" />} label="Built for SQE, NY Bar & MPRE" />
-              <TrustItem icon={<Brain className="h-3.5 w-3.5" />} label="Adaptive study planning" />
-              <TrustItem icon={<BarChart3 className="h-3.5 w-3.5" />} label="Performance analytics" />
-              <TrustItem icon={<Sparkles className="h-3.5 w-3.5" />} label="For future lawyers" />
-            </div>
-          </section>
-
-          {/* FEATURES */}
-          <section id="features" className="mx-auto max-w-6xl px-5 pb-20 md:px-8 md:pb-32">
-            <div className="mx-auto mb-12 max-w-2xl text-center md:mb-20">
+          {/* FEATURES — moved directly under hero preview */}
+          <section id="features" className="mx-auto max-w-6xl px-4 pb-16 md:px-8 md:pb-28">
+            <div className="mx-auto mb-8 max-w-2xl text-center md:mb-14">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
                 The platform
               </div>
-              <h2 className="mt-5 text-[2rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.75rem]">
-                Engineered to{" "}
-                <span className="text-gradient-pink-violet font-light">perform</span>.
+              <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
+                Everything you need to{" "}
+                <span className="text-gradient-pink-violet font-light">make progress</span>.
               </h2>
-              <p className="mt-5 text-[15px] leading-[1.65] text-muted-foreground md:text-[16px]">
-                One disciplined workflow. Five tools designed to compound.
+              <p className="mt-4 text-[14.5px] leading-[1.55] text-muted-foreground md:text-[16px]">
+                Plan your work, focus properly, practise your weak areas and see what is improving.
               </p>
             </div>
 
@@ -266,149 +220,153 @@ function LandingPage() {
           </section>
 
           {/* HOW IT WORKS */}
-          <section id="how" className="mx-auto max-w-6xl px-5 pb-20 md:px-8 md:pb-32">
-            <div className="mb-12 text-center md:mb-16">
+          <section id="how" className="mx-auto max-w-6xl px-4 pb-16 md:px-8 md:pb-28">
+            <div className="mb-8 text-center md:mb-14">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
                 How it works
               </div>
-              <h2 className="mt-5 text-[2rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.75rem]">
-                Ready in under a minute.
+              <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
+                Three steps. That's it.
               </h2>
             </div>
-            <div className="grid gap-4 md:grid-cols-3 md:gap-6">
-              <StepCard num="01" icon={<Calendar className="h-4 w-4" />} title="Set your exam date" body="Anchor the plan to your SQE, NY Bar or MPRE sitting." />
-              <StepCard num="02" icon={<Brain className="h-4 w-4" />} title="Map your confidence" body="A quick diagnostic across every module." />
-              <StepCard num="03" icon={<Target className="h-4 w-4" />} title="Execute daily" body="A precise schedule that adapts as you progress." />
+            <div className="grid gap-3 md:grid-cols-3 md:gap-6">
+              <StepCard num="01" icon={<Calendar className="h-4 w-4" />} title="Tell us your exam" body="Choose your route, exam date and weekly availability." />
+              <StepCard num="02" icon={<LayoutDashboard className="h-4 w-4" />} title="Get your daily plan" body="Tentra turns the syllabus into manageable daily tasks." />
+              <StepCard num="03" icon={<Target className="h-4 w-4" />} title="Keep progressing" body="Your plan adapts when you complete, miss or reschedule work." />
             </div>
           </section>
 
-          {/* TESTIMONIAL */}
-          <section className="mx-auto max-w-3xl px-5 pb-20 md:px-8 md:pb-28">
-            <div className="relative overflow-hidden rounded-[1.75rem] border border-border/70 bg-card/60 p-8 text-center backdrop-blur md:p-14">
-              <div className="absolute inset-x-10 -top-16 -z-10 h-32 bg-gradient-pink-violet opacity-[0.10] blur-3xl" />
-              <Sparkles className="mx-auto h-4 w-4 text-pink" />
-              <p className="mx-auto mt-6 max-w-xl text-[17px] font-light leading-[1.45] tracking-[-0.01em] text-foreground md:text-[22px]">
-                "Tentra turned my preparation into something measurable. I knew, every day, that I
-                was getting closer."
+          {/* STATEMENT (replaces testimonial) */}
+          <section className="mx-auto max-w-3xl px-4 pb-16 md:px-8 md:pb-24">
+            <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-card/60 p-7 text-center backdrop-blur md:rounded-[1.75rem] md:p-14">
+              <div className="absolute inset-x-10 -top-16 -z-10 h-32 bg-gradient-pink-violet opacity-[0.10] blur-3xl motion-reduce:hidden" />
+              <p className="mx-auto max-w-xl text-[1.35rem] font-light leading-[1.2] tracking-[-0.015em] text-foreground md:text-[1.85rem]">
+                Less time planning.
+                <br />
+                <span className="text-gradient-pink-violet">More time making progress.</span>
               </p>
-              <p className="mt-6 text-[10.5px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                Built for the next generation of lawyers
+              <p className="mx-auto mt-5 max-w-md text-[14px] leading-[1.55] text-muted-foreground md:text-[15px]">
+                Tentra handles the structure so you can focus on the work.
               </p>
             </div>
           </section>
 
           {/* PRICING */}
-          <section id="pricing" className="mx-auto max-w-5xl px-5 pb-24 md:px-8 md:pb-32">
-            <div className="mx-auto mb-12 max-w-2xl text-center md:mb-16">
+          <section id="pricing" className="mx-auto max-w-5xl px-4 pb-20 md:px-8 md:pb-28">
+            <div className="mx-auto mb-8 max-w-2xl text-center md:mb-14">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
                 Pricing
               </div>
-              <h2 className="mt-5 text-[2rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.75rem]">
+              <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
                 Simple, transparent{" "}
                 <span className="text-gradient-pink-violet font-light">pricing</span>.
               </h2>
-              <p className="mx-auto mt-5 max-w-xl text-[15px] leading-[1.65] text-muted-foreground md:text-[16px]">
-                Full access to your personalised study plan, AI coach, mocks and analytics.
-                Cancel anytime.
+              <p className="mx-auto mt-4 max-w-md text-[14.5px] leading-[1.55] text-muted-foreground md:text-[15.5px]">
+                Full access. Cancel anytime.
               </p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 md:gap-6">
+            <div className="grid gap-3 md:grid-cols-2 md:gap-6">
               {/* Monthly */}
-              <div className="relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-7 backdrop-blur md:p-8">
+              <div className="relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur md:p-8">
                 <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
                   Monthly
                 </div>
-                <h3 className="text-[1.35rem] font-medium tracking-[-0.02em] text-foreground md:text-[1.5rem]">
+                <h3 className="text-[1.25rem] font-medium tracking-[-0.02em] text-foreground md:text-[1.5rem]">
                   Monthly
                 </h3>
-                <div className="mt-3 flex items-baseline gap-1">
-                  <span className="text-[2.5rem] font-light tracking-[-0.03em] text-foreground md:text-[3rem]">
+                <div className="mt-2 flex items-baseline gap-1">
+                  <span className="text-[2.25rem] font-light tracking-[-0.03em] text-foreground md:text-[3rem]">
                     £16.99
                   </span>
                   <span className="text-[13px] font-normal text-muted-foreground">/ month</span>
                 </div>
-                <p className="mt-4 text-[14px] leading-[1.55] text-muted-foreground">
-                  Flexible access for focused SQE and NY Bar prep.
+                <p className="mt-3 text-[13.5px] leading-[1.5] text-muted-foreground">
+                  Flexible month-to-month access.
                 </p>
-                <div className="mt-8 flex flex-col gap-3">
-                  <PremiumCta
-                    to="/onboarding"
-                    search={undefined}
-                    size="lg"
-                    className="w-full"
-                  >
-                    Build your plan
+                <div className="mt-6 flex flex-col gap-2">
+                  <PremiumCta to="/onboarding" size="lg" className="w-full">
+                    Build my plan
                     <ArrowRight className="ml-1.5 h-4 w-4" />
                   </PremiumCta>
-                  <span className="text-center text-[12px] font-normal text-muted-foreground">
+                  <span className="text-center text-[12px] text-muted-foreground">
                     Cancel anytime.
                   </span>
                 </div>
               </div>
 
-              {/* 6-month — highlighted */}
-              <div className="relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-7 shadow-glow backdrop-blur md:p-8">
+              {/* 6-month — highlighted with clear saving */}
+              <div className="relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-glow backdrop-blur md:p-8">
                 <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-pink-blue opacity-60" />
-                <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full bg-gradient-pink-blue px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-primary-foreground">
-                  Recommended
-                </div>
-                <h3 className="text-[1.35rem] font-medium tracking-[-0.02em] text-foreground md:text-[1.5rem]">
-                  6-month access
-                </h3>
-                <div className="mt-3 flex items-baseline gap-1">
-                  <span className="text-[2.5rem] font-light tracking-[-0.03em] text-foreground md:text-[3rem]">
-                    £72.99
+                <div className="mb-3 flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center rounded-full bg-gradient-pink-blue px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-primary-foreground">
+                    Best value
+                  </span>
+                  <span className="inline-flex items-center rounded-full border border-pink/40 bg-pink/10 px-2.5 py-1 text-[10.5px] font-semibold text-foreground">
+                    Save £29
                   </span>
                 </div>
-                <p className="mt-4 text-[14px] leading-[1.55] text-muted-foreground">
-                  Best for a full revision block or exam cycle.
+                <h3 className="text-[1.25rem] font-medium tracking-[-0.02em] text-foreground md:text-[1.5rem]">
+                  6-month access
+                </h3>
+                <div className="mt-2 flex items-baseline gap-2">
+                  <span className="text-[2.25rem] font-light tracking-[-0.03em] text-foreground md:text-[3rem]">
+                    £72.99
+                  </span>
+                  <span className="text-[13px] text-muted-foreground line-through">£101.94</span>
+                </div>
+                <p className="mt-3 text-[13.5px] leading-[1.5] text-muted-foreground">
+                  Around <span className="font-medium text-foreground">£12.17/month</span> — best for a full revision block.
                 </p>
-                <p className="mt-2 text-[12px] font-normal text-muted-foreground">
-                  Works out at around £12.17/month
-                </p>
-                <div className="mt-8 flex flex-col gap-3">
-                  <PremiumCta
-                    to="/onboarding"
-                    search={undefined}
-                    size="lg"
-                    className="w-full"
-                  >
-                    Build your plan
+                <div className="mt-6 flex flex-col gap-2">
+                  <PremiumCta to="/onboarding" size="lg" className="w-full">
+                    Build my plan
                     <ArrowRight className="ml-1.5 h-4 w-4" />
                   </PremiumCta>
-                  <span className="text-center text-[12px] font-normal text-muted-foreground">
+                  <span className="text-center text-[12px] text-muted-foreground">
                     Billed every 6 months. Cancel anytime.
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* What's included */}
-            <div className="mt-10 rounded-2xl border border-border/60 bg-card/40 p-6 backdrop-blur md:p-8">
-              <h3 className="text-center text-[1.05rem] font-medium tracking-[-0.01em] text-foreground md:text-left">
+            {/* Included — grouped into 6 concise benefits */}
+            <div className="mt-8 rounded-2xl border border-border/60 bg-card/40 p-5 backdrop-blur md:p-8">
+              <h3 className="text-[15px] font-medium tracking-[-0.01em] text-foreground md:text-[17px]">
                 What's included
               </h3>
-              <div className="mt-6 grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
-                <IncludedItem icon={<LayoutDashboard className="h-4 w-4" />} label="Personal study dashboard" />
-                <IncludedItem icon={<Calendar className="h-4 w-4" />} label="Build a Plan tool" />
-                <IncludedItem icon={<MessageSquareText className="h-4 w-4" />} label="AI Coach & AI Tutor — in-app or connect to ChatGPT" />
-                <IncludedItem icon={<Timer className="h-4 w-4" />} label="Focus/session timer" />
-                <IncludedItem icon={<ClipboardCheck className="h-4 w-4" />} label="Topic-based study logging" />
-                <IncludedItem icon={<Flame className="h-4 w-4" />} label="Streaks and progress tracking" />
-                <IncludedItem icon={<BarChart3 className="h-4 w-4" />} label="Analytics showing time studied by subject and topic" />
-                <IncludedItem icon={<Activity className="h-4 w-4" />} label="Weak-area insights from your study activity" />
-                <IncludedItem icon={<BookOpen className="h-4 w-4" />} label="Practice questions and mini tests" />
-                <IncludedItem icon={<FileText className="h-4 w-4" />} label="Mocks & materials area (coming soon)" />
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 md:mt-6 md:gap-4">
+                <IncludedItem
+                  icon={<Calendar className="h-4 w-4" />}
+                  title="Adaptive daily plan"
+                  body="Personal study plan built around your exam date and availability."
+                />
+                <IncludedItem
+                  icon={<Timer className="h-4 w-4" />}
+                  title="Focus sessions"
+                  body="Timed sessions with topic logging and streak tracking."
+                />
+                <IncludedItem
+                  icon={<MessageSquareText className="h-4 w-4" />}
+                  title="AI Coach & Tutor"
+                  body="Explanations and quizzes shaped by your latest activity."
+                />
+                <IncludedItem
+                  icon={<ClipboardCheck className="h-4 w-4" />}
+                  title="Practice questions"
+                  body="Topic-based questions and mini tests. Full mocks coming soon."
+                />
+                <IncludedItem
+                  icon={<BarChart3 className="h-4 w-4" />}
+                  title="Analytics"
+                  body="See time studied by subject and where your gaps are."
+                />
+                <IncludedItem
+                  icon={<Flame className="h-4 w-4" />}
+                  title="Progress tracking"
+                  body="Streaks, weekly hours and adherence to keep momentum."
+                />
               </div>
-            </div>
-
-            {/* Guarantee banner */}
-            <div className="mt-6 rounded-2xl border border-border/60 bg-gradient-soft p-5 text-center md:p-6">
-              <p className="text-[14px] leading-[1.55] text-foreground">
-                <span className="font-medium">Cancel anytime</span>{" "}
-                from your account settings. No hidden fees.
-              </p>
             </div>
           </section>
         </main>
@@ -427,26 +385,26 @@ function LandingPage() {
                 <span className="font-display text-[11px] font-semibold text-primary-foreground">T</span>
               </span>
               <span className="font-medium tracking-tight text-foreground">Tentra</span>
-              <span className="hidden sm:inline">· For the next generation of lawyers.</span>
             </div>
             <nav className="flex items-center gap-5">
-              <Link to="/terms" className="transition-colors hover:text-foreground">
-                Terms
-              </Link>
-              <Link to="/privacy" className="transition-colors hover:text-foreground">
-                Privacy
-              </Link>
+              <Link to="/terms" className="transition-colors hover:text-foreground">Terms</Link>
+              <Link to="/privacy" className="transition-colors hover:text-foreground">Privacy</Link>
               <span>© {new Date().getFullYear()} Tentra</span>
             </nav>
           </div>
         </footer>
       </div>
 
-      {/* MOBILE STICKY CTA */}
+      {/* MOBILE STICKY CTA — hidden while hero CTA is visible */}
       {!isAuthenticated && !loading && (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 px-4 py-3 backdrop-blur-xl md:hidden">
+        <div
+          className={`fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/95 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-xl transition-transform duration-200 md:hidden ${
+            showStickyCta ? "translate-y-0" : "translate-y-full"
+          }`}
+          aria-hidden={!showStickyCta}
+        >
           <PremiumCta to="/onboarding" size="lg" className="w-full">
-            Get started <ArrowRight className="ml-1.5 h-4 w-4" />
+            Build my plan <ArrowRight className="ml-1.5 h-4 w-4" />
           </PremiumCta>
         </div>
       )}
@@ -454,28 +412,108 @@ function LandingPage() {
   );
 }
 
-function TrustItem({ icon, label }: { icon: React.ReactNode; label: string }) {
+/* ---------- Hero preview card (wide, edge-to-edge) ---------- */
+
+function HeroPreviewCard() {
   return (
-    <div className="flex items-center justify-center gap-2.5 px-4 text-center md:justify-start md:text-left">
-      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-pink">
-        {icon}
-      </span>
-      <span className="text-[12px] font-normal leading-snug tracking-[0.01em] text-muted-foreground md:text-[12.5px]">
-        {label}
-      </span>
+    <div className="relative w-full">
+      <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-card/80 p-4 shadow-[0_20px_60px_-25px_oklch(0.25_0.05_280/0.35)] backdrop-blur sm:p-5">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+              Today's plan
+            </div>
+            <div className="mt-1 text-[15px] font-medium tracking-[-0.01em] text-foreground">
+              2 of 4 complete
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-[10.5px] font-medium text-foreground">
+            <Calendar className="h-3 w-3 text-pink" />
+            84 days to exam
+          </div>
+        </div>
+
+        {/* Task list */}
+        <ul className="mt-4 space-y-1.5">
+          {[
+            { t: "Contract Law MCQs", m: "30 min", done: true },
+            { t: "Consideration flashcards", m: "20 min", done: true },
+            { t: "Tort mini assessment", m: "25 min", done: false, next: true },
+            { t: "Negligence questions", m: "40 min", done: false },
+          ].map((x) => (
+            <li
+              key={x.t}
+              className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-[13px] ${
+                x.next
+                  ? "border-pink/40 bg-pink/[0.06]"
+                  : "border-border/60 bg-background/40"
+              }`}
+            >
+              <span className="flex items-center gap-2.5">
+                {x.done ? (
+                  <span className="grid h-4 w-4 shrink-0 place-items-center rounded-[4px] bg-pink/20">
+                    <CheckCircle2 className="h-3 w-3 text-pink" />
+                  </span>
+                ) : (
+                  <span className={`h-4 w-4 shrink-0 rounded-[4px] border ${x.next ? "border-pink" : "border-border"}`} />
+                )}
+                <span
+                  className={
+                    x.done
+                      ? "text-muted-foreground line-through"
+                      : "text-foreground"
+                  }
+                >
+                  {x.t}
+                </span>
+              </span>
+              <span className="text-[11.5px] text-muted-foreground">{x.m}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* Recommendation */}
+        <div className="mt-4 flex items-start gap-2 rounded-xl border border-pink/25 bg-gradient-to-br from-pink/[0.08] to-violet/[0.05] p-3">
+          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pink" />
+          <div className="text-[12.5px] leading-snug text-foreground">
+            Tentra has prioritised <span className="font-medium">Tort</span> based on your recent activity.
+          </div>
+        </div>
+      </div>
+
+      {/* Single subtle floating badge */}
+      <div className="absolute -bottom-3 right-3 hidden items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 py-1.5 text-[11px] font-medium text-foreground shadow-[0_10px_25px_-10px_oklch(0.25_0.05_280/0.35)] sm:flex">
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-pink/70 motion-reduce:hidden" />
+          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-pink" />
+        </span>
+        Plan updated automatically
+      </div>
     </div>
   );
 }
 
-function IncludedItem({ icon, label }: { icon: React.ReactNode; label: string }) {
+/* ---------- Included item ---------- */
+
+function IncludedItem({
+  icon,
+  title,
+  body,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+}) {
   return (
     <div className="flex items-start gap-3">
-      <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md text-pink">
+      <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-pink/10 text-pink">
         {icon}
       </span>
-      <span className="text-[13px] font-normal leading-[1.45] text-muted-foreground">
-        {label}
-      </span>
+      <div className="min-w-0">
+        <div className="text-[13.5px] font-medium text-foreground">{title}</div>
+        <div className="mt-0.5 text-[12.5px] leading-[1.5] text-muted-foreground">{body}</div>
+      </div>
     </div>
   );
 }
@@ -492,7 +530,7 @@ function StepCard({
   body: string;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/50 p-6 backdrop-blur md:p-8">
+    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/50 p-5 backdrop-blur md:p-8">
       <div className="flex items-center justify-between">
         <div className="grid h-10 w-10 place-items-center rounded-xl bg-pink/10 text-pink">
           {icon}
@@ -501,15 +539,15 @@ function StepCard({
           {num} / 03
         </div>
       </div>
-      <h3 className="mt-7 text-[17px] font-medium tracking-[-0.015em] text-foreground md:text-[18px]">
+      <h3 className="mt-5 text-[16px] font-medium tracking-[-0.015em] text-foreground md:text-[18px]">
         {title}
       </h3>
-      <p className="mt-2 text-[13.5px] leading-[1.6] text-muted-foreground">{body}</p>
+      <p className="mt-2 text-[13.5px] leading-[1.55] text-muted-foreground">{body}</p>
     </div>
   );
 }
 
-/* ---------- Phone frame ---------- */
+/* ---------- Phone frame (used inside feature showcase) ---------- */
 
 function PhoneFrame({ children }: { children: React.ReactNode }) {
   return (
@@ -546,7 +584,7 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
     label: "Plan",
     icon: <LayoutDashboard className="h-3.5 w-3.5" />,
     eyebrow: "Daily plan",
-    title: "A plan that thinks ahead.",
+    title: "Know exactly what to study today.",
     body: "Your countdown, streak and the precise work to ship today — at a glance.",
     render: () => <DashboardPanel />,
   },
@@ -555,7 +593,7 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
     label: "Focus",
     icon: <Timer className="h-3.5 w-3.5" />,
     eyebrow: "Deep work",
-    title: "Sessions that compound.",
+    title: "Turn revision into focused sessions you can track.",
     body: "Time your work, log the discipline, watch the consistency build.",
     render: () => <FocusPanel />,
   },
@@ -564,7 +602,7 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
     label: "Coach",
     icon: <MessageSquareText className="h-3.5 w-3.5" />,
     eyebrow: "AI coach",
-    title: "A tutor that knows your gaps.",
+    title: "Get explanations and practice shaped around your gaps.",
     body: "Tailored explanations and quizzes shaped by your latest results.",
     render: () => <CoachPanel />,
   },
@@ -572,9 +610,9 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
     id: "practice",
     label: "Mocks",
     icon: <ClipboardCheck className="h-3.5 w-3.5" />,
-    eyebrow: "FLK1 & FLK2",
-    title: "Practice, sharpened to your weak spots.",
-    body: "Adaptive MCQs that pressure-test what you don't know yet.",
+    eyebrow: "Practice (mocks coming soon)",
+    title: "Test your knowledge under exam-style conditions.",
+    body: "Topic-based practice questions today. Full timed mocks are on the way.",
     render: () => <PracticePanel />,
   },
   {
@@ -582,7 +620,7 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
     label: "Analytics",
     icon: <BarChart3 className="h-3.5 w-3.5" />,
     eyebrow: "Performance",
-    title: "Mastery, mapped to the syllabus.",
+    title: "See where your time is going and what needs attention.",
     body: "Accuracy, depth and pace across every module — turned into signal.",
     render: () => <AnalyticsPanel />,
   },
@@ -591,87 +629,83 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
 function FeatureShowcase() {
   const [active, setActive] = useState<string>(SHOWCASE_TABS[0].id);
   const tab = SHOWCASE_TABS.find((t) => t.id === active) ?? SHOWCASE_TABS[0];
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+
+  const selectTab = (id: string) => {
+    setActive(id);
+    const btn = tabRefs.current[id];
+    btn?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  };
 
   return (
-    <div className="space-y-12">
-      {/* Tab selector — refined ghost buttons with underline indicator */}
-      <div className="relative -mx-5 md:mx-0">
-        <div className="flex justify-start gap-1 overflow-x-auto px-5 pb-1 md:justify-center md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <div className="inline-flex items-center gap-1 border-b border-border/60">
-            {SHOWCASE_TABS.map((t) => {
-              const isActive = t.id === active;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setActive(t.id)}
-                  className={`relative flex shrink-0 items-center gap-1.5 px-4 py-3 text-[12.5px] font-medium tracking-[-0.005em] transition-colors md:px-5 md:text-[13px] ${
-                    isActive
-                      ? "text-foreground"
-                      : "text-muted-foreground/70 hover:text-foreground"
-                  }`}
-                >
-                  <span className={isActive ? "text-pink" : ""}>{t.icon}</span>
-                  {t.label}
-                  {isActive && (
-                    <span
-                      className="absolute -bottom-px left-2 right-2 h-px"
-                      style={{
+    <div className="space-y-6 md:space-y-10">
+      {/* Pill-style tab selector, scroll-snap on mobile */}
+      <div className="relative -mx-4 md:mx-0">
+        <div
+          ref={scrollerRef}
+          className="flex snap-x snap-mandatory gap-2 overflow-x-auto scroll-px-4 px-4 pb-2 md:justify-center md:overflow-visible md:px-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+        >
+          {SHOWCASE_TABS.map((t) => {
+            const isActive = t.id === active;
+            return (
+              <button
+                key={t.id}
+                ref={(el) => {
+                  tabRefs.current[t.id] = el;
+                }}
+                onClick={() => selectTab(t.id)}
+                className={`inline-flex min-h-11 shrink-0 snap-start items-center gap-1.5 rounded-full border px-4 py-2.5 text-[13px] font-medium tracking-[-0.005em] transition-all active:scale-[0.97] ${
+                  isActive
+                    ? "border-transparent text-primary-foreground shadow-[0_8px_20px_-10px_oklch(0.55_0.15_320/0.55)]"
+                    : "border-border/60 bg-card/60 text-muted-foreground hover:text-foreground"
+                }`}
+                style={
+                  isActive
+                    ? {
                         background:
-                          "linear-gradient(90deg, transparent, oklch(0.66 0.20 320) 50%, transparent)",
-                      }}
-                    />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                          "linear-gradient(120deg, oklch(0.80 0.15 350) 0%, oklch(0.72 0.15 320) 50%, oklch(0.66 0.15 275) 100%)",
+                      }
+                    : undefined
+                }
+                aria-pressed={isActive}
+              >
+                <span className={isActive ? "text-primary-foreground" : "text-pink"}>{t.icon}</span>
+                {t.label}
+              </button>
+            );
+          })}
         </div>
         <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-background to-transparent md:hidden" />
       </div>
 
+      {/* Headline + explanation above preview on mobile */}
       <div className="relative">
-        <div className="absolute -inset-x-6 -top-10 -bottom-10 -z-10 rounded-[3rem] bg-gradient-pink-violet opacity-[0.06] blur-3xl" />
-        <div className="grid items-center gap-10 md:grid-cols-[1fr_1fr] md:gap-16">
-          <div className="order-2 md:order-1">
-            <div className="relative mx-auto w-full max-w-[290px] md:max-w-[320px]">
-              <div key={tab.id + "-visual"} className="animate-fade-in">
+        <div className="absolute -inset-x-6 -top-8 -bottom-8 -z-10 rounded-[3rem] bg-gradient-pink-violet opacity-[0.06] blur-3xl motion-reduce:hidden" />
+        <div className="grid items-center gap-6 md:grid-cols-[1fr_1fr] md:gap-16">
+          <div
+            key={tab.id + "-copy"}
+            className="animate-fade-in text-center md:order-2 md:text-left motion-reduce:animate-none"
+          >
+            <div className="text-[10.5px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
+              {tab.eyebrow}
+            </div>
+            <h3 className="mt-3 text-[1.35rem] font-light leading-[1.15] tracking-[-0.02em] text-foreground md:mt-5 md:text-[2rem]">
+              {tab.title}
+            </h3>
+            <p className="mt-3 text-[14px] leading-[1.55] text-muted-foreground md:mt-4 md:text-[16px]">
+              {tab.body}
+            </p>
+          </div>
+
+          <div className="md:order-1">
+            <div className="relative mx-auto w-full max-w-[280px] md:max-w-[320px]">
+              <div key={tab.id + "-visual"} className="animate-fade-in motion-reduce:animate-none">
                 <PhoneFrame>{tab.render()}</PhoneFrame>
               </div>
             </div>
           </div>
-
-          <div
-            key={tab.id + "-copy"}
-            className="order-1 animate-fade-in text-center md:order-2 md:text-left"
-          >
-            <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-              {tab.eyebrow}
-            </div>
-            <h3 className="mt-5 text-[1.6rem] font-light leading-[1.1] tracking-[-0.025em] text-foreground md:text-[2.1rem]">
-              {tab.title}
-            </h3>
-            <p className="mt-5 text-[15px] leading-[1.65] text-muted-foreground md:text-[16px]">
-              {tab.body}
-            </p>
-          </div>
         </div>
-      </div>
-
-      {/* Refined feature row — minimal, hairline */}
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4 border-t border-border/60 pt-8 md:grid-cols-4">
-        {[
-          { icon: <Flame className="h-3.5 w-3.5" />, title: "Consistency streaks" },
-          { icon: <Activity className="h-3.5 w-3.5" />, title: "Effort heatmaps" },
-          { icon: <Target className="h-3.5 w-3.5" />, title: "Weak-area focus" },
-          { icon: <TrendingUp className="h-3.5 w-3.5" />, title: "Mastery tracking" },
-        ].map((f) => (
-          <div key={f.title} className="flex items-center gap-2.5">
-            <span className="text-pink">{f.icon}</span>
-            <span className="text-[12.5px] font-normal text-muted-foreground md:text-[13px]">
-              {f.title}
-            </span>
-          </div>
-        ))}
       </div>
     </div>
   );
@@ -679,33 +713,12 @@ function FeatureShowcase() {
 
 /* ---------- Visual panels ---------- */
 
-function FloatingChip({
-  className = "",
-  style,
-  children,
-}: {
-  className?: string;
-  style?: React.CSSProperties;
-  children: React.ReactNode;
-}) {
-  return (
-    <div
-      style={style}
-      className={`absolute items-center gap-2 rounded-xl border border-border/70 bg-card/95 px-2.5 py-2 text-xs font-normal text-foreground shadow-[0_12px_30px_-12px_oklch(0.25_0.05_280/0.25)] backdrop-blur animate-float ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
 function DashboardPanel() {
-  const ringSize = 44;
   const r = 18;
   const c = 2 * Math.PI * r;
   const pct = 0.68;
   return (
     <div className="space-y-2.5">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <div className="text-[8.5px] font-medium uppercase tracking-[0.22em] text-muted-foreground">
@@ -742,7 +755,6 @@ function DashboardPanel() {
         </div>
       </div>
 
-      {/* Countdown row */}
       <div className="flex items-center justify-between rounded-lg border border-border/60 bg-card/40 px-2.5 py-1.5">
         <div className="flex items-center gap-1.5">
           <Calendar className="h-3 w-3 text-pink" />
@@ -752,7 +764,6 @@ function DashboardPanel() {
         <span className="text-[9px] text-muted-foreground">On track</span>
       </div>
 
-      {/* Today's plan */}
       <div className="rounded-xl border border-border/60 bg-card/40 p-2.5">
         <div className="flex items-center justify-between">
           <div className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
@@ -784,7 +795,6 @@ function DashboardPanel() {
         </ul>
       </div>
 
-      {/* AI Recommendation */}
       <div className="rounded-xl border border-pink/25 bg-gradient-to-br from-pink/[0.08] to-violet/[0.06] p-2.5">
         <div className="flex items-start gap-1.5">
           <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-pink" />
@@ -794,39 +804,6 @@ function DashboardPanel() {
             </div>
             <div className="mt-0.5 text-[10.5px] leading-snug text-foreground">
               Tort accuracy fell 8%. Prioritise Negligence this week.
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Weak areas + Weekly progress */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded-xl border border-border/60 bg-card/40 p-2.5">
-          <div className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Weak areas
-          </div>
-          <ul className="mt-1 space-y-0.5 text-[10px] text-foreground">
-            <li className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-pink" />Tort</li>
-            <li className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-pink/70" />Evidence</li>
-            <li className="flex items-center gap-1.5"><span className="h-1 w-1 rounded-full bg-pink/50" />Criminal Law</li>
-          </ul>
-        </div>
-        <div className="rounded-xl border border-border/60 bg-card/40 p-2.5">
-          <div className="text-[8.5px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            This week
-          </div>
-          <div className="mt-1 space-y-0.5">
-            <div className="flex items-baseline justify-between">
-              <span className="text-[11px] font-medium text-foreground">7.4h</span>
-              <span className="text-[8.5px] text-muted-foreground">logged</span>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-[10px] text-foreground">92%</span>
-              <span className="text-[8.5px] text-muted-foreground">adherence</span>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-[10px] text-foreground">14d</span>
-              <span className="text-[8.5px] text-muted-foreground">streak</span>
             </div>
           </div>
         </div>
@@ -940,13 +917,6 @@ function CoachPanel() {
         >
           Quiz me.
         </div>
-        <div className="flex items-center gap-2 text-[9px] text-muted-foreground">
-          <span className="relative flex h-1.5 w-1.5">
-            <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-primary/60" />
-            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
-          </span>
-          Synthesising your last 3 mocks…
-        </div>
       </div>
     </div>
   );
@@ -958,12 +928,12 @@ function PracticePanel() {
       <div className="flex items-center justify-between">
         <div>
           <div className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            FLK1 · Mini Mock
+            Practice · Tort
           </div>
           <div className="mt-1 text-[12px] font-medium text-foreground">Question 7 of 20</div>
         </div>
-        <div className="rounded-md border border-border/60 bg-card/70 px-2 py-0.5 text-[10px] font-medium text-foreground">
-          14:32
+        <div className="rounded-md border border-border/60 bg-card/70 px-2 py-0.5 text-[9px] font-medium text-muted-foreground">
+          Full mocks soon
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-border/60 bg-card/40 p-3 text-[11px] leading-relaxed text-foreground">
