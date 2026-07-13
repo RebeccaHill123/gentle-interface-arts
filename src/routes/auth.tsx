@@ -13,7 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { getRememberMe, setRememberMe } from "@/lib/remember-me";
 import { getAuthRedirectURL } from "@/lib/auth-redirect";
-import { loadPlan, pullPlanFromCloud, pushPlanToCloud } from "@/lib/plan-store";
+import { loadPlan, pullPlanFromCloud, pushPlanToCloud, savePlanAndSync } from "@/lib/plan-store";
+import { clearPreviewFromLocal, loadPreviewFromLocal } from "@/lib/preview-plan";
 import { trackEvent } from "@/lib/analytics";
 
 // Single source of truth for the email verification code length.
@@ -112,7 +113,16 @@ function AuthPage() {
 
   const reset = () => setError(null);
 
+  const syncPreviewPlanAfterAuth = async () => {
+    const preview = loadPreviewFromLocal();
+    if (!preview) return false;
+    await savePlanAndSync(preview);
+    clearPreviewFromLocal();
+    return true;
+  };
+
   const goAfterAuth = async () => {
+    const savedPreviewPlan = await syncPreviewPlanAfterAuth();
     if (next) {
       window.location.assign(next);
       return;
@@ -138,7 +148,11 @@ function AuthPage() {
         status === "trialing" ||
         graceActive;
       if (!hasAccess) {
-        navigate({ to: "/subscribe", replace: true, search: { next: undefined } });
+        navigate({
+          to: "/subscribe",
+          replace: true,
+          search: { next: savedPreviewPlan || fromOnboarding ? "/dashboard" : undefined },
+        });
         return;
       }
     }
