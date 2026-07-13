@@ -138,7 +138,7 @@ function AuthPage() {
         status === "trialing" ||
         graceActive;
       if (!hasAccess) {
-        navigate({ to: "/subscribe", replace: true });
+        navigate({ to: "/subscribe", replace: true, search: { next: undefined } });
         return;
       }
     }

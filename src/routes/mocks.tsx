@@ -180,7 +180,7 @@ function MocksPage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => navigate({ to: "/pro" })}
+                  onClick={() => navigate({ to: "/settings" })}
                   className="rounded-full"
                 >
                   <Crown className="mr-1.5 h-4 w-4" /> Unlock with Pro

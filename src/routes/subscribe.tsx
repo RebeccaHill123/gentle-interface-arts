@@ -23,10 +23,7 @@ export const Route = createFileRoute("/subscribe")({
     if (typeof window === "undefined") return;
     const user = await waitForAuthUser();
     if (!user) {
-      throw redirect({
-        to: "/auth",
-        search: { mode: "signup", next: "/subscribe" },
-      });
+      throw redirect({ to: "/auth", search: { mode: "signup", from: undefined, next: "/subscribe" } });
     }
   },
   component: SubscribePage,

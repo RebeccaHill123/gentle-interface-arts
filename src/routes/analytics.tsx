@@ -84,7 +84,7 @@ function AnalyticsPage() {
               size="sm"
               className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
             >
-              <Link to="/pro">
+              <Link to="/settings">
                 <Sparkles className="h-4 w-4" /> Unlock Pro
               </Link>
             </Button>
@@ -246,7 +246,7 @@ function LockedOverlay() {
           asChild
           className="mt-4 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
         >
-          <Link to="/pro">
+          <Link to="/settings">
             <Sparkles className="h-4 w-4" /> Try Pro free
           </Link>
         </Button>
