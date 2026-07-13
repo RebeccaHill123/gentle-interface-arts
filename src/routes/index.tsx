@@ -57,7 +57,7 @@ export const Route = createFileRoute("/")({
           url: "https://tentraapp.com/",
           description:
             "Adaptive study planner with focus sessions, weak-area drills and AI coaching for SQE1, SQE2, NY Bar and MPRE candidates.",
-          offers: { "@type": "Offer", price: "0", priceCurrency: "GBP" },
+          offers: { "@type": "Offer", price: "16.99", priceCurrency: "GBP" },
         }),
       },
     ],
@@ -101,8 +101,9 @@ function PremiumCta({
 
 function LandingPage() {
   const { isAuthenticated, loading } = useAuth();
-  const ctaTo = isAuthenticated ? "/dashboard" : "/onboarding";
-  const ctaLabel = isAuthenticated ? "View Dashboard" : "Build my study plan";
+  const ctaTo = isAuthenticated ? "/dashboard" : "/auth";
+  const ctaLabel = isAuthenticated ? "View Dashboard" : "Get started";
+  const ctaSearch = isAuthenticated ? undefined : { mode: "signup", next: "/subscribe" };
 
 
   return (
@@ -140,7 +141,7 @@ function LandingPage() {
                 >
                   Sign in
                 </Link>
-                <PremiumCta to="/onboarding" className="px-5">
+                <PremiumCta to="/auth" search={{ mode: "signup", next: "/subscribe" }} className="px-5">
                   Get started
                 </PremiumCta>
               </>
@@ -158,7 +159,7 @@ function LandingPage() {
                     <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-primary opacity-70" />
                     <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
                   </span>
-                  Early access
+                  Now available
                 </span>
 
                 <h1 className="mt-7 text-[2rem] font-light leading-[1.05] tracking-[-0.03em] text-foreground sm:text-[2.4rem] md:text-[2.85rem] lg:text-[3.1rem]">
@@ -173,7 +174,7 @@ function LandingPage() {
 
 
                 <div className="mt-9 flex flex-col items-center gap-3 md:flex-row md:items-center md:justify-start">
-                  <PremiumCta to={ctaTo} size="lg" className="w-full md:w-auto">
+                  <PremiumCta to={ctaTo} search={ctaSearch} size="lg" className="w-full md:w-auto">
                     {ctaLabel}
                     <ArrowRight className="ml-1.5 h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                   </PremiumCta>
@@ -303,13 +304,12 @@ function LandingPage() {
                 Pricing
               </div>
               <h2 className="mt-5 text-[2rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.75rem]">
-                Start free while we{" "}
-                <span className="text-gradient-pink-violet font-light">build</span>.
+                Simple, transparent{" "}
+                <span className="text-gradient-pink-violet font-light">pricing</span>.
               </h2>
               <p className="mx-auto mt-5 max-w-xl text-[15px] leading-[1.65] text-muted-foreground md:text-[16px]">
-                Tentra is currently free to use while we refine the platform with early users.
-                Future pricing is likely to be around the options below — but for now, you can
-                access the full dashboard free.
+                Full access to your personalised study plan, AI coach, mocks and analytics.
+                Cancel anytime.
               </p>
             </div>
 
@@ -317,7 +317,7 @@ function LandingPage() {
               {/* Monthly */}
               <div className="relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-7 backdrop-blur md:p-8">
                 <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-                  Planned price
+                  Monthly
                 </div>
                 <h3 className="text-[1.35rem] font-medium tracking-[-0.02em] text-foreground md:text-[1.5rem]">
                   Monthly
@@ -333,16 +333,16 @@ function LandingPage() {
                 </p>
                 <div className="mt-8 flex flex-col gap-3">
                   <PremiumCta
-                    to={ctaTo}
-                    search={isAuthenticated ? undefined : { mode: "signup" }}
+                    to={isAuthenticated ? "/subscribe" : "/auth"}
+                    search={isAuthenticated ? undefined : { mode: "signup", next: "/subscribe" }}
                     size="lg"
                     className="w-full"
                   >
-                    Start free today
+                    Subscribe now
                     <ArrowRight className="ml-1.5 h-4 w-4" />
                   </PremiumCta>
                   <span className="text-center text-[12px] font-normal text-muted-foreground">
-                    No payment required right now.
+                    Cancel anytime.
                   </span>
                 </div>
               </div>
@@ -369,16 +369,16 @@ function LandingPage() {
                 </p>
                 <div className="mt-8 flex flex-col gap-3">
                   <PremiumCta
-                    to={ctaTo}
-                    search={isAuthenticated ? undefined : { mode: "signup" }}
+                    to={isAuthenticated ? "/subscribe" : "/auth"}
+                    search={isAuthenticated ? undefined : { mode: "signup", next: "/subscribe" }}
                     size="lg"
                     className="w-full"
                   >
-                    Start free today
+                    Subscribe now
                     <ArrowRight className="ml-1.5 h-4 w-4" />
                   </PremiumCta>
                   <span className="text-center text-[12px] font-normal text-muted-foreground">
-                    No payment required right now.
+                    Billed every 6 months. Cancel anytime.
                   </span>
                 </div>
               </div>
@@ -403,11 +403,11 @@ function LandingPage() {
               </div>
             </div>
 
-            {/* Early access banner */}
+            {/* Guarantee banner */}
             <div className="mt-6 rounded-2xl border border-border/60 bg-gradient-soft p-5 text-center md:p-6">
               <p className="text-[14px] leading-[1.55] text-foreground">
-                <span className="font-medium">Early users get free access</span>{" "}
-                while Tentra is in its build phase.
+                <span className="font-medium">Cancel anytime</span>{" "}
+                from your account settings. No hidden fees.
               </p>
             </div>
           </section>
@@ -445,8 +445,8 @@ function LandingPage() {
       {/* MOBILE STICKY CTA */}
       {!isAuthenticated && !loading && (
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-border/60 bg-background/90 px-4 py-3 backdrop-blur-xl md:hidden">
-          <PremiumCta to="/onboarding" size="lg" className="w-full">
-            Build my study plan <ArrowRight className="ml-1.5 h-4 w-4" />
+          <PremiumCta to="/auth" search={{ mode: "signup", next: "/subscribe" }} size="lg" className="w-full">
+            Get started <ArrowRight className="ml-1.5 h-4 w-4" />
           </PremiumCta>
         </div>
       )}
