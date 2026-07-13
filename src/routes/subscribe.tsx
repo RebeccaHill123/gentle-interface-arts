@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Check, Loader2, LogOut, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { StripeEmbeddedCheckout } from "@/components/stripe-embedded-checkout";
-import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/use-auth";
+import { useAuth } from "@/lib/use-auth";
 import { useSubscription } from "@/hooks/useSubscription";
 import type { SubscriptionPlanId } from "@/lib/pro.functions";
 
@@ -19,13 +19,6 @@ export const Route = createFileRoute("/subscribe")({
         ? (search.next as string)
         : undefined,
   }),
-  beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const user = await waitForAuthUser();
-    if (!user) {
-      throw redirect({ to: "/auth", search: { mode: "signup", from: undefined, next: "/subscribe" } });
-    }
-  },
   component: SubscribePage,
   head: () => ({
     meta: [
@@ -69,17 +62,19 @@ const PLANS: {
 function SubscribePage() {
   const navigate = useNavigate();
   const { next } = Route.useSearch();
+  const auth = useAuth();
   const sub = useSubscription();
   const [selected, setSelected] = useState<SubscriptionPlanId>("pro_monthly");
   const [showCheckout, setShowCheckout] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(false);
 
   // If access is granted (webhook fired after return), forward to the app.
   useEffect(() => {
-    if (sub.loading) return;
+    if (auth.loading || !auth.user || sub.loading) return;
     if (sub.hasAccess) {
       navigate({ to: next ?? "/onboarding", replace: true });
     }
-  }, [sub.loading, sub.hasAccess, navigate, next]);
+  }, [auth.loading, auth.user, sub.loading, sub.hasAccess, navigate, next]);
 
   const returnUrl =
     typeof window !== "undefined"
@@ -96,7 +91,21 @@ function SubscribePage() {
     }
   };
 
-  if (sub.loading) {
+  const handleContinueToPayment = async () => {
+    setCheckingAuth(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session?.user) {
+        navigate({ to: "/auth", search: { mode: "signup", from: undefined, next: "/subscribe" } });
+        return;
+      }
+      setShowCheckout(true);
+    } finally {
+      setCheckingAuth(false);
+    }
+  };
+
+  if (auth.loading || (auth.user && sub.loading)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -181,19 +190,25 @@ function SubscribePage() {
                 <div className="mt-7 flex flex-wrap items-center justify-between gap-3">
                   <Button
                     size="lg"
-                    disabled={!selected}
-                    onClick={() => setShowCheckout(true)}
+                    disabled={!selected || checkingAuth}
+                    onClick={handleContinueToPayment}
                     className="rounded-lg bg-gradient-pink-blue text-primary-foreground shadow-[var(--shadow-soft)] transition-all hover:brightness-[1.04]"
                   >
-                    Continue to payment
+                    {checkingAuth ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Checking…</>
+                    ) : (
+                      "Continue to payment"
+                    )}
                   </Button>
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    className="inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <LogOut className="h-3.5 w-3.5" /> Sign out
-                  </button>
+                  {auth.user && (
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <LogOut className="h-3.5 w-3.5" /> Sign out
+                    </button>
+                  )}
                 </div>
                 <p className="mt-3 text-[11.5px] text-muted-foreground">
                   Secure payment by Stripe. Cancel anytime from Settings.
