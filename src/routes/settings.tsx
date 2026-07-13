@@ -16,7 +16,7 @@ export const Route = createFileRoute("/settings")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const user = await waitForAuthUser();
-    if (!user) throw redirect({ to: "/auth", search: { mode: "signin" } });
+    if (!user) throw redirect({ to: "/auth", search: { mode: "signin", from: undefined, next: undefined } });
   },
   component: SettingsPage,
   head: () => ({
@@ -204,7 +204,7 @@ function SettingsPage() {
                 </div>
               </div>
               <Button
-                onClick={() => navigate({ to: "/subscribe" })}
+                onClick={() => navigate({ to: "/subscribe", search: { next: undefined } })}
                 className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 <CreditCard className="mr-1.5 h-4 w-4" /> Choose a plan
