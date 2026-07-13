@@ -90,9 +90,8 @@ const HISTORY_KEY = "coach:lastConversation";
 
 export const Route = createFileRoute("/coach")({
   beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const user = await waitForAuthUser();
-    if (!user) throw redirect({ to: "/auth", search: { mode: "signin" } });
+    const { requireAccess } = await import("@/lib/access-guard");
+    await requireAccess();
   },
   component: CoachPage,
   head: () => ({

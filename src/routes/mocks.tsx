@@ -43,9 +43,8 @@ import { toast } from "sonner";
 
 export const Route = createFileRoute("/mocks")({
   beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const user = await waitForAuthUser();
-    if (!user) throw redirect({ to: "/auth", search: { mode: "signin" } });
+    const { requireAccess } = await import("@/lib/access-guard");
+    await requireAccess();
   },
   component: MocksPage,
   head: () => ({
@@ -181,7 +180,7 @@ function MocksPage() {
                 <Button
                   size="lg"
                   variant="outline"
-                  onClick={() => navigate({ to: "/pro" })}
+                  onClick={() => navigate({ to: "/settings" })}
                   className="rounded-full"
                 >
                   <Crown className="mr-1.5 h-4 w-4" /> Unlock with Pro

@@ -36,9 +36,8 @@ import {
 
 export const Route = createFileRoute("/analytics")({
   beforeLoad: async () => {
-    if (typeof window === "undefined") return;
-    const user = await waitForAuthUser();
-    if (!user) throw redirect({ to: "/auth", search: { mode: "signin" } });
+    const { requireAccess } = await import("@/lib/access-guard");
+    await requireAccess();
   },
   component: AnalyticsPage,
   head: () => ({
@@ -85,7 +84,7 @@ function AnalyticsPage() {
               size="sm"
               className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
             >
-              <Link to="/pro">
+              <Link to="/settings">
                 <Sparkles className="h-4 w-4" /> Unlock Pro
               </Link>
             </Button>
@@ -247,7 +246,7 @@ function LockedOverlay() {
           asChild
           className="mt-4 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
         >
-          <Link to="/pro">
+          <Link to="/settings">
             <Sparkles className="h-4 w-4" /> Try Pro free
           </Link>
         </Button>

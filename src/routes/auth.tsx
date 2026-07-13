@@ -117,6 +117,31 @@ function AuthPage() {
       window.location.assign(next);
       return;
     }
+    // Check access — if the user has no subscription and isn't grandfathered,
+    // route them to /subscribe before anything else.
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profileRow } = await supabase
+        .from("profiles")
+        .select("is_pro, grandfathered_pro, subscription_status, current_period_end")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const status = profileRow?.subscription_status;
+      const graceActive =
+        status === "canceled" &&
+        !!profileRow?.current_period_end &&
+        new Date(profileRow.current_period_end).getTime() > Date.now();
+      const hasAccess =
+        !!profileRow?.grandfathered_pro ||
+        !!profileRow?.is_pro ||
+        status === "active" ||
+        status === "trialing" ||
+        graceActive;
+      if (!hasAccess) {
+        navigate({ to: "/subscribe", replace: true, search: { next: undefined } });
+        return;
+      }
+    }
     const local = loadPlan();
     if (local) {
       await pushPlanToCloud(local);

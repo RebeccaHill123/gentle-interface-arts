@@ -156,18 +156,18 @@ function DesktopSidebar() {
         })}
       </nav>
       <Link
-        to="/pro"
+        to="/settings"
         className="mt-3 flex items-center justify-between gap-2 rounded-lg border border-border/70 bg-foreground/[0.02] px-3 py-2.5 transition-colors hover:bg-foreground/[0.04]"
       >
         <div className="min-w-0">
           <div className="flex items-center gap-1.5">
             <Sparkles className="h-3 w-3 text-pink" />
             <span className="text-[12.5px] font-medium tracking-[-0.005em] text-foreground">
-              Tentra Pro
+              Manage billing
             </span>
           </div>
           <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-            Adaptive plans · mock feedback
+            Plan · invoices · cancel
           </p>
         </div>
         <ArrowLeft className="h-3.5 w-3.5 shrink-0 rotate-180 text-muted-foreground" />
