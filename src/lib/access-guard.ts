@@ -13,14 +13,17 @@ export async function requireAccess(currentPath?: string) {
   if (typeof window === "undefined") return;
   const user = await waitForAuthUser();
   if (!user) {
-    throw redirect({ to: "/auth", search: { mode: "signin" } });
+    throw redirect({
+      to: "/auth",
+      search: { mode: "signin", from: undefined, next: undefined },
+    });
   }
   const { data } = await supabase
     .from("profiles")
     .select("is_pro, grandfathered_pro, subscription_status, current_period_end")
     .eq("user_id", user.id)
     .maybeSingle();
-  if (!data) return; // profile still being created — let page load
+  if (!data) return;
   const status = data.subscription_status;
   const graceActive =
     status === "canceled" &&
@@ -35,7 +38,7 @@ export async function requireAccess(currentPath?: string) {
   if (!hasAccess) {
     throw redirect({
       to: "/subscribe",
-      search: currentPath ? { next: currentPath } : undefined,
+      search: { next: currentPath },
     });
   }
 }
@@ -43,5 +46,9 @@ export async function requireAccess(currentPath?: string) {
 export async function requireAuth() {
   if (typeof window === "undefined") return;
   const user = await waitForAuthUser();
-  if (!user) throw redirect({ to: "/auth", search: { mode: "signin" } });
+  if (!user)
+    throw redirect({
+      to: "/auth",
+      search: { mode: "signin", from: undefined, next: undefined },
+    });
 }
