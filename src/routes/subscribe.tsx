@@ -8,6 +8,7 @@ import { PaymentTestModeBanner } from "@/components/payment-test-mode-banner";
 import { StripeEmbeddedCheckout } from "@/components/stripe-embedded-checkout";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/use-auth";
+import { useAuth } from "@/lib/use-auth";
 import { useSubscription } from "@/hooks/useSubscription";
 import type { SubscriptionPlanId } from "@/lib/pro.functions";
 
@@ -61,6 +62,7 @@ const PLANS: {
 function SubscribePage() {
   const navigate = useNavigate();
   const { next } = Route.useSearch();
+  const auth = useAuth();
   const sub = useSubscription();
   const [selected, setSelected] = useState<SubscriptionPlanId>("pro_monthly");
   const [showCheckout, setShowCheckout] = useState(false);
@@ -68,11 +70,11 @@ function SubscribePage() {
 
   // If access is granted (webhook fired after return), forward to the app.
   useEffect(() => {
-    if (sub.loading) return;
+    if (auth.loading || !auth.user || sub.loading) return;
     if (sub.hasAccess) {
       navigate({ to: next ?? "/onboarding", replace: true });
     }
-  }, [sub.loading, sub.hasAccess, navigate, next]);
+  }, [auth.loading, auth.user, sub.loading, sub.hasAccess, navigate, next]);
 
   const returnUrl =
     typeof window !== "undefined"
@@ -103,7 +105,7 @@ function SubscribePage() {
     }
   };
 
-  if (sub.loading) {
+  if (auth.loading || (auth.user && sub.loading)) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -198,13 +200,15 @@ function SubscribePage() {
                       "Continue to payment"
                     )}
                   </Button>
-                  <button
-                    type="button"
-                    onClick={handleSignOut}
-                    className="inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    <LogOut className="h-3.5 w-3.5" /> Sign out
-                  </button>
+                  {auth.user && (
+                    <button
+                      type="button"
+                      onClick={handleSignOut}
+                      className="inline-flex items-center gap-1.5 text-[12.5px] text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <LogOut className="h-3.5 w-3.5" /> Sign out
+                    </button>
+                  )}
                 </div>
                 <p className="mt-3 text-[11.5px] text-muted-foreground">
                   Secure payment by Stripe. Cancel anytime from Settings.
