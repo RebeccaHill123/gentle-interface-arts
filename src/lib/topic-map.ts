@@ -505,18 +505,102 @@ const RAW: Record<ExamId, RawExam> = {
         [
           [
             "Civil Procedure",
-            undefined,
+            "Civ Pro",
             [
               [
-                "Jurisdiction & venue",
-                ["Personal jurisdiction", "Subject matter jurisdiction", "Venue", "Erie doctrine"],
+                "Subject-matter jurisdiction",
+                [
+                  ["Federal question", ["Well-pleaded complaint rule", "Arising under jurisdiction"]],
+                  ["Diversity jurisdiction", ["Complete diversity", "Amount in controversy", "Aggregation"]],
+                  "Supplemental jurisdiction",
+                  "Removal & remand",
+                  "Amount in controversy calculations",
+                ],
               ],
-              ["Pleadings & parties", ["Pleadings", "Joinder", "Discovery"]],
               [
-                "Adjudication",
-                ["Summary judgment", "Jury trial", "Motions", "Verdicts and judgments"],
+                "Personal jurisdiction & venue",
+                [
+                  ["Personal jurisdiction", ["Traditional bases", "Minimum contacts", "Specific vs general", "Stream of commerce"]],
+                  "Long-arm statutes",
+                  "Service of process",
+                  "Venue & forum non conveniens",
+                  "Transfer of venue (§1404 / §1406)",
+                ],
               ],
-              ["Review & preclusion", ["Appeals", "Claim preclusion", "Issue preclusion"]],
+              [
+                "Erie doctrine & choice of law",
+                [
+                  "Erie doctrine",
+                  "Substance vs procedure",
+                  "Hanna analysis",
+                  "Federal common law",
+                ],
+              ],
+              [
+                "Pleadings & motions",
+                [
+                  ["Complaint & Rule 8", ["Notice pleading", "Twombly/Iqbal plausibility"]],
+                  "Answer & affirmative defences",
+                  "Rule 12 motions",
+                  "Amendments & relation back",
+                  "Rule 11 sanctions",
+                ],
+              ],
+              [
+                "Joinder, intervention & class actions",
+                [
+                  "Compulsory & permissive joinder",
+                  "Impleader (Rule 14)",
+                  "Interpleader",
+                  "Intervention (Rule 24)",
+                  ["Rule 23 class actions", ["Numerosity", "Commonality", "Typicality", "Adequacy", "23(b)(1)/(2)/(3)"]],
+                ],
+              ],
+              [
+                "Discovery",
+                [
+                  "Scope of discovery",
+                  "Depositions & interrogatories",
+                  "Requests for production & admissions",
+                  ["Privileges & work product", ["Attorney-client privilege", "Work product doctrine"]],
+                  "Sanctions & spoliation",
+                ],
+              ],
+              [
+                "Adjudication before trial",
+                [
+                  "Summary judgment",
+                  "Default & default judgment",
+                  "Voluntary & involuntary dismissal",
+                  "Pretrial conferences",
+                ],
+              ],
+              [
+                "Trial",
+                [
+                  "Right to jury trial",
+                  "Jury selection",
+                  ["JMOL & renewed JMOL", ["Rule 50(a)", "Rule 50(b)"]],
+                  "New trial motions",
+                  "Rule 60 relief from judgment",
+                ],
+              ],
+              [
+                "Appeals",
+                [
+                  "Final judgment rule",
+                  "Interlocutory appeals",
+                  "Standards of review",
+                  "Appellate jurisdiction",
+                ],
+              ],
+              [
+                "Preclusion",
+                [
+                  ["Claim preclusion (res judicata)", ["Same claim", "Same parties", "Final judgment on merits"]],
+                  ["Issue preclusion (collateral estoppel)", ["Actually litigated", "Necessary to judgment", "Mutuality"]],
+                ],
+              ],
             ],
           ],
           [
@@ -524,22 +608,170 @@ const RAW: Record<ExamId, RawExam> = {
             "Con Law",
             [
               [
-                "Structure of government",
-                ["Judicial review", "Federalism", "Separation of powers", "Commerce Clause"],
+                "Judicial power",
+                [
+                  "Article III standing",
+                  "Ripeness & mootness",
+                  "Political question doctrine",
+                  "Eleventh Amendment & sovereign immunity",
+                  "Adequate & independent state grounds",
+                ],
               ],
               [
-                "Individual rights",
-                ["State action", "Due process", "Equal protection", "First Amendment", "Takings"],
+                "Federalism & Commerce Clause",
+                [
+                  ["Commerce Clause", ["Channels", "Instrumentalities", "Substantial effects"]],
+                  "Dormant Commerce Clause",
+                  "10th Amendment & anti-commandeering",
+                  "Spending Clause conditions",
+                  "Preemption",
+                ],
+              ],
+              [
+                "Separation of powers",
+                [
+                  "Executive power & appointments",
+                  "Congressional power to investigate",
+                  "Non-delegation",
+                  "Impeachment & removal",
+                  "Foreign affairs & war powers",
+                ],
+              ],
+              [
+                "State action & incorporation",
+                [
+                  "State action doctrine",
+                  "Public function & entanglement",
+                  "Incorporation of the Bill of Rights",
+                ],
+              ],
+              [
+                "Equal Protection",
+                [
+                  ["Levels of scrutiny", ["Strict", "Intermediate", "Rational basis"]],
+                  "Race & national origin classifications",
+                  "Sex-based classifications",
+                  "Fundamental rights strand",
+                  "Alienage & illegitimacy",
+                ],
+              ],
+              [
+                "Due Process",
+                [
+                  "Procedural due process (Mathews)",
+                  ["Substantive due process", ["Privacy", "Marriage", "Family", "Bodily autonomy"]],
+                  "Economic liberties",
+                ],
+              ],
+              [
+                "First Amendment — Speech",
+                [
+                  ["Content-based vs content-neutral", ["Strict scrutiny", "Intermediate scrutiny"]],
+                  "Prior restraint & vagueness/overbreadth",
+                  "Unprotected & low-value speech",
+                  "Symbolic speech (O'Brien)",
+                  ["Public forum doctrine", ["Traditional", "Designated", "Limited", "Nonpublic"]],
+                  "Commercial speech",
+                ],
+              ],
+              [
+                "First Amendment — Religion",
+                [
+                  "Establishment Clause",
+                  "Free Exercise Clause",
+                  "Ministerial exception",
+                ],
+              ],
+              [
+                "Takings & other clauses",
+                [
+                  ["Takings Clause", ["Per se takings", "Regulatory takings", "Public use", "Just compensation"]],
+                  "Contracts Clause",
+                  "Ex post facto & bills of attainder",
+                  "Privileges & Immunities",
+                ],
               ],
             ],
           ],
           [
-            "Contracts & Sales",
+            "Contracts & Sales (UCC Art. 2)",
             "K & Sales",
             [
-              ["Formation & defences", ["Formation", "Consideration", "Defences", "Statute of Frauds"]],
-              ["Terms & performance", ["Parol evidence", "Interpretation", "Conditions", "Breach"]],
-              ["UCC Article 2", ["UCC Article 2", "Warranties", "Risk of loss", "Remedies"]],
+              [
+                "Applicable law",
+                [
+                  "Common law vs UCC Art. 2",
+                  "Predominant purpose test",
+                  "Merchants vs non-merchants",
+                ],
+              ],
+              [
+                "Formation",
+                [
+                  ["Offer", ["Definite terms", "Advertisements", "Revocation", "Option contracts"]],
+                  ["Acceptance", ["Mailbox rule", "Mirror image rule", "UCC 2-207 battle of the forms"]],
+                  ["Consideration", ["Bargained-for exchange", "Promissory estoppel", "Past & moral consideration"]],
+                ],
+              ],
+              [
+                "Defences to formation",
+                [
+                  ["Statute of Frauds", ["Suretyship", "Marriage", "One year", "UCC $500", "Land"]],
+                  "Capacity",
+                  ["Mistake", ["Mutual", "Unilateral"]],
+                  ["Misrepresentation", ["Fraudulent", "Negligent", "Innocent"]],
+                  "Duress & undue influence",
+                  "Unconscionability & illegality",
+                ],
+              ],
+              [
+                "Terms & interpretation",
+                [
+                  "Parol evidence rule",
+                  "Course of dealing / performance / trade usage",
+                  ["UCC gap-fillers", ["Price", "Delivery", "Time for performance", "Warranties"]],
+                  "Modification (common law vs UCC)",
+                ],
+              ],
+              [
+                "Performance & breach",
+                [
+                  "Conditions (express, implied, constructive)",
+                  ["Material vs minor breach", ["Substantial performance"]],
+                  "Perfect tender rule & cure",
+                  "Anticipatory repudiation",
+                  "Risk of loss",
+                ],
+              ],
+              [
+                "Warranties",
+                [
+                  "Express warranties",
+                  "Implied warranty of merchantability",
+                  "Implied warranty of fitness for particular purpose",
+                  "Disclaimers & limitations",
+                ],
+              ],
+              [
+                "Remedies",
+                [
+                  ["Damages", ["Expectation", "Consequential", "Incidental", "Reliance", "Restitution"]],
+                  ["Buyer's remedies (UCC)", ["Cover", "Market damages"]],
+                  ["Seller's remedies (UCC)", ["Resale", "Lost profits", "Action for price"]],
+                  "Specific performance & injunctions",
+                  "Liquidated damages",
+                ],
+              ],
+              [
+                "Third parties & discharge",
+                [
+                  "Third-party beneficiaries",
+                  "Assignment & delegation",
+                  "Impossibility & impracticability",
+                  "Frustration of purpose",
+                  "Accord & satisfaction; novation",
+                ],
+              ],
             ],
           ],
           [
@@ -547,41 +779,378 @@ const RAW: Record<ExamId, RawExam> = {
             "Crim",
             [
               [
-                "Substantive crimes",
-                ["Homicide", "Theft crimes", "Inchoate offences", "Parties", "Defences"],
+                "Elements of crimes",
+                [
+                  "Actus reus",
+                  ["Mens rea", ["Purposeful", "Knowing", "Reckless", "Negligent", "Strict liability"]],
+                  "Concurrence & causation",
+                  "Merger doctrine",
+                ],
               ],
               [
-                "Constitutional criminal procedure",
-                ["Fourth Amendment", "Fifth Amendment", "Sixth Amendment", "Miranda", "Exclusionary rule"],
+                "Homicide",
+                [
+                  "Common-law murder",
+                  ["Statutory murder degrees", ["First-degree", "Second-degree"]],
+                  ["Manslaughter", ["Voluntary (heat of passion)", "Involuntary"]],
+                  "Felony murder rule",
+                ],
+              ],
+              [
+                "Other crimes against persons & property",
+                [
+                  "Assault & battery",
+                  "Kidnapping & false imprisonment",
+                  "Rape & sexual offences",
+                  ["Property offences", ["Larceny", "Embezzlement", "False pretenses", "Robbery", "Burglary", "Arson"]],
+                ],
+              ],
+              [
+                "Inchoate crimes & parties",
+                [
+                  ["Attempt", ["Substantial step", "Impossibility"]],
+                  ["Solicitation", ["Merger"]],
+                  ["Conspiracy", ["Agreement", "Overt act", "Wharton's rule", "Pinkerton liability"]],
+                  "Accomplice liability",
+                ],
+              ],
+              [
+                "Defences",
+                [
+                  ["Self-defence & defence of others", ["Deadly vs non-deadly force"]],
+                  "Defence of property",
+                  ["Insanity", ["M'Naghten", "Irresistible impulse", "MPC", "Durham"]],
+                  "Intoxication",
+                  "Duress & necessity",
+                  "Entrapment",
+                  "Mistake of fact / law",
+                ],
+              ],
+              [
+                "Fourth Amendment",
+                [
+                  ["Search & seizure", ["Reasonable expectation of privacy", "Standing"]],
+                  ["Warrant requirement", ["Probable cause", "Particularity"]],
+                  ["Warrantless search exceptions", ["Consent", "Plain view", "Automobile", "Search incident to arrest", "Exigent circumstances", "Stop & frisk (Terry)"]],
+                  "Exclusionary rule & fruits doctrine",
+                  ["Exceptions to exclusion", ["Independent source", "Inevitable discovery", "Attenuation", "Good faith"]],
+                ],
+              ],
+              [
+                "Fifth Amendment & confessions",
+                [
+                  "Privilege against self-incrimination",
+                  ["Miranda warnings", ["Custody", "Interrogation", "Waiver", "Invocation"]],
+                  "Voluntariness (due process)",
+                  "Double jeopardy",
+                ],
+              ],
+              [
+                "Sixth Amendment & identifications",
+                [
+                  ["Right to counsel", ["Attachment", "Offense-specific"]],
+                  "Confrontation & compulsory process",
+                  "Speedy trial & public trial",
+                  ["Identification procedures", ["Lineups", "Show-ups", "Photo arrays"]],
+                ],
+              ],
+              [
+                "Trial & post-conviction",
+                [
+                  "Guilty pleas",
+                  "Jury trial rights",
+                  "Sentencing basics",
+                  "Habeas corpus & appeals",
+                ],
               ],
             ],
           ],
           [
-            "Evidence",
+            "Evidence (FRE)",
             undefined,
             [
-              ["Relevance & character", ["Relevance", "Character evidence", "Impeachment"]],
-              ["Witnesses & hearsay", ["Witnesses", "Hearsay", "Hearsay exceptions", "Privileges"]],
-              ["Documents & experts", ["Expert evidence", "Authentication", "Best evidence"]],
+              [
+                "Relevance",
+                [
+                  ["Logical & legal relevance", ["FRE 401", "FRE 402", "FRE 403"]],
+                  ["Public policy exclusions", ["Subsequent remedial measures", "Compromise offers", "Payment of medical expenses", "Pleas & plea discussions", "Liability insurance"]],
+                ],
+              ],
+              [
+                "Character & habit",
+                [
+                  ["Character in civil cases", ["Essential element"]],
+                  ["Character in criminal cases", ["Mercy rule", "Rebuttal"]],
+                  ["MIMIC / 404(b)", ["Motive", "Intent", "Absence of mistake", "Identity", "Common plan"]],
+                  "Methods of proving character (405)",
+                  "Habit & routine practice",
+                ],
+              ],
+              [
+                "Witnesses",
+                [
+                  "Competency",
+                  "Personal knowledge & oath",
+                  ["Impeachment", ["Prior inconsistent statements", "Bias", "Sensory defects", "Reputation for untruthfulness"]],
+                  ["Prior convictions (609)", ["Crimen falsi", "Balancing"]],
+                  "Prior bad acts (608(b))",
+                  "Rehabilitation & bolstering",
+                ],
+              ],
+              [
+                "Opinion & expert testimony",
+                [
+                  "Lay opinion (701)",
+                  ["Expert opinion (702)", ["Qualifications", "Reliable methods", "Fit"]],
+                  "Daubert / Frye",
+                  "Bases of expert testimony (703)",
+                  "Ultimate issue rule (704)",
+                ],
+              ],
+              [
+                "Hearsay basics",
+                [
+                  ["Definition of hearsay", ["Statement", "Declarant", "Truth of matter asserted"]],
+                  ["Non-hearsay uses", ["Effect on listener", "State of mind", "Verbal act", "Impeachment"]],
+                  ["Statements not hearsay (801(d))", ["Prior statements of witness", "Opposing party statements", "Adoptive & vicarious admissions"]],
+                ],
+              ],
+              [
+                "Hearsay exceptions",
+                [
+                  ["Declarant unavailability irrelevant (803)", ["Present sense impression", "Excited utterance", "Then-existing state of mind", "Medical diagnosis", "Recorded recollection", "Business records", "Public records", "Learned treatises"]],
+                  ["Declarant unavailable (804)", ["Former testimony", "Dying declaration", "Statement against interest", "Forfeiture by wrongdoing"]],
+                  "Residual exception (807)",
+                ],
+              ],
+              [
+                "Confrontation Clause",
+                [
+                  "Testimonial vs non-testimonial",
+                  "Crawford framework",
+                  "Forfeiture by wrongdoing",
+                ],
+              ],
+              [
+                "Privileges",
+                [
+                  "Attorney-client & work product",
+                  "Spousal (testimonial & communications)",
+                  "Doctor/therapist-patient",
+                  "5th Amendment privilege",
+                  "Waiver & crime-fraud exception",
+                ],
+              ],
+              [
+                "Writings & authentication",
+                [
+                  "Authentication (901/902)",
+                  ["Best evidence rule", ["Duplicates", "Excuses for non-production"]],
+                  "Chain of custody",
+                  "Judicial notice",
+                ],
+              ],
             ],
           ],
           [
             "Real Property",
             "Property",
             [
-              ["Ownership & estates", ["Ownership", "Present estates", "Future interests", "Co-ownership"]],
-              ["Land use", ["Landlord and tenant", "Easements", "Covenants", "Zoning"]],
-              ["Transfers & title", ["Mortgages", "Recording acts", "Adverse possession"]],
+              [
+                "Estates in land",
+                [
+                  ["Present estates", ["Fee simple absolute", "Defeasible fees", "Life estate"]],
+                  ["Future interests", ["Reversion", "Remainder (vested/contingent)", "Executory interest", "Possibility of reverter", "Right of entry"]],
+                  ["Rule Against Perpetuities", ["Class gifts", "Charity-to-charity exception"]],
+                ],
+              ],
+              [
+                "Concurrent estates",
+                [
+                  "Tenancy in common",
+                  "Joint tenancy & four unities",
+                  "Tenancy by the entirety",
+                  "Rights & duties among co-tenants",
+                  "Severance & partition",
+                ],
+              ],
+              [
+                "Landlord-tenant",
+                [
+                  ["Types of tenancy", ["Term of years", "Periodic", "At will", "At sufferance"]],
+                  "Tenant duties & landlord duties",
+                  "Implied warranty of habitability",
+                  "Constructive eviction",
+                  "Assignment vs sublease",
+                ],
+              ],
+              [
+                "Non-possessory interests",
+                [
+                  ["Easements", ["Express", "Implied", "By necessity", "By prescription", "Appurtenant vs in gross"]],
+                  "Licenses & profits",
+                  ["Real covenants", ["Touch & concern", "Privity", "Notice"]],
+                  ["Equitable servitudes", ["Common scheme doctrine"]],
+                ],
+              ],
+              [
+                "Adverse possession",
+                [
+                  "Open & notorious",
+                  "Continuous & exclusive",
+                  "Hostile / claim of right",
+                  "Tacking & disabilities",
+                ],
+              ],
+              [
+                "Land sale contracts",
+                [
+                  "Statute of Frauds & part performance",
+                  "Marketable title",
+                  "Risk of loss & equitable conversion",
+                  "Merger doctrine",
+                  "Fitness & warranty of quality",
+                ],
+              ],
+              [
+                "Deeds & delivery",
+                [
+                  ["Types of deeds", ["General warranty", "Special warranty", "Quitclaim"]],
+                  "Delivery & acceptance",
+                  ["Present covenants", ["Seisin", "Right to convey", "Encumbrances"]],
+                  ["Future covenants", ["Warranty", "Quiet enjoyment", "Further assurances"]],
+                ],
+              ],
+              [
+                "Recording system",
+                [
+                  ["Recording acts", ["Race", "Notice", "Race-notice"]],
+                  ["Notice types", ["Actual", "Constructive", "Inquiry"]],
+                  "Bona fide purchaser doctrine",
+                  "Shelter rule",
+                  "Chain of title & wild deeds",
+                ],
+              ],
+              [
+                "Mortgages & security interests",
+                [
+                  ["Mortgage theories", ["Lien theory", "Title theory"]],
+                  "Transfer of mortgaged property",
+                  "Priority & subordination",
+                  ["Foreclosure", ["Judicial", "Power of sale", "Deficiency & surplus"]],
+                  "Equity of redemption & statutory redemption",
+                  "Purchase money mortgages",
+                ],
+              ],
+              [
+                "Land use & zoning",
+                [
+                  "Zoning basics & variances",
+                  "Nonconforming uses",
+                  "Eminent domain",
+                  "Nuisance & land use",
+                ],
+              ],
             ],
           ],
           [
             "Torts",
             undefined,
             [
-              ["Intentional torts", ["Intentional torts", "Defences"]],
-              ["Negligence", ["Negligence", "Causation"]],
-              ["Strict & products", ["Strict liability", "Products liability"]],
-              ["Other torts", ["Nuisance", "Defamation", "Privacy torts", "Economic torts"]],
+              [
+                "Intentional torts to person",
+                [
+                  "Battery",
+                  "Assault",
+                  "False imprisonment",
+                  "Intentional infliction of emotional distress",
+                ],
+              ],
+              [
+                "Intentional torts to property",
+                [
+                  "Trespass to land",
+                  "Trespass to chattels",
+                  "Conversion",
+                ],
+              ],
+              [
+                "Defences to intentional torts",
+                [
+                  "Consent",
+                  "Self-defence & defence of others",
+                  "Defence of property",
+                  "Necessity (public & private)",
+                  "Privilege of arrest & recapture",
+                ],
+              ],
+              [
+                "Negligence",
+                [
+                  ["Duty", ["General duty", "Special relationships", "Landowner duties", "Rescuers"]],
+                  ["Breach", ["Reasonable person", "Custom", "Negligence per se", "Res ipsa loquitur"]],
+                  ["Causation", ["Actual cause (but-for)", "Proximate cause", "Foreseeability", "Intervening causes"]],
+                  ["Damages", ["Personal injury", "Property", "Pure economic loss"]],
+                  ["NIED", ["Zone of danger", "Bystander"]],
+                ],
+              ],
+              [
+                "Defences to negligence",
+                [
+                  "Contributory negligence",
+                  ["Comparative negligence", ["Pure", "Modified"]],
+                  "Assumption of risk",
+                ],
+              ],
+              [
+                "Strict liability",
+                [
+                  "Wild animals & domesticated animals",
+                  "Abnormally dangerous activities",
+                ],
+              ],
+              [
+                "Products liability",
+                [
+                  ["Theories", ["Negligence", "Strict liability", "Warranty", "Misrepresentation"]],
+                  ["Defects", ["Manufacturing", "Design", "Failure to warn"]],
+                  "Defences & preemption",
+                ],
+              ],
+              [
+                "Nuisance",
+                [
+                  "Private nuisance",
+                  "Public nuisance",
+                  "Remedies & defences",
+                ],
+              ],
+              [
+                "Defamation & privacy",
+                [
+                  ["Defamation elements", ["Defamatory statement", "Of/concerning plaintiff", "Publication", "Damages"]],
+                  ["Constitutional overlay", ["Public figures & actual malice (Sullivan)", "Private figures on matters of public concern"]],
+                  ["Privacy torts", ["Intrusion", "Public disclosure", "False light", "Appropriation"]],
+                ],
+              ],
+              [
+                "Economic & misrepresentation torts",
+                [
+                  "Intentional misrepresentation",
+                  "Negligent misrepresentation",
+                  "Tortious interference with contract / prospective advantage",
+                  "Injurious falsehood",
+                ],
+              ],
+              [
+                "Vicarious liability & multiple defendants",
+                [
+                  "Respondeat superior & scope of employment",
+                  "Independent contractors",
+                  "Joint & several liability",
+                  "Contribution & indemnity",
+                ],
+              ],
             ],
           ],
         ],
@@ -596,95 +1165,311 @@ const RAW: Record<ExamId, RawExam> = {
               [
                 "Agency",
                 [
-                  "Agency",
-                  "Actual authority",
-                  "Apparent authority",
-                  "Ratification",
-                  "Vicarious liability",
+                  ["Authority", ["Actual express", "Actual implied", "Apparent", "Ratification"]],
+                  "Principal & agent liability in contract",
+                  ["Vicarious liability", ["Scope of employment", "Frolic & detour", "Independent contractors"]],
+                  "Fiduciary duties of agents",
                 ],
               ],
-              ["Entities", ["Partnerships", "Corporations", "LLCs"]],
               [
-                "Governance",
-                ["Fiduciary duties", "Directors and officers", "Shareholders", "Derivative suits"],
+                "General & limited partnerships",
+                [
+                  "Formation & partnership by estoppel",
+                  ["Partner rights & duties", ["Management", "Profits & losses", "Fiduciary duties"]],
+                  "Partnership property & partner interests",
+                  "Dissociation & dissolution",
+                  ["Limited partnerships", ["LP formation", "General vs limited partners", "LLPs"]],
+                ],
               ],
-              ["Corporate events", ["Piercing the corporate veil", "Mergers and dissolution"]],
+              [
+                "Corporations — formation & capital",
+                [
+                  "Incorporation & de jure/de facto",
+                  "Promoters & pre-incorporation contracts",
+                  ["Piercing the corporate veil", ["Alter ego", "Undercapitalisation", "Fraud"]],
+                  "Ultra vires acts",
+                  "Issuance of stock & consideration",
+                ],
+              ],
+              [
+                "Corporate governance",
+                [
+                  ["Directors", ["Election & removal", "Duty of care & BJR", "Duty of loyalty", "Interested-director transactions"]],
+                  "Officers & authority",
+                  "Corporate opportunity doctrine",
+                  "Indemnification & insurance",
+                ],
+              ],
+              [
+                "Shareholders",
+                [
+                  ["Voting", ["Straight vs cumulative", "Proxies", "Voting trusts & agreements"]],
+                  ["Derivative suits", ["Standing", "Demand", "Dismissal"]],
+                  "Direct suits & inspection rights",
+                  "Controlling shareholder duties",
+                  ["Federal securities overlay", ["10b-5", "16(b) short-swing profits"]],
+                ],
+              ],
+              [
+                "Fundamental changes & dissolution",
+                [
+                  "Mergers & share exchanges",
+                  "Asset sales",
+                  "Appraisal rights",
+                  "Voluntary & involuntary dissolution",
+                ],
+              ],
+              [
+                "Limited Liability Companies",
+                [
+                  "Formation & operating agreement",
+                  "Management structures (member vs manager)",
+                  "Fiduciary duties in LLCs",
+                  "Dissociation & dissolution",
+                ],
+              ],
             ],
           ],
           [
-            "Civil Procedure",
+            "Conflict of Laws",
+            "Conflicts",
+            [
+              [
+                "Domicile & characterisation",
+                [
+                  "Domicile of origin, choice, operation of law",
+                  "Substance vs procedure",
+                  "Characterisation of issues",
+                ],
+              ],
+              [
+                "Choice of law approaches",
+                [
+                  ["Traditional (vested rights)", ["Lex loci delicti", "Lex loci contractus", "Lex situs"]],
+                  ["Modern approaches", ["Most significant relationship (Second Restatement)", "Governmental interest analysis", "Better law"]],
+                  "Depecage",
+                ],
+              ],
+              [
+                "Specific subject areas",
+                [
+                  "Torts",
+                  "Contracts & choice-of-law clauses",
+                  "Property (movable & immovable)",
+                  "Family law & marriage validity",
+                  "Corporations (internal affairs)",
+                ],
+              ],
+              [
+                "Recognition of judgments",
+                [
+                  "Full Faith & Credit Clause",
+                  "Foreign country judgments",
+                  "Defences to recognition",
+                ],
+              ],
+              [
+                "Defences & escape devices",
+                [
+                  "Public policy exception",
+                  "Renvoi",
+                  "Penal & tax laws",
+                ],
+              ],
+            ],
+          ],
+          [
+            "Family Law",
             undefined,
             [
               [
-                "Jurisdiction & Erie",
-                ["Personal jurisdiction", "Subject matter jurisdiction", "Venue", "Erie doctrine"],
-              ],
-              ["Litigation lifecycle", ["Pleadings", "Joinder", "Discovery", "Summary judgment"]],
-              ["Post-trial", ["Appeals", "Claim preclusion", "Issue preclusion"]],
-            ],
-          ],
-          [
-            "Constitutional Law",
-            "Con Law",
-            [
-              ["Structure", ["Judicial review", "Federalism", "Separation of powers", "Commerce Clause"]],
-              [
-                "Rights",
-                ["State action", "Due process", "Equal protection", "First Amendment", "Takings"],
-              ],
-            ],
-          ],
-          [
-            "Contracts & Sales",
-            "K & Sales",
-            [
-              ["Formation", ["Formation", "Consideration", "Defences", "Statute of Frauds"]],
-              [
-                "Interpretation & breach",
-                ["Parol evidence", "Interpretation", "Conditions", "Breach", "Remedies"],
-              ],
-              ["UCC Article 2", ["UCC Article 2", "Warranties", "Risk of loss"]],
-            ],
-          ],
-          [
-            "Criminal Law & Procedure",
-            "Crim",
-            [
-              [
-                "Substantive crimes",
-                ["Homicide", "Theft crimes", "Inchoate offences", "Parties", "Defences"],
+                "Getting married",
+                [
+                  "Requirements for valid marriage",
+                  "Common-law marriage",
+                  "Premarital & postnuptial agreements",
+                  "Void & voidable marriages",
+                ],
               ],
               [
-                "Constitutional criminal procedure",
-                ["Fourth Amendment", "Fifth Amendment", "Sixth Amendment", "Miranda", "Exclusionary rule"],
+                "Ending marriage",
+                [
+                  "No-fault & fault grounds",
+                  "Legal separation & annulment",
+                  "Jurisdiction over divorce",
+                ],
+              ],
+              [
+                "Financial consequences",
+                [
+                  ["Property division", ["Community property", "Equitable distribution", "Separate vs marital property"]],
+                  ["Spousal support", ["Rehabilitative", "Permanent", "Reimbursement"]],
+                  ["Child support", ["Guidelines", "Modification", "Enforcement (UIFSA)"]],
+                ],
+              ],
+              [
+                "Children",
+                [
+                  ["Custody", ["Best-interests standard", "Legal vs physical", "Joint custody"]],
+                  "Visitation & third-party rights",
+                  "UCCJEA jurisdiction",
+                  "Relocation disputes",
+                ],
+              ],
+              [
+                "Parentage & adoption",
+                [
+                  "Presumption of paternity",
+                  "Voluntary acknowledgment & disestablishment",
+                  "Adoption procedures & consent",
+                  "Termination of parental rights",
+                ],
               ],
             ],
           ],
           [
-            "Evidence",
-            undefined,
+            "Trusts & Estates",
+            "Trusts",
             [
-              ["Relevance & witnesses", ["Relevance", "Character evidence", "Impeachment", "Witnesses"]],
-              ["Hearsay & privileges", ["Hearsay", "Hearsay exceptions", "Privileges"]],
-              ["Documents", ["Expert evidence", "Authentication", "Best evidence"]],
+              [
+                "Will execution & validity",
+                [
+                  "Testamentary capacity",
+                  ["Formalities", ["Attestation", "Holographic wills", "Harmless-error rule"]],
+                  ["Revocation", ["By act", "By writing", "By operation of law"]],
+                  "Revival & dependent relative revocation",
+                ],
+              ],
+              [
+                "Will components & interpretation",
+                [
+                  "Integration & incorporation by reference",
+                  "Acts of independent significance",
+                  "Pour-over wills",
+                  "Ademption, exoneration & abatement",
+                  "Lapse & anti-lapse statutes",
+                ],
+              ],
+              [
+                "Intestacy",
+                [
+                  "Surviving spouse's share",
+                  ["Descendants' shares", ["Per stirpes", "Per capita with representation"]],
+                  "Ancestors & collateral heirs",
+                  "Advancements & disclaimers",
+                ],
+              ],
+              [
+                "Protection of family",
+                [
+                  "Elective/forced share",
+                  "Pretermitted spouse & children",
+                  "Homestead & family allowance",
+                ],
+              ],
+              [
+                "Will contests",
+                [
+                  "Lack of capacity",
+                  "Undue influence",
+                  "Fraud & duress",
+                  "Mistake",
+                  "No-contest clauses",
+                ],
+              ],
+              [
+                "Express trusts",
+                [
+                  ["Elements", ["Settlor intent", "Trust res", "Ascertainable beneficiaries", "Valid purpose"]],
+                  ["Types", ["Inter vivos", "Testamentary", "Revocable vs irrevocable"]],
+                  "Spendthrift, support & discretionary trusts",
+                  "Charitable trusts & cy pres",
+                ],
+              ],
+              [
+                "Trustee powers & duties",
+                [
+                  ["Fiduciary duties", ["Loyalty", "Prudence (UPIA)", "Impartiality", "Reporting"]],
+                  "Powers & delegation",
+                  ["Breach & remedies", ["Damages", "Tracing", "Removal"]],
+                ],
+              ],
+              [
+                "Modification & termination",
+                [
+                  "Settlor & beneficiary consent",
+                  "Claflin doctrine",
+                  "Changed circumstances & equitable deviation",
+                  "Termination by trustee",
+                ],
+              ],
+              [
+                "Resulting & constructive trusts",
+                [
+                  "Resulting trusts",
+                  "Constructive trusts as remedy",
+                ],
+              ],
+              [
+                "Powers of appointment",
+                [
+                  "General vs special powers",
+                  "Exercise & release",
+                  "Failure to exercise & takers in default",
+                ],
+              ],
             ],
           ],
           [
-            "Real Property",
-            "Property",
+            "Secured Transactions (UCC Art. 9)",
+            "Secured",
             [
-              ["Estates", ["Ownership", "Present estates", "Future interests", "Co-ownership"]],
-              ["Land use", ["Landlord and tenant", "Easements", "Covenants"]],
-              ["Transfers", ["Mortgages", "Recording acts", "Adverse possession"]],
-            ],
-          ],
-          [
-            "Torts",
-            undefined,
-            [
-              ["Intentional & negligence", ["Intentional torts", "Negligence", "Causation", "Defences"]],
-              ["Strict & products", ["Strict liability", "Products liability"]],
-              ["Other", ["Nuisance", "Defamation", "Privacy torts", "Economic torts"]],
+              [
+                "Scope & classification",
+                [
+                  "Transactions covered by Art. 9",
+                  ["Types of collateral", ["Goods (consumer, inventory, equipment, farm products)", "Semi-intangibles (chattel paper, instruments, documents)", "Intangibles (accounts, general intangibles)"]],
+                ],
+              ],
+              [
+                "Attachment",
+                [
+                  "Value given by secured party",
+                  "Debtor rights in collateral",
+                  "Authenticated security agreement or possession",
+                  "After-acquired property & future advances",
+                  "Proceeds",
+                ],
+              ],
+              [
+                "Perfection",
+                [
+                  ["Filing", ["Financing statement", "Place of filing", "Errors"]],
+                  "Possession & control",
+                  "Automatic perfection (PMSI in consumer goods)",
+                  "Temporary perfection",
+                ],
+              ],
+              [
+                "Priority",
+                [
+                  "General first-to-file-or-perfect rule",
+                  ["PMSI super-priority", ["Inventory PMSI", "Non-inventory PMSI"]],
+                  ["Buyers of collateral", ["Buyer in ordinary course", "Consumer-to-consumer"]],
+                  "Lien creditors & bankruptcy trustee",
+                  "Fixtures & accessions",
+                ],
+              ],
+              [
+                "Default & enforcement",
+                [
+                  "Repossession & self-help",
+                  ["Disposition of collateral", ["Commercially reasonable sale", "Notice"]],
+                  "Strict foreclosure",
+                  "Redemption",
+                  "Deficiency & surplus",
+                ],
+              ],
             ],
           ],
         ],
@@ -696,17 +1481,81 @@ const RAW: Record<ExamId, RawExam> = {
             "Written work products",
             "Documents",
             [
-              ["Memos & briefs", ["Objective memo", "Persuasive brief", "Brief writing"]],
-              ["Letters", ["Client letter", "Demand letter"]],
-              ["Drafting", ["Contract drafting"]],
+              [
+                "Objective writing",
+                [
+                  "Objective office memo",
+                  "Opinion letter to client",
+                  "Advisory memo",
+                ],
+              ],
+              [
+                "Persuasive writing",
+                [
+                  "Persuasive brief / motion",
+                  "Trial brief",
+                  "Appellate brief",
+                  "Closing / opening argument",
+                ],
+              ],
+              [
+                "Drafting",
+                [
+                  "Contract drafting",
+                  "Statute or ordinance drafting",
+                  "Discovery plan / interrogatories",
+                  "Will provisions & clauses",
+                ],
+              ],
+              [
+                "Correspondence",
+                [
+                  "Client letter",
+                  "Demand letter",
+                  "Settlement proposal",
+                ],
+              ],
             ],
           ],
           [
             "Analytical skills",
             "Skills",
             [
-              ["File & library", ["File analysis", "Library analysis", "Rule extraction"]],
-              ["Application", ["Factual application", "Time management"]],
+              [
+                "Working with the File",
+                [
+                  "Fact analysis from the File",
+                  "Weighing conflicting evidence",
+                  "Identifying favourable & unfavourable facts",
+                ],
+              ],
+              [
+                "Working with the Library",
+                [
+                  "Case synthesis from provided authorities",
+                  "Statute & regulation interpretation",
+                  "Rule extraction & rule statements",
+                  "Distinguishing authorities",
+                ],
+              ],
+              [
+                "Application & organisation",
+                [
+                  "IRAC / CREAC structure",
+                  "Fact-to-rule application",
+                  "Counter-arguments & rebuttal",
+                  "Handling ambiguity",
+                ],
+              ],
+              [
+                "Practical execution",
+                [
+                  "Time management under 90-minute limit",
+                  "Following task memo instructions",
+                  "Tone & audience adaptation",
+                  "Formatting & citation basics",
+                ],
+              ],
             ],
           ],
         ],
