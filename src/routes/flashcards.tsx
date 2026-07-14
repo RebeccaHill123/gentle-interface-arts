@@ -85,7 +85,8 @@ function useExamKind(): ExamKind {
 type ReviewMode =
   | { kind: "deck"; deckId: string }
   | { kind: "weak" }
-  | { kind: "starred" };
+  | { kind: "starred" }
+  | { kind: "topic"; subject: string; subtopic?: string };
 
 function useProgress() {
   const [tick, setTick] = useState(0);
@@ -102,8 +103,11 @@ function useProgress() {
 }
 
 function FlashcardsPage() {
-  const [mode, setMode] = useState<ReviewMode | null>(null);
+  const search = Route.useSearch();
   const kind = useExamKind();
+  const [mode, setMode] = useState<ReviewMode | null>(() =>
+    search.subject ? { kind: "topic", subject: search.subject, subtopic: search.subtopic } : null,
+  );
 
   if (mode) {
     return <StudyView mode={mode} kind={kind} onExit={() => setMode(null)} />;
