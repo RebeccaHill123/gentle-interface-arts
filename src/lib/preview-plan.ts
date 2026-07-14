@@ -95,7 +95,12 @@ export function generatePreviewPlan(input: OnboardingInput): {
   // Today's tasks: precise foundation-first blocks from the user's full syllabus route.
   const durations = buildStudyDurations(hpw);
   const todayTasks: StrategyTask[] = durations.map((minutes, i) => {
-    const module = top[i % Math.max(1, top.length)] ?? sorted[0];
+    const module = top[i % Math.max(1, top.length)] ?? sorted[0] ?? {
+      id: "mixed",
+      name: input.examType === "UBE" ? "Civil Procedure" : "Contract",
+      confidence: 3,
+      weakSubtopics: [],
+    };
     return buildSpecificTask({
       module,
       index: i,
