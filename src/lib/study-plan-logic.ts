@@ -14,6 +14,11 @@ import type {
 export type StudyPhase = "foundation" | "build" | "performance" | "final";
 
 const ALLOWED_MINUTES = [120, 90, 60, 45, 30] as const;
+type AllowedMinutes = (typeof ALLOWED_MINUTES)[number];
+
+function isAllowedMinutes(value: number): value is AllowedMinutes {
+  return (ALLOWED_MINUTES as readonly number[]).includes(value);
+}
 
 export function daysUntilExam(iso: string): number {
   return Math.max(1, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
@@ -188,7 +193,7 @@ export function normalizeStoredPlanTasks(stored: StoredPlan): StoredPlan {
     return buildSpecificTask({
       module,
       index,
-      minutes: [30, 45, 60, 90, 120].includes(task.minutes) ? task.minutes : 45,
+      minutes: isAllowedMinutes(task.minutes) ? task.minutes : 45,
       examPath: stored.input.examPath,
       phase,
       hasMistakeEvidence,
