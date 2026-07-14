@@ -14,13 +14,13 @@ import { loadPlan } from "@/lib/plan-store";
 import type { SubscriptionPlanId } from "@/lib/pro.functions";
 
 export const Route = createFileRoute("/subscribe")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    next:
-      typeof search.next === "string" && search.next.startsWith("/")
-        ? (search.next as string)
-        : undefined,
-    checkout:
-      search.checkout === "success" ? ("success" as const) : undefined,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { next?: string; checkout?: "success" } => ({
+    ...(typeof search.next === "string" && search.next.startsWith("/")
+      ? { next: search.next as string }
+      : {}),
+    ...(search.checkout === "success" ? { checkout: "success" as const } : {}),
   }),
   component: SubscribePage,
   head: () => ({
