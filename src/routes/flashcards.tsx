@@ -443,7 +443,11 @@ function StudyView({
       ? getDeckFor(kind, mode.deckId)?.title ?? "Deck"
       : mode.kind === "weak"
         ? "Weak-area review"
-        : "Starred cards";
+        : mode.kind === "starred"
+          ? "Starred cards"
+          : mode.subtopic
+            ? `${mode.subtopic} · ${mode.subject}`
+            : mode.subject;
 
   const flkBadge: CardArea | null =
     mode.kind === "deck" ? getDeckFor(kind, mode.deckId)?.flk ?? null : null;
