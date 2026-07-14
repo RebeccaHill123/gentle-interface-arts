@@ -16,11 +16,14 @@ import type { SubscriptionPlanId } from "@/lib/pro.functions";
 export const Route = createFileRoute("/subscribe")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { next?: string; checkout?: "success" } => ({
+  ): { next?: string; checkout?: "success"; autostart?: 1 } => ({
     ...(typeof search.next === "string" && search.next.startsWith("/")
       ? { next: search.next as string }
       : {}),
     ...(search.checkout === "success" ? { checkout: "success" as const } : {}),
+    ...(search.autostart === 1 || search.autostart === "1"
+      ? { autostart: 1 as const }
+      : {}),
   }),
   component: SubscribePage,
   head: () => ({
@@ -34,6 +37,7 @@ export const Route = createFileRoute("/subscribe")({
     ],
   }),
 });
+
 
 const PLANS: {
   id: SubscriptionPlanId;
