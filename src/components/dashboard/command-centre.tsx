@@ -285,10 +285,12 @@ function SnapshotBucket({
 
 export function TopicMapSnapshot({
   examId,
+  examLabel,
   progress,
   subjectMinutes,
 }: {
   examId: ExamId;
+  examLabel?: string;
   progress?: Map<string, UserTopicProgress>;
   subjectMinutes?: Map<string, number>;
 }) {
@@ -296,12 +298,13 @@ export function TopicMapSnapshot({
   const weak = realWeakSpots(map, 3);
   const due = realDueForRecall(map, 3);
   const untouched = untouchedTopics(map, 3);
+  const label = examLabel ?? examId;
   return (
     <section className="flex h-full flex-col rounded-3xl border border-border/40 bg-card p-6 shadow-card">
       <div className="flex items-start justify-between gap-3">
         <div>
           <h3 className="text-base font-medium text-foreground">
-            {examId} Topic Map snapshot
+            {label} Topic Map snapshot
           </h3>
           <p className="mt-1 text-xs text-muted-foreground/80">
             Real activity only — no invented metrics.
@@ -315,12 +318,12 @@ export function TopicMapSnapshot({
         <SnapshotBucket
           title="Weak spots"
           items={weak}
-          emptyLabel="Your weak spots will appear here once you complete quizzes or study sessions."
+          emptyLabel="Your weak spots will appear here once you complete practice questions or assessments."
         />
         <SnapshotBucket
-          title="Due for recall"
+          title="Due for review"
           items={due}
-          emptyLabel="Nothing due yet — start a study session to activate recall tracking."
+          emptyLabel="Topics due for review will appear here as you build your study history."
         />
         <SnapshotBucket
           title="Untouched (high-yield first)"
@@ -333,7 +336,7 @@ export function TopicMapSnapshot({
           to="/topics"
           className="inline-flex items-center gap-1 text-xs font-medium text-foreground/85 hover:text-foreground"
         >
-          Open full Topic Map <ArrowRight className="h-3 w-3" />
+          Open full {label} Topic Map <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
     </section>
