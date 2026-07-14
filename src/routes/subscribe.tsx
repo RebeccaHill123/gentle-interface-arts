@@ -131,10 +131,15 @@ function SubscribePage() {
     }
   };
 
-  if (auth.loading || (auth.user && sub.loading)) {
+  if (auth.loading || (auth.user && sub.loading) || isReturningFromCheckout) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        {isReturningFromCheckout && (
+          <p className="max-w-xs text-[13px] text-muted-foreground">
+            Confirming your payment… this usually takes a few seconds.
+          </p>
+        )}
       </div>
     );
   }
