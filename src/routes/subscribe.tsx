@@ -64,12 +64,13 @@ const PLANS: {
 
 function SubscribePage() {
   const navigate = useNavigate();
-  const { next } = Route.useSearch();
+  const { next, checkout } = Route.useSearch();
   const auth = useAuth();
   const sub = useSubscription();
   const [selected, setSelected] = useState<SubscriptionPlanId>("pro_monthly");
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(false);
+  const isReturningFromCheckout = checkout === "success";
 
   // If access is granted (webhook fired after return), forward to the app.
   useEffect(() => {
@@ -78,6 +79,28 @@ function SubscribePage() {
       navigate({ to: next ?? (loadPlan() ? "/dashboard" : "/onboarding"), replace: true });
     }
   }, [auth.loading, auth.user, sub.loading, sub.hasAccess, navigate, next]);
+
+  // After returning from Stripe, poll until the webhook flips access on.
+  useEffect(() => {
+    if (!isReturningFromCheckout || !auth.user) return;
+    let cancelled = false;
+    let attempts = 0;
+    (async () => {
+      while (!cancelled && attempts < 20) {
+        attempts++;
+        await sub.refresh();
+        if (cancelled) return;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      if (!cancelled) {
+        toast.error("Payment is taking longer than expected. Please refresh in a moment.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReturningFromCheckout, auth.user?.id]);
 
   const returnUrl =
     typeof window !== "undefined"
