@@ -615,6 +615,7 @@ function TopicsPage() {
                         visibleByChapter={f.byChapter}
                         totalVisible={f.total}
                         defaultOpen={activeFilter}
+                        onPlanChanged={onPlanChanged}
                       />
                     );
                   })}
