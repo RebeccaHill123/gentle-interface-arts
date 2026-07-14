@@ -33,7 +33,23 @@ import {
   adjustModuleConfidence,
 } from "@/lib/plan-store";
 
+type PracticeSearch = {
+  subject?: string;
+  subtopic?: string;
+  length?: number;
+  mode?: "revise" | "quiz";
+};
+
 export const Route = createFileRoute("/practice")({
+  validateSearch: (raw: Record<string, unknown>): PracticeSearch => {
+    const s: PracticeSearch = {};
+    if (typeof raw.subject === "string" && raw.subject.trim()) s.subject = raw.subject.trim();
+    if (typeof raw.subtopic === "string" && raw.subtopic.trim()) s.subtopic = raw.subtopic.trim();
+    const len = typeof raw.length === "string" ? parseInt(raw.length, 10) : typeof raw.length === "number" ? raw.length : NaN;
+    if (Number.isFinite(len) && len > 0) s.length = Math.min(30, Math.max(3, Math.floor(len)));
+    if (raw.mode === "revise" || raw.mode === "quiz") s.mode = raw.mode;
+    return s;
+  },
   beforeLoad: async () => {
     const { requireAccess } = await import("@/lib/access-guard");
     await requireAccess();
