@@ -616,15 +616,38 @@ function StudyView({
         className="h-1.5"
       />
 
-      {!card ? (
-        <CompletionPanel
-          mode={mode}
-          kind={kind}
-          progress={progress}
-          onRestart={restart}
-          onResetDeck={mode.kind === "deck" ? resetDeck : undefined}
-          onExit={onExit}
-        />
+      {showLoadingOverlay ? (
+        <div className="mt-8 rounded-3xl border border-border bg-card p-8 text-center shadow-card md:p-12">
+          <div className="mx-auto grid h-14 w-14 animate-pulse place-items-center rounded-2xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+            <Sparkles className="h-7 w-7" />
+          </div>
+          <h3 className="mt-4 text-xl font-semibold text-foreground">
+            Preparing your deck
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+            Drafting fresh flashcards for <span className="text-foreground">{mode.kind === "topic" ? mode.subtopic : ""}</span>. This takes a few seconds the first time — after that it's instant.
+          </p>
+        </div>
+      ) : !card ? (
+        mode.kind === "topic" && aiStatus === "failed" && aiCards.length === 0 ? (
+          <div className="mt-8 rounded-3xl border border-border bg-card p-8 text-center shadow-card">
+            <h3 className="text-lg font-semibold text-foreground">Couldn't build this deck</h3>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{aiError ?? "Try again in a moment."}</p>
+            <div className="mt-4 flex justify-center gap-2">
+              <Button variant="outline" onClick={onExit}>Back</Button>
+              <Button onClick={restart}>Retry</Button>
+            </div>
+          </div>
+        ) : (
+          <CompletionPanel
+            mode={mode}
+            kind={kind}
+            progress={progress}
+            onRestart={restart}
+            onResetDeck={mode.kind === "deck" ? resetDeck : undefined}
+            onExit={onExit}
+          />
+        )
       ) : (
         <div className="mt-8">
           <div
