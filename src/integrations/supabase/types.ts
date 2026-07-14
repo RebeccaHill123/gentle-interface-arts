@@ -101,6 +101,84 @@ export type Database = {
         }
         Relationships: []
       }
+      generated_deck_status: {
+        Row: {
+          card_count: number
+          exam_kind: string
+          last_error: string | null
+          model: string | null
+          status: string
+          subject: string
+          subtopic: string
+          updated_at: string
+        }
+        Insert: {
+          card_count?: number
+          exam_kind: string
+          last_error?: string | null
+          model?: string | null
+          status: string
+          subject: string
+          subtopic: string
+          updated_at?: string
+        }
+        Update: {
+          card_count?: number
+          exam_kind?: string
+          last_error?: string | null
+          model?: string | null
+          status?: string
+          subject?: string
+          subtopic?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      generated_flashcards: {
+        Row: {
+          back: string
+          created_at: string
+          deck_id: string
+          difficulty: string
+          exam_kind: string
+          exam_tip: string | null
+          front: string
+          id: string
+          model: string
+          source: string
+          subject: string
+          subtopic: string
+        }
+        Insert: {
+          back: string
+          created_at?: string
+          deck_id: string
+          difficulty: string
+          exam_kind: string
+          exam_tip?: string | null
+          front: string
+          id?: string
+          model: string
+          source?: string
+          subject: string
+          subtopic: string
+        }
+        Update: {
+          back?: string
+          created_at?: string
+          deck_id?: string
+          difficulty?: string
+          exam_kind?: string
+          exam_tip?: string | null
+          front?: string
+          id?: string
+          model?: string
+          source?: string
+          subject?: string
+          subtopic?: string
+        }
+        Relationships: []
+      }
       mock_answers: {
         Row: {
           answer_value: string | null

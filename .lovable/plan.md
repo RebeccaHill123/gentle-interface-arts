@@ -1,53 +1,89 @@
-# Make Topic Map row actions functional
+## Goal
 
-Today the row-level button on each sub-topic in `/topics` renders the correct label ("Start topic" / "Start quiz" / "Revise" / "Add to plan") but has no `onClick`, so nothing happens. This plan wires it up using the "smart split by action" model and adds sub-topic filtering to both `/practice` and `/flashcards`.
+Massively expand flashcard coverage across every SQE and UBE sub-topic in `topic-map.ts` (~150+ sub-topics) without hand-authoring thousands of cards, and without touching proprietary content.
 
-## Action → destination mapping
+Approach: **hybrid**. Keep the existing hand-written cards as a permanent seed set, and generate additional cards on-demand per sub-topic via Lovable AI, cached in the database so each sub-topic is only ever generated once (per difficulty band).
 
-Chosen by the existing `recommendedAction` on each `SubTopic`:
+## What changes for the user
 
-| Action | Shown label | Destination | Why |
-| --- | --- | --- | --- |
-| `start` | Start topic | `/flashcards?subject=…&subtopic=…` | Untouched → foundation first (matches `study-plan-logic` Foundation phase) |
-| `quiz` | Start quiz | `/practice?subject=…&subtopic=…&length=10` | Weak / studied / not-enough-data → build genuine performance data |
-| `revise` | Revise | `/practice?subject=…&subtopic=…&length=5&mode=revise` | Improving / strong / due-for-recall → short recall set |
-| `add-to-plan` | Add to plan | Adds the sub-topic to today's plan (no navigation), then toasts "Added to today's plan" with a "View plan" link to `/dashboard` | High-yield untouched → surface in Command Centre without derailing them |
+- Every sub-topic row in Topic Map has real flashcards.
+- Opening a sub-topic deck that has no cards yet shows a short "Generating your deck…" state (5–10s), then reveals ~15 cards. Next visit is instant.
+- Existing decks (FLK1/FLK2/MBE/MEE/MPT browser) keep working exactly as today; the seed cards still show first, generated cards blend in.
+- A small "AI-generated" badge on cards produced by the model, so users can tell them apart from Tentra-authored ones.
 
-The subject-level row already expands the subject; no new action added there.
+## Technical plan
 
-## Changes
+### 1. Database (migration)
 
-### 1. `src/routes/practice.tsx` — accept sub-topic filter from URL
-- Add `validateSearch` with `zodValidator` for `subject`, `subtopic`, `length`, `mode` (all optional, using `fallback`).
-- Read via `Route.useSearch()`; when `subject`/`subtopic` present:
-  - Prefill the launcher's subject/topic selection.
-  - Filter the question pool to that sub-topic (fall back to subject-only if no tagged questions exist for the sub-topic, and show a small "Showing all {subject} questions — no {sub-topic} bank yet" note).
-  - Show a dismissible chip: `Filtered to: {sub-topic}` with a clear (×) that navigates to `/practice` with cleared search.
-- Respect `length` (default 10) and `mode=revise` (shorter set, marks the session type in the summary).
+New table `public.generated_flashcards`:
 
-### 2. `src/routes/flashcards.tsx` — accept sub-topic filter from URL
-- Same `validateSearch` shape (`subject`, `subtopic`).
-- Filter the deck (`flashcards-data.ts` / `flashcards-data-ube.ts`) by matching `subject` and, when possible, the sub-topic name against card tags/topic string.
-- If nothing matches on sub-topic, fall back to the subject deck with the same "no dedicated deck yet" note + filter chip.
-- Keep existing progress tracking behaviour.
+```
+id uuid pk
+exam_kind text          -- 'SQE' | 'UBE'
+subject text            -- matches topic-map subject label
+subtopic text           -- matches topic-map sub-topic label
+deck_id text            -- existing deck id (e.g. 'contract', 'mbe-contracts') for browser integration
+front text
+back text
+exam_tip text null
+difficulty text         -- 'Easy' | 'Medium' | 'Hard'
+source text             -- 'ai' (future-proof for 'editorial')
+model text              -- e.g. 'google/gemini-2.5-flash'
+created_at timestamptz default now()
+```
 
-### 3. `src/routes/topics.tsx` — wire up `SubTopicRow`
-- Replace the plain `<button>` with either a `<Link to="/practice" search={{...}}>` or `<Link to="/flashcards" search={{...}}>` depending on `sub.recommendedAction`, styled identically.
-- For `recommendedAction === "add-to-plan"`:
-  - Keep as a `<button>` with an `onClick` that appends a task to today's plan via the existing `plan-store` helpers (foundation-first task template from `study-plan-logic` using the sub-topic name), then shows a toast (`sonner`) with a "View plan" action linking to `/dashboard`.
-  - Once added, the row's action swaps to "In today's plan" (disabled) — derived from the plan on next render.
-- Use TanStack `<Link to=... search={{ subject, subtopic }}>` (never string interpolation) and include `from={Route.fullPath}` where needed.
+Plus a `generated_deck_status` table keyed by `(exam_kind, subject, subtopic)` tracking `status ('pending'|'ready'|'failed')`, `card_count`, `last_error`, `updated_at` — so the UI can poll and we don't double-generate.
 
-### 4. Small polish
-- Update the "no activity yet" empty-state hint copy so it reads "Tap a sub-topic action below to start it in Practice or Flashcards" (only on the header of the topic map, once).
-- Keep the button's hover accent as-is; add `aria-label` describing action + sub-topic name for screen readers.
+GRANTs: `SELECT` to `authenticated` and `anon` (cards are non-sensitive study content); `ALL` to `service_role`. RLS on, public read policy, writes only via service role (server functions).
 
-## Non-goals (this pass)
-- No new question or flashcard content is authored — filtering falls back gracefully when a sub-topic has no dedicated bank yet.
-- Chapter-level and subject-level headers stay non-clickable (they already expand/collapse).
-- No changes to the recommended-action logic in `topic-map.ts`.
+### 2. Server function: `generateSubtopicDeck`
 
-## Validation
-- Type-check with `tsgo` (search-param schemas + Link `to`/`search` are the main risk).
-- Manually click through /topics for both SQE and UBE: each of the four action types navigates or adds to plan as described, filter chip renders, clearing it returns to unfiltered practice/flashcards.
-- Verify a sub-topic with no dedicated question bank falls back to subject-level with the note visible.
+`src/lib/flashcards-generate.functions.ts` — `createServerFn` (auth-gated via `requireSupabaseAuth` so only signed-in users can trigger generation and burn credits).
+
+- Input: `{ examKind, subject, subtopic }`.
+- Checks `generated_deck_status`; if `ready`, returns immediately.
+- If `pending` and recent (<60s), returns pending.
+- Otherwise marks `pending`, calls Lovable AI (`google/gemini-2.5-flash`) with a strict system prompt: "You are drafting SQE/UBE revision flashcards from primary sources (statute, case law, official specifications). Produce 15 cards covering the sub-topic {X} of {subject}. Mix of Easy/Medium/Hard. Each card: front (question ≤120 chars), back (answer ≤400 chars), optional exam_tip (≤180 chars). No proprietary content."
+- Uses AI SDK `generateText` with `Output.object` (Zod schema, no `.min/.max` per SDK guidance — clamp in code).
+- Inserts rows via `supabaseAdmin` (loaded inside the handler), updates status to `ready`, returns cards.
+- Errors → status `failed`, surfaces message to UI.
+
+### 3. Read path
+
+`src/lib/flashcards-data.ts` currently exports `getCardsFor`, `getDeckFor` etc. from static arrays. Add a new async fetcher `fetchSubtopicCards({ examKind, subject, subtopic })` used by the topic-deep-link mode in `flashcards.tsx`:
+
+- Query Supabase for existing generated cards + merge with any matching static seed cards filtered by subtopic string.
+- If zero cards, call `generateSubtopicDeck` and re-query.
+
+The existing deck browser (`getDecksFor`, `getCardsByDeckFor`) is extended to union static seed cards with generated cards for that deck.
+
+### 4. UI changes (`src/routes/flashcards.tsx`)
+
+- Topic mode (`kind: 'topic'`) switches from synchronous `useMemo` filter to a `useQuery` that calls `fetchSubtopicCards`.
+- Loading skeleton with "Preparing your deck — this takes a few seconds the first time" copy.
+- "AI-generated" chip on cards where `source === 'ai'`.
+- Empty/error states with retry.
+
+### 5. Seed set stays
+
+`flashcards-data.ts` and `flashcards-data-ube.ts` remain the day-one baseline (currently ~260 cards). No content removed. Over time these act as style exemplars and guaranteed-quality fallbacks.
+
+### 6. Guardrails
+
+- Rate limit: only one generation per `(subject, subtopic)` per 60s (status table).
+- Credit safety: server fn is auth-gated; anonymous users see seed cards only.
+- Content safety: system prompt forbids copying from named commercial providers; requires citations to statute/case names where relevant.
+- 402 / 429 from AI Gateway surfaced as a user-visible toast ("AI generation temporarily unavailable — showing seed cards").
+
+## Out of scope for this change
+
+- Spaced repetition scheduling changes.
+- Bulk pre-generation of every sub-topic (deferred — on-demand is cheaper and only generates what users actually study).
+- Editorial review workflow (future).
+
+## Files touched
+
+- new: migration for `generated_flashcards` + `generated_deck_status` (+ GRANTs + RLS + policies)
+- new: `src/lib/flashcards-generate.functions.ts`
+- edit: `src/lib/flashcards-data.ts` (add async fetchers, keep static exports)
+- edit: `src/routes/flashcards.tsx` (async topic mode + loading/AI-badge UI)
