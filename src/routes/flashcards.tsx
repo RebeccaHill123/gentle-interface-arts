@@ -660,6 +660,11 @@ function StudyView({
             <div className="relative flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
               <span>{card.topic}</span>
               <div className="flex items-center gap-2">
+                {isAiCard && (
+                  <Badge variant="outline" className="rounded-full border-primary/40 bg-primary/10 text-[9px] uppercase tracking-wide text-foreground">
+                    <Sparkles className="mr-1 h-3 w-3" /> AI
+                  </Badge>
+                )}
                 <span>{card.difficulty}</span>
                 <button
                   onClick={handleStar}
