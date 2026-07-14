@@ -205,7 +205,97 @@ function subMetaLine(sub: SubTopic): string {
   return bits.join(" · ");
 }
 
-function SubTopicRow({ sub }: { sub: SubTopic }) {
+function addSubTopicToTodayPlan(sub: SubTopic): boolean {
+  const stored = loadPlan();
+  if (!stored) return false;
+  const task: StrategyTask = {
+    title: `Build foundation: ${sub.name}`,
+    module: sub.subject,
+    minutes: 30,
+    taskType: "concept-deepdive",
+    priority: sub.isHighYield ? "high" : "medium",
+    subtopic: sub.name,
+    difficulty: "foundational",
+    bucket: sub.isHighYield ? "must" : "should",
+    why: `Added from the Topic Map — ${sub.isHighYield ? "high-yield " : ""}foundation on ${sub.name}.`,
+    output: `Rule scaffold + 3 short application prompts on ${sub.name}.`,
+  };
+  const existing = stored.plan.todayTasks ?? [];
+  const already = existing.some(
+    (t) => (t.subtopic ?? "").toLowerCase() === sub.name.toLowerCase() && t.module === sub.subject,
+  );
+  if (already) return false;
+  stored.plan.todayTasks = [...existing, task];
+  savePlan(stored);
+  return true;
+}
+
+function SubTopicRow({ sub, onPlanChanged }: { sub: SubTopic; onPlanChanged: () => void }) {
+  const label = ACTION_LABEL[sub.recommendedAction];
+  const aria = `${label} — ${sub.name}`;
+  const buttonClass =
+    "shrink-0 rounded-full border border-border/60 px-3 py-1 text-[11px] font-medium text-foreground/85 transition-colors hover:border-pink/40 hover:text-pink";
+
+  let action: React.ReactNode;
+  if (sub.recommendedAction === "start") {
+    action = (
+      <Link
+        to="/flashcards"
+        search={{ subject: sub.subject, subtopic: sub.name }}
+        aria-label={aria}
+        className={buttonClass}
+      >
+        {label}
+      </Link>
+    );
+  } else if (sub.recommendedAction === "quiz") {
+    action = (
+      <Link
+        to="/practice"
+        search={{ subject: sub.subject, subtopic: sub.name, length: 10, mode: "quiz" }}
+        aria-label={aria}
+        className={buttonClass}
+      >
+        {label}
+      </Link>
+    );
+  } else if (sub.recommendedAction === "revise") {
+    action = (
+      <Link
+        to="/practice"
+        search={{ subject: sub.subject, subtopic: sub.name, length: 5, mode: "revise" }}
+        aria-label={aria}
+        className={buttonClass}
+      >
+        {label}
+      </Link>
+    );
+  } else {
+    // add-to-plan
+    action = (
+      <button
+        type="button"
+        aria-label={aria}
+        onClick={() => {
+          const ok = addSubTopicToTodayPlan(sub);
+          if (ok) {
+            toast.success("Added to today's plan", {
+              description: `${sub.name} · ${sub.subject}`,
+            });
+            onPlanChanged();
+          } else {
+            toast.info("Already in today's plan", {
+              description: `${sub.name} · ${sub.subject}`,
+            });
+          }
+        }}
+        className={buttonClass}
+      >
+        {label}
+      </button>
+    );
+  }
+
   return (
     <li className="flex items-start justify-between gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-foreground/[0.02]">
       <div className="min-w-0 flex-1">
@@ -236,12 +326,7 @@ function SubTopicRow({ sub }: { sub: SubTopic }) {
           </div>
         )}
       </div>
-      <button
-        type="button"
-        className="shrink-0 rounded-full border border-border/60 px-3 py-1 text-[11px] font-medium text-foreground/85 transition-colors hover:border-pink/40 hover:text-pink"
-      >
-        {ACTION_LABEL[sub.recommendedAction]}
-      </button>
+      {action}
     </li>
   );
 }
