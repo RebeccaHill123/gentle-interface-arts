@@ -459,14 +459,88 @@ function StudyView({
   kind: ExamKind;
   onExit: () => void;
 }) {
+  const [aiCards, setAiCards] = useState<Flashcard[]>([]);
+  const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ready" | "failed">("idle");
+  const [aiError, setAiError] = useState<string | null>(null);
   const [queue, setQueue] = useState<Flashcard[]>(() => buildQueue(mode, kind));
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const progress = useProgress();
 
+  const fetchDeckFn = useServerFn(fetchSubtopicDeck);
+  const generateDeckFn = useServerFn(generateSubtopicDeck);
+
+  // AI generation for topic mode
+  useEffect(() => {
+    if (mode.kind !== "topic" || !mode.subtopic) return;
+    let cancelled = false;
+    const { id: deckId, area } = resolveTopicDeck(kind, mode.subject);
+
+    const load = async () => {
+      setAiStatus("loading");
+      setAiError(null);
+      try {
+        const existing = await fetchDeckFn({
+          data: { examKind: kind, subject: mode.subject, subtopic: mode.subtopic!, deckId },
+        });
+        if (cancelled) return;
+        if (existing.status === "ready" && existing.cards.length > 0) {
+          const mapped = existing.cards.map((c) => aiToFlashcard(c, deckId, area));
+          setAiCards(mapped);
+          setAiStatus("ready");
+          setQueue(buildQueue(mode, kind, mapped));
+          return;
+        }
+        // Kick off generation
+        const gen = await generateDeckFn({
+          data: { examKind: kind, subject: mode.subject, subtopic: mode.subtopic!, deckId },
+        });
+        if (cancelled) return;
+        if (gen.status === "ready" && gen.cards.length > 0) {
+          const mapped = gen.cards.map((c) => aiToFlashcard(c, deckId, area));
+          setAiCards(mapped);
+          setAiStatus("ready");
+          setQueue(buildQueue(mode, kind, mapped));
+        } else if (gen.status === "pending") {
+          // Poll once after a short delay
+          setTimeout(async () => {
+            if (cancelled) return;
+            const r = await fetchDeckFn({
+              data: { examKind: kind, subject: mode.subject, subtopic: mode.subtopic!, deckId },
+            });
+            if (cancelled) return;
+            if (r.status === "ready" && r.cards.length > 0) {
+              const mapped = r.cards.map((c) => aiToFlashcard(c, deckId, area));
+              setAiCards(mapped);
+              setAiStatus("ready");
+              setQueue(buildQueue(mode, kind, mapped));
+            } else {
+              setAiStatus("failed");
+              setAiError(r.error ?? "Still generating — try again shortly.");
+            }
+          }, 8000);
+        } else {
+          setAiStatus("failed");
+          setAiError(gen.error ?? "Generation failed");
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setAiStatus("failed");
+        setAiError(e instanceof Error ? e.message : "Failed to load AI cards");
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode.kind, mode.kind === "topic" ? mode.subject : "", mode.kind === "topic" ? mode.subtopic ?? "" : "", kind]);
+
   const card = queue[index];
   const total = queue.length;
   const done = index >= total;
+  const aiIdSet = useMemo(() => new Set(aiCards.map((c) => c.id)), [aiCards]);
+  const isAiCard = card ? aiIdSet.has(card.id) : false;
 
   const heading =
     mode.kind === "deck"
@@ -495,7 +569,7 @@ function StudyView({
   };
 
   const restart = () => {
-    setQueue(buildQueue(mode, kind));
+    setQueue(buildQueue(mode, kind, aiCards));
     setIndex(0);
     setRevealed(false);
   };
@@ -505,6 +579,9 @@ function StudyView({
     resetDeckProgress(getCardsByDeckFor(kind, mode.deckId).map((c) => c.id));
     restart();
   };
+
+  const showLoadingOverlay =
+    mode.kind === "topic" && aiStatus === "loading" && queue.length === 0;
 
   return (
     <AppShell title={heading} subtitle="One card at a time. Be honest.">
