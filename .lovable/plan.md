@@ -1,89 +1,49 @@
-## Goal
+# Require payment during sign-up
 
-Massively expand flashcard coverage across every SQE and UBE sub-topic in `topic-map.ts` (~150+ sub-topics) without hand-authoring thousands of cards, and without touching proprietary content.
+Today, `supabase.auth.signUp()` creates the auth user + `profiles` row immediately, then `/subscribe` shows the paywall. Nothing prevents a user (like Eve Fallon) from closing the tab and leaving a permanent unpaid account behind.
 
-Approach: **hybrid**. Keep the existing hand-written cards as a permanent seed set, and generate additional cards on-demand per sub-topic via Lovable AI, cached in the database so each sub-topic is only ever generated once (per difficulty band).
+We'll keep Supabase's account-first model (needed for OAuth + to attach the Stripe customer), but make the sign-up **journey** end at Stripe checkout with no detours, and auto-purge accounts that never pay.
 
-## What changes for the user
+## What changes
 
-- Every sub-topic row in Topic Map has real flashcards.
-- Opening a sub-topic deck that has no cards yet shows a short "Generating your deck…" state (5–10s), then reveals ~15 cards. Next visit is instant.
-- Existing decks (FLK1/FLK2/MBE/MEE/MPT browser) keep working exactly as today; the seed cards still show first, generated cards blend in.
-- A small "AI-generated" badge on cards produced by the model, so users can tell them apart from Tentra-authored ones.
+### 1. Move plan selection before sign-up
+- Add `/subscribe` support for signed-out users: plan cards render for everyone. "Continue" on a plan stores the selected `priceId` in `sessionStorage` and routes signed-out users to `/auth?mode=signup&next=/subscribe`.
+- Landing page and onboarding CTAs go to `/subscribe` instead of `/auth`, so plan choice is the first step.
 
-## Technical plan
+### 2. Sign-up drops the user straight into Stripe checkout
+- In `src/routes/auth.tsx` `goAfterAuth()`: **remove the `if (next) window.location.assign(next)` early-return** (this is the current bypass that lets `?next=/dashboard` skip the paywall). Access check always runs first.
+- After a successful sign-up (email/password OTP verified, or Google OAuth returns), read `sessionStorage.pendingPriceId`. If set and no active subscription → send to `/subscribe?autostart=1`.
+- `/subscribe` reads `?autostart=1` and immediately mounts `<StripeEmbeddedCheckout>` — skips the "Choose your plan" step and the extra "Continue to payment" click. Back button on the embedded form returns to plan selection.
 
-### 1. Database (migration)
+### 3. Lock unpaid signed-in users to /subscribe
+- Confirm every protected route uses `requireAccess` (it does). Add a small "Complete payment to activate your account" banner on `/subscribe` for signed-in-but-unpaid users so the state is clear.
+- Sign-out remains available; that's the only escape without paying.
 
-New table `public.generated_flashcards`:
+### 4. Auto-purge abandoned unpaid accounts
+- New migration + pg_cron job: every 6 h, delete `auth.users` (cascade removes `profiles`) where:
+  - `created_at < now() - interval '72 hours'` AND
+  - `profiles.is_pro = false` AND `profiles.grandfathered_pro = false` AND
+  - `profiles.stripe_subscription_id IS NULL` (never even started checkout — customers who reached Stripe but failed keep their row for retry).
+- Runs against `supabase.auth.admin.deleteUser` via a `SECURITY DEFINER` function or a `/api/public/cron/purge-unpaid` server route hit by pg_cron with a shared secret. Server route is simpler and matches existing `email_queue` cron pattern.
 
-```
-id uuid pk
-exam_kind text          -- 'SQE' | 'UBE'
-subject text            -- matches topic-map subject label
-subtopic text           -- matches topic-map sub-topic label
-deck_id text            -- existing deck id (e.g. 'contract', 'mbe-contracts') for browser integration
-front text
-back text
-exam_tip text null
-difficulty text         -- 'Easy' | 'Medium' | 'Hard'
-source text             -- 'ai' (future-proof for 'editorial')
-model text              -- e.g. 'google/gemini-2.5-flash'
-created_at timestamptz default now()
-```
+### 5. Backfill: clean up existing unpaid ghosts
+- One-off admin action: delete existing profiles matching the same criteria (older than 72h, no subscription, not grandfathered). Eve's row gets removed by this pass.
+- Run once via a server function guarded by `has_role('admin')` — no UI needed.
 
-Plus a `generated_deck_status` table keyed by `(exam_kind, subject, subtopic)` tracking `status ('pending'|'ready'|'failed')`, `card_count`, `last_error`, `updated_at` — so the UI can poll and we don't double-generate.
+## What stays the same
+- Stripe integration (`createSubscriptionCheckoutSession`, embedded checkout, webhook).
+- Grandfathered Early Access users (`grandfathered_pro = true`) are exempt from purge and paywall.
+- Google OAuth still works — `redirect_uri` returns to `/auth`, which then routes to `/subscribe?autostart=1` if a plan is queued, or the plan chooser if not.
 
-GRANTs: `SELECT` to `authenticated` and `anon` (cards are non-sensitive study content); `ALL` to `service_role`. RLS on, public read policy, writes only via service role (server functions).
-
-### 2. Server function: `generateSubtopicDeck`
-
-`src/lib/flashcards-generate.functions.ts` — `createServerFn` (auth-gated via `requireSupabaseAuth` so only signed-in users can trigger generation and burn credits).
-
-- Input: `{ examKind, subject, subtopic }`.
-- Checks `generated_deck_status`; if `ready`, returns immediately.
-- If `pending` and recent (<60s), returns pending.
-- Otherwise marks `pending`, calls Lovable AI (`google/gemini-2.5-flash`) with a strict system prompt: "You are drafting SQE/UBE revision flashcards from primary sources (statute, case law, official specifications). Produce 15 cards covering the sub-topic {X} of {subject}. Mix of Easy/Medium/Hard. Each card: front (question ≤120 chars), back (answer ≤400 chars), optional exam_tip (≤180 chars). No proprietary content."
-- Uses AI SDK `generateText` with `Output.object` (Zod schema, no `.min/.max` per SDK guidance — clamp in code).
-- Inserts rows via `supabaseAdmin` (loaded inside the handler), updates status to `ready`, returns cards.
-- Errors → status `failed`, surfaces message to UI.
-
-### 3. Read path
-
-`src/lib/flashcards-data.ts` currently exports `getCardsFor`, `getDeckFor` etc. from static arrays. Add a new async fetcher `fetchSubtopicCards({ examKind, subject, subtopic })` used by the topic-deep-link mode in `flashcards.tsx`:
-
-- Query Supabase for existing generated cards + merge with any matching static seed cards filtered by subtopic string.
-- If zero cards, call `generateSubtopicDeck` and re-query.
-
-The existing deck browser (`getDecksFor`, `getCardsByDeckFor`) is extended to union static seed cards with generated cards for that deck.
-
-### 4. UI changes (`src/routes/flashcards.tsx`)
-
-- Topic mode (`kind: 'topic'`) switches from synchronous `useMemo` filter to a `useQuery` that calls `fetchSubtopicCards`.
-- Loading skeleton with "Preparing your deck — this takes a few seconds the first time" copy.
-- "AI-generated" chip on cards where `source === 'ai'`.
-- Empty/error states with retry.
-
-### 5. Seed set stays
-
-`flashcards-data.ts` and `flashcards-data-ube.ts` remain the day-one baseline (currently ~260 cards). No content removed. Over time these act as style exemplars and guaranteed-quality fallbacks.
-
-### 6. Guardrails
-
-- Rate limit: only one generation per `(subject, subtopic)` per 60s (status table).
-- Credit safety: server fn is auth-gated; anonymous users see seed cards only.
-- Content safety: system prompt forbids copying from named commercial providers; requires citations to statute/case names where relevant.
-- 402 / 429 from AI Gateway surfaced as a user-visible toast ("AI generation temporarily unavailable — showing seed cards").
-
-## Out of scope for this change
-
-- Spaced repetition scheduling changes.
-- Bulk pre-generation of every sub-topic (deferred — on-demand is cheaper and only generates what users actually study).
-- Editorial review workflow (future).
+## Trade-offs
+- Users who sign up via Google without picking a plan first land on the plan chooser (one extra click vs. today). Acceptable — Google users rarely arrive without intent.
+- 72 h grace before deletion means abandoned accounts still exist briefly; a user can retry sign-up during that window (Supabase blocks the email as "already registered") — the purge frees it up. We can shorten to 24 h if you'd rather.
+- No true "payment before account" flow: Stripe subscriptions need a customer, and a customer needs an auth user to attach access to. This is the standard Supabase + Stripe pattern.
 
 ## Files touched
-
-- new: migration for `generated_flashcards` + `generated_deck_status` (+ GRANTs + RLS + policies)
-- new: `src/lib/flashcards-generate.functions.ts`
-- edit: `src/lib/flashcards-data.ts` (add async fetchers, keep static exports)
-- edit: `src/routes/flashcards.tsx` (async topic mode + loading/AI-badge UI)
+- `src/routes/subscribe.tsx` — allow signed-out plan selection, add `?autostart=1`, banner for unpaid signed-in users.
+- `src/routes/auth.tsx` — drop `next` bypass, read `pendingPriceId`, route to `/subscribe?autostart=1`.
+- `src/routes/index.tsx`, `src/routes/onboarding.tsx` — CTAs to `/subscribe`.
+- `src/routes/api/public/cron/purge-unpaid.ts` — new cron endpoint with shared-secret auth.
+- `src/lib/admin-purge.functions.ts` — one-off backfill server function.
+- New migration — pg_cron schedule + `PURGE_UNPAID_CRON_SECRET` (generated).
