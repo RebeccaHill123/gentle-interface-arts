@@ -449,6 +449,11 @@ const EXAMS: { id: ExamId; label: string }[] = [
 
 function TopicsPage() {
   const [stored, setStored] = useState<StoredPlan | null>(null);
+  const [planTick, setPlanTick] = useState(0);
+  const onPlanChanged = () => {
+    setStored(loadPlan());
+    setPlanTick((t) => t + 1);
+  };
 
   useEffect(() => {
     let active = true;
