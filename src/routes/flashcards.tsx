@@ -36,6 +36,12 @@ import {
 } from "@/lib/flashcards-progress";
 import { loadPlan } from "@/lib/plan-store";
 import { isUbePath } from "@/lib/exam-paths";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  fetchSubtopicDeck,
+  generateSubtopicDeck,
+  type GeneratedCard,
+} from "@/lib/flashcards-generate.functions";
 
 type FlashcardsSearch = { subject?: string; subtopic?: string };
 
