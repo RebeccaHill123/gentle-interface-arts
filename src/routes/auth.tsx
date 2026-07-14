@@ -124,12 +124,10 @@ function AuthPage() {
 
   const goAfterAuth = async () => {
     const savedPreviewPlan = await syncPreviewPlanAfterAuth();
-    if (next) {
-      window.location.assign(next);
-      return;
-    }
-    // Check access — if the user has no subscription and isn't grandfathered,
-    // route them to /subscribe before anything else.
+    // Access check ALWAYS runs first — a signed-up user with no active
+    // subscription must land on /subscribe, even if a `next` param points
+    // at a protected route. Without this, ?next=/dashboard silently
+    // bypasses the paywall on the initial post-signup navigation.
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       const { data: profileRow } = await supabase
@@ -152,10 +150,17 @@ function AuthPage() {
         navigate({
           to: "/subscribe",
           replace: true,
-          search: { next: savedPreviewPlan || fromOnboarding ? "/dashboard" : undefined },
+          search: {
+            autostart: 1,
+            next: next ?? (savedPreviewPlan || fromOnboarding ? "/dashboard" : undefined),
+          },
         });
         return;
       }
+    }
+    if (next) {
+      window.location.assign(next);
+      return;
     }
     const local = loadPlan();
     if (local) {
@@ -170,6 +175,7 @@ function AuthPage() {
     }
     navigate({ to: "/onboarding", replace: true });
   };
+
 
   const autoRedirected = useRef(false);
 
