@@ -76,6 +76,33 @@ export function saveFocusPrefs(p: FocusPrefs) {
   localStorage.setItem(PREFS_KEY, JSON.stringify(p));
 }
 
+/**
+ * Programmatically stage a focus sprint (e.g. from a planned Today's Plan
+ * block). The caller navigates to /focus/sprint after this returns.
+ */
+export function startPlannedSprint(input: {
+  module?: string;
+  topic?: string;
+  focusMin: number;
+  breakMin?: number;
+}) {
+  if (typeof window === "undefined") return;
+  const now = Date.now();
+  const focusMs = Math.max(1, Math.min(180, input.focusMin)) * 60 * 1000;
+  const breakMs = Math.max(0, Math.min(60, input.breakMin ?? 5)) * 60 * 1000;
+  saveActiveSprint({
+    startedAt: now,
+    focusMs,
+    breakMs,
+    module: input.module || undefined,
+    topic: input.topic?.trim() || undefined,
+    presetId: "custom",
+    pausedTotalMs: 0,
+    phase: "focus",
+    phaseStartedAt: now,
+  });
+}
+
 export function elapsedMs(s: ActiveSprint, now = Date.now()): number {
   const end = s.pausedAt ?? now;
   return Math.max(0, end - s.phaseStartedAt - s.pausedTotalMs);

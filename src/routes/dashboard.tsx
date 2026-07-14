@@ -51,8 +51,11 @@ import { deriveAnalytics, READINESS_LABELS, type ReadinessResult } from "@/lib/a
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
-import { CommandCentre } from "@/components/dashboard/command-centre";
-import { getUserExamId, aggregateSubjectMinutes } from "@/lib/topic-map";
+import { CommandCentre, type TodayPlanItem, type WeakestOverride } from "@/components/dashboard/command-centre";
+import { getUserExamId, aggregateSubjectMinutes, buildExamMap, untouchedTopics, type SubTopic } from "@/lib/topic-map";
+import { getExamLabel } from "@/lib/exam-label";
+import { loadMockPerformance, type MockPerformance } from "@/lib/mock-performance";
+import { startPlannedSprint } from "@/lib/focus-store";
 import {
   Accordion,
   AccordionContent,
@@ -134,6 +137,82 @@ function DashboardPage() {
     [stored],
   );
 
+  const examLabel = getExamLabel(stored?.input.examType, stored?.input.examPath);
+  const examId = getUserExamId(stored?.input.examType);
+  const subjectMinutes = useMemo(
+    () => aggregateSubjectMinutes(stored?.sessions ?? []),
+    [stored],
+  );
+
+  const todayItems: TodayPlanItem[] = useMemo(() => {
+    if (!stored) return [];
+    const { plan, completedTaskIds } = stored;
+    if (plan.todayTasks.length > 0) {
+      return plan.todayTasks.map((t, i) => {
+        const done = completedTaskIds.includes(String(i));
+        const priority =
+          t.bucket === "must" || t.priority === "high"
+            ? "must"
+            : t.rationale === "weak-area"
+              ? "weak-spot"
+              : t.rationale === "high-yield"
+                ? "high-yield"
+                : "must";
+        return {
+          id: String(i),
+          title: t.title,
+          subject: t.module,
+          subTopic: t.subtopic,
+          minutes: t.minutes,
+          format:
+            t.taskType === "timed-sba" || t.taskType === "mixed-mock"
+              ? "Practice"
+              : t.taskType === "concept-deepdive"
+                ? "Learn"
+                : t.taskType === "active-recall" || t.taskType === "mistake-review"
+                  ? "Review"
+                  : "Study",
+          priority: priority as TodayPlanItem["priority"],
+          reason: t.why ?? "",
+          done,
+        };
+      });
+    }
+    const map = buildExamMap(examId, undefined, subjectMinutes);
+    const picks: SubTopic[] = untouchedTopics(map, 2);
+    const items: TodayPlanItem[] = picks.map((s, i) => ({
+      id: `derived-${i}`,
+      title: `${s.name} — first pass`,
+      subject: s.subject,
+      subTopic: s.name,
+      minutes: 45,
+      format: "Learn",
+      priority: s.isHighYield ? "high-yield" : "must",
+      reason: s.isHighYield ? "High-yield syllabus topic" : "Priority syllabus coverage",
+    }));
+    items.push({
+      id: "derived-practice",
+      title: examLabel === "UBE" ? "Mixed MBE practice" : `Mixed ${examLabel} practice`,
+      subject: "Mixed practice",
+      minutes: 20,
+      format: "Practice",
+      priority: "must",
+      reason: "Build performance data so Tentra can pinpoint weak areas.",
+    });
+    return items;
+  }, [stored, examId, examLabel, subjectMinutes]);
+
+  const [mockPerf, setMockPerf] = useState<MockPerformance | null>(null);
+  useEffect(() => {
+    let active = true;
+    void loadMockPerformance(examLabel === "UBE" ? "UBE" : "SQE").then((res) => {
+      if (active) setMockPerf(res);
+    });
+    return () => {
+      active = false;
+    };
+  }, [examLabel]);
+
   if (hydrating || !stored || !analytics) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -213,6 +292,30 @@ function DashboardPage() {
     .slice(0, 3);
   const currentWeek = plan.weeklyFocus?.[0];
 
+
+  const weakestOverride: WeakestOverride | null =
+    mockPerf?.hasData && mockPerf.perTopic.length > 0
+      ? {
+          name: mockPerf.perTopic[0].topic,
+          accuracy: mockPerf.perTopic[0].accuracy,
+          attempted: mockPerf.perTopic[0].attempted,
+        }
+      : null;
+
+  const hasPerformanceData = Boolean(mockPerf?.hasData) || plan.todayTasks.length > 0;
+
+  const handleStartTodayItem = (id: string) => {
+    const item = todayItems.find((t) => t.id === id);
+    if (!item) return;
+    startPlannedSprint({
+      module: item.subject !== "Mixed practice" ? item.subject : undefined,
+      topic: item.subTopic ?? item.title,
+      focusMin: item.minutes,
+      breakMin: 5,
+    });
+    navigate({ to: "/focus/sprint" });
+  };
+
   return (
     <AppShell
       title="Dashboard"
@@ -228,17 +331,20 @@ function DashboardPage() {
       <div className="space-y-8">
         <CommandCentre
           userName={input.name}
-          examId={getUserExamId(input.examType)}
-          subjectMinutes={aggregateSubjectMinutes(sessions ?? [])}
+          examId={examId}
+          examLabel={examLabel}
+          subjectMinutes={subjectMinutes}
+          hasPerformanceData={hasPerformanceData}
+          weakestOverride={weakestOverride}
+          todayItems={todayItems}
           onReviewWeak={() => navigate({ to: "/topics" })}
-          onStartPriority={() => navigate({ to: "/focus" })}
+          onStartPriority={() => navigate({ to: "/topics" })}
           onStartFocus={() => navigate({ to: "/focus" })}
           onStartDiagnostic={() => navigate({ to: "/practice" })}
-          onStartItem={() => {
-            if (nextTaskIdx >= 0) handleToggle(nextTaskIdx);
-            else navigate({ to: "/focus" });
-          }}
+          onGeneratePlan={() => navigate({ to: "/onboarding" })}
+          onStartItem={handleStartTodayItem}
         />
+
 
         <MetricsRow
           daysUntilExam={daysUntilExam}

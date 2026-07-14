@@ -25,13 +25,14 @@ const OTP_LENGTH = 6;
 const OTP_SLOTS = Array.from({ length: OTP_LENGTH }, (_, i) => i);
 
 export const Route = createFileRoute("/auth")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    mode: search.mode === "signin" ? ("signin" as const) : ("signup" as const),
-    from: search.from === "onboarding" ? ("onboarding" as const) : undefined,
-    next:
-      typeof search.next === "string" && search.next.startsWith("/") && !search.next.startsWith("//")
-        ? (search.next as string)
-        : undefined,
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { mode: "signin" | "signup"; from?: "onboarding"; next?: string } => ({
+    mode: search.mode === "signin" ? "signin" : "signup",
+    ...(search.from === "onboarding" ? { from: "onboarding" as const } : {}),
+    ...(typeof search.next === "string" && search.next.startsWith("/") && !search.next.startsWith("//")
+      ? { next: search.next as string }
+      : {}),
   }),
   component: AuthPage,
   head: () => ({
