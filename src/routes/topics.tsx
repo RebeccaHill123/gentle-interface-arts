@@ -382,11 +382,13 @@ function SubjectBlock({
   visibleByChapter,
   totalVisible,
   defaultOpen,
+  onPlanChanged,
 }: {
   subject: Subject;
   visibleByChapter: Map<string, SubTopic[]>;
   totalVisible: number;
   defaultOpen: boolean;
+  onPlanChanged: () => void;
 }) {
   const [open, setOpen] = useState(defaultOpen);
   if (totalVisible === 0) return null;
@@ -429,6 +431,7 @@ function SubjectBlock({
               key={c.id}
               chapter={c}
               visibleSubTopics={visibleByChapter.get(c.id) ?? []}
+              onPlanChanged={onPlanChanged}
             />
           ))}
         </div>
