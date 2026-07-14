@@ -33,7 +33,23 @@ import {
   adjustModuleConfidence,
 } from "@/lib/plan-store";
 
+type PracticeSearch = {
+  subject?: string;
+  subtopic?: string;
+  length?: number;
+  mode?: "revise" | "quiz";
+};
+
 export const Route = createFileRoute("/practice")({
+  validateSearch: (raw: Record<string, unknown>): PracticeSearch => {
+    const s: PracticeSearch = {};
+    if (typeof raw.subject === "string" && raw.subject.trim()) s.subject = raw.subject.trim();
+    if (typeof raw.subtopic === "string" && raw.subtopic.trim()) s.subtopic = raw.subtopic.trim();
+    const len = typeof raw.length === "string" ? parseInt(raw.length, 10) : typeof raw.length === "number" ? raw.length : NaN;
+    if (Number.isFinite(len) && len > 0) s.length = Math.min(30, Math.max(3, Math.floor(len)));
+    if (raw.mode === "revise" || raw.mode === "quiz") s.mode = raw.mode;
+    return s;
+  },
   beforeLoad: async () => {
     const { requireAccess } = await import("@/lib/access-guard");
     await requireAccess();
@@ -89,6 +105,7 @@ const THINKING = [
 
 function PracticeSessionPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [config, setConfig] = useState<PracticeConfig | null>(null);
   const [phase, setPhase] = useState<Phase>("loading");
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -112,6 +129,41 @@ function PracticeSessionPage() {
     try {
       raw = sessionStorage.getItem(STORAGE_KEY);
     } catch {}
+
+    // Deep-link from Topic Map: synthesize a config from ?subject=&subtopic=
+    if (!raw && search.subject) {
+      const isRevise = search.mode === "revise";
+      const questions = search.length ?? (isRevise ? 5 : 10);
+      const label = search.subtopic
+        ? `${isRevise ? "Recall check" : "Targeted quiz"}: ${search.subtopic}`
+        : `${isRevise ? "Recall check" : "Targeted quiz"}: ${search.subject}`;
+      const synth: PracticeConfig = {
+        source: "practice-launcher",
+        format: isRevise ? "recall" : "targeted",
+        formatLabel: label,
+        module: search.subject,
+        topic: search.subtopic ?? search.subject,
+        questions,
+        duration: Math.max(10, questions * 2),
+        difficulty: "Adaptive",
+        timed: true,
+        adaptive: true,
+        rationale: search.subtopic
+          ? `Generated from the Topic Map — ${isRevise ? "short recall set" : "targeted practice"} on “${search.subtopic}”.`
+          : `Generated from the Topic Map — targeted on ${search.subject}.`,
+        reasonBits: [
+          search.subtopic ? `focused on ${search.subtopic}` : `focused on ${search.subject}`,
+        ],
+        skillFocus: isRevise
+          ? ["Recall", "Speed", "Rule accuracy"]
+          : ["Application", "Issue spotting", "Accuracy"],
+      };
+      try {
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(synth));
+      } catch {}
+      raw = JSON.stringify(synth);
+    }
+
     if (!raw) {
       setPhase("error");
       setError("No practice session was queued. Start one from Mocks & Practice.");
