@@ -56,6 +56,7 @@ import { getUserExamId, aggregateSubjectMinutes, buildExamMap, untouchedTopics, 
 import { getExamLabel } from "@/lib/exam-label";
 import { loadMockPerformance, type MockPerformance } from "@/lib/mock-performance";
 import { startPlannedSprint } from "@/lib/focus-store";
+import { normalizeStoredPlanTasks } from "@/lib/study-plan-logic";
 import {
   Accordion,
   AccordionContent,
@@ -111,7 +112,8 @@ function DashboardPage() {
     (async () => {
       const cloud = await pullPlanFromCloud();
       if (!active) return;
-      const fallback = cloud ?? loadPlan();
+      const rawPlan = cloud ?? loadPlan();
+      const fallback = rawPlan ? normalizeStoredPlanTasks(rawPlan) : null;
       if (fallback) {
         setStored(fallback);
         setHydrating(false);
@@ -129,7 +131,8 @@ function DashboardPage() {
   // Re-read local cache when tick changes (e.g. after task toggle)
   useEffect(() => {
     if (tick === 0) return;
-    setStored(loadPlan());
+    const plan = loadPlan();
+    setStored(plan ? normalizeStoredPlanTasks(plan) : null);
   }, [tick]);
 
   const analytics = useMemo(
