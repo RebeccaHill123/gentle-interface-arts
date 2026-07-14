@@ -37,7 +37,15 @@ import {
 import { loadPlan } from "@/lib/plan-store";
 import { isUbePath } from "@/lib/exam-paths";
 
+type FlashcardsSearch = { subject?: string; subtopic?: string };
+
 export const Route = createFileRoute("/flashcards")({
+  validateSearch: (raw: Record<string, unknown>): FlashcardsSearch => {
+    const s: FlashcardsSearch = {};
+    if (typeof raw.subject === "string" && raw.subject.trim()) s.subject = raw.subject.trim();
+    if (typeof raw.subtopic === "string" && raw.subtopic.trim()) s.subtopic = raw.subtopic.trim();
+    return s;
+  },
   beforeLoad: async () => {
     const { requireAccess } = await import("@/lib/access-guard");
     await requireAccess();
