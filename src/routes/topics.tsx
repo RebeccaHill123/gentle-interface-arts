@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { toast } from "sonner";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -18,7 +19,7 @@ import {
   ProgressPill,
   StatusPill,
 } from "@/components/dashboard/command-centre";
-import { loadPlan, pullPlanFromCloud, type StoredPlan } from "@/lib/plan-store";
+import { loadPlan, pullPlanFromCloud, savePlan, type StoredPlan, type StrategyTask } from "@/lib/plan-store";
 import {
   aggregateSubjectMinutes,
   buildExamMap,
