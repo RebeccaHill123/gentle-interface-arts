@@ -345,26 +345,40 @@ export function TopicMapSnapshot({
 
 /* -------------------- Command Centre (compose) -------------------- */
 
+export interface WeakestOverride {
+  name: string;
+  subject?: string;
+  accuracy: number;
+  attempted: number;
+}
+
 export function CommandCentre({
   userName,
   examId,
+  examLabel,
   progress,
   subjectMinutes,
+  hasPerformanceData = false,
+  weakestOverride,
   onReviewWeak,
   onStartPriority,
-  onStartFocus,
   onStartDiagnostic,
+  onGeneratePlan,
   todayItems,
   onStartItem,
 }: {
   userName: string;
   examId: ExamId;
+  examLabel?: string;
   progress?: Map<string, UserTopicProgress>;
   subjectMinutes?: Map<string, number>;
+  hasPerformanceData?: boolean;
+  weakestOverride?: WeakestOverride | null;
   onReviewWeak?: () => void;
   onStartPriority?: () => void;
   onStartFocus?: () => void;
   onStartDiagnostic?: () => void;
+  onGeneratePlan?: () => void;
   todayItems?: TodayPlanItem[];
   onStartItem?: (id: string) => void;
 }) {
@@ -372,14 +386,27 @@ export function CommandCentre({
   const cov = coverage(map);
   const weakList = realWeakSpots(map, 1);
   const priority = suggestedPriority(map);
-  const hasAnyActivity = cov.startedCount > 0;
+  const label = examLabel ?? examId;
+  const hasPlan = (todayItems?.length ?? 0) > 0;
+  // The "command centre" tone should not depend on Focus minutes. It appears
+  // only when there is genuine performance data or a live plan.
+  const showCommandTone = hasPerformanceData || hasPlan;
 
-  const weakValue = weakList[0]?.name ?? "None yet";
-  const weakSubtext = weakList[0]
-    ? `${weakList[0].subject} · ${weakList[0].accuracy}% accuracy`
-    : hasAnyActivity
-      ? "No weak spots detected yet"
-      : "Complete a quiz to identify weak areas";
+  // Weakest area: real performance signal only. Mock accuracy (weakestOverride)
+  // wins; otherwise topic-map derived weak spots (from questionsAttempted);
+  // otherwise honest empty state.
+  const weakFromMap = weakList[0];
+  const weakestReal = weakestOverride
+    ? {
+        title: weakestOverride.name,
+        subtext: `${weakestOverride.subject ? weakestOverride.subject + " · " : ""}${weakestOverride.accuracy}% accuracy across ${weakestOverride.attempted} question${weakestOverride.attempted === 1 ? "" : "s"}`,
+      }
+    : weakFromMap
+      ? {
+          title: weakFromMap.name,
+          subtext: `${weakFromMap.subject} · ${weakFromMap.accuracy}% accuracy`,
+        }
+      : null;
 
   const priorityValue = priority?.name ?? "Pick a topic";
   const prioritySubtext = !priority
@@ -397,26 +424,28 @@ export function CommandCentre({
         <div className="relative">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
             <Sparkles className="h-3 w-3 text-pink" />
-            {userName ? `Hi ${userName.split(" ")[0]},` : "Welcome back,"} you're on the {examId} route
+            {userName ? `Hi ${userName.split(" ")[0]},` : "Welcome back,"} you're on the {label} route
           </div>
           <h2 className="mt-3 font-display text-2xl tracking-[-0.01em] text-foreground md:text-[1.75rem]">
-            {hasAnyActivity ? "Your exam command centre" : `Start building your ${examId} map`}
+            {showCommandTone ? "Your exam command centre" : `Start building your ${label} map`}
           </h2>
           <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
-            {hasAnyActivity
-              ? "See what needs attention, what's improving, and what to revise next."
-              : `Complete a focus session or quiz to let Tentra identify your weak areas, track recall gaps and recommend what to study next.`}
+            {showCommandTone
+              ? "See what needs attention, what's improving, and what to review next."
+              : "Complete practice questions and rate your confidence to help Tentra identify weak areas. Study sessions track your coverage, progress and review history."}
           </p>
 
-          {!hasAnyActivity && (
+          {!showCommandTone && (
             <div className="mt-4 flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={onStartFocus}
-                className="rounded-full bg-gradient-pink-blue px-4 py-2 text-[12.5px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
-              >
-                Start {examId} focus session
-              </button>
+              {onGeneratePlan && (
+                <button
+                  type="button"
+                  onClick={onGeneratePlan}
+                  className="rounded-full bg-gradient-pink-blue px-4 py-2 text-[12.5px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+                >
+                  Generate my plan
+                </button>
+              )}
               <button
                 type="button"
                 onClick={onStartDiagnostic}
@@ -428,7 +457,7 @@ export function CommandCentre({
                 to="/topics"
                 className="rounded-full border border-border/60 bg-background px-4 py-2 text-[12.5px] font-medium text-foreground transition-colors hover:border-pink/40"
               >
-                Open {examId} Topic Map
+                Open {label} Topic Map
               </Link>
             </div>
           )}
@@ -436,10 +465,14 @@ export function CommandCentre({
           <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             <InsightCard
               title="Weakest area"
-              value={weakValue}
-              subtext={weakSubtext}
-              ctaLabel="Review weak spots"
-              onCta={onReviewWeak}
+              value={weakestReal ? weakestReal.title : "Not enough data yet"}
+              subtext={
+                weakestReal
+                  ? weakestReal.subtext
+                  : "Complete practice questions to identify your weakest areas."
+              }
+              ctaLabel={weakestReal ? "Review weak spots" : "Take a practice quiz"}
+              onCta={weakestReal ? onReviewWeak : onStartDiagnostic}
               icon={<AlertTriangle className="h-3 w-3" />}
               accent="pink"
             />
@@ -447,17 +480,17 @@ export function CommandCentre({
               title="Coverage"
               value={`${cov.startedPct}% started`}
               subtext={`${cov.untouchedCount} of ${cov.totalCount} topics not started`}
-              ctaLabel="Open Topic Map"
+              ctaLabel={`Open ${label} Topic Map`}
               ctaTo="/topics"
               icon={<Compass className="h-3 w-3" />}
               accent="violet"
             />
             <InsightCard
-              title="Today's priority"
+              title="Suggested next"
               value={priorityValue}
               subtext={prioritySubtext}
               ctaLabel={
-                priority?.recommendedAction === "start" || !hasAnyActivity
+                priority?.recommendedAction === "start" || !hasPerformanceData
                   ? "Start topic"
                   : "Continue"
               }
@@ -476,18 +509,18 @@ export function CommandCentre({
             <div>
               <h3 className="text-base font-medium text-foreground">Today's plan</h3>
               <p className="mt-1 text-xs text-muted-foreground/80">
-                {todayItems && todayItems.length > 0
-                  ? "Blocks from your study plan."
-                  : "Your study plan will populate here as you generate one and log activity."}
+                {hasPlan
+                  ? "Blocks recommended for you today. Start one and it opens a Focus session ready to go."
+                  : `Generate your ${label} plan to see recommended blocks here.`}
               </p>
             </div>
             <span className="grid h-8 w-8 place-items-center rounded-full bg-pink/10 text-pink/90">
               <Flame className="h-4 w-4" />
             </span>
           </div>
-          {todayItems && todayItems.length > 0 ? (
+          {hasPlan ? (
             <ul className="mt-4 space-y-3">
-              {todayItems.map((item) => (
+              {todayItems!.map((item) => (
                 <TodayPlanCard
                   key={item.id}
                   item={item}
@@ -498,15 +531,29 @@ export function CommandCentre({
           ) : (
             <div className="mt-6 flex flex-1 flex-col items-center justify-center rounded-2xl border border-dashed border-border/50 p-6 text-center">
               <Circle className="h-5 w-5 text-muted-foreground/70" />
-              <p className="mt-3 text-sm text-foreground">No blocks scheduled today</p>
+              <p className="mt-3 text-sm text-foreground">No plan generated yet</p>
               <p className="mt-1 text-[12px] text-muted-foreground">
-                Start a focus session or generate a plan to see recommended blocks here.
+                Tentra will schedule study blocks based on your exam date, available time and syllabus coverage.
               </p>
+              {onGeneratePlan && (
+                <button
+                  type="button"
+                  onClick={onGeneratePlan}
+                  className="mt-4 rounded-full bg-gradient-pink-blue px-4 py-2 text-[12.5px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+                >
+                  Generate my {label} plan
+                </button>
+              )}
             </div>
           )}
         </section>
 
-        <TopicMapSnapshot examId={examId} progress={progress} subjectMinutes={subjectMinutes} />
+        <TopicMapSnapshot
+          examId={examId}
+          examLabel={label}
+          progress={progress}
+          subjectMinutes={subjectMinutes}
+        />
       </div>
     </div>
   );
