@@ -1,50 +1,53 @@
-## Plan
+# Make Topic Map row actions functional
 
-1. **Replace vague day-1 blocks with foundation-first tasks**
-   - Stop generating titles like “Active recall: Civil Procedure”, “Mistake review: X”, or “Timed MCQs: Constitutional Law” when no prior basis exists.
-   - For early-plan users, generate blocks such as:
-     - “Build foundation: Subject-matter jurisdiction — federal question, diversity, removal”
-     - “Apply foundation: Commerce Clause vs dormant Commerce Clause — 12 MBE questions in 22 minutes”
-     - “Rule scaffold: negligence duty, breach, causation and remoteness”
-   - Use “mistake review” only when the user has genuine mistakes/mock/practice data or when a block is explicitly created after a quiz/mock.
+Today the row-level button on each sub-topic in `/topics` renders the correct label ("Start topic" / "Start quiz" / "Revise" / "Add to plan") but has no `onClick`, so nothing happens. This plan wires it up using the "smart split by action" model and adds sub-topic filtering to both `/practice` and `/flashcards`.
 
-2. **Use the full SQE and UBE syllabus to choose precise subtopics**
-   - Introduce a shared syllabus-planning layer derived from the existing Topic Map syllabus, so both preview plans and saved plans can select exact subject → chapter → subtopic → micro-topic coverage.
-   - Keep SQE route terminology aligned to FLK1/FLK2/SQE2 and UBE terminology aligned to MBE/MEE/MPT.
-   - For broad subjects like UBE Constitutional Law, tasks must target named subtopics and micro-topics, not the whole subject.
+## Action → destination mapping
 
-3. **Make plan phase depend on time to exam**
-   - Add an exam-timeline phase model:
-     - **Foundation phase**: far from exam or day 1/new user — concept scaffolds, rule sheets, short untimed/low-timed practice.
-     - **Build/Application phase**: more mixed practice, issue spotting, short timed sets.
-     - **Performance phase**: timed MCQs/SBAs, essays, mocks, MPTs, mistake review from real data.
-     - **Final phase**: mock-led review, weakest objective performance areas, spaced refresh.
-   - Weight tasks by days until exam, weekly hours, route, high-yield status, confidence, and genuine assessment data.
+Chosen by the existing `recommendedAction` on each `SubTopic`:
 
-4. **Refactor deterministic plan generation**
-   - Update the authenticated plan fallback in `generate-plan` so it never produces vague generic blocks.
-   - Use a task-template engine that chooses task type, title, rationale, output, and timing from the user’s phase and selected syllabus node.
-   - Ensure weekly minutes still roughly match the user’s `hoursPerWeek` target.
+| Action | Shown label | Destination | Why |
+| --- | --- | --- | --- |
+| `start` | Start topic | `/flashcards?subject=…&subtopic=…` | Untouched → foundation first (matches `study-plan-logic` Foundation phase) |
+| `quiz` | Start quiz | `/practice?subject=…&subtopic=…&length=10` | Weak / studied / not-enough-data → build genuine performance data |
+| `revise` | Revise | `/practice?subject=…&subtopic=…&length=5&mode=revise` | Improving / strong / due-for-recall → short recall set |
+| `add-to-plan` | Add to plan | Adds the sub-topic to today's plan (no navigation), then toasts "Added to today's plan" with a "View plan" link to `/dashboard` | High-yield untouched → surface in Command Centre without derailing them |
 
-5. **Tighten the AI plan prompt and schema expectations**
-   - Add explicit rules that day-1 plans must build foundations before recall/mistake review unless evidence exists.
-   - Require every task to include a precise subtopic and, where available, micro-topics.
-   - Require timed UBE MBE blocks to include question count and timing; MEE/MPT blocks to include essay/task timing.
-   - Reject or normalize vague returned task titles before saving/displaying them.
+The subject-level row already expands the subject; no new action added there.
 
-6. **Fix anonymous preview plans too**
-   - Update the local preview generator, because this is where examples like “Active recall: Civil Procedure” currently come from.
-   - Preview plans should show the same foundation-first, syllabus-specific logic as signed-in generated plans.
+## Changes
 
-7. **Dashboard display polish for plan usefulness**
-   - Show the targeted subtopic/micro-topic in Today’s Plan cards when available.
-   - Make first-week wording reflect “Foundation”, “Apply”, “Check understanding”, or “Timed practice” based on phase.
-   - Keep mistake-review language off day 1 unless there is real mistake data.
+### 1. `src/routes/practice.tsx` — accept sub-topic filter from URL
+- Add `validateSearch` with `zodValidator` for `subject`, `subtopic`, `length`, `mode` (all optional, using `fallback`).
+- Read via `Route.useSearch()`; when `subject`/`subtopic` present:
+  - Prefill the launcher's subject/topic selection.
+  - Filter the question pool to that sub-topic (fall back to subject-only if no tagged questions exist for the sub-topic, and show a small "Showing all {subject} questions — no {sub-topic} bank yet" note).
+  - Show a dismissible chip: `Filtered to: {sub-topic}` with a clear (×) that navigates to `/practice` with cleared search.
+- Respect `length` (default 10) and `mode=revise` (shorter set, marks the session type in the summary).
 
-8. **Validation**
-   - Generate/check sample plans for SQE and UBE with:
-     - day 1 / far-from-exam users,
-     - short time-to-exam users,
-     - low-confidence subjects,
-     - users with and without mock/practice data.
-   - Confirm no task title is broad subject-only and no mistake-review block appears without genuine mistake data.
+### 2. `src/routes/flashcards.tsx` — accept sub-topic filter from URL
+- Same `validateSearch` shape (`subject`, `subtopic`).
+- Filter the deck (`flashcards-data.ts` / `flashcards-data-ube.ts`) by matching `subject` and, when possible, the sub-topic name against card tags/topic string.
+- If nothing matches on sub-topic, fall back to the subject deck with the same "no dedicated deck yet" note + filter chip.
+- Keep existing progress tracking behaviour.
+
+### 3. `src/routes/topics.tsx` — wire up `SubTopicRow`
+- Replace the plain `<button>` with either a `<Link to="/practice" search={{...}}>` or `<Link to="/flashcards" search={{...}}>` depending on `sub.recommendedAction`, styled identically.
+- For `recommendedAction === "add-to-plan"`:
+  - Keep as a `<button>` with an `onClick` that appends a task to today's plan via the existing `plan-store` helpers (foundation-first task template from `study-plan-logic` using the sub-topic name), then shows a toast (`sonner`) with a "View plan" action linking to `/dashboard`.
+  - Once added, the row's action swaps to "In today's plan" (disabled) — derived from the plan on next render.
+- Use TanStack `<Link to=... search={{ subject, subtopic }}>` (never string interpolation) and include `from={Route.fullPath}` where needed.
+
+### 4. Small polish
+- Update the "no activity yet" empty-state hint copy so it reads "Tap a sub-topic action below to start it in Practice or Flashcards" (only on the header of the topic map, once).
+- Keep the button's hover accent as-is; add `aria-label` describing action + sub-topic name for screen readers.
+
+## Non-goals (this pass)
+- No new question or flashcard content is authored — filtering falls back gracefully when a sub-topic has no dedicated bank yet.
+- Chapter-level and subject-level headers stay non-clickable (they already expand/collapse).
+- No changes to the recommended-action logic in `topic-map.ts`.
+
+## Validation
+- Type-check with `tsgo` (search-param schemas + Link `to`/`search` are the main risk).
+- Manually click through /topics for both SQE and UBE: each of the four action types navigates or adds to plan as described, filter chip renders, clearing it returns to unfiltered practice/flashcards.
+- Verify a sub-topic with no dedicated question bank falls back to subject-level with the note visible.
