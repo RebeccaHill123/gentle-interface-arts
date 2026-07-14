@@ -334,9 +334,11 @@ function SubTopicRow({ sub, onPlanChanged }: { sub: SubTopic; onPlanChanged: () 
 function ChapterBlock({
   chapter,
   visibleSubTopics,
+  onPlanChanged,
 }: {
   chapter: Chapter;
   visibleSubTopics: SubTopic[];
+  onPlanChanged: () => void;
 }) {
   const [open, setOpen] = useState(true);
   if (visibleSubTopics.length === 0) return null;
@@ -356,7 +358,7 @@ function ChapterBlock({
       {open && (
         <ul className="mt-1 space-y-0.5">
           {visibleSubTopics.map((s) => (
-            <SubTopicRow key={s.id} sub={s} />
+            <SubTopicRow key={s.id} sub={s} onPlanChanged={onPlanChanged} />
           ))}
         </ul>
       )}
