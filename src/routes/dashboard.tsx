@@ -51,8 +51,11 @@ import { deriveAnalytics, READINESS_LABELS, type ReadinessResult } from "@/lib/a
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
-import { CommandCentre } from "@/components/dashboard/command-centre";
-import { getUserExamId, aggregateSubjectMinutes } from "@/lib/topic-map";
+import { CommandCentre, type TodayPlanItem, type WeakestOverride } from "@/components/dashboard/command-centre";
+import { getUserExamId, aggregateSubjectMinutes, buildExamMap, untouchedTopics, type SubTopic } from "@/lib/topic-map";
+import { getExamLabel } from "@/lib/exam-label";
+import { loadMockPerformance, type MockPerformance } from "@/lib/mock-performance";
+import { startPlannedSprint } from "@/lib/focus-store";
 import {
   Accordion,
   AccordionContent,
