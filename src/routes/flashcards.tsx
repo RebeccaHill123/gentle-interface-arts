@@ -378,7 +378,33 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-function buildQueue(mode: ReviewMode, kind: ExamKind): Flashcard[] {
+function aiToFlashcard(c: GeneratedCard, deckId: string, area: CardArea): Flashcard {
+  return {
+    id: `ai-${c.id}`,
+    deckId,
+    front: c.front,
+    back: c.back,
+    examTip: c.exam_tip ?? undefined,
+    topic: c.topic,
+    difficulty: c.difficulty,
+    flk: area,
+  };
+}
+
+function resolveTopicDeck(kind: ExamKind, subject: string): { id: string; area: CardArea } {
+  const decks = getDecksFor(kind);
+  const want = normalize(subject);
+  const match = decks.find((d) => {
+    const n = normalize(d.subject);
+    const t = normalize(d.title);
+    return n === want || n.includes(want) || want.includes(n) || t.includes(want) || want.includes(t);
+  });
+  if (match) return { id: match.id, area: match.flk };
+  const fallbackArea: CardArea = kind === "UBE" ? "MBE" : "FLK1";
+  return { id: `topic-${want.replace(/\s+/g, "-")}`, area: fallbackArea };
+}
+
+function buildQueue(mode: ReviewMode, kind: ExamKind, extraAi: Flashcard[] = []): Flashcard[] {
   const progress = getAllProgress();
   const allCards = getCardsFor(kind);
   let pool: Flashcard[] = [];
@@ -404,21 +430,19 @@ function buildQueue(mode: ReviewMode, kind: ExamKind): Flashcard[] {
         const t = normalize(c.topic);
         return t.includes(wantTopic) || wantTopic.includes(t);
       });
-      pool = narrowed.length > 0 ? narrowed : subjectPool;
+      pool = [...narrowed, ...extraAi];
     } else {
-      pool = subjectPool;
+      pool = [...subjectPool, ...extraAi];
     }
   }
 
-  // Adaptive weighting: needs_review cards appear twice, got_it skipped in deck
-  // mode if everything has been seen at least once.
+  // Adaptive weighting
   const expanded: Flashcard[] = [];
   for (const card of pool) {
     const p = progress[card.id];
     expanded.push(card);
     if (p?.status === "needs_review") expanded.push(card);
   }
-  // Shuffle
   for (let i = expanded.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [expanded[i], expanded[j]] = [expanded[j], expanded[i]];
