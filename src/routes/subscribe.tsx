@@ -68,13 +68,24 @@ const PLANS: {
 
 function SubscribePage() {
   const navigate = useNavigate();
-  const { next, checkout } = Route.useSearch();
+  const { next, checkout, autostart } = Route.useSearch();
   const auth = useAuth();
   const sub = useSubscription();
   const [selected, setSelected] = useState<SubscriptionPlanId>("pro_monthly");
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(false);
   const isReturningFromCheckout = checkout === "success";
+
+  // When a signed-in user with no active access lands here (e.g. straight
+  // after sign-up), drop them into Stripe checkout immediately — skip the
+  // extra "Continue to payment" click. Requires ?autostart=1 so plan
+  // browsing is still possible from Settings.
+  useEffect(() => {
+    if (auth.loading || sub.loading) return;
+    if (!auth.user || sub.hasAccess) return;
+    if (autostart && !showCheckout) setShowCheckout(true);
+  }, [auth.loading, auth.user, sub.loading, sub.hasAccess, autostart, showCheckout]);
+
 
   // If access is granted (webhook fired after return), forward to the app.
   useEffect(() => {
