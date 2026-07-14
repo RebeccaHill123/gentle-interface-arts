@@ -9,9 +9,17 @@ import type {
   WeeklyFocusEntry,
   StrategyTask,
 } from "@/lib/plan-store";
+import {
+  buildSpecificTask,
+  buildStudyDurations,
+  daysUntilExam,
+  getStudyPhase,
+  phaseLabel,
+  selectPreciseSubtopic,
+} from "@/lib/study-plan-logic";
 
 function daysUntil(iso: string): number {
-  return Math.max(1, Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000));
+  return daysUntilExam(iso);
 }
 
 function pickModules(input: OnboardingInput) {
@@ -29,6 +37,7 @@ export function generatePreviewPlan(input: OnboardingInput): {
 } {
   const days = daysUntil(input.examDate);
   const weeks = Math.max(1, Math.min(26, Math.ceil(days / 7)));
+  const phase = getStudyPhase(days, input.intensity);
   const sorted = pickModules(input);
   const top = sorted.slice(0, Math.min(5, sorted.length));
   const hpw = Math.max(1, input.hoursPerWeek);
@@ -47,13 +56,15 @@ export function generatePreviewPlan(input: OnboardingInput): {
       hours,
       rationale: weak ? "weak-area" : m.confidence <= 2 ? "weak-area" : "high-yield",
       note: weak
-        ? `Surgical reps on your flagged subtopics in ${m.name}.`
+        ? `Foundation-first work on your flagged subtopics in ${m.name}.`
         : m.confidence <= 2
-        ? `Build foundations in ${m.name} with active recall + drills.`
-        : `Maintain ${m.name} with mixed practice and timed SBAs.`,
-      subtopics: m.weakSubtopics?.slice(0, 4),
-      method: weak ? "Spaced repetition + targeted MCQs" : "Concept review then practice questions",
-      outcome: weak ? "Lift accuracy on weak subtopics by 10–15%" : "Consolidate exam-ready recall",
+        ? `Build foundations in ${m.name} before moving to timed practice.`
+        : `${phaseLabel(phase)} work on high-yield ${m.name} subtopics.`,
+      subtopics: Array.from({ length: 4 }, (_, i) => selectPreciseSubtopic(m, i)).filter(
+        (value, i, arr) => value && arr.indexOf(value) === i,
+      ),
+      method: phase === "foundation" ? "Rule scaffold, short application drill, then low-pressure questions" : "Targeted review followed by exam-format practice",
+      outcome: phase === "foundation" ? "Create a reliable rule base on named subtopics" : "Improve exam application and timing on named subtopics",
     };
   });
 
@@ -66,43 +77,39 @@ export function generatePreviewPlan(input: OnboardingInput): {
       week: w,
       theme:
         w === 1
-          ? "Diagnostic & foundations"
+          ? `${phaseLabel(phase)}: ${slice.length ? slice.join(" + ") : moduleNames.slice(0, 2).join(" + ")}`
           : w === weeks
           ? "Final mock prep"
           : w <= weeks / 2
-          ? "Build & active recall"
+          ? "Build foundations into application"
           : "Practice-heavy & weak-area surgery",
       modules: slice.length ? slice : moduleNames.slice(0, 3),
       hours: hpw,
       reason:
         w === 1
-          ? "Set baseline. Calibrate confidence with short timed sets."
-          : `Focus on weakest areas in rotation; spaced review of prior weeks.`,
+          ? "Start with precise syllabus foundations before relying on recall or mistake review."
+          : `Rotate precise high-yield subtopics with spaced review of earlier foundations.`,
     });
   }
 
-  // Today's tasks: 2-3 focused blocks from top modules.
-  const blockMins = input.intensity === "advanced" ? 60 : input.intensity === "beginner" ? 30 : 45;
-  const todayTasks: StrategyTask[] = top.slice(0, 3).map((m, i) => ({
-    title:
-      i === 0
-        ? `Active recall: ${m.name}`
-        : i === 1
-        ? `Timed MCQs: ${m.name}`
-        : `Mistake review: ${m.name}`,
-    module: m.name,
-    minutes: blockMins,
-    taskType: i === 0 ? "active-recall" : i === 1 ? "timed-sba" : "mistake-review",
-    rationale: (m.weakSubtopics?.length ?? 0) > 0 ? "weak-area" : "high-yield",
-    priority: i === 0 ? "high" : "medium",
-    why:
-      (m.weakSubtopics?.length ?? 0) > 0
-        ? `You flagged ${m.weakSubtopics!.length} weak subtopic${m.weakSubtopics!.length === 1 ? "" : "s"} here.`
-        : `${m.name} is high-yield for your exam.`,
-    subtopic: m.weakSubtopics?.[0],
-    difficulty: m.confidence <= 2 ? "foundational" : m.confidence >= 4 ? "challenging" : "core",
-    bucket: i === 0 ? "must" : "should",
-  }));
+  // Today's tasks: precise foundation-first blocks from the user's full syllabus route.
+  const durations = buildStudyDurations(hpw);
+  const todayTasks: StrategyTask[] = durations.map((minutes, i) => {
+    const module = top[i % Math.max(1, top.length)] ?? sorted[0] ?? {
+      id: "mixed",
+      name: input.examType === "UBE" ? "Civil Procedure" : "Contract",
+      confidence: 3,
+      weakSubtopics: [],
+    };
+    return buildSpecificTask({
+      module,
+      index: i,
+      minutes,
+      examPath: input.examPath,
+      phase,
+      hasMistakeEvidence: false,
+    });
+  });
 
   const masteryTargets = sorted.slice(0, 8).map((m) => ({
     module: m.name,
@@ -114,8 +121,8 @@ export function generatePreviewPlan(input: OnboardingInput): {
   }));
 
   const overview =
-    `A ${weeks}-week, ${hpw}h/week plan tailored to your exam, weak areas and study style. ` +
-    `We'll start with diagnostics, then rotate weak-area surgery with high-yield consolidation.`;
+    `A ${weeks}-week, ${hpw}h/week plan tailored to your exam date, syllabus route and confidence profile. ` +
+    `Week 1 starts in ${phaseLabel(phase).toLowerCase()} mode with named subtopics before heavier recall, mocks or mistake review.`;
 
   return {
     plan: {

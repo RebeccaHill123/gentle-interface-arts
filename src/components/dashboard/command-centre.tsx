@@ -200,6 +200,11 @@ export function TodayPlanCard({
           <p className="text-sm font-medium leading-snug text-foreground">
             {item.title}
           </p>
+          {item.subTopic && !item.title.toLowerCase().includes(item.subTopic.toLowerCase()) && (
+            <p className="text-[11.5px] text-muted-foreground/90">
+              Target: {item.subTopic}
+            </p>
+          )}
           {item.reason && (
             <p className="text-[11.5px] italic text-muted-foreground/85">
               {item.reason}

@@ -125,6 +125,132 @@ function getSubjectTable(body: PlanRequest): Record<string, { weight: number; hi
   return SQE_FALLBACK_SUBJECTS;
 }
 
+type StudyPhase = "foundation" | "build" | "performance" | "final";
+
+function getStudyPhase(daysUntilExam: number, intensity: IntensityTier): StudyPhase {
+  if (daysUntilExam <= 21) return "final";
+  if (daysUntilExam <= 49 || intensity === "resitter") return "performance";
+  if (daysUntilExam <= 98 || intensity === "advanced") return "build";
+  return "foundation";
+}
+
+function phaseLabel(phase: StudyPhase): string {
+  if (phase === "foundation") return "Foundation";
+  if (phase === "build") return "Build & apply";
+  if (phase === "performance") return "Timed performance";
+  return "Final review";
+}
+
+function taskTypeForPhase(phase: StudyPhase, index: number, hasMistakeEvidence: boolean): StudyTask["taskType"] {
+  if (hasMistakeEvidence && (phase === "performance" || phase === "final") && index % 4 === 3) return "mistake-review";
+  if (phase === "foundation") return index % 3 === 0 ? "concept-deepdive" : index % 3 === 1 ? "scenario-drill" : "timed-sba";
+  if (phase === "build") return index % 4 === 0 ? "concept-deepdive" : index % 4 === 1 ? "timed-sba" : index % 4 === 2 ? "scenario-drill" : "active-recall";
+  if (phase === "performance") return index % 4 === 0 ? "timed-sba" : index % 4 === 1 ? "scenario-drill" : index % 4 === 2 ? "mixed-mock" : "active-recall";
+  return index % 3 === 0 ? "mixed-mock" : index % 3 === 1 ? "timed-sba" : "active-recall";
+}
+
+function selectPreciseSubtopic(
+  module: PlanRequest["modules"][number] & { subject: { subtopics: string[] } },
+  index: number,
+): string {
+  const weak = (module.weakSubtopics ?? []).filter(Boolean);
+  const list = weak.length > 0 ? weak : module.subject.subtopics;
+  return list[index % Math.max(1, list.length)] ?? module.name;
+}
+
+function qCount(minutes: number, examIsUbe: boolean): number {
+  return examIsUbe ? Math.max(8, Math.floor(minutes / 1.8)) : Math.max(8, Math.floor(minutes / 1.6));
+}
+
+function buildSpecificStudyTask({
+  module,
+  index,
+  minutes,
+  body,
+  phase,
+  hasMistakeEvidence,
+}: {
+  module: PlanRequest["modules"][number] & { subject: { weight: number; highYield: number; groups: string[]; subtopics: string[] }; score: number; recencyDays?: number; mockAccuracy?: number };
+  index: number;
+  minutes: TaskMinutes;
+  body: PlanRequest;
+  phase: StudyPhase;
+  hasMistakeEvidence: boolean;
+}): StudyTask {
+  const examIsUbe = isUbe(body);
+  const subtopic = selectPreciseSubtopic(module, index);
+  const taskType = module.name.includes("Ethics") && phase !== "foundation" ? "ethics-application" : taskTypeForPhase(phase, index, hasMistakeEvidence);
+  const questions = qCount(minutes, examIsUbe);
+  const timing = examIsUbe ? `${questions} MBE questions in ${Math.round(questions * 1.8)} mins` : `${questions} SBA questions`;
+  const rationale: StudyTask["rationale"] =
+    module.confidence <= 2 || (module.weakSubtopics?.length ?? 0) > 0
+      ? "weak-area"
+      : taskType === "mixed-mock"
+        ? "mock-prep"
+        : (module.recencyDays ?? 0) > 10
+          ? "recency-gap"
+          : module.name.includes("Ethics")
+            ? "ethics-cornerstone"
+            : "high-yield";
+  const priority: StudyTask["priority"] = index % 5 < 3 ? "high" : index % 5 === 3 ? "medium" : "low";
+  const difficulty: TaskDifficulty = phase === "foundation" || module.confidence <= 2 ? "foundational" : phase === "final" ? "challenging" : "core";
+
+  const title = (() => {
+    if (taskType === "concept-deepdive") return `Build foundation: ${subtopic}`;
+    if (taskType === "scenario-drill") return `Apply foundation: ${subtopic}`;
+    if (taskType === "timed-sba") return `${phase === "foundation" ? "Check understanding" : "Timed practice"}: ${subtopic} — ${timing}`;
+    if (taskType === "mixed-mock") {
+      if (examIsUbe && module.name.includes("Performance Test")) return `MPT drill: ${subtopic} — 90-minute task plan and answer`;
+      if (examIsUbe && !["Civil Procedure", "Constitutional Law", "Contracts & Sales (UCC Art. 2)", "Contracts", "Criminal Law & Procedure", "Evidence (FRE)", "Evidence", "Real Property", "Torts"].includes(module.name)) {
+        return `MEE essay drill: ${subtopic} — 1 essay in 30 minutes`;
+      }
+      return `Mixed exam set: ${subtopic} — ${timing}`;
+    }
+    if (taskType === "mistake-review") return `Mistake review: ${subtopic} — rework logged misses and extract the rule`;
+    if (taskType === "ethics-application") return `Ethics application: ${subtopic} — apply rules to 3 scenarios`;
+    return `Closed-book rule recall: ${subtopic}`;
+  })();
+
+  const output = (() => {
+    if (taskType === "concept-deepdive") return "A one-page rule scaffold with trigger facts and exceptions";
+    if (taskType === "scenario-drill") return "Two short application paragraphs identifying issue, rule and conclusion";
+    if (taskType === "timed-sba") return "Record score, timing and one rule gap from every miss";
+    if (taskType === "mixed-mock") return "Score the set and log the two weakest subtopics";
+    if (taskType === "mistake-review") return "Mark each logged mistake as resolved or carry forward with a corrected rule";
+    if (taskType === "ethics-application") return "Three scenario notes with the regulatory rule and outcome";
+    return "A closed-book rule sheet to re-test in 3 days";
+  })();
+
+  return {
+    title,
+    module: module.name,
+    minutes,
+    taskType,
+    rationale,
+    priority,
+    why: phase === "foundation"
+      ? `You need a precise rule base in ${subtopic} before heavier timed practice.`
+      : rationale === "weak-area"
+        ? `This targets a low-confidence or flagged area in ${module.name}.`
+        : `This keeps high-yield ${module.name} coverage moving toward exam pace.`,
+    subtopic,
+    difficulty,
+    output,
+    bucket: index % 5 < 3 ? "must" : index % 5 === 3 ? "should" : "optional",
+  };
+}
+
+function isVagueTask(task: StudyTask, hasMistakeEvidence: boolean): boolean {
+  const title = String(task.title ?? "").trim().toLowerCase();
+  const module = String(task.module ?? "").trim().toLowerCase();
+  const subtopic = String(task.subtopic ?? "").trim().toLowerCase();
+  if (!title || !module) return true;
+  if (!subtopic || subtopic === module) return true;
+  if ([`active recall: ${module}`, `timed mcqs: ${module}`, `timed mcq: ${module}`, `mistake review: ${module}`].includes(title)) return true;
+  if (task.taskType === "mistake-review" && !hasMistakeEvidence) return true;
+  return false;
+}
+
 function safeParsePlan(payload: unknown): StudyPlanResponse | null {
   if (!payload || typeof payload !== "object") return null;
   const maybe = payload as Partial<StudyPlanResponse>;
@@ -171,9 +297,12 @@ function extractStructuredPlan(data: any): StudyPlanResponse | null {
 
 function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   const targetMinutes = Math.max(30, Math.round(body.hoursPerWeek * 60));
+  const daysUntilExam = Math.max(1, Math.ceil((new Date(body.examDate).getTime() - Date.now()) / 86_400_000));
   const studiedByModule = new Map((body.recentlyStudied ?? []).map((m) => [m.module, m.daysAgo]));
   const mockByModule = new Map((body.recentMockAccuracy ?? []).map((m) => [m.module, m.accuracy]));
   const intensity: IntensityTier = body.intensity ?? "intermediate";
+  const phase = getStudyPhase(daysUntilExam, intensity);
+  const hasMistakeEvidence = (body.recentMockAccuracy?.length ?? 0) > 0;
   const intensityWeakBoost = intensity === "resitter" ? 0.25 : intensity === "advanced" ? 0.15 : intensity === "beginner" ? 0.05 : 0.1;
   const scoredModules = body.modules
     .map((module) => {
@@ -201,74 +330,13 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
     remaining -= next;
   }
 
-  const methodFor = (taskType: StudyTask["taskType"], minutes: number): string => {
-    switch (taskType) {
-      case "timed-sba": return `${Math.max(10, Math.round(minutes / 1.6))} timed SBAs with full review of every incorrect answer`;
-      case "mixed-mock": return `${Math.max(15, Math.round(minutes / 1.6))}-question mixed mock under exam timing, then mark-scheme reflection`;
-      case "mistake-review": return "Re-attempt 3 recent mistakes, then articulate the rule each one tested";
-      case "scenario-drill": return "Work through 2–3 fact patterns, stating the issue, rule, application and conclusion aloud";
-      case "active-recall": return "Closed-book recall notes, then self-grade against your condensed outline";
-      case "concept-deepdive": return "Read the SRA spec line, then build a one-page schematic of the doctrine";
-      case "ethics-application": return "Apply SRA Principles to 3 short scenarios and write the regulatory response";
-      default: return "Focused study block";
-    }
-  };
-  const outputFor = (taskType: StudyTask["taskType"]): string => {
-    switch (taskType) {
-      case "timed-sba": return "Log 3 recurring mistakes into your mistake log";
-      case "mixed-mock": return "Capture your accuracy and your two weakest topics";
-      case "mistake-review": return "Mark each mistake as resolved or carry forward";
-      case "scenario-drill": return "One condensed IRAC paragraph per scenario";
-      case "active-recall": return "A one-page recall sheet you can re-test in 3 days";
-      case "concept-deepdive": return "One schematic added to your revision binder";
-      case "ethics-application": return "Three-line regulatory note per scenario";
-      default: return "A short reflection on what you learned";
-    }
-  };
-
-  const taskTypes: StudyTask["taskType"][] = ["timed-sba", "active-recall", "scenario-drill", "mistake-review", "ethics-application", "mixed-mock"];
   const todayTasks: StudyTask[] = durations.map((minutes, index) => {
     // Bias first ~60% of blocks toward priority modules so the week stays coherent.
     const useModule = index < Math.ceil(durations.length * 0.6)
       ? priorityModules[index % priorityModules.length]
       : focusModules[index % focusModules.length];
     const module = useModule ?? scoredModules[0];
-    const weak = module.weakSubtopics ?? [];
-    const subtopics = weak.length > 0 ? weak : module.subject.subtopics;
-    const topicA = subtopics[index % subtopics.length];
-    const topicB = subtopics[(index + 2) % subtopics.length] ?? topicA;
-    const isWeak = module.confidence <= 2 || weak.length > 0;
-    const isStale = (module.recencyDays ?? 99) > 10;
-    const rationale: StudyTask["rationale"] = isStale ? "recency-gap" : isWeak ? "weak-area" : (["high-yield","mixed-practice","mock-prep"] as const)[index % 3];
-    const isResitter = intensity === "resitter";
-    const baseTaskType: StudyTask["taskType"] = isResitter && index % 3 === 2
-      ? "mixed-mock"
-      : isWeak && intensity === "beginner"
-        ? "concept-deepdive"
-        : taskTypes[index % taskTypes.length];
-    const taskType: StudyTask["taskType"] = module.name.includes("Ethics") ? "ethics-application" : baseTaskType;
-    const titleVerb = taskType === "timed-sba" ? "Timed SBA set" :
-      taskType === "mixed-mock" ? "Mixed mock set" :
-      taskType === "active-recall" ? "Active recall drill" :
-      taskType === "mistake-review" ? "Mistake-log review" :
-      taskType === "concept-deepdive" ? "Concept deep-dive" :
-      taskType === "ethics-application" ? "Ethics application" :
-      "Scenario drill";
-    const difficulty: TaskDifficulty = module.confidence <= 2 ? "foundational" : module.subject.highYield >= 4 ? "challenging" : "core";
-    const priority: "high" | "medium" | "low" = module.score >= 0.55 ? "high" : module.score >= 0.42 ? "medium" : "low";
-    return {
-      title: `${titleVerb}: ${topicA}${topicB !== topicA ? ` & ${topicB}` : ""}`,
-      module: module.name,
-      minutes,
-      taskType,
-      rationale,
-      priority,
-      why: `${module.name} is prioritised ${weak.length > 0 ? `because you flagged ${weak.slice(0, 2).join(" and ")} as weak` : isWeak ? "because confidence is still low here" : module.subject.highYield >= 4 ? "for its high exam yield" : "to keep related topics fresh"}${isStale ? " and it hasn't been touched recently" : ""}.`,
-      subtopic: topicA,
-      difficulty,
-      output: outputFor(taskType),
-      bucket: undefined, // assigned below by priority pass
-    };
+    return buildSpecificStudyTask({ module, index, minutes, body, phase, hasMistakeEvidence });
   });
 
   // Assign Must / Should / Optional buckets by priority and order.
@@ -290,13 +358,13 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
       ? "weak-area"
       : (module.recencyDays ?? 0) > 10 ? "recency-gap"
       : module.subject.highYield >= 5 ? "high-yield" : "mixed-practice";
-    const method = module.confidence <= 2
-      ? "Short concept recap, then timed SBAs on the weak subtopics, then a mistake-log review"
+    const method = phase === "foundation" || module.confidence <= 2
+      ? "Rule scaffold first, then short application drills and low-pressure questions on the named subtopics"
       : module.subject.highYield >= 4
-        ? "Timed SBA practice on high-yield subtopics, followed by structured mistake review"
+        ? `Timed SBA practice on high-yield subtopics, followed by structured ${hasMistakeEvidence ? "mistake" : "answer"} review`
         : "Mixed interleaved practice with brief recall notes";
-    const outcome = module.confidence <= 2
-      ? "Move from foundational gaps to confident application on the named subtopics"
+    const outcome = phase === "foundation" || module.confidence <= 2
+      ? "Move from unknown doctrine to a usable rule framework on the named subtopics"
       : "Hold your accuracy at 75%+ on the named subtopics and tighten exam timing";
     return {
       module: module.name,
@@ -310,7 +378,9 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   });
 
   // Balance derived from intensity (sums to 100).
-  const balance = intensity === "beginner"
+  const balance = phase === "foundation"
+    ? { review: 45, recall: 15, practice: 30, mistakes: 10 }
+    : intensity === "beginner"
     ? { review: 40, recall: 30, practice: 20, mistakes: 10 }
     : intensity === "resitter"
       ? { review: 10, recall: 20, practice: 50, mistakes: 20 }
@@ -318,7 +388,9 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
         ? { review: 15, recall: 20, practice: 45, mistakes: 20 }
         : { review: 25, recall: 25, practice: 35, mistakes: 15 };
 
-  const weekOneReason = priorityModules.length >= 2
+  const weekOneReason = phase === "foundation"
+    ? `Build foundations in ${priorityModules.map((m) => m.name).slice(0, 2).join(" and ")} using precise high-yield subtopics before heavier recall or mistake review.`
+    : priorityModules.length >= 2
     ? `Repair weak areas in ${priorityModules[0].name} and ${priorityModules[1].name}, then apply through mixed SBA practice.`
     : priorityModules.length === 1
       ? `Rebuild confidence in ${priorityModules[0].name} with focused recall and timed SBAs.`
@@ -330,10 +402,14 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
     const second = scoredModules[(index + 1) % scoredModules.length] ?? first;
     const third = scoredModules[(index + 2) % scoredModules.length] ?? second;
     const trio = Array.from(new Set([first.name, second.name, third.name])).slice(0, 3);
+    const firstTopic = selectPreciseSubtopic(first, index);
+    const secondTopic = selectPreciseSubtopic(second, index + 1);
     const theme = index === 0
-      ? `Repair weak areas in ${first.name}${second.name !== first.name ? ` and ${second.name}` : ""}, then apply through mixed SBA practice`
+      ? phase === "foundation"
+        ? `${phaseLabel(phase)}: ${firstTopic}${second.name !== first.name ? ` + ${secondTopic}` : ""}`
+        : `Repair weak areas in ${first.name}${second.name !== first.name ? ` and ${second.name}` : ""}, then apply through mixed SBA practice`
       : index < 3
-        ? `Consolidate ${first.subject.groups[0] ?? first.name} with interleaved ${second.name}`
+        ? `Consolidate ${firstTopic} with interleaved ${secondTopic}`
         : index >= weeksAhead - 2
           ? `Mock-led refresh: ${first.name} with timed scenarios across ${second.name}`
           : `Interleaved practice across ${first.subject.groups[0] ?? first.name} with spaced re-touch of ${second.name}`;
@@ -351,9 +427,9 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   });
 
   return {
-    overview: `${body.name}, this plan leads with ${priorityModules.map((m) => m.name).join(", ")} because they combine high exam yield with your current confidence and revision recency. The week is deliberately interleaved so weak areas are repaired without crowding out timed practice.`,
+    overview: `${body.name}, this plan leads with ${priorityModules.map((m) => m.name).join(", ")} because they combine high exam yield with your current confidence, exam date and revision recency. Week 1 is in ${phaseLabel(phase).toLowerCase()} mode, so blocks name exact subtopics and build usable rules before heavier recall, mocks or mistake review.`,
     weeklyStrategy: {
-      summary: `This week allocates ${body.hoursPerWeek} hours across high-yield weak areas and recency gaps, with the priority on ${priorityModules.map((m) => m.name).join(" and ")}. Blocks balance recall, timed practice and mistake review.`,
+      summary: `This week allocates ${body.hoursPerWeek} hours across high-yield named subtopics, with the priority on ${priorityModules.map((m) => m.name).join(" and ")}. Blocks progress from rule scaffolds into application and only use mistake review where real performance evidence exists.`,
       allocations,
     },
     todayTasks,
@@ -363,6 +439,43 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
       targetConfidence: module.subject.highYield >= 4 || module.confidence <= 2 ? 5 : 4,
       priority: module.score >= 0.55 ? "high" : module.score >= 0.42 ? "medium" : "low",
     })),
+  };
+}
+
+function normalizePlan(plan: StudyPlanResponse, body: PlanRequest, daysUntilExam: number): StudyPlanResponse {
+  const intensity: IntensityTier = body.intensity ?? "intermediate";
+  const phase = getStudyPhase(daysUntilExam, intensity);
+  const hasMistakeEvidence = (body.recentMockAccuracy?.length ?? 0) > 0;
+  const subjectTable = getSubjectTable(body);
+  const fallbackModules = body.modules.map((module) => ({
+    ...module,
+    subject: subjectTable[module.name] ?? { weight: 0.08, highYield: 3, groups: [body.examType], subtopics: [module.name] },
+    score: 0,
+  }));
+
+  const todayTasks = plan.todayTasks.map((task, index) => {
+    if (!isVagueTask(task, hasMistakeEvidence)) return task;
+    const module = fallbackModules.find((m) => m.name === task.module) ?? fallbackModules[index % Math.max(1, fallbackModules.length)];
+    return buildSpecificStudyTask({
+      module,
+      index,
+      minutes: ([30, 45, 60, 90, 120].includes(task.minutes) ? task.minutes : 45) as TaskMinutes,
+      body,
+      phase,
+      hasMistakeEvidence,
+    });
+  });
+
+  return {
+    ...plan,
+    overview: plan.overview || buildDeterministicPlan(body).overview,
+    todayTasks,
+    weeklyStrategy: plan.weeklyStrategy
+      ? {
+          ...plan.weeklyStrategy,
+          summary: plan.weeklyStrategy.summary.replace(/mistake review/gi, hasMistakeEvidence ? "mistake review" : "answer review"),
+        }
+      : plan.weeklyStrategy,
   };
 }
 
@@ -496,15 +609,16 @@ Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
     const examPath = body.examPath ?? defaultPath;
     const intensity = body.intensity ?? "intermediate";
     const coverageMode = body.coverageMode ?? "even";
+    const phase = getStudyPhase(daysUntilExam, intensity);
     const sqeIntensityGuidance: Record<string, string> = {
-      beginner: "Lead with concept-deepdive and active-recall. Limit timed mocks to 15-20% of weekly minutes. Build foundations before pace.",
+      beginner: "Lead with foundation-building concept deep-dives and short application drills. Avoid recall-only or mistake-review blocks on day 1 unless genuine mistakes exist.",
       intermediate: "Balanced mix: ~40% SBA practice, 30% scenario/active recall, 20% deepdive, 10% mock. Standard interleaving.",
       advanced: "Heavy SBA + mock exposure (≥40% mocks/timed-sba). Surgical weak-area drills. Minimal concept time unless gaps exist.",
       resitter: "RESITTER MODE — assume prior coverage. ≥50% timed-sba/mixed-mock. Aggressive spaced repetition (1d/3d/7d/14d) on every flagged weak subtopic. Treat low-confidence + flagged subtopics as the entire revision spine.",
     };
     const ubeIntensityGuidance: Record<string, string> = {
-      beginner: "Lead with concept-deepdive and active-recall on MBE-only subjects first. Limit timed MBE sets to 15-20% of weekly minutes. Defer full MPT timing drills until foundations are solid.",
-      intermediate: "Balanced mix: ~40% timed MBE practice, 25% MEE essay drills, 15% MPT skill work, 10% recall/deepdive, 10% mistake review. Standard interleaving across MBE topics.",
+      beginner: "Lead with foundation-building concept deep-dives and short application drills on exact MBE subtopics. Avoid recall-only or mistake-review blocks on day 1 unless genuine mistakes exist.",
+      intermediate: "Balanced mix: ~40% timed MBE practice, 25% MEE essay drills, 15% MPT skill work and recall/deepdive. Add mistake review only where genuine mistakes exist.",
       advanced: "Heavy timed practice (≥40% timed MBE + ≥20% full MEE essays under 30-min timing). Weekly full MPT. Surgical weak-subtopic drills.",
       resitter: "RESITTER MODE — assume prior bar prep. ≥50% timed MBE + MEE essays under exam timing. Aggressive spaced repetition (1d/3d/7d/14d) on every flagged weak subtopic. Treat low-confidence + flagged subtopics as the entire revision spine.",
     };
@@ -524,6 +638,7 @@ Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
     const userPrompt = `Design ${body.name}'s ${examPath} weekly strategy.
 Exam path: ${examPath} (${body.examType})
 Intensity tier: ${intensity.toUpperCase()} — ${intensityGuidance[intensity]}
+Plan phase: ${phaseLabel(phase)} — governed by ${daysUntilExam} days until the exam. In foundation phase, build rule scaffolds and application before recall/mistake review. In final/performance phases, increase timed work and use mistake review only if genuine practice/mock mistakes exist.
 Coverage mode: ${coverageMode === "advanced" ? "ADVANCED PERSONALISATION — bias hard toward flagged weak subtopics" : "EVEN — balanced coverage tuned by HY weighting"}
 Exam date: ${body.examDate} (${daysUntilExam} days away)
 Available study time: ${body.hoursPerWeek} hours/week
@@ -533,7 +648,7 @@ ${body.modules.map((m) => `- ${m.name}: ${m.confidence}/5`).join("\n")}${weakSub
 Apply the planner doctrine. Voice MUST sound like a calm, premium ${examIsUbe ? "bar prep" : "legal revision"} coach — never robotic. Produce:
 (a) a 1–2 sentence overview that names the highest-priority subjects + reasoning (mention intensity and any weak subtopics by name);
 (b) weeklyStrategy.allocations across modules. For EACH allocation include: rationale tag, plain-English note, 2–4 EXACT subtopics to cover this week, the suggested study method (one sentence), the expected outcome (one sentence). Tilt toward high-yield + weak-area + recency-gap; suppress HY≤2 niche topics; flagged weak modules get a noticeably larger share;
-(c) todayTasks — academically-specific study blocks for THIS WEEK using interleaving + spaced repetition. Restrict tasks to the 2–3 priority subjects in weeklyFocus[0].modules PLUS at most 1–2 maintenance blocks on other subjects (so the week is coherent, not a random timetable). For EACH task include: title (names the exact subtopic${examIsUbe ? "; for MBE blocks state Q count and timing at 1.8 min/Q; for MEE blocks state essay count and 30-min timing; for MPT blocks state 90-min timing" : ""}), module, minutes, taskType, rationale, priority, why (one line), subtopic (canonical name), difficulty (foundational | core | challenging), output (the concrete artefact the user should produce), bucket (must | should | optional — split roughly 50% must, 30% should, 20% optional by minutes). CRITICAL: SUM of block minutes MUST equal ${body.hoursPerWeek * 60} (±10%). Typical count: ${Math.max(4, Math.ceil(body.hoursPerWeek * 60 / 75))}–${Math.ceil(body.hoursPerWeek * 60 / 45)} blocks. Allowed durations: 30/45/60/90/120;
+(c) todayTasks — academically-specific study blocks for THIS WEEK using interleaving + spaced repetition. Restrict tasks to the 2–3 priority subjects in weeklyFocus[0].modules PLUS at most 1–2 maintenance blocks on other subjects (so the week is coherent, not a random timetable). For EACH task include: title (names the exact subtopic and, where useful, the micro-rules/fact triggers${examIsUbe ? "; for MBE blocks state Q count and timing at 1.8 min/Q; for MEE blocks state essay count and 30-min timing; for MPT blocks state 90-min timing" : ""}), module, minutes, taskType, rationale, priority, why (one line), subtopic (canonical name), difficulty (foundational | core | challenging), output (the concrete artefact the user should produce), bucket (must | should | optional — split roughly 50% must, 30% should, 20% optional by minutes). CRITICAL: SUM of block minutes MUST equal ${body.hoursPerWeek * 60} (±10%). Typical count: ${Math.max(4, Math.ceil(body.hoursPerWeek * 60 / 75))}–${Math.ceil(body.hoursPerWeek * 60 / 45)} blocks. Allowed durations: 30/45/60/90/120. FORBIDDEN unless genuine mock/practice mistake evidence exists: generic "Mistake review" blocks. FORBIDDEN always: titles that only name the broad subject, e.g. "Active recall: Civil Procedure" or "Timed MCQs: Constitutional Law";
 (d) weeklyFocus — up to 12 forward-looking weekly themes built around topic clusters with spaced-repetition re-touches. EACH week MUST have: a clear theme in plain English (e.g. ${themeExample}), 2–3 priority modules only, a one-sentence reason explaining why those subjects were chosen this week, target hours, and a balance object {review, recall, practice, mistakes} as percentages summing to 100;
 (e) masteryTargets per module by exam day weighted by HY + ${examIsUbe ? "component" : "paper"} weight + flagged weakness.
 The allocations, tasks and weeklyFocus[0] MUST be internally consistent — same priority modules, same subtopics, no random interleaving of unrelated subjects unless explicitly framed as maintenance.`;
@@ -603,7 +718,7 @@ The allocations, tasks and weeklyFocus[0] MUST be internally consistent — same
                               },
                               method: {
                                 type: "string",
-                                description: "Suggested approach in one sentence (e.g. '60 min recall notes, 90 min timed SBA, 60 min mistake review')",
+                                description: "Suggested approach in one sentence (e.g. '60 min rule scaffold, 90 min timed SBA, 30 min answer review')",
                               },
                               outcome: {
                                 type: "string",
@@ -756,7 +871,7 @@ The allocations, tasks and weeklyFocus[0] MUST be internally consistent — same
 
     const data = await response.json();
     const structuredPlan = extractStructuredPlan(data);
-    const plan = structuredPlan ?? buildDeterministicPlan(body);
+    const plan = normalizePlan(structuredPlan ?? buildDeterministicPlan(body), body, daysUntilExam);
 
     return new Response(
       JSON.stringify({ plan, daysUntilExam, fallback: !structuredPlan }),
