@@ -19,6 +19,8 @@ export const Route = createFileRoute("/subscribe")({
       typeof search.next === "string" && search.next.startsWith("/")
         ? (search.next as string)
         : undefined,
+    checkout:
+      search.checkout === "success" ? ("success" as const) : undefined,
   }),
   component: SubscribePage,
   head: () => ({
@@ -62,12 +64,13 @@ const PLANS: {
 
 function SubscribePage() {
   const navigate = useNavigate();
-  const { next } = Route.useSearch();
+  const { next, checkout } = Route.useSearch();
   const auth = useAuth();
   const sub = useSubscription();
   const [selected, setSelected] = useState<SubscriptionPlanId>("pro_monthly");
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(false);
+  const isReturningFromCheckout = checkout === "success";
 
   // If access is granted (webhook fired after return), forward to the app.
   useEffect(() => {
@@ -76,6 +79,28 @@ function SubscribePage() {
       navigate({ to: next ?? (loadPlan() ? "/dashboard" : "/onboarding"), replace: true });
     }
   }, [auth.loading, auth.user, sub.loading, sub.hasAccess, navigate, next]);
+
+  // After returning from Stripe, poll until the webhook flips access on.
+  useEffect(() => {
+    if (!isReturningFromCheckout || !auth.user) return;
+    let cancelled = false;
+    let attempts = 0;
+    (async () => {
+      while (!cancelled && attempts < 20) {
+        attempts++;
+        await sub.refresh();
+        if (cancelled) return;
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+      if (!cancelled) {
+        toast.error("Payment is taking longer than expected. Please refresh in a moment.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isReturningFromCheckout, auth.user?.id]);
 
   const returnUrl =
     typeof window !== "undefined"
@@ -106,10 +131,15 @@ function SubscribePage() {
     }
   };
 
-  if (auth.loading || (auth.user && sub.loading)) {
+  if (auth.loading || (auth.user && sub.loading) || isReturningFromCheckout) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background px-6 text-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        {isReturningFromCheckout && (
+          <p className="max-w-xs text-[13px] text-muted-foreground">
+            Confirming your payment… this usually takes a few seconds.
+          </p>
+        )}
       </div>
     );
   }

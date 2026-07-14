@@ -63,8 +63,9 @@ export const createSubscriptionCheckoutSession = createServerFn({
         subscription_data: {
           metadata: { userId, priceId: data.priceId },
         },
-        managed_payments: { enabled: true },
-      } as any);
+        // Charge exactly the displayed price — no tax added on top.
+        // (managed_payments/automatic_tax intentionally omitted.)
+      });
 
       return { clientSecret: session.client_secret ?? "" };
     } catch (error) {
