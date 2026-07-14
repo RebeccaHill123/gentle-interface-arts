@@ -368,6 +368,10 @@ function DeckCard({
 
 // ---------- Study view ----------
 
+function normalize(s: string): string {
+  return s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ").trim();
+}
+
 function buildQueue(mode: ReviewMode, kind: ExamKind): Flashcard[] {
   const progress = getAllProgress();
   const allCards = getCardsFor(kind);
@@ -375,7 +379,30 @@ function buildQueue(mode: ReviewMode, kind: ExamKind): Flashcard[] {
   if (mode.kind === "deck") pool = getCardsByDeckFor(kind, mode.deckId);
   else if (mode.kind === "weak")
     pool = allCards.filter((c) => progress[c.id]?.status === "needs_review");
-  else pool = allCards.filter((c) => progress[c.id]?.starred);
+  else if (mode.kind === "starred")
+    pool = allCards.filter((c) => progress[c.id]?.starred);
+  else {
+    // topic mode: match by subject on the deck; narrow by subtopic against card.topic if we can.
+    const decks = getDecksFor(kind);
+    const wantSubject = normalize(mode.subject);
+    const matchedDecks = decks.filter((d) => {
+      const n = normalize(d.subject);
+      const t = normalize(d.title);
+      return n === wantSubject || n.includes(wantSubject) || wantSubject.includes(n)
+        || t.includes(wantSubject) || wantSubject.includes(t);
+    });
+    const subjectPool = matchedDecks.flatMap((d) => getCardsByDeckFor(kind, d.id));
+    if (mode.subtopic) {
+      const wantTopic = normalize(mode.subtopic);
+      const narrowed = subjectPool.filter((c) => {
+        const t = normalize(c.topic);
+        return t.includes(wantTopic) || wantTopic.includes(t);
+      });
+      pool = narrowed.length > 0 ? narrowed : subjectPool;
+    } else {
+      pool = subjectPool;
+    }
+  }
 
   // Adaptive weighting: needs_review cards appear twice, got_it skipped in deck
   // mode if everything has been seen at least once.
