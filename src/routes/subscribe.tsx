@@ -164,6 +164,14 @@ function SubscribePage() {
       <PaymentTestModeBanner />
       <AppShell title="Choose your plan" subtitle="Full access to Tentra. Cancel anytime.">
         <div className="mx-auto max-w-4xl space-y-8">
+          {auth.user && !sub.hasAccess && !isReturningFromCheckout && (
+            <div className="rounded-xl border border-pink/30 bg-pink/[0.06] px-4 py-3 text-[13px] text-foreground/90">
+              <span className="font-medium">Complete payment to activate your account.</span>{" "}
+              Your Tentra account isn't active until your subscription starts. Unpaid
+              accounts are automatically removed after 72 hours.
+            </div>
+          )}
+
           {!showCheckout && (
             <>
               <section className="rounded-2xl border border-border/70 bg-card p-6 md:p-8">
