@@ -160,9 +160,11 @@ export function buildSpecificTask({
 }
 
 export function isVagueTask(task: Pick<StrategyTask, "title" | "module" | "taskType" | "subtopic">, hasMistakeEvidence: boolean): boolean {
-  const title = task.title.trim().toLowerCase();
-  const module = task.module.trim().toLowerCase();
-  if (!task.subtopic || task.subtopic.trim().toLowerCase() === module) return true;
+  const title = String(task.title ?? "").trim().toLowerCase();
+  const module = String(task.module ?? "").trim().toLowerCase();
+  const subtopic = String(task.subtopic ?? "").trim().toLowerCase();
+  if (!title || !module) return true;
+  if (!subtopic || subtopic === module) return true;
   if (title === module) return true;
   if ([`active recall: ${module}`, `timed mcqs: ${module}`, `timed mcq: ${module}`, `mistake review: ${module}`].includes(title)) return true;
   if (task.taskType === "mistake-review" && !hasMistakeEvidence) return true;
