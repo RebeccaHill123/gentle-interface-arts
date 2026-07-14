@@ -19,6 +19,8 @@ export const Route = createFileRoute("/subscribe")({
       typeof search.next === "string" && search.next.startsWith("/")
         ? (search.next as string)
         : undefined,
+    checkout:
+      search.checkout === "success" ? ("success" as const) : undefined,
   }),
   component: SubscribePage,
   head: () => ({
