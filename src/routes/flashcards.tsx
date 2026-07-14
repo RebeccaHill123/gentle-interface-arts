@@ -36,6 +36,12 @@ import {
 } from "@/lib/flashcards-progress";
 import { loadPlan } from "@/lib/plan-store";
 import { isUbePath } from "@/lib/exam-paths";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  fetchSubtopicDeck,
+  generateSubtopicDeck,
+  type GeneratedCard,
+} from "@/lib/flashcards-generate.functions";
 
 type FlashcardsSearch = { subject?: string; subtopic?: string };
 
@@ -372,7 +378,33 @@ function normalize(s: string): string {
   return s.toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-function buildQueue(mode: ReviewMode, kind: ExamKind): Flashcard[] {
+function aiToFlashcard(c: GeneratedCard, deckId: string, area: CardArea): Flashcard {
+  return {
+    id: `ai-${c.id}`,
+    deckId,
+    front: c.front,
+    back: c.back,
+    examTip: c.exam_tip ?? undefined,
+    topic: c.topic,
+    difficulty: c.difficulty,
+    flk: area,
+  };
+}
+
+function resolveTopicDeck(kind: ExamKind, subject: string): { id: string; area: CardArea } {
+  const decks = getDecksFor(kind);
+  const want = normalize(subject);
+  const match = decks.find((d) => {
+    const n = normalize(d.subject);
+    const t = normalize(d.title);
+    return n === want || n.includes(want) || want.includes(n) || t.includes(want) || want.includes(t);
+  });
+  if (match) return { id: match.id, area: match.flk };
+  const fallbackArea: CardArea = kind === "UBE" ? "MBE" : "FLK1";
+  return { id: `topic-${want.replace(/\s+/g, "-")}`, area: fallbackArea };
+}
+
+function buildQueue(mode: ReviewMode, kind: ExamKind, extraAi: Flashcard[] = []): Flashcard[] {
   const progress = getAllProgress();
   const allCards = getCardsFor(kind);
   let pool: Flashcard[] = [];
@@ -398,21 +430,19 @@ function buildQueue(mode: ReviewMode, kind: ExamKind): Flashcard[] {
         const t = normalize(c.topic);
         return t.includes(wantTopic) || wantTopic.includes(t);
       });
-      pool = narrowed.length > 0 ? narrowed : subjectPool;
+      pool = [...narrowed, ...extraAi];
     } else {
-      pool = subjectPool;
+      pool = [...subjectPool, ...extraAi];
     }
   }
 
-  // Adaptive weighting: needs_review cards appear twice, got_it skipped in deck
-  // mode if everything has been seen at least once.
+  // Adaptive weighting
   const expanded: Flashcard[] = [];
   for (const card of pool) {
     const p = progress[card.id];
     expanded.push(card);
     if (p?.status === "needs_review") expanded.push(card);
   }
-  // Shuffle
   for (let i = expanded.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
     [expanded[i], expanded[j]] = [expanded[j], expanded[i]];
@@ -429,14 +459,88 @@ function StudyView({
   kind: ExamKind;
   onExit: () => void;
 }) {
+  const [aiCards, setAiCards] = useState<Flashcard[]>([]);
+  const [aiStatus, setAiStatus] = useState<"idle" | "loading" | "ready" | "failed">("idle");
+  const [aiError, setAiError] = useState<string | null>(null);
   const [queue, setQueue] = useState<Flashcard[]>(() => buildQueue(mode, kind));
   const [index, setIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const progress = useProgress();
 
+  const fetchDeckFn = useServerFn(fetchSubtopicDeck);
+  const generateDeckFn = useServerFn(generateSubtopicDeck);
+
+  // AI generation for topic mode
+  useEffect(() => {
+    if (mode.kind !== "topic" || !mode.subtopic) return;
+    let cancelled = false;
+    const { id: deckId, area } = resolveTopicDeck(kind, mode.subject);
+
+    const load = async () => {
+      setAiStatus("loading");
+      setAiError(null);
+      try {
+        const existing = await fetchDeckFn({
+          data: { examKind: kind, subject: mode.subject, subtopic: mode.subtopic!, deckId },
+        });
+        if (cancelled) return;
+        if (existing.status === "ready" && existing.cards.length > 0) {
+          const mapped = existing.cards.map((c) => aiToFlashcard(c, deckId, area));
+          setAiCards(mapped);
+          setAiStatus("ready");
+          setQueue(buildQueue(mode, kind, mapped));
+          return;
+        }
+        // Kick off generation
+        const gen = await generateDeckFn({
+          data: { examKind: kind, subject: mode.subject, subtopic: mode.subtopic!, deckId },
+        });
+        if (cancelled) return;
+        if (gen.status === "ready" && gen.cards.length > 0) {
+          const mapped = gen.cards.map((c) => aiToFlashcard(c, deckId, area));
+          setAiCards(mapped);
+          setAiStatus("ready");
+          setQueue(buildQueue(mode, kind, mapped));
+        } else if (gen.status === "pending") {
+          // Poll once after a short delay
+          setTimeout(async () => {
+            if (cancelled) return;
+            const r = await fetchDeckFn({
+              data: { examKind: kind, subject: mode.subject, subtopic: mode.subtopic!, deckId },
+            });
+            if (cancelled) return;
+            if (r.status === "ready" && r.cards.length > 0) {
+              const mapped = r.cards.map((c) => aiToFlashcard(c, deckId, area));
+              setAiCards(mapped);
+              setAiStatus("ready");
+              setQueue(buildQueue(mode, kind, mapped));
+            } else {
+              setAiStatus("failed");
+              setAiError(r.error ?? "Still generating — try again shortly.");
+            }
+          }, 8000);
+        } else {
+          setAiStatus("failed");
+          setAiError(gen.error ?? "Generation failed");
+        }
+      } catch (e) {
+        if (cancelled) return;
+        setAiStatus("failed");
+        setAiError(e instanceof Error ? e.message : "Failed to load AI cards");
+      }
+    };
+    void load();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode.kind, mode.kind === "topic" ? mode.subject : "", mode.kind === "topic" ? mode.subtopic ?? "" : "", kind]);
+
   const card = queue[index];
   const total = queue.length;
   const done = index >= total;
+  const aiIdSet = useMemo(() => new Set(aiCards.map((c) => c.id)), [aiCards]);
+  const isAiCard = card ? aiIdSet.has(card.id) : false;
 
   const heading =
     mode.kind === "deck"
@@ -465,7 +569,7 @@ function StudyView({
   };
 
   const restart = () => {
-    setQueue(buildQueue(mode, kind));
+    setQueue(buildQueue(mode, kind, aiCards));
     setIndex(0);
     setRevealed(false);
   };
@@ -475,6 +579,9 @@ function StudyView({
     resetDeckProgress(getCardsByDeckFor(kind, mode.deckId).map((c) => c.id));
     restart();
   };
+
+  const showLoadingOverlay =
+    mode.kind === "topic" && aiStatus === "loading" && queue.length === 0;
 
   return (
     <AppShell title={heading} subtitle="One card at a time. Be honest.">
@@ -509,15 +616,38 @@ function StudyView({
         className="h-1.5"
       />
 
-      {!card ? (
-        <CompletionPanel
-          mode={mode}
-          kind={kind}
-          progress={progress}
-          onRestart={restart}
-          onResetDeck={mode.kind === "deck" ? resetDeck : undefined}
-          onExit={onExit}
-        />
+      {showLoadingOverlay ? (
+        <div className="mt-8 rounded-3xl border border-border bg-card p-8 text-center shadow-card md:p-12">
+          <div className="mx-auto grid h-14 w-14 animate-pulse place-items-center rounded-2xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+            <Sparkles className="h-7 w-7" />
+          </div>
+          <h3 className="mt-4 text-xl font-semibold text-foreground">
+            Preparing your deck
+          </h3>
+          <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+            Drafting fresh flashcards for <span className="text-foreground">{mode.kind === "topic" ? mode.subtopic : ""}</span>. This takes a few seconds the first time — after that it's instant.
+          </p>
+        </div>
+      ) : !card ? (
+        mode.kind === "topic" && aiStatus === "failed" && aiCards.length === 0 ? (
+          <div className="mt-8 rounded-3xl border border-border bg-card p-8 text-center shadow-card">
+            <h3 className="text-lg font-semibold text-foreground">Couldn't build this deck</h3>
+            <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">{aiError ?? "Try again in a moment."}</p>
+            <div className="mt-4 flex justify-center gap-2">
+              <Button variant="outline" onClick={onExit}>Back</Button>
+              <Button onClick={restart}>Retry</Button>
+            </div>
+          </div>
+        ) : (
+          <CompletionPanel
+            mode={mode}
+            kind={kind}
+            progress={progress}
+            onRestart={restart}
+            onResetDeck={mode.kind === "deck" ? resetDeck : undefined}
+            onExit={onExit}
+          />
+        )
       ) : (
         <div className="mt-8">
           <div
@@ -530,6 +660,11 @@ function StudyView({
             <div className="relative flex items-center justify-between text-[10px] uppercase tracking-wide text-muted-foreground">
               <span>{card.topic}</span>
               <div className="flex items-center gap-2">
+                {isAiCard && (
+                  <Badge variant="outline" className="rounded-full border-primary/40 bg-primary/10 text-[9px] uppercase tracking-wide text-foreground">
+                    <Sparkles className="mr-1 h-3 w-3" /> AI
+                  </Badge>
+                )}
                 <span>{card.difficulty}</span>
                 <button
                   onClick={handleStar}
