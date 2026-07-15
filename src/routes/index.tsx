@@ -16,6 +16,7 @@ import {
   TrendingUp,
   CheckCircle2,
   Timer,
+  Play,
 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
