@@ -806,27 +806,56 @@ function DashboardPanel() {
           <div className="text-[9px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
             Today's plan
           </div>
-          <div className="text-[9px] text-muted-foreground">2 of 4</div>
+          <div className="text-[9px] text-muted-foreground">1 of 3</div>
         </div>
-        <ul className="mt-1.5 space-y-0.5">
+        <ul className="mt-1.5 space-y-1">
           {[
-            { t: "Contract Law MCQs", m: "30m", done: true },
-            { t: "Consideration flashcards", m: "20m", done: true },
-            { t: "Tort mini assessment", m: "25m", done: false, next: true },
-            { t: "Negligence practice questions", m: "40m", done: false },
+            {
+              priority: "Must do",
+              priorityCls: "bg-pink/10 text-pink/90",
+              subject: "Contract",
+              minutes: "25m",
+              title: "Consideration & estoppel",
+              done: false,
+            },
+            {
+              priority: "Weak spot",
+              priorityCls: "bg-amber-500/10 text-amber-500/90",
+              subject: "Tort",
+              minutes: "20m",
+              title: "Negligence: duty of care",
+              done: true,
+            },
+            {
+              priority: "High yield",
+              priorityCls: "bg-violet-500/10 text-violet-400/90",
+              subject: "Criminal",
+              minutes: "15m",
+              title: "Actus reus vs mens rea",
+              done: false,
+            },
           ].map((x, i) => (
-            <li key={i} className="flex items-center justify-between rounded-md px-1 py-1 text-[10.5px]">
-              <span className="flex items-center gap-1.5 text-foreground">
-                {x.done ? (
-                  <span className="grid h-3 w-3 place-items-center rounded-[3px] bg-pink/15">
-                    <CheckCircle2 className="h-2.5 w-2.5 text-pink" />
+            <li
+              key={i}
+              className={`flex items-center gap-1.5 rounded-md border border-border/50 bg-background/40 px-1.5 py-1 ${x.done ? "opacity-70" : ""}`}
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1">
+                  <span className={`rounded-full px-1 py-[1px] text-[7.5px] font-medium ${x.priorityCls}`}>
+                    {x.priority}
                   </span>
-                ) : (
-                  <span className={`h-3 w-3 rounded-[3px] border ${x.next ? "border-pink" : "border-border"}`} />
-                )}
-                <span className={x.done ? "text-muted-foreground line-through" : ""}>{x.t}</span>
-              </span>
-              <span className="text-[9px] text-muted-foreground">{x.m}</span>
+                  <span className="text-[7.5px] text-muted-foreground">{x.subject}</span>
+                  <span className="text-[7.5px] text-muted-foreground">· {x.minutes}</span>
+                </div>
+                <div className={`truncate text-[10px] ${x.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                  {x.title}
+                </div>
+              </div>
+              {x.done ? (
+                <CheckCircle2 className="h-3 w-3 shrink-0 text-pink" />
+              ) : (
+                <Play className="h-2.5 w-2.5 shrink-0 text-foreground/70" />
+              )}
             </li>
           ))}
         </ul>
