@@ -426,7 +426,7 @@ function HeroPreviewCard() {
               Today's plan
             </div>
             <div className="mt-1 text-[15px] font-medium tracking-[-0.01em] text-foreground">
-              2 of 4 complete
+              1 of 3 complete
             </div>
           </div>
           <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-[10.5px] font-medium text-foreground">
@@ -435,41 +435,77 @@ function HeroPreviewCard() {
           </div>
         </div>
 
-        {/* Task list */}
-        <ul className="mt-4 space-y-1.5">
+        {/* Plan blocks — mirrors dashboard TodayPlanCard */}
+        <ul className="mt-4 space-y-2">
           {[
-            { t: "Contract Law MCQs", m: "30 min", done: true },
-            { t: "Consideration flashcards", m: "20 min", done: true },
-            { t: "Tort mini assessment", m: "25 min", done: false, next: true },
-            { t: "Negligence questions", m: "40 min", done: false },
+            {
+              priority: "Must do",
+              priorityCls: "bg-pink/10 text-pink/90",
+              subject: "Contract Law",
+              minutes: "25m",
+              format: "Quiz",
+              title: "Consideration & promissory estoppel",
+              reason: "Weakest topic — 54% accuracy last 20 Qs",
+              done: false,
+            },
+            {
+              priority: "Weak spot",
+              priorityCls: "bg-amber-500/10 text-amber-500/90",
+              subject: "Tort",
+              minutes: "20m",
+              format: "Flashcards",
+              title: "Negligence: duty of care",
+              reason: "Due for spaced review today",
+              done: true,
+            },
+            {
+              priority: "High yield",
+              priorityCls: "bg-violet-500/10 text-violet-400/90",
+              subject: "Criminal",
+              minutes: "15m",
+              format: "Revision",
+              title: "Actus reus vs mens rea",
+              reason: "High-yield for SQE1 — not started",
+              done: false,
+            },
           ].map((x) => (
             <li
-              key={x.t}
-              className={`flex items-center justify-between rounded-lg border px-3 py-2.5 text-[13px] ${
-                x.next
-                  ? "border-pink/40 bg-pink/[0.06]"
-                  : "border-border/60 bg-background/40"
+              key={x.title}
+              className={`group flex items-stretch gap-3 rounded-2xl border border-border/60 bg-background/40 p-3 shadow-card transition-colors ${
+                x.done ? "opacity-70" : ""
               }`}
             >
-              <span className="flex items-center gap-2.5">
-                {x.done ? (
-                  <span className="grid h-4 w-4 shrink-0 place-items-center rounded-[4px] bg-pink/20">
-                    <CheckCircle2 className="h-3 w-3 text-pink" />
+              <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="flex flex-wrap items-center gap-1">
+                  <span className={`rounded-full px-1.5 py-0.5 text-[9.5px] font-medium ${x.priorityCls}`}>
+                    {x.priority}
                   </span>
-                ) : (
-                  <span className={`h-4 w-4 shrink-0 rounded-[4px] border ${x.next ? "border-pink" : "border-border"}`} />
-                )}
-                <span
-                  className={
-                    x.done
-                      ? "text-muted-foreground line-through"
-                      : "text-foreground"
-                  }
-                >
-                  {x.t}
-                </span>
-              </span>
-              <span className="text-[11.5px] text-muted-foreground">{x.m}</span>
+                  <span className="rounded-full bg-foreground/[0.05] px-1.5 py-0.5 text-[9.5px] text-muted-foreground">
+                    {x.subject}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-foreground/[0.05] px-1.5 py-0.5 text-[9.5px] text-muted-foreground">
+                    <Timer className="h-2.5 w-2.5" /> {x.minutes}
+                  </span>
+                  <span className="rounded-full bg-foreground/[0.05] px-1.5 py-0.5 text-[9.5px] text-muted-foreground">
+                    {x.format}
+                  </span>
+                </div>
+                <p className={`text-[12.5px] font-medium leading-snug ${x.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
+                  {x.title}
+                </p>
+                <p className="text-[10.5px] italic text-muted-foreground/85">
+                  {x.reason}
+                </p>
+              </div>
+              <div
+                className={`grid h-8 w-8 shrink-0 place-items-center self-center rounded-full border ${
+                  x.done
+                    ? "border-transparent bg-pink/15 text-pink"
+                    : "border-border/60 bg-background text-foreground"
+                }`}
+              >
+                {x.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Play className="h-3 w-3" />}
+              </div>
             </li>
           ))}
         </ul>
@@ -478,7 +514,7 @@ function HeroPreviewCard() {
         <div className="mt-4 flex items-start gap-2 rounded-xl border border-pink/25 bg-gradient-to-br from-pink/[0.08] to-violet/[0.05] p-3">
           <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pink" />
           <div className="text-[12.5px] leading-snug text-foreground">
-            Tentra has prioritised <span className="font-medium">Tort</span> based on your recent activity.
+            Tentra has prioritised <span className="font-medium">Contract Law</span> based on your recent activity.
           </div>
         </div>
       </div>
