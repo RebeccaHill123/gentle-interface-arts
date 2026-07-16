@@ -90,6 +90,11 @@ function AuthPage() {
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Sign-in magic-link state
+  const [usePasswordSignin, setUsePasswordSignin] = useState(false);
+  const [magicSending, setMagicSending] = useState(false);
+  const [magicSentTo, setMagicSentTo] = useState<string | null>(null);
+
   // OTP step state
   const [otpEmail, setOtpEmail] = useState<string | null>(null);
   const [otpCode, setOtpCode] = useState("");
@@ -216,6 +221,42 @@ function AuthPage() {
       setGoogleLoading(false);
     }
   };
+
+  const handleMagicLink = async () => {
+    setError(null);
+    const parsed = z.string().trim().email().max(255).safeParse(email);
+    if (!parsed.success) {
+      setError("Enter a valid email to receive your sign-in link.");
+      return;
+    }
+    setMagicSending(true);
+    try {
+      const { error: otpErr } = await supabase.auth.signInWithOtp({
+        email: parsed.data,
+        options: {
+          emailRedirectTo: getAuthRedirectURL(),
+          shouldCreateUser: false,
+        },
+      });
+      if (otpErr) {
+        const lower = otpErr.message.toLowerCase();
+        if (lower.includes("signups") || lower.includes("not found") || lower.includes("user")) {
+          setError("We couldn't find an account for that email. Check the address, or create one below.");
+        } else {
+          setError(otpErr.message);
+        }
+        return;
+      }
+      trackEvent("sign_in_started", { method: "magic_link" });
+      setMagicSentTo(parsed.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't send sign-in link");
+    } finally {
+      setMagicSending(false);
+    }
+  };
+
+
 
   const handleVerifyOtp = async (code: string) => {
     if (!otpEmail || verifyingOtp) return;
@@ -645,6 +686,53 @@ function AuthPage() {
               />
             </div>
 
+            {!isSignup && !usePasswordSignin && (
+              <>
+                {magicSentTo ? (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-4 text-[13.5px] leading-[1.55] text-foreground">
+                    <div className="font-medium">Check your email</div>
+                    <p className="mt-1 text-muted-foreground">
+                      We sent a one-time sign-in link to{" "}
+                      <span className="font-medium text-foreground">{magicSentTo}</span>.
+                      Open it on this device to sign in — the link works once and
+                      expires shortly.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setMagicSentTo(null)}
+                      className="mt-2 text-[12.5px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      Use a different email
+                    </button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleMagicLink}
+                    disabled={magicSending || submitting || googleLoading}
+                    className="h-11 w-full rounded-full bg-gradient-pink-blue text-[14px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+                  >
+                    {magicSending ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending link…</>
+                    ) : (
+                      "Email me a sign-in link"
+                    )}
+                  </Button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsePasswordSignin(true);
+                    setError(null);
+                  }}
+                  className="w-full text-center text-[13px] text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Use password instead
+                </button>
+              </>
+            )}
+
+            {(isSignup || usePasswordSignin) && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
@@ -669,7 +757,21 @@ function AuthPage() {
               {isSignup && (
                 <p className="text-[11px] text-muted-foreground">At least 8 characters.</p>
               )}
+              {!isSignup && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsePasswordSignin(false);
+                    setPassword("");
+                    setError(null);
+                  }}
+                  className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Use a one-time email link instead
+                </button>
+              )}
             </div>
+            )}
 
             {isSignup && (
               <div className="space-y-1.5">
@@ -738,17 +840,19 @@ function AuthPage() {
               </div>
             )}
 
-            <Button
-              type="submit"
-              disabled={submitting || googleLoading}
-              className="h-11 w-full rounded-full bg-gradient-pink-blue text-[14px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
-            >
-              {submitting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isSignup ? "Creating account…" : "Signing in…"}</>
-              ) : (
-                isSignup ? "Create account" : "Sign in"
-              )}
-            </Button>
+            {(isSignup || usePasswordSignin) && (
+              <Button
+                type="submit"
+                disabled={submitting || googleLoading}
+                className="h-11 w-full rounded-full bg-gradient-pink-blue text-[14px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+              >
+                {submitting ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isSignup ? "Creating account…" : "Signing in…"}</>
+                ) : (
+                  isSignup ? "Create account" : "Sign in"
+                )}
+              </Button>
+            )}
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
