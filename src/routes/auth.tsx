@@ -254,6 +254,9 @@ function AuthPage() {
     } finally {
       setMagicSending(false);
     }
+  };
+
+
 
   const handleVerifyOtp = async (code: string) => {
     if (!otpEmail || verifyingOtp) return;
