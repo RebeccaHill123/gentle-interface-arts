@@ -196,7 +196,7 @@ async function claimPendingPlan({
       await admin.auth.admin.createUser({
         email,
         email_confirm: true,
-        user_metadata: { source: "checkout" },
+        user_metadata: { source: "checkout", password_set: false },
       });
     if (createErr || !created?.user) {
       console.error("[webhook] createUser failed", createErr);
