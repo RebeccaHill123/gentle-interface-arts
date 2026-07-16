@@ -16,6 +16,11 @@ export type AnalyticsEvent =
   | "onboarding_step_complete"
   | "onboarding_completed"
   | "preview_viewed"
+  | "plan_reveal_viewed"
+  | "checkout_started"
+  | "checkout_completed"
+  | "account_access_completed"
+  | "dashboard_reached"
   | "sign_up_completed";
 
 export type AnalyticsProps = Record<string, string | number | boolean | null | undefined>;
