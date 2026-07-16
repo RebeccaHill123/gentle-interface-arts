@@ -331,7 +331,12 @@ function LandingPage() {
                   </div>
 
                   <div className="mt-8 flex flex-col items-center gap-3">
-                    <PremiumCta to="/onboarding" size="lg" className="w-full">
+                    <PremiumCta
+                      to="/onboarding"
+                      size="lg"
+                      className="w-full"
+                      onClick={() => trackEvent("founding_cta_clicked", { surface: "landing" })}
+                    >
                       Build my personalised plan
                       <ArrowRight className="ml-1.5 h-4 w-4" />
                     </PremiumCta>
