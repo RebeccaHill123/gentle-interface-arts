@@ -268,7 +268,7 @@ export const getSubscribePriceDisplay = createServerFn({ method: "POST" })
       );
       const stripe = createStripeClient(data.environment);
       const prices = await stripe.prices.list({
-        lookup_keys: ["pro_monthly"],
+        lookup_keys: ["founding_monthly"],
         limit: 1,
       });
       const price = prices.data[0];
