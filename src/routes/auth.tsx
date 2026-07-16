@@ -840,17 +840,19 @@ function AuthPage() {
               </div>
             )}
 
-            <Button
-              type="submit"
-              disabled={submitting || googleLoading}
-              className="h-11 w-full rounded-full bg-gradient-pink-blue text-[14px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
-            >
-              {submitting ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isSignup ? "Creating account…" : "Signing in…"}</>
-              ) : (
-                isSignup ? "Create account" : "Sign in"
-              )}
-            </Button>
+            {(isSignup || usePasswordSignin) && (
+              <Button
+                type="submit"
+                disabled={submitting || googleLoading}
+                className="h-11 w-full rounded-full bg-gradient-pink-blue text-[14px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+              >
+                {submitting ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isSignup ? "Creating account…" : "Signing in…"}</>
+                ) : (
+                  isSignup ? "Create account" : "Sign in"
+                )}
+              </Button>
+            )}
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
