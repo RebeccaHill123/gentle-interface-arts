@@ -70,12 +70,14 @@ function PremiumCta({
   children,
   className = "",
   size = "md",
+  onClick,
 }: {
   to: string;
   search?: Record<string, unknown>;
   children: React.ReactNode;
   className?: string;
   size?: "md" | "lg";
+  onClick?: () => void;
 }) {
   const h = size === "lg" ? "h-12 md:h-[52px]" : "h-11 md:h-12";
   return (
@@ -89,7 +91,7 @@ function PremiumCta({
           "0 1px 0 0 oklch(1 0 0 / 0.25) inset, 0 12px 30px -12px oklch(0.55 0.15 320 / 0.40)",
       }}
     >
-      <Link to={to as never} search={search as never}>
+      <Link to={to as never} search={search as never} onClick={onClick}>
         {children}
       </Link>
     </Button>
