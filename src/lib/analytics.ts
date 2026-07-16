@@ -21,7 +21,8 @@ export type AnalyticsEvent =
   | "checkout_completed"
   | "account_access_completed"
   | "dashboard_reached"
-  | "sign_up_completed";
+  | "sign_up_completed"
+  | "sign_in_started";
 
 export type AnalyticsProps = Record<string, string | number | boolean | null | undefined>;
 
