@@ -90,6 +90,11 @@ function AuthPage() {
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
+  // Sign-in magic-link state
+  const [usePasswordSignin, setUsePasswordSignin] = useState(false);
+  const [magicSending, setMagicSending] = useState(false);
+  const [magicSentTo, setMagicSentTo] = useState<string | null>(null);
+
   // OTP step state
   const [otpEmail, setOtpEmail] = useState<string | null>(null);
   const [otpCode, setOtpCode] = useState("");
