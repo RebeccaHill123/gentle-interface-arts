@@ -105,6 +105,7 @@ function PlanRevealPage() {
       );
       return;
     }
+    trackEvent("founding_cta_clicked", { surface: "plan_reveal" });
     trackEvent("checkout_started", {
       examType: summary?.examType,
       hoursPerWeek: summary?.hoursPerWeek,
@@ -117,6 +118,24 @@ function PlanRevealPage() {
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 50);
   };
+
+  // Track pricing_section_viewed the first time the reveal page mounts with
+  // a summary (this page IS the pricing surface for the new onboarding flow).
+  useEffect(() => {
+    if (!summary) return;
+    trackEvent("pricing_section_viewed", { surface: "plan_reveal" });
+  }, [summary]);
+
+  // Fire checkout_abandoned if the user opens checkout then leaves without
+  // completing (webhook not yet fired).
+  useEffect(() => {
+    if (!showCheckout) return;
+    const onLeave = () => {
+      trackEvent("checkout_abandoned", { surface: "plan_reveal" });
+    };
+    window.addEventListener("pagehide", onLeave);
+    return () => window.removeEventListener("pagehide", onLeave);
+  }, [showCheckout]);
 
   if (error) {
     return (
