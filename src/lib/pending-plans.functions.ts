@@ -125,8 +125,10 @@ export const createPendingPlan = createServerFn({ method: "POST" })
     const token = generateToken();
     const { error } = await supabaseAdmin.from("pending_plans").insert({
       token,
-      plan_data: stored as unknown as Record<string, unknown>,
-      onboarding_data: data.onboarding as unknown as Record<string, unknown>,
+      // Supabase-typed Json expects plain JSON; StoredPlan/OnboardingInput
+      // serialise fine so we double-cast to satisfy the type.
+      plan_data: stored as never,
+      onboarding_data: data.onboarding as never,
       status: "pending",
     });
     if (error) throw new Error(`Could not save plan: ${error.message}`);
