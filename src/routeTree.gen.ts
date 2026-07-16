@@ -17,6 +17,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PracticeRouteImport } from './routes/practice'
+import { Route as PlanRevealRouteImport } from './routes/plan-reveal'
 import { Route as PlanPreviewRouteImport } from './routes/plan-preview'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MocksRouteImport } from './routes/mocks'
@@ -34,6 +35,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as FocusIndexRouteImport } from './routes/focus.index'
 import { Route as FocusSummaryRouteImport } from './routes/focus.summary'
 import { Route as FocusSprintRouteImport } from './routes/focus.sprint'
+import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
 import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 import { Route as ApiCoachRouteImport } from './routes/api/coach'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -84,6 +86,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const PracticeRoute = PracticeRouteImport.update({
   id: '/practice',
   path: '/practice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanRevealRoute = PlanRevealRouteImport.update({
+  id: '/plan-reveal',
+  path: '/plan-reveal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlanPreviewRoute = PlanPreviewRouteImport.update({
@@ -171,6 +178,11 @@ const FocusSprintRoute = FocusSprintRouteImport.update({
   path: '/sprint',
   getParentRoute: () => FocusRoute,
 } as any)
+const CheckoutReturnRoute = CheckoutReturnRouteImport.update({
+  id: '/checkout/return',
+  path: '/checkout/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
   id: '/auth_/callback',
   path: '/auth/callback',
@@ -247,6 +259,7 @@ export interface FileRoutesByFullPath {
   '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/plan-preview': typeof PlanPreviewRoute
+  '/plan-reveal': typeof PlanRevealRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -259,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/checkout/return': typeof CheckoutReturnRoute
   '/focus/sprint': typeof FocusSprintRoute
   '/focus/summary': typeof FocusSummaryRoute
   '/focus/': typeof FocusIndexRoute
@@ -284,6 +298,7 @@ export interface FileRoutesByTo {
   '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/plan-preview': typeof PlanPreviewRoute
+  '/plan-reveal': typeof PlanRevealRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -296,6 +311,7 @@ export interface FileRoutesByTo {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth/callback': typeof AuthCallbackRoute
+  '/checkout/return': typeof CheckoutReturnRoute
   '/focus/sprint': typeof FocusSprintRoute
   '/focus/summary': typeof FocusSummaryRoute
   '/focus': typeof FocusIndexRoute
@@ -323,6 +339,7 @@ export interface FileRoutesById {
   '/mocks': typeof MocksRouteWithChildren
   '/onboarding': typeof OnboardingRoute
   '/plan-preview': typeof PlanPreviewRoute
+  '/plan-reveal': typeof PlanRevealRoute
   '/practice': typeof PracticeRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -335,6 +352,7 @@ export interface FileRoutesById {
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/api/coach': typeof ApiCoachRoute
   '/auth_/callback': typeof AuthCallbackRoute
+  '/checkout/return': typeof CheckoutReturnRoute
   '/focus/sprint': typeof FocusSprintRoute
   '/focus/summary': typeof FocusSummaryRoute
   '/focus/': typeof FocusIndexRoute
@@ -363,6 +381,7 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/onboarding'
     | '/plan-preview'
+    | '/plan-reveal'
     | '/practice'
     | '/privacy'
     | '/reset-password'
@@ -375,6 +394,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/coach'
     | '/auth/callback'
+    | '/checkout/return'
     | '/focus/sprint'
     | '/focus/summary'
     | '/focus/'
@@ -400,6 +420,7 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/onboarding'
     | '/plan-preview'
+    | '/plan-reveal'
     | '/practice'
     | '/privacy'
     | '/reset-password'
@@ -412,6 +433,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/coach'
     | '/auth/callback'
+    | '/checkout/return'
     | '/focus/sprint'
     | '/focus/summary'
     | '/focus'
@@ -438,6 +460,7 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/onboarding'
     | '/plan-preview'
+    | '/plan-reveal'
     | '/practice'
     | '/privacy'
     | '/reset-password'
@@ -450,6 +473,7 @@ export interface FileRouteTypes {
     | '/.well-known/oauth-protected-resource'
     | '/api/coach'
     | '/auth_/callback'
+    | '/checkout/return'
     | '/focus/sprint'
     | '/focus/summary'
     | '/focus/'
@@ -477,6 +501,7 @@ export interface RootRouteChildren {
   MocksRoute: typeof MocksRouteWithChildren
   OnboardingRoute: typeof OnboardingRoute
   PlanPreviewRoute: typeof PlanPreviewRoute
+  PlanRevealRoute: typeof PlanRevealRoute
   PracticeRoute: typeof PracticeRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -489,6 +514,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   ApiCoachRoute: typeof ApiCoachRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
+  CheckoutReturnRoute: typeof CheckoutReturnRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
@@ -553,6 +579,13 @@ declare module '@tanstack/react-router' {
       path: '/practice'
       fullPath: '/practice'
       preLoaderRoute: typeof PracticeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan-reveal': {
+      id: '/plan-reveal'
+      path: '/plan-reveal'
+      fullPath: '/plan-reveal'
+      preLoaderRoute: typeof PlanRevealRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/plan-preview': {
@@ -674,6 +707,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FocusSprintRouteImport
       parentRoute: typeof FocusRoute
     }
+    '/checkout/return': {
+      id: '/checkout/return'
+      path: '/checkout/return'
+      fullPath: '/checkout/return'
+      preLoaderRoute: typeof CheckoutReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth_/callback': {
       id: '/auth_/callback'
       path: '/auth/callback'
@@ -793,6 +833,7 @@ const rootRouteChildren: RootRouteChildren = {
   MocksRoute: MocksRouteWithChildren,
   OnboardingRoute: OnboardingRoute,
   PlanPreviewRoute: PlanPreviewRoute,
+  PlanRevealRoute: PlanRevealRoute,
   PracticeRoute: PracticeRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
@@ -806,6 +847,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   ApiCoachRoute: ApiCoachRoute,
   AuthCallbackRoute: AuthCallbackRoute,
+  CheckoutReturnRoute: CheckoutReturnRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
