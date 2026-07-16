@@ -349,6 +349,60 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_plans: {
+        Row: {
+          claimed_user_id: string | null
+          created_at: string
+          email: string | null
+          expires_at: string
+          id: string
+          magic_link_email: string | null
+          magic_link_hash: string | null
+          onboarding_data: Json
+          plan_data: Json
+          status: string
+          stripe_customer_id: string | null
+          stripe_session_id: string | null
+          stripe_subscription_id: string | null
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          claimed_user_id?: string | null
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          magic_link_email?: string | null
+          magic_link_hash?: string | null
+          onboarding_data: Json
+          plan_data: Json
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_session_id?: string | null
+          stripe_subscription_id?: string | null
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          claimed_user_id?: string | null
+          created_at?: string
+          email?: string | null
+          expires_at?: string
+          id?: string
+          magic_link_email?: string | null
+          magic_link_hash?: string | null
+          onboarding_data?: Json
+          plan_data?: Json
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_session_id?: string | null
+          stripe_subscription_id?: string | null
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           cancel_at_period_end: boolean
@@ -462,6 +516,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_pending_plans: {
+        Args: never
+        Returns: {
+          deleted_count: number
+          expired_count: number
+        }[]
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
