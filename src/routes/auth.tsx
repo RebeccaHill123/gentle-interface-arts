@@ -222,6 +222,39 @@ function AuthPage() {
     }
   };
 
+  const handleMagicLink = async () => {
+    setError(null);
+    const parsed = z.string().trim().email().max(255).safeParse(email);
+    if (!parsed.success) {
+      setError("Enter a valid email to receive your sign-in link.");
+      return;
+    }
+    setMagicSending(true);
+    try {
+      const { error: otpErr } = await supabase.auth.signInWithOtp({
+        email: parsed.data,
+        options: {
+          emailRedirectTo: getAuthRedirectURL(),
+          shouldCreateUser: false,
+        },
+      });
+      if (otpErr) {
+        const lower = otpErr.message.toLowerCase();
+        if (lower.includes("signups") || lower.includes("not found") || lower.includes("user")) {
+          setError("We couldn't find an account for that email. Check the address, or create one below.");
+        } else {
+          setError(otpErr.message);
+        }
+        return;
+      }
+      trackEvent("sign_in_started", { method: "magic_link" });
+      setMagicSentTo(parsed.data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Couldn't send sign-in link");
+    } finally {
+      setMagicSending(false);
+    }
+
   const handleVerifyOtp = async (code: string) => {
     if (!otpEmail || verifyingOtp) return;
     if (code.length !== OTP_LENGTH) {
