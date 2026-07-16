@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
