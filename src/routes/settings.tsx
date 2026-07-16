@@ -118,11 +118,13 @@ function SettingsPage() {
   };
 
   const planLabel =
-    sub.plan === "pro_monthly"
-      ? "Monthly — £16.99 / month"
-      : sub.plan === "pro_six_month"
-        ? "6 months — £72.99"
-        : null;
+    sub.plan === "founding_monthly"
+      ? "Founding Member — £9.99 / month"
+      : sub.plan === "pro_monthly"
+        ? "Monthly — £16.99 / month"
+        : sub.plan === "pro_six_month"
+          ? "6 months — £72.99"
+          : null;
   const renewalLabel = sub.currentPeriodEnd
     ? new Date(sub.currentPeriodEnd).toLocaleDateString(undefined, {
         month: "short",

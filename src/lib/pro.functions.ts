@@ -8,7 +8,10 @@ import {
   resolveOrCreateCustomer,
 } from "@/lib/stripe.server";
 
-export type SubscriptionPlanId = "pro_monthly" | "pro_six_month";
+export type SubscriptionPlanId =
+  | "founding_monthly"
+  | "pro_monthly"
+  | "pro_six_month";
 
 type CheckoutResult = { clientSecret: string } | { error: string };
 
@@ -21,7 +24,11 @@ export const createSubscriptionCheckoutSession = createServerFn({
     returnUrl: string;
     environment: StripeEnv;
   }) => {
-    if (data.priceId !== "pro_monthly" && data.priceId !== "pro_six_month") {
+    if (
+      data.priceId !== "founding_monthly" &&
+      data.priceId !== "pro_monthly" &&
+      data.priceId !== "pro_six_month"
+    ) {
       throw new Error("Invalid priceId");
     }
     if (!data.returnUrl.startsWith("http")) {

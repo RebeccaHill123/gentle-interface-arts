@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
+import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/")({
   component: LandingPage,
@@ -54,7 +55,7 @@ export const Route = createFileRoute("/")({
           url: "https://tentraapp.com/",
           description:
             "Adaptive study planner with focus sessions, weak-area drills and AI coaching for SQE, NY Bar and MPRE candidates.",
-          offers: { "@type": "Offer", price: "16.99", priceCurrency: "GBP" },
+          offers: { "@type": "Offer", price: "9.99", priceCurrency: "GBP" },
         }),
       },
     ],
@@ -69,12 +70,14 @@ function PremiumCta({
   children,
   className = "",
   size = "md",
+  onClick,
 }: {
   to: string;
   search?: Record<string, unknown>;
   children: React.ReactNode;
   className?: string;
   size?: "md" | "lg";
+  onClick?: () => void;
 }) {
   const h = size === "lg" ? "h-12 md:h-[52px]" : "h-11 md:h-12";
   return (
@@ -88,7 +91,7 @@ function PremiumCta({
           "0 1px 0 0 oklch(1 0 0 / 0.25) inset, 0 12px 30px -12px oklch(0.55 0.15 320 / 0.40)",
       }}
     >
-      <Link to={to as never} search={search as never}>
+      <Link to={to as never} search={search as never} onClick={onClick}>
         {children}
       </Link>
     </Button>
@@ -108,6 +111,24 @@ function LandingPage() {
     const io = new IntersectionObserver(
       ([entry]) => setShowStickyCta(!entry.isIntersecting),
       { rootMargin: "0px 0px -20px 0px", threshold: 0 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  // Fire pricing_section_viewed once when the pricing section scrolls into view.
+  const pricingSentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = document.getElementById("pricing");
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    let fired = false;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !fired) {
+          fired = true;
+          trackEvent("pricing_section_viewed", { surface: "landing" });
+        }
+      },
+      { threshold: 0.25 },
     );
     io.observe(el);
     return () => io.disconnect();
@@ -252,120 +273,116 @@ function LandingPage() {
             </div>
           </section>
 
-          {/* PRICING */}
+          {/* PRICING — single Founding Member card */}
           <section id="pricing" className="mx-auto max-w-5xl px-4 pb-20 md:px-8 md:pb-28">
-            <div className="mx-auto mb-8 max-w-2xl text-center md:mb-14">
+            <div className="mx-auto mb-10 max-w-2xl text-center md:mb-14">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                Pricing
+                Membership
               </div>
               <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
-                Simple, transparent{" "}
-                <span className="text-gradient-pink-violet font-light">pricing</span>.
+                Start with a plan built around{" "}
+                <span className="text-gradient-pink-violet font-light">your life</span>.
               </h2>
-              <p className="mx-auto mt-4 max-w-md text-[14.5px] leading-[1.55] text-muted-foreground md:text-[15.5px]">
-                Full access. Cancel anytime.
+              <p className="mx-auto mt-4 max-w-md text-[14.5px] leading-[1.6] text-muted-foreground md:text-[15.5px]">
+                Tentra turns your exam date, availability and progress into a study plan
+                that adapts as you work through it.
               </p>
             </div>
 
-            <div className="grid gap-3 md:grid-cols-2 md:gap-6">
-              {/* Monthly */}
-              <div className="relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur md:p-8">
-                <div className="mb-3 inline-flex w-fit items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-                  Monthly
-                </div>
-                <h3 className="text-[1.25rem] font-medium tracking-[-0.02em] text-foreground md:text-[1.5rem]">
-                  Monthly
-                </h3>
-                <div className="mt-2 flex items-baseline gap-1">
-                  <span className="text-[2.25rem] font-light tracking-[-0.03em] text-foreground md:text-[3rem]">
-                    £16.99
-                  </span>
-                  <span className="text-[13px] font-normal text-muted-foreground">/ month</span>
-                </div>
-                <p className="mt-3 text-[13.5px] leading-[1.5] text-muted-foreground">
-                  Flexible month-to-month access.
-                </p>
-                <div className="mt-6 flex flex-col gap-2">
-                  <PremiumCta to="/onboarding" size="lg" className="w-full">
-                    Build my plan
-                    <ArrowRight className="ml-1.5 h-4 w-4" />
-                  </PremiumCta>
-                  <span className="text-center text-[12px] text-muted-foreground">
-                    Cancel anytime.
-                  </span>
-                </div>
-              </div>
+            {/* Centred Founding Member card */}
+            <div className="mx-auto w-full max-w-[560px]">
+              <div
+                className="relative overflow-hidden rounded-[1.75rem] border border-border/50 bg-card p-8 md:p-10"
+                style={{
+                  boxShadow:
+                    "0 1px 0 0 oklch(1 0 0 / 0.5) inset, 0 30px 60px -30px oklch(0.65 0.12 320 / 0.20)",
+                }}
+              >
+                {/* Very subtle pastel glow */}
+                <div
+                  className="pointer-events-none absolute -inset-px -z-0 rounded-[1.75rem] opacity-70"
+                  style={{
+                    background:
+                      "radial-gradient(120% 60% at 50% 0%, oklch(0.94 0.05 350 / 0.5), transparent 60%), radial-gradient(120% 60% at 100% 100%, oklch(0.92 0.06 270 / 0.35), transparent 55%)",
+                  }}
+                />
+                <div className="relative">
+                  <div className="text-center">
+                    <div className="inline-flex items-center rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.28em] text-foreground/80">
+                      Founding Member
+                    </div>
+                    <h3 className="mt-6 font-display text-[2.15rem] font-light leading-none tracking-[-0.02em] text-foreground md:text-[2.4rem]">
+                      Founding Member Access
+                    </h3>
+                    <div className="mt-6 flex items-baseline justify-center gap-2">
+                      <span className="text-[3rem] font-light leading-none tracking-[-0.03em] text-foreground md:text-[3.5rem]">
+                        £9.99
+                      </span>
+                      <span className="text-[14px] font-normal text-muted-foreground">
+                        / month
+                      </span>
+                    </div>
+                    <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
+                      Full access to your personalised study system. Cancel anytime.
+                    </p>
+                    <p className="mx-auto mt-2 max-w-sm text-[12.5px] leading-[1.55] text-muted-foreground">
+                      An introductory rate for Tentra's earliest members.
+                    </p>
+                  </div>
 
-              {/* 6-month — highlighted with clear saving */}
-              <div className="relative flex flex-col overflow-hidden rounded-2xl border border-border/60 bg-card p-6 shadow-glow backdrop-blur md:p-8">
-                <div className="absolute inset-x-0 top-0 h-[1px] bg-gradient-pink-blue opacity-60" />
-                <div className="mb-3 flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center rounded-full bg-gradient-pink-blue px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.24em] text-primary-foreground">
-                    Best value
-                  </span>
-                  <span className="inline-flex items-center rounded-full border border-pink/40 bg-pink/10 px-2.5 py-1 text-[10.5px] font-semibold text-foreground">
-                    Save £29
-                  </span>
-                </div>
-                <h3 className="text-[1.25rem] font-medium tracking-[-0.02em] text-foreground md:text-[1.5rem]">
-                  6-month access
-                </h3>
-                <div className="mt-2 flex items-baseline gap-2">
-                  <span className="text-[2.25rem] font-light tracking-[-0.03em] text-foreground md:text-[3rem]">
-                    £72.99
-                  </span>
-                  <span className="text-[13px] text-muted-foreground line-through">£101.94</span>
-                </div>
-                <p className="mt-3 text-[13.5px] leading-[1.5] text-muted-foreground">
-                  Around <span className="font-medium text-foreground">£12.17/month</span> — best for a full revision block.
-                </p>
-                <div className="mt-6 flex flex-col gap-2">
-                  <PremiumCta to="/onboarding" size="lg" className="w-full">
-                    Build my plan
-                    <ArrowRight className="ml-1.5 h-4 w-4" />
-                  </PremiumCta>
-                  <span className="text-center text-[12px] text-muted-foreground">
-                    Billed every 6 months. Cancel anytime.
-                  </span>
+                  <div className="mt-8 flex flex-col items-center gap-3">
+                    <PremiumCta
+                      to="/onboarding"
+                      size="lg"
+                      className="w-full"
+                      onClick={() => trackEvent("founding_cta_clicked", { surface: "landing" })}
+                    >
+                      Build my personalised plan
+                      <ArrowRight className="ml-1.5 h-4 w-4" />
+                    </PremiumCta>
+                    <span className="text-center text-[11.5px] text-muted-foreground">
+                      Secure checkout via Stripe · Cancel anytime
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* Included — grouped into 6 concise benefits */}
-            <div className="mt-8 rounded-2xl border border-border/60 bg-card/40 p-5 backdrop-blur md:p-8">
+            {/* Included — concise benefit-led list */}
+            <div className="mt-10 rounded-2xl border border-border/60 bg-card/40 p-5 backdrop-blur md:p-8">
               <h3 className="text-[15px] font-medium tracking-[-0.01em] text-foreground md:text-[17px]">
                 What's included
               </h3>
               <div className="mt-4 grid gap-3 sm:grid-cols-2 md:mt-6 md:gap-4">
                 <IncludedItem
                   icon={<Calendar className="h-4 w-4" />}
-                  title="Adaptive daily plan"
-                  body="Personal study plan built around your exam date and availability."
-                />
-                <IncludedItem
-                  icon={<Timer className="h-4 w-4" />}
-                  title="Focus sessions"
-                  body="Timed sessions with topic logging and streak tracking."
+                  title="Adaptive daily study plan"
+                  body="A schedule shaped around your exam date and available hours."
                 />
                 <IncludedItem
                   icon={<MessageSquareText className="h-4 w-4" />}
-                  title="AI Coach & Tutor"
-                  body="Explanations and quizzes shaped by your latest activity."
+                  title="AI Coach and Tutor"
+                  body="Guidance and explanations that reflect your latest activity."
+                />
+                <IncludedItem
+                  icon={<Timer className="h-4 w-4" />}
+                  title="Focus sessions and streak tracking"
+                  body="Timed sessions that build momentum you can see."
                 />
                 <IncludedItem
                   icon={<ClipboardCheck className="h-4 w-4" />}
-                  title="Practice questions"
-                  body="Topic-based questions and mini tests. Full mocks coming soon."
+                  title="Practice questions and mini tests"
+                  body="Topic-based questions and short assessments to check recall."
                 />
                 <IncludedItem
                   icon={<BarChart3 className="h-4 w-4" />}
-                  title="Analytics"
-                  body="See time studied by subject and where your gaps are."
+                  title="Progress and weak-topic analytics"
+                  body="See where you're strong and what still needs work."
                 />
                 <IncludedItem
                   icon={<Flame className="h-4 w-4" />}
-                  title="Progress tracking"
-                  body="Streaks, weekly hours and adherence to keep momentum."
+                  title="Automatic plan adjustments"
+                  body="Your plan re-balances as your progress and availability change."
                 />
               </div>
             </div>

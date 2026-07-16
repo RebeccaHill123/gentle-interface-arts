@@ -7,7 +7,7 @@ export interface SubscriptionState {
   hasAccess: boolean;
   isGrandfathered: boolean;
   isSubscriber: boolean;
-  plan: "pro_monthly" | "pro_six_month" | null;
+  plan: "founding_monthly" | "pro_monthly" | "pro_six_month" | null;
   status: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
