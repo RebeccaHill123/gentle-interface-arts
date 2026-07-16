@@ -191,7 +191,7 @@ export const createPendingCheckoutSession = createServerFn({ method: "POST" })
 
       const stripe = createStripeClient(data.environment);
       const prices = await stripe.prices.list({
-        lookup_keys: ["pro_monthly"],
+        lookup_keys: ["founding_monthly"],
         limit: 1,
       });
       if (!prices.data.length) return { error: "Price not available" };
@@ -202,9 +202,9 @@ export const createPendingCheckoutSession = createServerFn({ method: "POST" })
         ui_mode: "embedded_page",
         return_url: data.returnUrl,
         client_reference_id: data.token,
-        metadata: { pending_token: data.token, priceId: "pro_monthly" },
+        metadata: { pending_token: data.token, priceId: "founding_monthly" },
         subscription_data: {
-          metadata: { pending_token: data.token, priceId: "pro_monthly" },
+          metadata: { pending_token: data.token, priceId: "founding_monthly" },
         },
       });
 
