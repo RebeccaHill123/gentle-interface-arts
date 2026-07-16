@@ -333,6 +333,7 @@ function DashboardPage() {
       }
     >
       <div className="space-y-8">
+        <SetPasswordCard />
         <CommandCentre
           userName={input.name}
           examId={examId}
