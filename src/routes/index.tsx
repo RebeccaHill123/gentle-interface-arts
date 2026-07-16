@@ -113,6 +113,24 @@ function LandingPage() {
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  // Fire pricing_section_viewed once when the pricing section scrolls into view.
+  const pricingSentinelRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = document.getElementById("pricing");
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    let fired = false;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !fired) {
+          fired = true;
+          trackEvent("pricing_section_viewed", { surface: "landing" });
+        }
+      },
+      { threshold: 0.25 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
