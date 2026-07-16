@@ -313,7 +313,7 @@ function PlanRevealPage() {
                 disabled={!hasPaymentsConfigured()}
                 className="h-14 w-full max-w-sm rounded-full bg-gradient-pink-blue text-[15px] font-medium text-primary-foreground shadow-glow"
               >
-                Start my personalised plan
+                Unlock my personalised plan
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
               <div className="text-[13px] font-medium text-foreground">
@@ -353,7 +353,7 @@ function PlanRevealPage() {
             disabled={!hasPaymentsConfigured()}
             className="h-12 w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
           >
-            Start my personalised plan
+            Unlock my personalised plan
             <ArrowRight className="ml-1.5 h-4 w-4" />
           </Button>
           <div className="mt-1.5 text-center text-[11px] text-muted-foreground">
