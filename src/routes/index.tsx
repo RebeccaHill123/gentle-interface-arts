@@ -54,7 +54,7 @@ export const Route = createFileRoute("/")({
           url: "https://tentraapp.com/",
           description:
             "Adaptive study planner with focus sessions, weak-area drills and AI coaching for SQE, NY Bar and MPRE candidates.",
-          offers: { "@type": "Offer", price: "16.99", priceCurrency: "GBP" },
+          offers: { "@type": "Offer", price: "9.99", priceCurrency: "GBP" },
         }),
       },
     ],
