@@ -1,39 +1,150 @@
+## New user journey
 
-## Goal
+```text
+Landing → Onboarding (6 short screens) → Plan Reveal (concise, blurred tail)
+   → Stripe Checkout (email captured here) → Return page (poll webhook)
+   → Auto-provision Auth user + attach plan → Magic-link email sent
+   → Auto sign-in in same tab → Dashboard (with "Fine-tune your plan" card)
+```
 
-The landing page currently shows "Today's plan" as a simple checkbox to‑do list with `Task · 30 min`. The real dashboard (`CommandCentre` → `TodayPlanCard` in `src/components/dashboard/command-centre.tsx`) shows richer, more distinctive blocks. The landing preview should reflect that so new users see what they'll actually get.
+No standalone "create an account" screen. The Auth user is created **only** after Stripe confirms payment.
 
-## What the real card looks like (source of truth)
+## Onboarding simplification
 
-Each `TodayPlanCard` renders:
-- A row of small pills: **priority** (`Must do` / `Weak spot` / `High yield`, color‑coded), **subject**, **duration** with `Timer` icon (e.g. `25m`), **format** (e.g. `Quiz`, `Flashcards`, `Revision`).
-- A **title** line (medium weight).
-- Optional italic muted **reason** line ("Accuracy dropped 12% this week", etc.).
-- A circular **Play** button on the right that fills with the pink→blue gradient on hover.
-- Rounded‑2xl card, border, `shadow-card`, subtle hover lift + pink border.
+Rewrite `src/routes/onboarding.tsx` as a 6-step wizard, one decision per screen, large mobile controls, top progress bar (`Step X of 6`), back button, swipe-friendly:
 
-## Changes
+1. Study route — SQE vs UBE/NY Bar
+2. Exam date — date picker
+3. Current progress — Not started / Some study / Substantial revision
+4. Weekly study hours — slider 2–40
+5. Preferred study days — day chips
+6. Route-essential field (SQE: SQE1 vs SQE2; UBE: MBE-heavy vs essay-heavy) — only what `study-plan-logic.ts` genuinely needs
 
-Two places in `src/routes/index.tsx` currently render the checklist mock:
+All detailed preferences (session length, weak topics, notifications, rest days, revision methods) are removed from onboarding and moved to a dashboard "Fine-tune your plan" card.
 
-1. **`HeroPreviewCard`** (~lines 417–495) — the large edge‑to‑edge hero preview.
-2. **Dashboard mini‑panel** (~lines 767–796) — the small "Today's plan" tile inside the multi‑panel product showcase.
+State stored in existing `plan-store` draft during onboarding; on completion we call the existing plan generator, then persist to a new `pending_plans` table (see below) and navigate to `/plan-reveal`.
 
-For each, replace the checkbox `<ul>` with 3 realistic plan blocks styled like `TodayPlanCard`, scaled appropriately (full size in the hero, denser in the mini panel). Example content:
+## Concise plan reveal (`/plan-reveal`)
 
-- `Must do` · Contract Law · 25m · Quiz — "Consideration & promissory estoppel" — *"Weakest topic — 54% accuracy last 20 Qs"* — Play
-- `Weak spot` · Tort · 20m · Flashcards — "Negligence: duty of care" — *"Due for spaced review today"* — Play
-- `High yield` · Criminal · 15m · Revision — "Actus reus vs mens rea" — *"High‑yield for SQE1 — not started"* — Play
+Replace the current full `plan-preview.tsx` reveal with a mobile-first celebratory page:
 
-Keep the header ("Today's plan", "2 of 4 complete", `84 days to exam` chip) and the AI recommendation strip below — those already work well and echo the real dashboard.
+- Heading: **"Your personalised study plan is ready"**
+- Cards: exam + date, weeks remaining, recommended weekly hours, top 3 focus areas, week-1 preview, first recommended session
+- Remainder of the plan rendered blurred/locked with a subtle overlay
+- Primary CTA: **"Start my personalised plan"**
+- Beneath CTA: live price + trial terms pulled from Stripe (`stripe.prices.retrieve` on the existing `pro_monthly` lookup key) via a new public server fn `getSubscribePriceDisplay` — no hard-coded copy
+- Small print: "Cancel any time. Billed after your trial."
 
-For the hero card, keep dimensions similar so page layout doesn't shift; the new cards are slightly taller, so drop from 4 items to 3 to preserve overall height.
+Uses Tentra's existing pastel tokens; no new colors.
 
-For the small dashboard panel, use a compact variant (smaller pills, single‑line title, no reason line, tighter spacing) so it still fits its tile.
+## Pending-plan storage (server-side)
 
-## Technical notes
+New table `public.pending_plans`:
 
-- Purely presentational — no new components extracted, no data flow changes. Inline the markup in `index.tsx` to keep the landing self‑contained (matches how `HeroPreviewCard` is already written).
-- Reuse existing tokens already used elsewhere on the page: `bg-pink/10 text-pink/90`, `bg-amber-500/10 text-amber-500/90`, `bg-violet-500/10 text-violet-400/90`, `bg-foreground/[0.04]`, `border-border/60`, `shadow-card`, `bg-gradient-pink-blue`.
-- Icons: add `Timer` and `Play` from `lucide-react` to the existing import if not present.
-- No changes to the real dashboard, routing, or data.
+- `id uuid pk`
+- `token text unique` (opaque 32-byte URL-safe, used as the Stripe `client_reference_id` and return-URL param)
+- `plan_data jsonb` (the generated plan)
+- `onboarding_data jsonb` (raw answers)
+- `email text nullable` (filled from Stripe after checkout)
+- `stripe_session_id text nullable`
+- `stripe_customer_id text nullable`
+- `status text` — `pending` | `paid` | `claimed` | `expired`
+- `claimed_user_id uuid nullable` (fk to `auth.users` on delete set null)
+- `created_at`, `updated_at`, `expires_at` (default `now() + interval '14 days'`)
+
+RLS: no anon/authenticated access; only service role reads/writes. All access goes through server functions.
+
+Expiry: a scheduled job every 24 h runs `UPDATE pending_plans SET status='expired' WHERE status='pending' AND expires_at < now()` and `DELETE FROM pending_plans WHERE status IN ('expired','claimed') AND updated_at < now() - interval '30 days'`. **This only touches `pending_plans` rows** — never `auth.users`, `profiles`, `user_plans`, Stripe customers, or subscriptions. The old `purge-unpaid` cron stays unscheduled and its route file stays deleted.
+
+## Checkout flow
+
+New server fn `createPendingCheckout({ pendingToken })`:
+1. Reads the `pending_plans` row by token.
+2. Creates a Stripe Checkout Session, `mode:'subscription'`, `ui_mode:'embedded_page'`, existing `pro_monthly` price, `client_reference_id = token`, `metadata.pending_token = token`, `subscription_data.metadata.pending_token = token`, `return_url = <origin>/checkout/return?token=…&session_id={CHECKOUT_SESSION_ID}`.
+3. Returns `clientSecret`.
+
+Reuse the existing embedded checkout component pattern — no redirect.
+
+## Webhook: provision user after payment
+
+Extend `src/routes/api/public/payments/webhook.ts`. On `checkout.session.completed`:
+
+1. Look up `pending_plans` by `session.client_reference_id` (idempotent — if `status='paid'|'claimed'` return early).
+2. Extract email from `session.customer_details.email`.
+3. **Existing user path:** `supabaseAdmin.auth.admin.listUsers` filtered by email → if found, attach: set `pending_plans.status='claimed'`, `claimed_user_id`, upsert plan into `user_plans` for that user, update their `profiles` with `stripe_customer_id`, `stripe_subscription_id`, `is_pro=true`, `subscription_status`, `current_period_end`. Send magic link via `supabaseAdmin.auth.admin.generateLink({ type: 'magiclink' })` with `redirectTo=/dashboard`.
+4. **New user path:** `supabaseAdmin.auth.admin.createUser({ email, email_confirm: true })`. Existing `handle_new_user` trigger creates the `profiles` row. Then repeat the attach + magic-link steps.
+5. Mark `pending_plans.status='paid'` first, then `'claimed'` after successful attach — guarded by row-level `UPDATE … WHERE status <> 'claimed'` so concurrent webhook retries are no-ops.
+
+The existing `customer.subscription.*` handlers keep updating `profiles` on renewal/cancel — no change to that logic.
+
+## Return page (`/checkout/return`)
+
+Shows a "Setting up your account…" spinner. Polls a new public server fn `pollPendingClaim({ token })` every 1.5 s (max 45 s) that returns `{ status, magicLinkToken? }`:
+
+- While `pending` → keep polling.
+- On `paid` but not yet `claimed` → keep polling (webhook still finishing).
+- On `claimed` → server fn calls `supabase.auth.verifyOtp` server-side is not possible for magic links, so instead: the webhook stores a one-time `access_token` on the row (generated via `generateLink({ type:'magiclink' })` — we capture `properties.hashed_token`). The return page uses it with `supabase.auth.verifyOtp({ type:'magiclink', token_hash })` client-side, which signs the user in without leaving the tab, then navigates to `/dashboard`. Magic-link email is still sent as a backup for cross-device recovery.
+- On timeout → show "We've emailed you a sign-in link" fallback.
+
+## Dashboard "Fine-tune your plan" card
+
+New dismissible card in `src/routes/dashboard.tsx` that opens a sheet collecting: session length, weak topics, notification prefs, rest days, revision methods. Writes to existing `profiles` / `user_plans` extras. Dismissible; not blocking.
+
+## Edge cases handled
+
+- **Abandoned checkout:** `pending_plans` row stays `pending`, expires after 14 days, then deleted after 30. No auth user was ever created.
+- **Failed payment:** Stripe doesn't fire `checkout.session.completed`; row stays `pending`; user can retry via same token.
+- **Duplicate email:** existing-user path in webhook attaches instead of creating.
+- **Webhook retries / double redirect:** idempotent via `status <> 'claimed'` guard and `onConflict` upserts.
+- **Expired magic link:** return page shows "Request a new sign-in link" that calls `supabase.auth.signInWithOtp({ email })`.
+- **Refresh mid-onboarding:** draft persisted in `plan-store` (existing).
+- **Refresh on reveal:** token in URL; server fn re-reads `pending_plans`.
+- **Refresh on return page:** token in URL; polling resumes.
+- **Existing logged-in user hits `/onboarding`:** flow still works; if webhook finds a matching auth user we attach to it.
+
+## Analytics
+
+Add `track()` calls in `src/lib/analytics.ts` for: `onboarding_started`, `onboarding_step_completed` (with `step` number only), `plan_generated`, `plan_reveal_viewed`, `checkout_started`, `checkout_completed`, `account_access_completed`, `dashboard_reached`. No answers, no PII, no payment data.
+
+## Files added / changed
+
+**Added**
+- `supabase/migrations/<ts>_pending_plans.sql` — table, RLS, grants, expiry cron
+- `src/lib/pending-plans.functions.ts` — `createPendingPlan`, `createPendingCheckout`, `pollPendingClaim`, `getSubscribePriceDisplay`
+- `src/routes/plan-reveal.tsx`
+- `src/routes/checkout.return.tsx`
+- `src/components/onboarding/*` — step components + progress bar
+- `src/components/dashboard/fine-tune-card.tsx`
+
+**Changed**
+- `src/routes/onboarding.tsx` — rewritten as 6-step wizard, ends by creating pending plan + navigating to `/plan-reveal`
+- `src/routes/api/public/payments/webhook.ts` — add `checkout.session.completed` handler that provisions/attaches user, attaches plan, generates magic link
+- `src/routes/dashboard.tsx` — add fine-tune card
+- `src/routes/subscribe.tsx` — kept for direct-subscribe path (existing users) but no longer part of new-user flow
+- `src/routes/plan-preview.tsx` — kept for signed-in users viewing their existing plan; removed from onboarding path
+
+**Not changed**
+- `src/lib/study-plan-logic.ts`, `src/lib/preview-plan.ts` (generation algorithm)
+- Stripe products / prices / existing `pro_monthly` price
+- Existing `profiles`, `user_plans`, subscription webhook branches
+- Existing users, sessions, or grandfathered flags
+- No purge / delete-user job reinstated
+
+## Confirmation on deletion safety
+
+The pending-plan expiry job only mutates `pending_plans` rows. It never calls `auth.admin.deleteUser`, never touches `profiles`, `user_plans`, Stripe customers, subscriptions, or analytics. The previously deleted `purge-unpaid` route stays deleted. Codebase has zero remaining calls to `auth.admin.deleteUser`.
+
+## Mobile test checklist (to run before publishing)
+
+1. iPhone Safari + Android Chrome, 360 px and 414 px widths.
+2. Complete onboarding SQE path → reveal → checkout with test card `4242…` → land on dashboard signed in.
+3. Repeat for UBE path.
+4. Abandon at checkout, wait, revisit `/plan-reveal?token=…` → resume works.
+5. Use existing account's email in checkout → dashboard shows same account, no duplicate.
+6. Decline card `4000…0002` → return page shows retry, no auth user created (verify in DB).
+7. Refresh at each step: onboarding, reveal, checkout, return page.
+8. Rotate device mid-onboarding.
+9. Open magic-link email on a second device → signs in there too.
+10. Verify Stripe dashboard shows one subscription per checkout even after webhook retry.
+11. Verify no `pending_plans` row older than 14 days remains in `pending`.
+12. Confirm `cron.job` still has no `purge-unpaid-accounts` entry.
