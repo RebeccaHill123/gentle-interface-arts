@@ -686,6 +686,53 @@ function AuthPage() {
               />
             </div>
 
+            {!isSignup && !usePasswordSignin && (
+              <>
+                {magicSentTo ? (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.06] p-4 text-[13.5px] leading-[1.55] text-foreground">
+                    <div className="font-medium">Check your email</div>
+                    <p className="mt-1 text-muted-foreground">
+                      We sent a one-time sign-in link to{" "}
+                      <span className="font-medium text-foreground">{magicSentTo}</span>.
+                      Open it on this device to sign in — the link works once and
+                      expires shortly.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setMagicSentTo(null)}
+                      className="mt-2 text-[12.5px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      Use a different email
+                    </button>
+                  </div>
+                ) : (
+                  <Button
+                    type="button"
+                    onClick={handleMagicLink}
+                    disabled={magicSending || submitting || googleLoading}
+                    className="h-11 w-full rounded-full bg-gradient-pink-blue text-[14px] font-medium text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+                  >
+                    {magicSending ? (
+                      <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Sending link…</>
+                    ) : (
+                      "Email me a sign-in link"
+                    )}
+                  </Button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsePasswordSignin(true);
+                    setError(null);
+                  }}
+                  className="w-full text-center text-[13px] text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Use password instead
+                </button>
+              </>
+            )}
+
+            {(isSignup || usePasswordSignin) && (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Password</Label>
@@ -710,7 +757,21 @@ function AuthPage() {
               {isSignup && (
                 <p className="text-[11px] text-muted-foreground">At least 8 characters.</p>
               )}
+              {!isSignup && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUsePasswordSignin(false);
+                    setPassword("");
+                    setError(null);
+                  }}
+                  className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  Use a one-time email link instead
+                </button>
+              )}
             </div>
+            )}
 
             {isSignup && (
               <div className="space-y-1.5">
