@@ -290,7 +290,7 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
           const event = await verifyWebhook(request, env);
           switch (event.type) {
             case "checkout.session.completed":
-              await handleCheckoutCompleted(event.data.object);
+              await handleCheckoutCompleted(event.data.object, env);
               break;
             case "customer.subscription.created":
             case "customer.subscription.updated":
