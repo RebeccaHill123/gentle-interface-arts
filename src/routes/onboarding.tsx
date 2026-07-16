@@ -324,7 +324,7 @@ function OnboardingPage() {
         return;
       }
       const resolvedExamType = pathToExamType(examPath);
-      const baseInput = {
+      const onboarding = {
         name: name.trim(),
         examType: resolvedExamType,
         examPath,
@@ -335,84 +335,80 @@ function OnboardingPage() {
         modules,
       };
 
-      const { data: userData, error: authError } = await supabase.auth.getUser();
-      if (authError || !userData.user) {
-        // Anonymous visitor — build a LOCAL preview plan and let them see it
-        // before being asked to sign up.
-        saveOnboardingDraft({
-          step,
-          examType,
-          examPath,
-          name,
-          examDate,
-          hoursPerWeek,
-          intensity,
-          coverageMode,
-          modules,
-        });
-        const preview = buildStoredPreview(baseInput);
-        savePreviewToLocal(preview);
-        trackEvent("onboarding_completed", {
-          examType: resolvedExamType,
-          examPath,
-          hoursPerWeek,
-          intensity,
-          coverageMode,
-          authed: false,
-        });
-        navigate({ to: "/plan-preview" });
-        return;
+      // If the visitor is already signed in AND has active access, keep
+      // the pre-existing behaviour: generate the full plan via edge fn
+      // and land them on the dashboard.
+      const { data: userData } = await supabase.auth.getUser();
+      if (userData.user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("is_pro, grandfathered_pro, subscription_status, current_period_end")
+          .eq("user_id", userData.user.id)
+          .maybeSingle();
+        const status = profile?.subscription_status;
+        const graceActive =
+          status === "canceled" &&
+          !!profile?.current_period_end &&
+          new Date(profile.current_period_end).getTime() > Date.now();
+        const hasAccess =
+          !!profile?.grandfathered_pro ||
+          !!profile?.is_pro ||
+          status === "active" ||
+          status === "trialing" ||
+          graceActive;
+        if (hasAccess) {
+          const timeout = new Promise<never>((_, reject) => {
+            window.setTimeout(
+              () => reject(new Error("Plan generation took too long. Please try again.")),
+              45_000,
+            );
+          });
+          const { data, error: fnErr } = await Promise.race([
+            supabase.functions.invoke("generate-plan", { body: onboarding }),
+            timeout,
+          ]);
+          if (fnErr) {
+            setError(fnErr.message || "Couldn't reach the plan generator. Please try again.");
+            return;
+          }
+          const plan = data?.plan as StudyPlan | undefined;
+          const daysUntilExam = data?.daysUntilExam as number | undefined;
+          if (!plan || typeof daysUntilExam !== "number") {
+            setError("Unexpected response from plan generator. Please try again.");
+            return;
+          }
+          const stored: StoredPlan = {
+            input: onboarding,
+            plan,
+            daysUntilExam,
+            generatedAt: new Date().toISOString(),
+            completedTaskIds: [],
+            sessions: [],
+          };
+          await savePlanAndSync(stored);
+          clearOnboardingDraft();
+          trackEvent("onboarding_completed", {
+            examType: resolvedExamType,
+            hoursPerWeek,
+            authed: true,
+          });
+          navigate({ to: "/dashboard" });
+          return;
+        }
       }
-      const timeout = new Promise<never>((_, reject) => {
-        window.setTimeout(() => reject(new Error("Plan generation took too long. Please try again.")), 45_000);
-      });
-      const { data, error: fnErr } = await Promise.race([
-        supabase.functions.invoke("generate-plan", {
-          body: baseInput,
-        }),
-        timeout,
-      ]);
 
-      if (fnErr) {
-        console.error("generate-plan invoke error", fnErr);
-        setError(fnErr.message || "Couldn't reach the plan generator. Please try again.");
-        return;
-      }
-      const plan = data?.plan as StudyPlan | undefined;
-      const daysUntilExam = data?.daysUntilExam as number | undefined;
-      if (!plan || typeof daysUntilExam !== "number") {
-        console.error("generate-plan unexpected response", data);
-        setError("Unexpected response from plan generator. Please try again.");
-        return;
-      }
-      const stored: StoredPlan = {
-        input: {
-          name: name.trim(),
-          examType: resolvedExamType,
-          examPath,
-          intensity,
-          coverageMode,
-          examDate,
-          hoursPerWeek,
-          modules,
-        },
-        plan,
-        daysUntilExam,
-        generatedAt: new Date().toISOString(),
-        completedTaskIds: [],
-        sessions: [],
-      };
-      await savePlanAndSync(stored);
+      // Anonymous OR signed-in-without-access path: create a server-side
+      // pending plan and route to the concise reveal → checkout flow. No
+      // Supabase Auth user is created until Stripe confirms payment.
+      const { createPendingPlan } = await import("@/lib/pending-plans.functions");
+      const { token } = await createPendingPlan({ data: { onboarding } });
       clearOnboardingDraft();
       trackEvent("onboarding_completed", {
         examType: resolvedExamType,
-        examPath,
         hoursPerWeek,
-        intensity,
-        coverageMode,
-        authed: true,
+        authed: false,
       });
-      navigate({ to: "/dashboard" });
+      navigate({ to: "/plan-reveal", search: { token } });
     } catch (err) {
       console.error("handleGenerate error", err);
       setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
