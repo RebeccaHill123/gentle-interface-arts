@@ -25,7 +25,12 @@ export type AnalyticsEvent =
   | "account_access_completed"
   | "dashboard_reached"
   | "sign_up_completed"
-  | "sign_in_started";
+  | "sign_in_started"
+  // Landing / acquisition funnel
+  | "homepage_viewed"
+  | "build_plan_cta_clicked"
+  | "how_it_works_viewed"
+  | "ny_bar_cta_clicked";
 
 export type AnalyticsProps = Record<string, string | number | boolean | null | undefined>;
 

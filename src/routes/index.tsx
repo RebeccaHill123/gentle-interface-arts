@@ -26,17 +26,17 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
     meta: [
-      { title: "Tentra — Adaptive study planner for SQE, NY Bar & MPRE" },
+      { title: "Tentra — Personalised SQE revision plans that adapt" },
       {
         name: "description",
         content:
-          "Tentra builds your daily study plan around your exam date, available time and progress. Built for SQE, NY Bar and MPRE students.",
+          "Enter your SQE exam date and weekly study hours and Tentra builds a personalised SQE1 revision plan across FLK1 and FLK2 — adapting as you progress.",
       },
-      { property: "og:title", content: "Tentra — Adaptive study planner for SQE, NY Bar & MPRE" },
+      { property: "og:title", content: "Tentra — Personalised SQE revision plans that adapt" },
       {
         property: "og:description",
         content:
-          "Stop planning. Start studying. An adaptive daily study plan for SQE, NY Bar and MPRE candidates.",
+          "Tell Tentra your SQE exam date and available hours. Get a personalised FLK1 and FLK2 revision plan that recalibrates as you study.",
       },
       { property: "og:url", content: "https://tentraapp.com/" },
       { property: "og:type", content: "website" },
@@ -54,7 +54,8 @@ export const Route = createFileRoute("/")({
           operatingSystem: "Web",
           url: "https://tentraapp.com/",
           description:
-            "Adaptive study planner with focus sessions, weak-area drills and AI coaching for SQE, NY Bar and MPRE candidates.",
+            "Personalised, adaptive SQE1 revision planning across FLK1 and FLK2, with revision tracking, practice questions, analytics and AI study support. Also supports the New York Bar (UBE) and MPRE.",
+
           offers: { "@type": "Offer", price: "9.99", priceCurrency: "GBP" },
         }),
       },
@@ -133,6 +134,26 @@ function LandingPage() {
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  // Homepage view + how-it-works view, for funnel instrumentation.
+  useEffect(() => {
+    trackEvent("homepage_viewed", { surface: "landing", primaryMarket: "SQE" });
+  }, []);
+  useEffect(() => {
+    const el = document.getElementById("how");
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    let fired = false;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !fired) {
+          fired = true;
+          trackEvent("how_it_works_viewed", { surface: "landing" });
+        }
+      },
+      { threshold: 0.3 },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
@@ -172,22 +193,23 @@ function LandingPage() {
         </header>
 
         <main>
-          {/* HERO — mobile first */}
+          {/* HERO — SQE-first, mobile first */}
           <section className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:px-8 md:pt-12 md:pb-20">
             <div className="grid items-center gap-8 md:grid-cols-[1.05fr_1fr] md:gap-16">
               <div className="text-left">
-                <div className="text-[10.5px] font-semibold uppercase tracking-[0.28em] text-muted-foreground">
-                  SQE · NY Bar · MPRE
+                <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-foreground/80 backdrop-blur">
+                  <Sparkles className="h-3 w-3 text-pink" />
+                  Built for SQE1 · FLK1 &amp; FLK2
                 </div>
 
                 <h1 className="mt-4 text-[2.35rem] font-light leading-[1.02] tracking-[-0.03em] text-foreground sm:text-[2.6rem] md:text-[2.85rem] lg:text-[3.15rem]">
-                  Stop planning.
-                  <br />
-                  <span className="text-gradient-pink-violet font-light">Start studying.</span>
+                  The smarter way to plan your{" "}
+                  <span className="text-gradient-pink-violet font-light">SQE revision</span>.
                 </h1>
 
                 <p className="mt-5 max-w-[32rem] text-[15.5px] leading-[1.55] text-muted-foreground md:text-[16.5px]">
-                  Tentra builds your daily study plan around your exam date, available time and progress.
+                  Tell Tentra your exam date and how many hours you can study each week.
+                  We&apos;ll build your personalised SQE revision plan — and adapt it as you progress.
                 </p>
 
                 <div ref={heroCtaRef} className="mt-7 flex flex-col items-stretch gap-3 md:flex-row md:items-center">
@@ -197,21 +219,28 @@ function LandingPage() {
                       <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </PremiumCta>
                   ) : (
-                    <PremiumCta to="/onboarding" size="lg" className="w-full md:w-auto">
-                      Build my plan
+                    <PremiumCta
+                      to="/onboarding"
+                      size="lg"
+                      className="w-full md:w-auto"
+                      onClick={() =>
+                        trackEvent("build_plan_cta_clicked", { surface: "landing", placement: "hero" })
+                      }
+                    >
+                      Build my SQE plan
                       <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </PremiumCta>
                   )}
                   <a
-                    href="#features"
-                    className="inline-flex min-h-11 items-center justify-center text-[13.5px] font-medium text-muted-foreground transition-colors hover:text-foreground md:ml-2"
+                    href="#how"
+                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-border/60 bg-card/50 px-5 text-[13.5px] font-medium text-foreground/80 backdrop-blur transition-colors hover:text-foreground md:ml-1"
                   >
-                    See Tentra in action ↓
+                    See how it works
                   </a>
                 </div>
 
                 <p className="mt-3 text-[13px] leading-snug text-muted-foreground/80">
-                  Your first plan takes under 2 minutes.
+                  No spreadsheets. Your first SQE plan takes under 2 minutes.
                 </p>
               </div>
 
@@ -223,40 +252,168 @@ function LandingPage() {
             </div>
           </section>
 
-          {/* FEATURES — moved directly under hero preview */}
+          {/* PRODUCT SHOWCASE — interactive, directly under hero */}
           <section id="features" className="mx-auto max-w-6xl px-4 pb-16 md:px-8 md:pb-28">
             <div className="mx-auto mb-8 max-w-2xl text-center md:mb-14">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                The platform
+                Inside Tentra
               </div>
               <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
-                Everything you need to{" "}
-                <span className="text-gradient-pink-violet font-light">make progress</span>.
+                Your whole SQE revision,{" "}
+                <span className="text-gradient-pink-violet font-light">in one place</span>.
               </h2>
               <p className="mt-4 text-[14.5px] leading-[1.55] text-muted-foreground md:text-[16px]">
-                Plan your work, focus properly, practise your weak areas and see what is improving.
+                FLK1 and FLK2 topics, weekly sessions, progress and analytics — tap through the product.
               </p>
             </div>
 
             <FeatureShowcase />
           </section>
 
-          {/* HOW IT WORKS */}
-          <section id="how" className="mx-auto max-w-6xl px-4 pb-16 md:px-8 md:pb-28">
+          {/* HOW TENTRA WORKS — four scannable steps */}
+          <section id="how" className="mx-auto max-w-6xl px-4 pb-14 md:px-8 md:pb-24">
             <div className="mb-8 text-center md:mb-14">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                How it works
+                How Tentra works
               </div>
               <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
-                Three steps. That's it.
+                Four steps to your{" "}
+                <span className="text-gradient-pink-violet font-light">SQE plan</span>.
               </h2>
             </div>
-            <div className="grid gap-3 md:grid-cols-3 md:gap-6">
-              <StepCard num="01" icon={<Calendar className="h-4 w-4" />} title="Tell us your exam" body="Choose your route, exam date and weekly availability." />
-              <StepCard num="02" icon={<LayoutDashboard className="h-4 w-4" />} title="Get your daily plan" body="Tentra turns the syllabus into manageable daily tasks." />
-              <StepCard num="03" icon={<Target className="h-4 w-4" />} title="Keep progressing" body="Your plan adapts when you complete, miss or reschedule work." />
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 md:gap-5">
+              <StepCard
+                num="01"
+                total="04"
+                icon={<Calendar className="h-4 w-4" />}
+                title="Add your SQE exam date"
+                body="Tentra works backwards from your exam."
+              />
+              <StepCard
+                num="02"
+                total="04"
+                icon={<Timer className="h-4 w-4" />}
+                title="Tell us how much time you have"
+                body="Choose the number of hours you can realistically study each week."
+              />
+              <StepCard
+                num="03"
+                total="04"
+                icon={<LayoutDashboard className="h-4 w-4" />}
+                title="Get your personalised plan"
+                body="Tentra distributes your revision across the SQE syllabus."
+              />
+              <StepCard
+                num="04"
+                total="04"
+                icon={<TrendingUp className="h-4 w-4" />}
+                title="Study, track and adapt"
+                body="Log your sessions and Tentra adjusts your plan as your progress changes."
+              />
+            </div>
+            <InlineCta
+              label="Build my SQE plan"
+              placement="how_it_works"
+              isAuthenticated={isAuthenticated}
+              ctaTo={ctaTo}
+            />
+          </section>
+
+          {/* THE PROBLEM */}
+          <section className="mx-auto max-w-5xl px-4 pb-14 md:px-8 md:pb-24">
+            <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-card/60 p-6 backdrop-blur md:rounded-[2rem] md:p-12">
+              <div className="absolute inset-x-10 -top-16 -z-10 h-32 bg-gradient-pink-violet opacity-[0.10] blur-3xl motion-reduce:hidden" />
+              <div className="mx-auto max-w-2xl text-center">
+                <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                  The problem
+                </div>
+                <h2 className="mt-4 text-[1.6rem] font-light leading-[1.12] tracking-[-0.025em] text-foreground md:text-[2.25rem]">
+                  Your SQE revision plan shouldn&apos;t become useless the moment{" "}
+                  <span className="text-gradient-pink-violet font-light">life gets in the way</span>.
+                </h2>
+                <p className="mt-4 text-[14px] leading-[1.6] text-muted-foreground md:text-[15.5px]">
+                  Spreadsheets and hand-built revision timetables never react. Tentra does.
+                </p>
+              </div>
+
+              <div className="mx-auto mt-7 grid max-w-3xl gap-2.5 sm:grid-cols-2 md:mt-10">
+                {[
+                  "You miss a session",
+                  "One topic takes longer than expected",
+                  "You have less study time one week",
+                  "You're stronger or weaker in certain areas",
+                  "Your SQE exam date gets closer",
+                ].map((x) => (
+                  <div
+                    key={x}
+                    className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-background/40 px-3.5 py-3"
+                  >
+                    <span className="mt-[3px] h-1.5 w-1.5 shrink-0 rounded-full bg-pink/70" />
+                    <span className="text-[13px] leading-snug text-foreground/85">{x}</span>
+                  </div>
+                ))}
+                <div className="flex items-start gap-2.5 rounded-xl border border-pink/30 bg-gradient-to-br from-pink/[0.10] to-violet/[0.06] px-3.5 py-3">
+                  <Sparkles className="mt-[1px] h-3.5 w-3.5 shrink-0 text-pink" />
+                  <span className="text-[13px] font-medium leading-snug text-foreground">
+                    Tentra recalibrates automatically
+                  </span>
+                </div>
+              </div>
             </div>
           </section>
+
+          {/* SQE FEATURE BLOCKS */}
+          <section className="mx-auto max-w-6xl px-4 pb-14 md:px-8 md:pb-24">
+            <div className="mx-auto mb-8 max-w-2xl text-center md:mb-12">
+              <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                Built for SQE1
+              </div>
+              <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
+                Everything your SQE revision{" "}
+                <span className="text-gradient-pink-violet font-light">actually needs</span>.
+              </h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 md:gap-5 lg:grid-cols-3">
+              <SqeFeatureCard
+                icon={<Calendar className="h-4 w-4" />}
+                title="Personalised study plans"
+                body="Built around your SQE exam date, available time and the FLK1 and FLK2 syllabus."
+              />
+              <SqeFeatureCard
+                icon={<Target className="h-4 w-4" />}
+                title="Adaptive planning"
+                body="Your plan recalibrates as you complete or miss revision."
+              />
+              <SqeFeatureCard
+                icon={<Timer className="h-4 w-4" />}
+                title="Revision tracking"
+                body="See exactly how much time you've spent across FLK1 and FLK2."
+              />
+              <SqeFeatureCard
+                icon={<BarChart3 className="h-4 w-4" />}
+                title="Progress & analytics"
+                body="Understand which SQE subjects are getting enough attention and where gaps remain."
+              />
+              <SqeFeatureCard
+                icon={<MessageSquareText className="h-4 w-4" />}
+                title="AI study support"
+                body="Use Tentra's AI coach and tutor to guide and explain your SQE revision."
+              />
+              <SqeFeatureCard
+                icon={<ClipboardCheck className="h-4 w-4" />}
+                title="Practice questions"
+                body="Topic-based SQE practice questions and mini tests today."
+                note="Full timed mocks coming soon"
+              />
+            </div>
+            <InlineCta
+              label="Create my revision plan"
+              placement="features"
+              isAuthenticated={isAuthenticated}
+              ctaTo={ctaTo}
+            />
+          </section>
+
 
           {/* STATEMENT (replaces testimonial) */}
           <section className="mx-auto max-w-3xl px-4 pb-16 md:px-8 md:pb-24">
@@ -387,7 +544,34 @@ function LandingPage() {
               </div>
             </div>
           </section>
+
+          {/* NEW YORK BAR — secondary route */}
+          <section className="mx-auto max-w-4xl px-4 pb-16 md:px-8 md:pb-24">
+            <div className="flex flex-col items-start gap-5 rounded-[1.25rem] border border-border/60 bg-card/45 p-5 backdrop-blur md:flex-row md:items-center md:justify-between md:rounded-[1.5rem] md:p-8">
+              <div className="min-w-0">
+                <div className="text-[10.5px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                  Also available
+                </div>
+                <h2 className="mt-2 text-[1.15rem] font-light tracking-[-0.02em] text-foreground md:text-[1.4rem]">
+                  Studying for the New York Bar?
+                </h2>
+                <p className="mt-2 max-w-lg text-[13.5px] leading-[1.55] text-muted-foreground">
+                  Tentra also supports personalised study planning and revision tracking for the
+                  New York Bar (UBE) and the MPRE.
+                </p>
+              </div>
+              <Link
+                to="/new-york-bar"
+                onClick={() => trackEvent("ny_bar_cta_clicked", { surface: "landing" })}
+                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-5 text-[13.5px] font-medium text-foreground transition-colors hover:border-pink/40"
+              >
+                Explore New York Bar
+                <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+            </div>
+          </section>
         </main>
+
 
         {/* FOOTER */}
         <footer className="border-t border-border/50">
@@ -421,8 +605,15 @@ function LandingPage() {
           }`}
           aria-hidden={!showStickyCta}
         >
-          <PremiumCta to="/onboarding" size="lg" className="w-full">
-            Build my plan <ArrowRight className="ml-1.5 h-4 w-4" />
+          <PremiumCta
+            to="/onboarding"
+            size="lg"
+            className="w-full"
+            onClick={() =>
+              trackEvent("build_plan_cta_clicked", { surface: "landing", placement: "sticky_mobile" })
+            }
+          >
+            Build my SQE plan <ArrowRight className="ml-1.5 h-4 w-4" />
           </PremiumCta>
         </div>
       )}
@@ -572,27 +763,87 @@ function IncludedItem({
   );
 }
 
+function SqeFeatureCard({
+  icon,
+  title,
+  body,
+  note,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  note?: string;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/50 p-5 backdrop-blur transition-colors hover:border-pink/30 md:p-6">
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-pink/10 text-pink">
+        {icon}
+      </span>
+      <h3 className="mt-4 text-[15.5px] font-medium tracking-[-0.015em] text-foreground md:text-[16.5px]">
+        {title}
+      </h3>
+      <p className="mt-1.5 text-[13px] leading-[1.55] text-muted-foreground">{body}</p>
+      {note ? (
+        <span className="mt-3 inline-flex items-center rounded-full border border-border/60 bg-background/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          {note}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+function InlineCta({
+  label,
+  placement,
+  isAuthenticated,
+  ctaTo,
+}: {
+  label: string;
+  placement: string;
+  isAuthenticated: boolean;
+  ctaTo: string;
+}) {
+  return (
+    <div className="mt-8 flex justify-center md:mt-12">
+      <PremiumCta
+        to={isAuthenticated ? ctaTo : "/onboarding"}
+        size="lg"
+        className="w-full sm:w-auto"
+        onClick={() =>
+          trackEvent("build_plan_cta_clicked", { surface: "landing", placement })
+        }
+      >
+        {isAuthenticated ? "See my study plan" : label}
+        <ArrowRight className="ml-1.5 h-4 w-4" />
+      </PremiumCta>
+    </div>
+  );
+}
+
 function StepCard({
   num,
+  total = "03",
   icon,
   title,
   body,
 }: {
   num: string;
+  total?: string;
   icon: React.ReactNode;
   title: string;
   body: string;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/50 p-5 backdrop-blur md:p-8">
+    <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card/50 p-5 backdrop-blur md:p-6">
       <div className="flex items-center justify-between">
         <div className="grid h-10 w-10 place-items-center rounded-xl bg-pink/10 text-pink">
           {icon}
         </div>
         <div className="font-display text-[11px] font-medium tracking-[0.18em] text-muted-foreground/70">
-          {num} / 03
+          {num} / {total}
         </div>
       </div>
+
       <h3 className="mt-5 text-[16px] font-medium tracking-[-0.015em] text-foreground md:text-[18px]">
         {title}
       </h3>
