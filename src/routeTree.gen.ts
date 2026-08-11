@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TopicsRouteImport } from './routes/topics'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as SubscribeRouteImport } from './routes/subscribe'
+import { Route as SqeRouteImport } from './routes/sqe'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -20,6 +21,7 @@ import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as PlanRevealRouteImport } from './routes/plan-reveal'
 import { Route as PlanPreviewRouteImport } from './routes/plan-preview'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as NewYorkBarRouteImport } from './routes/new-york-bar'
 import { Route as MocksRouteImport } from './routes/mocks'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
@@ -63,6 +65,11 @@ const SubscribeRoute = SubscribeRouteImport.update({
   path: '/subscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SqeRoute = SqeRouteImport.update({
+  id: '/sqe',
+  path: '/sqe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
@@ -101,6 +108,11 @@ const PlanPreviewRoute = PlanPreviewRouteImport.update({
 const OnboardingRoute = OnboardingRouteImport.update({
   id: '/onboarding',
   path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NewYorkBarRoute = NewYorkBarRouteImport.update({
+  id: '/new-york-bar',
+  path: '/new-york-bar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MocksRoute = MocksRouteImport.update({
@@ -257,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/forgot-password': typeof ForgotPasswordRoute
   '/mcp': typeof McpRoute
   '/mocks': typeof MocksRouteWithChildren
+  '/new-york-bar': typeof NewYorkBarRoute
   '/onboarding': typeof OnboardingRoute
   '/plan-preview': typeof PlanPreviewRoute
   '/plan-reveal': typeof PlanRevealRoute
@@ -265,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sqe': typeof SqeRoute
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
   '/topics': typeof TopicsRoute
@@ -296,6 +310,7 @@ export interface FileRoutesByTo {
   '/forgot-password': typeof ForgotPasswordRoute
   '/mcp': typeof McpRoute
   '/mocks': typeof MocksRouteWithChildren
+  '/new-york-bar': typeof NewYorkBarRoute
   '/onboarding': typeof OnboardingRoute
   '/plan-preview': typeof PlanPreviewRoute
   '/plan-reveal': typeof PlanRevealRoute
@@ -304,6 +319,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sqe': typeof SqeRoute
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
   '/topics': typeof TopicsRoute
@@ -337,6 +353,7 @@ export interface FileRoutesById {
   '/forgot-password': typeof ForgotPasswordRoute
   '/mcp': typeof McpRoute
   '/mocks': typeof MocksRouteWithChildren
+  '/new-york-bar': typeof NewYorkBarRoute
   '/onboarding': typeof OnboardingRoute
   '/plan-preview': typeof PlanPreviewRoute
   '/plan-reveal': typeof PlanRevealRoute
@@ -345,6 +362,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/sqe': typeof SqeRoute
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
   '/topics': typeof TopicsRoute
@@ -379,6 +397,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/mcp'
     | '/mocks'
+    | '/new-york-bar'
     | '/onboarding'
     | '/plan-preview'
     | '/plan-reveal'
@@ -387,6 +406,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/settings'
     | '/sitemap.xml'
+    | '/sqe'
     | '/subscribe'
     | '/terms'
     | '/topics'
@@ -418,6 +438,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/mcp'
     | '/mocks'
+    | '/new-york-bar'
     | '/onboarding'
     | '/plan-preview'
     | '/plan-reveal'
@@ -426,6 +447,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/settings'
     | '/sitemap.xml'
+    | '/sqe'
     | '/subscribe'
     | '/terms'
     | '/topics'
@@ -458,6 +480,7 @@ export interface FileRouteTypes {
     | '/forgot-password'
     | '/mcp'
     | '/mocks'
+    | '/new-york-bar'
     | '/onboarding'
     | '/plan-preview'
     | '/plan-reveal'
@@ -466,6 +489,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/settings'
     | '/sitemap.xml'
+    | '/sqe'
     | '/subscribe'
     | '/terms'
     | '/topics'
@@ -499,6 +523,7 @@ export interface RootRouteChildren {
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   McpRoute: typeof McpRoute
   MocksRoute: typeof MocksRouteWithChildren
+  NewYorkBarRoute: typeof NewYorkBarRoute
   OnboardingRoute: typeof OnboardingRoute
   PlanPreviewRoute: typeof PlanPreviewRoute
   PlanRevealRoute: typeof PlanRevealRoute
@@ -507,6 +532,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SqeRoute: typeof SqeRoute
   SubscribeRoute: typeof SubscribeRoute
   TermsRoute: typeof TermsRoute
   TopicsRoute: typeof TopicsRoute
@@ -544,6 +570,13 @@ declare module '@tanstack/react-router' {
       path: '/subscribe'
       fullPath: '/subscribe'
       preLoaderRoute: typeof SubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sqe': {
+      id: '/sqe'
+      path: '/sqe'
+      fullPath: '/sqe'
+      preLoaderRoute: typeof SqeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sitemap.xml': {
@@ -600,6 +633,13 @@ declare module '@tanstack/react-router' {
       path: '/onboarding'
       fullPath: '/onboarding'
       preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/new-york-bar': {
+      id: '/new-york-bar'
+      path: '/new-york-bar'
+      fullPath: '/new-york-bar'
+      preLoaderRoute: typeof NewYorkBarRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mocks': {
@@ -831,6 +871,7 @@ const rootRouteChildren: RootRouteChildren = {
   ForgotPasswordRoute: ForgotPasswordRoute,
   McpRoute: McpRoute,
   MocksRoute: MocksRouteWithChildren,
+  NewYorkBarRoute: NewYorkBarRoute,
   OnboardingRoute: OnboardingRoute,
   PlanPreviewRoute: PlanPreviewRoute,
   PlanRevealRoute: PlanRevealRoute,
@@ -839,6 +880,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SqeRoute: SqeRoute,
   SubscribeRoute: SubscribeRoute,
   TermsRoute: TermsRoute,
   TopicsRoute: TopicsRoute,
