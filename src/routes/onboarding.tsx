@@ -987,11 +987,16 @@ function StepHours({
 }) {
   return (
     <div className="space-y-6">
-      <StepHeader
-        kicker="Step 1 of 3"
-        title="How many hours can you realistically study each week?"
-        sub="Don't worry — your plan can change whenever life does."
-      />
+      <div>
+        <h2 className="text-[1.15rem] font-normal leading-[1.2] tracking-[-0.01em] text-foreground">
+          How many hours can you realistically study each week?
+        </h2>
+        <p className="mt-1.5 text-[13px] leading-[1.5] text-muted-foreground">
+          Your weekly hours set the total study time Tentra schedules. You can change this
+          whenever life does.
+        </p>
+      </div>
+
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {HOUR_PRESETS.map((preset) => {
