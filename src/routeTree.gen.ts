@@ -20,6 +20,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as PracticeRouteImport } from './routes/practice'
 import { Route as PlanRevealRouteImport } from './routes/plan-reveal'
 import { Route as PlanPreviewRouteImport } from './routes/plan-preview'
+import { Route as PlanRouteImport } from './routes/plan'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as NewYorkBarRouteImport } from './routes/new-york-bar'
 import { Route as MocksRouteImport } from './routes/mocks'
@@ -103,6 +104,11 @@ const PlanRevealRoute = PlanRevealRouteImport.update({
 const PlanPreviewRoute = PlanPreviewRouteImport.update({
   id: '/plan-preview',
   path: '/plan-preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanRoute = PlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OnboardingRoute = OnboardingRouteImport.update({
@@ -271,6 +277,7 @@ export interface FileRoutesByFullPath {
   '/mocks': typeof MocksRouteWithChildren
   '/new-york-bar': typeof NewYorkBarRoute
   '/onboarding': typeof OnboardingRoute
+  '/plan': typeof PlanRoute
   '/plan-preview': typeof PlanPreviewRoute
   '/plan-reveal': typeof PlanRevealRoute
   '/practice': typeof PracticeRoute
@@ -312,6 +319,7 @@ export interface FileRoutesByTo {
   '/mocks': typeof MocksRouteWithChildren
   '/new-york-bar': typeof NewYorkBarRoute
   '/onboarding': typeof OnboardingRoute
+  '/plan': typeof PlanRoute
   '/plan-preview': typeof PlanPreviewRoute
   '/plan-reveal': typeof PlanRevealRoute
   '/practice': typeof PracticeRoute
@@ -355,6 +363,7 @@ export interface FileRoutesById {
   '/mocks': typeof MocksRouteWithChildren
   '/new-york-bar': typeof NewYorkBarRoute
   '/onboarding': typeof OnboardingRoute
+  '/plan': typeof PlanRoute
   '/plan-preview': typeof PlanPreviewRoute
   '/plan-reveal': typeof PlanRevealRoute
   '/practice': typeof PracticeRoute
@@ -399,6 +408,7 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/new-york-bar'
     | '/onboarding'
+    | '/plan'
     | '/plan-preview'
     | '/plan-reveal'
     | '/practice'
@@ -440,6 +450,7 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/new-york-bar'
     | '/onboarding'
+    | '/plan'
     | '/plan-preview'
     | '/plan-reveal'
     | '/practice'
@@ -482,6 +493,7 @@ export interface FileRouteTypes {
     | '/mocks'
     | '/new-york-bar'
     | '/onboarding'
+    | '/plan'
     | '/plan-preview'
     | '/plan-reveal'
     | '/practice'
@@ -525,6 +537,7 @@ export interface RootRouteChildren {
   MocksRoute: typeof MocksRouteWithChildren
   NewYorkBarRoute: typeof NewYorkBarRoute
   OnboardingRoute: typeof OnboardingRoute
+  PlanRoute: typeof PlanRoute
   PlanPreviewRoute: typeof PlanPreviewRoute
   PlanRevealRoute: typeof PlanRevealRoute
   PracticeRoute: typeof PracticeRoute
@@ -626,6 +639,13 @@ declare module '@tanstack/react-router' {
       path: '/plan-preview'
       fullPath: '/plan-preview'
       preLoaderRoute: typeof PlanPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan': {
+      id: '/plan'
+      path: '/plan'
+      fullPath: '/plan'
+      preLoaderRoute: typeof PlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/onboarding': {
@@ -873,6 +893,7 @@ const rootRouteChildren: RootRouteChildren = {
   MocksRoute: MocksRouteWithChildren,
   NewYorkBarRoute: NewYorkBarRoute,
   OnboardingRoute: OnboardingRoute,
+  PlanRoute: PlanRoute,
   PlanPreviewRoute: PlanPreviewRoute,
   PlanRevealRoute: PlanRevealRoute,
   PracticeRoute: PracticeRoute,

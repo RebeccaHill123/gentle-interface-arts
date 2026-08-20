@@ -17,6 +17,14 @@ import type {
 
 export type TaskStatus = "scheduled" | "completed" | "skipped";
 
+/** Why a student skipped a session. Drives how the engine reacts. */
+export type SkipReason =
+  | "no-time"
+  | "too-hard"
+  | "already-covered"
+  | "not-useful"
+  | "other";
+
 export interface ScheduledTask {
   /** Stable for the life of the plan. */
   id: string;
@@ -37,6 +45,17 @@ export interface ScheduledTask {
   completedAt?: string;
   /** Set when a task was carried forward from a missed day. */
   movedFrom?: string;
+  /** Evidence class that put this task in the plan (stored provenance). */
+  evidence?: import("./priority").PriorityEvidenceClass;
+  /** Short student-facing provenance chip, generated when the task was built. */
+  evidenceLabel?: string;
+  /** Real minutes recorded against this task when it was completed. */
+  actualMinutes?: number;
+  /** Focus-session id that completed this task (idempotency trace). */
+  sessionId?: string;
+  /** Set when the student skipped the task. */
+  skipReason?: SkipReason;
+  skippedAt?: string;
   /** Schedule version that first created this task. */
   createdInVersion: number;
 }

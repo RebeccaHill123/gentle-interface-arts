@@ -18,12 +18,19 @@ import {
 } from "@/lib/plan-store";
 import type { AnalyticsBundle } from "@/lib/analytics-derive";
 import { buildPlanEvidence } from "./evidence";
-import { mergeSchedules, moveTask, recalibrate, setTaskStatus } from "./recalibrate";
+import {
+  capacityOutlook,
+  mergeSchedules,
+  moveTask,
+  recalibrate,
+  setTaskStatus,
+} from "./recalibrate";
 import type {
   PlanRevisionRecord,
   PlanSchedule,
   RecalibrationTrigger,
   ScheduledTask,
+  SkipReason,
 } from "./types";
 import { localDateFor } from "@/lib/study-log";
 import { diffDaysKey } from "./dates";
@@ -199,16 +206,33 @@ async function mutate(
   return { stored: next, ok: true };
 }
 
-export function completeScheduledTask(taskId: string) {
-  return mutate((s) => ({ schedule: setTaskStatus(s, taskId, "completed") }));
+export function completeScheduledTask(
+  taskId: string,
+  detail: { actualMinutes?: number; sessionId?: string } = {},
+) {
+  return mutate((s) => ({ schedule: setTaskStatus(s, taskId, "completed", detail) }));
 }
 
 export function reopenScheduledTask(taskId: string) {
   return mutate((s) => ({ schedule: setTaskStatus(s, taskId, "scheduled") }));
 }
 
-export function skipScheduledTask(taskId: string) {
-  return mutate((s) => ({ schedule: setTaskStatus(s, taskId, "skipped") }));
+export function skipScheduledTask(taskId: string, skipReason?: SkipReason) {
+  return mutate((s) => ({ schedule: setTaskStatus(s, taskId, "skipped", { skipReason }) }));
+}
+
+/** Remaining capacity per day for the reschedule picker. */
+export function scheduleCapacity(schedule: PlanSchedule | null, fromDate: string, days = 7) {
+  if (!schedule) return [];
+  return capacityOutlook(schedule, fromDate, days);
+}
+
+/** Scheduled work that is still open on days before `today`. */
+export function missedTasks(schedule: PlanSchedule | null, today: string): ScheduledTask[] {
+  if (!schedule) return [];
+  return schedule.tasks
+    .filter((t) => t.status === "scheduled" && t.date < today)
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export function rescheduleScheduledTask(taskId: string, toDate: string) {
