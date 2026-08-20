@@ -210,8 +210,35 @@ function DashboardPage() {
 
   const todayItems: TodayPlanItem[] = useMemo(() => {
     if (!stored) return [];
+    // Authoritative source: the adaptive schedule.
+    if (scheduledToday.length > 0) {
+      return scheduledToday.map((t) => ({
+        id: t.id,
+        title: t.title,
+        subject: t.module,
+        subTopic: t.subtopic,
+        minutes: t.minutes,
+        format:
+          t.taskType === "timed-sba" || t.taskType === "mixed-mock"
+            ? "Practice"
+            : t.taskType === "concept-deepdive"
+              ? "Learn"
+              : t.taskType === "active-recall" || t.taskType === "mistake-review"
+                ? "Review"
+                : "Study",
+        priority:
+          t.priority === "high"
+            ? "must"
+            : t.difficulty === "foundational"
+              ? "weak-spot"
+              : "high-yield",
+        reason: t.why,
+        done: t.status === "completed",
+      }));
+    }
     const { plan, completedTaskIds } = stored;
     if (plan.todayTasks.length > 0) {
+
       return plan.todayTasks.map((t, i) => {
         const done = completedTaskIds.includes(String(i));
         const priority =
