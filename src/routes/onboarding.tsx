@@ -474,7 +474,28 @@ function OnboardingPage() {
 
   const handleGenerate = async () => {
     setError(null);
-    trackEvent("weekly_hours_completed", { ...eventBase, hoursPerWeek });
+    if (!stage) {
+      setStep(2);
+      setError("Please tell us where you are in your preparation.");
+      return;
+    }
+    if (!notStarted && !allRated && !balancedAccepted) {
+      setError(
+        "Please rate each subject, or choose balanced coverage for the ones you haven't rated.",
+      );
+      return;
+    }
+    trackEvent("confidence_rating_completed", {
+      ...eventBase,
+      ratedCount,
+      subjectCount: modules.length,
+      confidenceSource,
+    });
+    trackEvent("personalised_plan_build_clicked", {
+      ...eventBase,
+      hoursPerWeek,
+      confidenceSource,
+    });
     trackEvent("plan_build_clicked", { ...eventBase, hoursPerWeek, examDate });
     setSubmitting(true);
     try {
@@ -495,7 +516,9 @@ function OnboardingPage() {
         examDate,
         hoursPerWeek,
         modules,
+        confidenceSource,
       };
+
 
       // Signed-in WITH access: generate the full plan and land on the dashboard.
       const { data: userData } = await supabase.auth.getUser();
