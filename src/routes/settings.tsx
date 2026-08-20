@@ -1,16 +1,20 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { CreditCard, ExternalLink, LogOut, Sparkles, Trash2, Loader2 } from "lucide-react";
+import { CalendarClock, CreditCard, ExternalLink, LogOut, Sparkles, Trash2, Loader2 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/use-auth";
-import { clearOnboardingDraft, clearPlan } from "@/lib/plan-store";
+import { clearOnboardingDraft, clearPlan, loadPlan } from "@/lib/plan-store";
+import { applyPlanSettings } from "@/lib/plan/store";
 import { useSubscription } from "@/hooks/useSubscription";
 import { createBillingPortalSession } from "@/lib/pro.functions";
 import { getStripeEnvironment } from "@/lib/stripe";
+
 
 export const Route = createFileRoute("/settings")({
   beforeLoad: async () => {
