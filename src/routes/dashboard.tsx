@@ -291,7 +291,7 @@ function DashboardPage() {
       reason: "Build performance data so Tentra can pinpoint weak areas.",
     });
     return items;
-  }, [stored, examId, examLabel, subjectMinutes]);
+  }, [stored, scheduledToday, examId, examLabel, subjectMinutes]);
 
   const [mockPerf, setMockPerf] = useState<MockPerformance | null>(null);
   useEffect(() => {
