@@ -372,14 +372,15 @@ function DashboardPage() {
   ) => {
     if (!quizTask) return;
     const key = taskActivityKey(quizTask.index);
-    toggleTaskCompletion(quizTask.index);
+    if (quizTask.taskId) void completeScheduledTask(quizTask.taskId).then(() => setTick((t) => t + 1));
+    else toggleTaskCompletion(quizTask.index);
     void recordStudyActivity({
       idempotencyKey: key,
       activityType: "quiz",
       source: "dashboard_task",
       actualMinutes: minutesSpent,
       plannedMinutes: quizTask.minutes,
-      plannedTaskId: String(quizTask.index),
+      plannedTaskId: quizTask.taskId ?? String(quizTask.index),
       subject: quizTask.module,
       examPath: input.examType,
       note: `Mini-assessment (${quizTask.title})`,
@@ -403,8 +404,58 @@ function DashboardPage() {
     setTick((t) => t + 1);
   };
 
+  /* ---- Adaptive schedule actions (complete / skip / move) ---- */
+
+  const findScheduled = (id: string) => scheduledToday.find((t) => t.id === id);
+
+  const handleCompleteTodayItem = (id: string) => {
+    const task = findScheduled(id);
+    if (task) {
+      if (task.status === "completed") {
+        void reopenScheduledTask(id).then(() => setTick((t) => t + 1));
+        void voidStudyActivity(
+          makeIdempotencyKey("dashboard_task", today, id, task.title),
+        );
+        return;
+      }
+      // Mini-assessment first so completion carries graded evidence.
+      setQuizTask({
+        index: scheduledToday.indexOf(task),
+        taskId: task.id,
+        title: task.title,
+        module: task.module,
+        minutes: task.minutes,
+      });
+      return;
+    }
+    const idx = Number(id);
+    if (Number.isFinite(idx)) handleToggle(idx);
+  };
+
+  const handleSkipTodayItem = (id: string) => {
+    if (!findScheduled(id)) return;
+    void skipScheduledTask(id).then(() => {
+      setTick((t) => t + 1);
+      toast.success("Skipped — Tentra will factor this into your next update.");
+    });
+  };
+
+  const handleRescheduleTodayItem = (id: string) => {
+    if (!findScheduled(id)) return;
+    void rescheduleScheduledTask(id, addDaysKey(today, 1)).then((res) => {
+      if (!res.ok) {
+        toast.error(res.reason ?? "Couldn't move that session.");
+        return;
+      }
+      setTick((t) => t + 1);
+      toast.success("Moved to tomorrow.");
+    });
+  };
+
+  const revision = latestRevision(schedule);
 
   const refresh = () => setTick((t) => t + 1);
+
 
   const nextTaskIdx = plan.todayTasks.findIndex(
     (_, i) => !completedTaskIds.includes(String(i)),
