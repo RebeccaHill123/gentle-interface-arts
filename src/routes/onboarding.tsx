@@ -828,7 +828,7 @@ function StepHours({
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 2 of 2"
+        kicker="Step 1 of 3"
         title="How many hours can you realistically study each week?"
         sub="Don't worry — your plan can change whenever life does."
       />
@@ -876,12 +876,237 @@ function StepHours({
         />
         <p className="text-xs text-muted-foreground">{sessionShape}</p>
       </div>
+    </div>
+  );
+}
 
-      <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
-        <p className="text-[13px] leading-[1.55] text-muted-foreground">
-          We&apos;ll build a balanced starting plan across your full syllabus. You can personalise
-          it further — confidence per subject, weak topics, intensity — once you&apos;re inside.
-        </p>
+/* ---------- Stage 2: preparation stage ---------- */
+
+function StepPreparation({
+  stage,
+  onSelect,
+}: {
+  stage: PreparationStage | null;
+  onSelect: (v: PreparationStage) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <StepHeader
+        kicker="Step 2 of 3"
+        title="Where are you in your preparation?"
+        sub="This changes how Tentra balances learning, recall and exam practice."
+      />
+      <div className="grid gap-2" role="radiogroup" aria-label="Preparation stage">
+        {PREPARATION_STAGES.map((opt) => {
+          const active = stage === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onSelect(opt.value)}
+              className={cn(
+                "flex min-h-12 items-start gap-3 rounded-2xl border p-3.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                active
+                  ? "border-pink bg-gradient-pink-blue/10 shadow-glow"
+                  : "border-border bg-background/40 hover:border-muted-foreground",
+              )}
+            >
+              <span className="flex-1">
+                <span className="block text-[14.5px] font-semibold text-foreground">
+                  {opt.title}
+                </span>
+                <span className="mt-0.5 block text-[12.5px] leading-[1.45] text-muted-foreground">
+                  {opt.blurb}
+                </span>
+              </span>
+              {active && <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-pink" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Stage 3: syllabus confidence ---------- */
+
+function StepConfidence({
+  modules,
+  onRate,
+  notStarted,
+  onNotStartedChange,
+  balancedAccepted,
+  onBalancedAccepted,
+  examTitle,
+  examDate,
+  hoursPerWeek,
+  stage,
+}: {
+  modules: ModuleConfidence[];
+  onRate: (id: string, rating: ConfidenceRating) => void;
+  notStarted: boolean;
+  onNotStartedChange: (v: boolean) => void;
+  balancedAccepted: boolean;
+  onBalancedAccepted: (v: boolean) => void;
+  examTitle: string;
+  examDate: string;
+  hoursPerWeek: number;
+  stage: PreparationStage | null;
+}) {
+  const ratedCount = modules.filter((m) => m.rated).length;
+  const profile = buildConfidenceProfile(
+    modules,
+    notStarted ? "not-started" : undefined,
+  );
+
+  return (
+    <div className="space-y-5">
+      <StepHeader
+        kicker="Step 3 of 3"
+        title="How confident are you in each subject?"
+        sub="One tap each. This decides how your weekly hours are shared out."
+      />
+
+      <button
+        type="button"
+        aria-pressed={notStarted}
+        onClick={() => onNotStartedChange(!notStarted)}
+        className={cn(
+          "flex min-h-12 w-full items-center gap-2.5 rounded-2xl border p-3.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          notStarted
+            ? "border-pink bg-gradient-pink-blue/10 shadow-glow"
+            : "border-border bg-background/40 hover:border-muted-foreground",
+        )}
+      >
+        {notStarted ? (
+          <CheckCircle2 className="h-4.5 w-4.5 shrink-0 text-pink" />
+        ) : (
+          <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
+        <span className="text-[13.5px] leading-[1.45] text-foreground">
+          I haven&apos;t started the syllabus yet
+          <span className="mt-0.5 block text-[12px] text-muted-foreground">
+            Tentra builds a foundation-first, balanced plan across every subject.
+          </span>
+        </span>
+      </button>
+
+      {!notStarted && (
+        <>
+          <div
+            className="flex items-center justify-between text-[12px] text-muted-foreground"
+            aria-live="polite"
+          >
+            <span>
+              {ratedCount} of {modules.length} rated
+            </span>
+            <span className="h-1 w-24 overflow-hidden rounded-full bg-card">
+              <span
+                className="block h-full bg-gradient-pink-blue transition-all"
+                style={{ width: `${(ratedCount / Math.max(1, modules.length)) * 100}%` }}
+              />
+            </span>
+          </div>
+
+          <ul className="space-y-2">
+            {modules.map((m) => {
+              const current = confidenceToRating(m);
+              return (
+                <li
+                  key={m.id}
+                  className="rounded-2xl border border-border/60 bg-background/40 p-3"
+                >
+                  <div className="text-[13.5px] font-medium leading-[1.35] text-foreground">
+                    {m.name}
+                  </div>
+                  <div className="mt-2 grid grid-cols-4 gap-1.5">
+                    {RATING_ORDER.map((rating) => {
+                      const active = current === rating;
+                      return (
+                        <button
+                          key={rating}
+                          type="button"
+                          aria-pressed={active}
+                          aria-label={`${m.name}: ${RATING_LABELS[rating]}`}
+                          onClick={() => onRate(m.id, rating)}
+                          className={cn(
+                            "min-h-11 rounded-xl border px-1 text-[11.5px] leading-tight transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            active
+                              ? "border-pink bg-gradient-pink-blue/10 font-semibold text-foreground shadow-glow"
+                              : "border-border bg-card/40 text-muted-foreground hover:border-muted-foreground",
+                          )}
+                        >
+                          {RATING_LABELS[rating]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {ratedCount < modules.length && (
+            <button
+              type="button"
+              aria-pressed={balancedAccepted}
+              onClick={() => onBalancedAccepted(!balancedAccepted)}
+              className={cn(
+                "flex min-h-11 w-full items-start gap-2 rounded-xl border p-3 text-left text-[12.5px] leading-[1.45] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                balancedAccepted
+                  ? "border-pink bg-gradient-pink-blue/10 text-foreground"
+                  : "border-border bg-background/40 text-muted-foreground hover:border-muted-foreground",
+              )}
+            >
+              {balancedAccepted ? (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+              ) : (
+                <Target className="mt-0.5 h-4 w-4 shrink-0" />
+              )}
+              Use balanced coverage for the subjects I haven&apos;t rated.
+            </button>
+          )}
+        </>
+      )}
+
+      {/* Compact pre-submission summary */}
+      <div className="rounded-2xl border border-border/60 bg-card/50 p-4">
+        <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+          Your setup
+        </div>
+        <dl className="mt-2 space-y-1 text-[13px] text-foreground">
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">Exam</dt>
+            <dd className="text-right">
+              {examTitle}
+              {examDate ? ` · ${examDate}` : ""}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">Weekly hours</dt>
+            <dd>{hoursPerWeek}h</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">Preparation</dt>
+            <dd className="text-right">
+              {stage ? PREPARATION_STAGE_LABELS[stage] : "—"}
+            </dd>
+          </div>
+          {profile.weakest.length > 0 && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Lowest rated</dt>
+              <dd className="text-right">{profile.weakest.join(", ")}</dd>
+            </div>
+          )}
+          {profile.strongest.length > 0 && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Strongest rated</dt>
+              <dd className="text-right">{profile.strongest.join(", ")}</dd>
+            </div>
+          )}
+        </dl>
       </div>
     </div>
   );
