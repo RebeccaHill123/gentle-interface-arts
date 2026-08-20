@@ -211,10 +211,10 @@ export function buildSpecificTask({
     rationale,
     priority: bucket === "must" ? "high" : bucket === "should" ? "medium" : "low",
     why:
-      phase === "foundation"
-        ? `You need a precise rule base in ${subtopic} before heavier timed practice.`
-        : rationale === "weak-area"
-          ? `This targets a low-confidence or flagged area in ${module.name}.`
+      rationale === "weak-area"
+        ? `You rated ${module.name} lower, so Tentra is rebuilding ${subtopic} from the rule up.`
+        : phase === "foundation"
+          ? `You need a precise rule base in ${subtopic} before heavier timed practice.`
           : `This keeps a high-yield ${module.name} area moving toward exam pace.`,
     subtopic,
     difficulty,
