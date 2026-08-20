@@ -155,6 +155,8 @@ export interface OnboardingDraft {
   intensity: IntensityTier;
   coverageMode: CoverageMode;
   modules: ModuleConfidence[];
+  /** Present from the three-stage setup; older two-step drafts omit it. */
+  confidenceSource?: "rated" | "not-started" | "balanced";
 }
 
 export const SQE1_MODULES = [
