@@ -4,7 +4,10 @@
 // existing reader keeps working. `plan.todayTasks` is mirrored from today's
 // scheduled tasks (dual-write compatibility), and `completedTaskIds` keeps its
 // index semantics for legacy surfaces.
+import { supabase } from "@/integrations/supabase/client";
+import type { Json } from "@/integrations/supabase/types";
 import {
+
   loadPlan,
   savePlan,
   savePlanAndSync,
