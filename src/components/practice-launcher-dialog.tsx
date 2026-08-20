@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
 import { deriveAnalytics, type SubjectStat } from "@/lib/analytics-derive";
+import { pickEvidenceLedSubject, evidenceReason } from "@/lib/evidence-priority";
 
 
 export type PaperKey = "FLK1" | "FLK2" | "MBE" | "MEE" | "MPT";
@@ -179,8 +180,8 @@ export function PracticeLauncherDialog({
 
   const meta = PRACTICE_TYPES.find((p) => p.id === type)!;
 
-  // Recommended subject = highest risk, or chosen one
-  const recommended = subjects.slice().sort((a, b) => b.riskScore - a.riskScore)[0];
+  // Recommended subject = evidence-led (low graded accuracy > no coverage > self-rated-low), or chosen one
+  const recommended = pickEvidenceLedSubject(analytics);
   const targetSubject =
     type === "mini-flk" && paper
       ? `Mixed (${paper})`
@@ -216,18 +217,19 @@ export function PracticeLauncherDialog({
     if (daysToExam !== null && daysToExam < 90)
       reasonBits.push(`${daysToExam} days to exam`);
   } else if (subject === "auto" && recommended) {
+    const evidence = evidenceReason(analytics, recommended.module);
     reasonBits.push(
-      `${recommended.module} is your highest-risk module right now (risk ${recommended.riskScore}/100)`,
+      evidence
+        ? `${recommended.module} has evidence of weakness — ${evidence}`
+        : `${recommended.module} has no graded data yet — self-rated confidence ${recommended.confidence}/5`,
     );
-    if (recommended.accuracy != null && recommended.accuracy < 70) {
-      reasonBits.push(`accuracy at ${recommended.accuracy}%`);
-    }
     if (recommended.recencyDays != null && recommended.recencyDays >= 7) {
       reasonBits.push(`last revised ${recommended.recencyDays} days ago`);
     }
   } else if (targetStat) {
-    if (targetStat.accuracy != null) reasonBits.push(`accuracy ${targetStat.accuracy}%`);
-    reasonBits.push(`confidence ${targetStat.confidence}/5`);
+    if (targetStat.accuracy != null)
+      reasonBits.push(`graded accuracy ${targetStat.accuracy}% across ${targetStat.gradedAttempts} questions`);
+    else reasonBits.push(`no graded data yet — self-rated confidence ${targetStat.confidence}/5`);
     if (targetStat.recencyDays != null)
       reasonBits.push(`last touched ${targetStat.recencyDays}d ago`);
   }
@@ -390,7 +392,7 @@ export function PracticeLauncherDialog({
                   <p className="mt-2 text-xs text-muted-foreground">
                     Suggesting{" "}
                     <span className="font-medium text-foreground">{recommended.module}</span> —
-                    risk {recommended.riskScore}/100.
+                    {evidenceReason(analytics, recommended.module) ?? "no graded data yet, self-rated low confidence"}.
                   </p>
                 )}
               </Field>
