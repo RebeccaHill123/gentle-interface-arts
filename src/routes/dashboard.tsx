@@ -42,13 +42,18 @@ import {
   clearPlan,
   pullPlanFromCloud,
   toggleTaskCompletion,
-  addStudySession,
-  adjustModuleConfidence,
   computeStreak,
-  todayKey,
   type StoredPlan,
 } from "@/lib/plan-store";
-import { deriveAnalytics, READINESS_LABELS, type ReadinessResult } from "@/lib/analytics-derive";
+import {
+  recordStudyActivity,
+  recordGradedAttempts,
+  voidStudyActivity,
+  makeIdempotencyKey,
+  flushStudyLogQueue,
+} from "@/lib/study-log";
+import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
+
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
@@ -136,10 +141,20 @@ function DashboardPage() {
     setStored(plan ? normalizeStoredPlanTasks(plan) : null);
   }, [tick]);
 
-  const analytics = useMemo(
-    () => (stored ? deriveAnalytics(stored) : null),
-    [stored],
-  );
+  const [analytics, setAnalytics] = useState<AnalyticsBundle | null>(null);
+  useEffect(() => {
+    if (!stored) return;
+    let active = true;
+    void flushStudyLogQueue()
+      .then(() => loadAnalytics(stored))
+      .then((bundle) => {
+        if (active) setAnalytics(bundle);
+      });
+    return () => {
+      active = false;
+    };
+  }, [stored]);
+
 
   const examLabel = getExamLabel(stored?.input.examType, stored?.input.examPath);
   const examId = getUserExamId(stored?.input.examType);

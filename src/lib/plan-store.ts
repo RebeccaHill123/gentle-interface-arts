@@ -311,6 +311,11 @@ export function toggleTaskCompletion(index: number) {
   savePlan(stored);
 }
 
+/**
+ * @deprecated Use `recordStudyActivity` from `@/lib/study-log` instead — it
+ * writes the canonical `study_events` row AND this legacy mirror. Calling both
+ * for the same action double-counts minutes.
+ */
 export function addStudySession(session: Omit<StudySession, "loggedAt">) {
   const stored = loadPlan();
   if (!stored) return;
@@ -319,6 +324,21 @@ export function addStudySession(session: Omit<StudySession, "loggedAt">) {
   stored.sessions = sessions;
   savePlan(stored);
 }
+
+/**
+ * Legacy compatibility mirror write with a caller-supplied `loggedAt`, so the
+ * canonical repository can reverse it exactly on undo. Idempotent per loggedAt.
+ */
+export function addLegacySession(session: StudySession) {
+  const stored = loadPlan();
+  if (!stored) return;
+  const sessions = stored.sessions ?? [];
+  if (sessions.some((s) => s.loggedAt === session.loggedAt)) return;
+  sessions.push(session);
+  stored.sessions = sessions;
+  savePlan(stored);
+}
+
 
 export function updateStudySession(
   loggedAt: string,
@@ -338,6 +358,17 @@ export function removeStudySession(loggedAt: string) {
   stored.sessions = stored.sessions.filter((s) => s.loggedAt !== loggedAt);
   savePlan(stored);
 }
+
+/** Restores an exact confidence value — used to reverse an undone completion. */
+export function setModuleConfidence(moduleName: string, confidence: number) {
+  const stored = loadPlan();
+  if (!stored) return;
+  const mod = stored.input.modules.find((m) => m.name === moduleName);
+  if (!mod) return;
+  mod.confidence = Math.round(Math.max(1, Math.min(5, confidence)));
+  savePlan(stored);
+}
+
 
 export function adjustModuleConfidence(moduleName: string, accuracy: number) {
   const stored = loadPlan();

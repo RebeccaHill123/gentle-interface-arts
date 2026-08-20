@@ -5,7 +5,7 @@ export default defineTool({
   name: "get_subject_progress",
   title: "Get subject progress",
   description:
-    "Read-only. Returns per-subject progress derived from the signed-in user's study activity: total minutes studied, confidence, recency (days since last session), estimated accuracy trend, and syllabus weight. Requires the user to be signed in.",
+    "Read-only. Returns per-subject progress derived from the signed-in user's study activity: total minutes studied (effort only), self-rated confidence (labelled as self-rated, not performance), recency (days since last session), syllabus weight, and graded accuracy WITH its sample size where enough graded answers exist. When there is no graded evidence for a subject, accuracy is explicitly null rather than estimated. Never returns a predicted score, readiness score, mastery figure or trend inferred from anything other than graded answers. Requires the user to be signed in.",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
@@ -35,17 +35,25 @@ export default defineTool({
     const payload = {
       totalSessions: analytics.totalSessions,
       totalLoggedMinutes: analytics.totalLoggedMinutes,
+      gradedOverall: analytics.graded.hasData
+        ? {
+            accuracy: analytics.graded.accuracy,
+            totalAttempted: analytics.graded.totalAttempted,
+          }
+        : { accuracy: null, totalAttempted: 0, note: "No graded evidence yet." },
       subjects: analytics.subjects.map((s) => ({
         subject: s.module,
         minutes: s.minutes,
-        confidence: s.confidence,
+        selfRatedConfidence: s.confidence,
         recencyDays: s.recencyDays,
-        accuracy: s.accuracy,
-        trend: s.trend,
-        riskScore: s.riskScore,
+        gradedAccuracy: s.accuracy,
+        gradedAttempts: s.gradedAttempts,
+        gradedEvidence:
+          s.accuracy !== null
+            ? `${s.accuracy}% correct across ${s.gradedAttempts} graded questions.`
+            : "No graded evidence yet.",
         syllabusWeight: s.syllabusWeight,
       })),
-      mockTrend: analytics.mockTrend,
     };
     return {
       content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],

@@ -179,6 +179,80 @@ export type Database = {
         }
         Relationships: []
       }
+      graded_attempts: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          exam_path: string | null
+          id: string
+          idempotency_key: string
+          is_correct: boolean
+          local_date: string
+          metadata: Json
+          occurred_at: string
+          question_fingerprint: string
+          selected_answer: string | null
+          source_ref: string | null
+          source_type: string
+          study_event_id: string | null
+          subject: string | null
+          subtopic: string | null
+          timezone: string | null
+          user_id: string
+          voided_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          exam_path?: string | null
+          id?: string
+          idempotency_key: string
+          is_correct: boolean
+          local_date: string
+          metadata?: Json
+          occurred_at?: string
+          question_fingerprint: string
+          selected_answer?: string | null
+          source_ref?: string | null
+          source_type: string
+          study_event_id?: string | null
+          subject?: string | null
+          subtopic?: string | null
+          timezone?: string | null
+          user_id: string
+          voided_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          exam_path?: string | null
+          id?: string
+          idempotency_key?: string
+          is_correct?: boolean
+          local_date?: string
+          metadata?: Json
+          occurred_at?: string
+          question_fingerprint?: string
+          selected_answer?: string | null
+          source_ref?: string | null
+          source_type?: string
+          study_event_id?: string | null
+          subject?: string | null
+          subtopic?: string | null
+          timezone?: string | null
+          user_id?: string
+          voided_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "graded_attempts_study_event_id_fkey"
+            columns: ["study_event_id"]
+            isOneToOne: false
+            referencedRelation: "study_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       mock_answers: {
         Row: {
           answer_value: string | null
@@ -460,6 +534,75 @@ export type Database = {
           subscription_status?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      study_events: {
+        Row: {
+          activity_type: string
+          actual_minutes: number
+          created_at: string
+          exam_path: string | null
+          id: string
+          idempotency_key: string
+          local_date: string
+          metadata: Json
+          occurred_at: string
+          planned_minutes: number | null
+          planned_task_id: string | null
+          self_focus: number | null
+          self_mood: number | null
+          source: string
+          subject: string | null
+          subtopic: string | null
+          timezone: string | null
+          updated_at: string
+          user_id: string
+          voided_at: string | null
+        }
+        Insert: {
+          activity_type: string
+          actual_minutes?: number
+          created_at?: string
+          exam_path?: string | null
+          id?: string
+          idempotency_key: string
+          local_date: string
+          metadata?: Json
+          occurred_at?: string
+          planned_minutes?: number | null
+          planned_task_id?: string | null
+          self_focus?: number | null
+          self_mood?: number | null
+          source: string
+          subject?: string | null
+          subtopic?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+          voided_at?: string | null
+        }
+        Update: {
+          activity_type?: string
+          actual_minutes?: number
+          created_at?: string
+          exam_path?: string | null
+          id?: string
+          idempotency_key?: string
+          local_date?: string
+          metadata?: Json
+          occurred_at?: string
+          planned_minutes?: number | null
+          planned_task_id?: string | null
+          self_focus?: number | null
+          self_mood?: number | null
+          source?: string
+          subject?: string | null
+          subtopic?: string | null
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+          voided_at?: string | null
         }
         Relationships: []
       }

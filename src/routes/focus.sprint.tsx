@@ -11,7 +11,8 @@ import {
   MOTIVATIONAL_LINES,
   type ActiveSprint,
 } from "@/lib/focus-store";
-import { addStudySession, todayKey } from "@/lib/plan-store";
+import { todayKey } from "@/lib/plan-store";
+import { recordStudyActivity, makeIdempotencyKey } from "@/lib/study-log";
 import { Confetti } from "@/components/confetti";
 import { toast } from "sonner";
 
@@ -116,17 +117,22 @@ function FocusPage() {
     completedFiredRef.current = true;
 
     if (sprint.phase === "focus") {
-      // Log completed focus session
+      // Log completed focus session — one record per sprint, keyed off its start time
+      // so the auto-complete effect and a manual "End session" click can never both log it.
       const focusMin = Math.round(sprint.focusMs / 60000);
-      addStudySession({
-        date: todayKey(),
-        minutes: focusMin,
-        module: sprint.module,
-        sessionType: "focus",
+      const plannedMin = Math.round(sprint.focusMs / 60000);
+      recordStudyActivity({
+        idempotencyKey: makeIdempotencyKey("focus", sprint.startedAt),
+        activityType: "focus",
+        source: "focus_sprint",
+        actualMinutes: focusMin,
+        plannedMinutes: plannedMin,
+        subject: sprint.module ?? null,
+        subtopic: sprint.topic ?? null,
         note: sprint.topic
           ? `Focus sprint · ${focusMin}m · ${sprint.topic}`
           : `Focus sprint · ${focusMin}m`,
-      });
+      }).catch((e) => console.warn("focus log failed", e));
 
       // Count today's focus blocks (incl. this one)
       const stored = (() => {
@@ -201,15 +207,21 @@ function FocusPage() {
     if (sprint.phase === "focus") {
       const mins = Math.round(elapsedMs(sprint, Date.now()) / 60000);
       if (mins >= 2) {
-        addStudySession({
-          date: todayKey(),
-          minutes: mins,
-          module: sprint.module,
-          sessionType: "focus",
+        const plannedMin = Math.round(sprint.focusMs / 60000);
+        // Same idempotency key as the auto-complete path — whichever fires
+        // first for this sprint wins, the other is a no-op upsert.
+        recordStudyActivity({
+          idempotencyKey: makeIdempotencyKey("focus", sprint.startedAt),
+          activityType: "focus",
+          source: "focus_sprint",
+          actualMinutes: mins,
+          plannedMinutes: plannedMin,
+          subject: sprint.module ?? null,
+          subtopic: sprint.topic ?? null,
           note: sprint.topic
             ? `Focus sprint (ended early) · ${mins}m · ${sprint.topic}`
             : `Focus sprint (ended early) · ${mins}m`,
-        });
+        }).catch((e) => console.warn("focus log failed", e));
         toast.success(`Logged ${mins}m of focus.`);
         loggedMins = mins;
         endedEarly = true;

@@ -80,7 +80,7 @@
       {
         "name": "get_subject_progress",
         "title": "Get subject progress",
-        "description": "Read-only. Returns per-subject progress derived from the signed-in user's study activity: total minutes studied, confidence, recency (days since last session), estimated accuracy trend, and syllabus weight. Requires the user to be signed in.",
+        "description": "Read-only. Returns per-subject progress derived from the signed-in user's study activity: total minutes studied (effort only), self-rated confidence (labelled as self-rated, not performance), recency (days since last session), syllabus weight, and graded accuracy WITH its sample size where enough graded answers exist. When there is no graded evidence for a subject, accuracy is explicitly null rather than estimated. Never returns a predicted score, readiness score, mastery figure or trend inferred from anything other than graded answers. Requires the user to be signed in.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -96,7 +96,7 @@
       {
         "name": "get_weak_areas",
         "title": "Get weak areas",
-        "description": "Read-only. Identifies the signed-in user's likely weak or neglected subjects using logged sessions, confidence, recency and mock performance. Returns up to 5 subjects with the reason each is flagged. If data is thin, returns a friendly empty state. Requires the user to be signed in.",
+        "description": "Read-only. Identifies subjects with evidence of weakness for the signed-in user: low graded accuracy (with sample size), no recorded study coverage, or a self-rated low confidence with no graded evidence yet. Never returns a predicted score, readiness score or mastery figure — only graded accuracy where it exists, explicitly labelled with its sample size, or an honest 'no graded evidence yet' otherwise. Requires the user to be signed in.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -112,7 +112,7 @@
       {
         "name": "get_next_recommended_session",
         "title": "Get next recommended session",
-        "description": "Read-only. Suggests one practical next study session for the signed-in user, factoring in today's plan, missed sessions, recent activity, weak areas and days remaining to the exam. Returns subject, topic, duration, format and the reason it was chosen. Requires the user to be signed in.",
+        "description": "Read-only. Suggests one practical next study session for the signed-in user, factoring in today's plan, missed sessions, and evidence-led weak areas (low graded accuracy, no coverage, or self-rated low confidence — in that priority order). Returns subject, topic, duration, format and the reason it was chosen, including graded accuracy with its sample size when available. Never suggests a predicted score, readiness score or mastery figure, and does not claim the plan recalibrates automatically. Requires the user to be signed in.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
