@@ -109,8 +109,10 @@ function PlanRevealPage() {
 
   const weekOneRef = useRef<HTMLElement | null>(null);
   const boundaryRef = useRef<HTMLElement | null>(null);
+  const reasoningRef = useRef<HTMLElement | null>(null);
   const weekOneSeen = useRef(false);
   const boundarySeen = useRef(false);
+  const reasoningSeen = useRef(false);
 
   useEffect(() => {
     if (!token) {
