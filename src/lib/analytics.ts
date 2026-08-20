@@ -27,6 +27,11 @@ export type AnalyticsEvent =
   | "preview_viewed"
 
   | "plan_reveal_viewed"
+  // Pre-payment value reveal
+  | "complete_week_one_viewed"
+  | "paid_value_boundary_viewed"
+  | "unlock_full_plan_clicked"
+  | "change_answers_clicked"
   | "pricing_section_viewed"
   | "founding_cta_clicked"
   | "checkout_started"
