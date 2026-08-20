@@ -190,7 +190,7 @@ function OnboardingPage() {
   const [error, setError] = useState<string | null>(null);
   const [examPickerOpen, setExamPickerOpen] = useState(false);
 
-  const acquisitionType = EXAM_PARAM_TO_TYPE[search.exam];
+  const acquisitionType = EXAM_PARAM_TO_TYPE[search.exam ?? "sqe1"];
 
   // Exam + path. Draft wins on resume; otherwise the acquisition route decides.
   const [examType, setExamType] = useState<ExamType>(draft?.examType ?? acquisitionType);
