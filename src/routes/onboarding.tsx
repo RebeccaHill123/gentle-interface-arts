@@ -212,6 +212,7 @@ function seedModules(path: ExamPath): ModuleConfidence[] {
     name: s.name,
     confidence: DEFAULTS.neutralConfidence,
     weakSubtopics: [],
+    rated: false,
   }));
 }
 
@@ -245,15 +246,32 @@ function OnboardingPage() {
     draft?.hoursPerWeek ?? search.hours ?? 10,
   );
 
-
-  // Deferred fields — defaulted, still persisted so the generator contract
-  // and later refinement keep working.
   const [modules, setModules] = useState<ModuleConfidence[]>(
     draft?.modules?.length ? draft.modules : seedModules(draft?.examPath ?? defaultPathForExam(acquisitionType)),
   );
-  const intensity = draft?.intensity ?? DEFAULTS.intensity;
+  // Preparation stage (stored on the existing `intensity` model). A two-step
+  // legacy draft carries the defaulted "intermediate", which is NOT a real
+  // answer, so stage stays null until the user taps one.
+  const [stage, setStage] = useState<PreparationStage | null>(
+    draft?.confidenceSource ? (draft.intensity as PreparationStage) : null,
+  );
+  const [notStarted, setNotStarted] = useState(
+    draft?.confidenceSource === "not-started",
+  );
+  const [balancedAccepted, setBalancedAccepted] = useState(
+    draft?.confidenceSource === "balanced",
+  );
   const coverageMode = draft?.coverageMode ?? DEFAULTS.coverageMode;
   const name = draft?.name ?? DEFAULTS.name;
+  const intensity: IntensityTier = stage ?? DEFAULTS.intensity;
+
+  const ratedCount = modules.filter((m) => m.rated).length;
+  const allRated = modules.length > 0 && ratedCount === modules.length;
+  const confidenceSource: ConfidenceSource = notStarted
+    ? "not-started"
+    : ratedCount > 0
+      ? "rated"
+      : "balanced";
 
   const activeOption = useMemo(
     () => EXAM_OPTIONS.find((o) => o.value === examType) ?? EXAM_OPTIONS[0],
