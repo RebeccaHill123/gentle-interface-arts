@@ -14,7 +14,10 @@ interface PlanRequest {
   name: string;
   examDate: string; // ISO date
   hoursPerWeek: number;
-  modules: { id: string; name: string; confidence: number; weakSubtopics?: string[] }[]; // confidence 1-5
+  // confidence 1-5. `rated` is true only when the student explicitly rated the
+  // subject; unrated subjects are held at neutral 3 so nothing can be
+  // described as a personal weakness without supporting input.
+  modules: { id: string; name: string; confidence: number; weakSubtopics?: string[]; rated?: boolean }[];
   examType: ExamType;
   examPath?: ExamPath;
   intensity?: IntensityTier;
@@ -427,7 +430,7 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   });
 
   return {
-    overview: `${body.name}, this plan leads with ${priorityModules.map((m) => m.name).join(", ")} because they combine high exam yield with your current confidence, exam date and revision recency. Week 1 is in ${phaseLabel(phase).toLowerCase()} mode, so blocks name exact subtopics and build usable rules before heavier recall, mocks or mistake review.`,
+    overview: `${body.name?.trim() ? `${body.name.trim()}, this plan` : "This plan"} leads with ${priorityModules.map((m) => m.name).join(", ")} because they combine high exam yield with your current confidence, exam date and revision recency. Week 1 is in ${phaseLabel(phase).toLowerCase()} mode, so blocks name exact subtopics and build usable rules before heavier recall, mocks or mistake review.`,
     weeklyStrategy: {
       summary: `This week allocates ${body.hoursPerWeek} hours across high-yield named subtopics, with the priority on ${priorityModules.map((m) => m.name).join(" and ")}. Blocks progress from rule scaffolds into application and only use mistake review where real performance evidence exists.`,
       allocations,
@@ -497,9 +500,14 @@ Deno.serve(async (req) => {
   let daysUntilExam = 1;
   try {
     body = await req.json();
-    if (!body || !Array.isArray(body.modules) || body.modules.length === 0 || !body.examDate || !body.name) {
+    if (!body || !Array.isArray(body.modules) || body.modules.length === 0 || !body.examDate) {
       throw new Error("Invalid plan request");
     }
+    // Name is optional (deferred in onboarding) and never affects allocation.
+    // Unrated subjects are clamped to neutral so weakness is never inferred.
+    body.modules = body.modules.map((m) =>
+      m.rated === true ? m : { ...m, confidence: 3, weakSubtopics: m.weakSubtopics ?? [] },
+    );
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     daysUntilExam = Math.max(

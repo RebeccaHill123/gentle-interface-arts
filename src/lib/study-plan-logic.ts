@@ -24,11 +24,31 @@ export function daysUntilExam(iso: string): number {
   return Math.max(1, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
 }
 
+/**
+ * Phase = how far along the learn → recall → practice → review arc week one
+ * should start. Both the time available AND the user's stated preparation
+ * stage move it, so two people sitting on the same date get different plans.
+ *
+ *   beginner      : teaching first, only reaching timed work close to the exam
+ *   intermediate  : balanced; foundations while there is still runway
+ *   advanced       : starts at build/practice, foundations only as repair
+ *   resitter       : exam-condition led immediately
+ */
 export function getStudyPhase(days: number, intensity: IntensityTier = "intermediate"): StudyPhase {
   if (days <= 21) return "final";
-  if (days <= 49 || intensity === "resitter") return "performance";
-  if (days <= 98 || intensity === "advanced") return "build";
-  return "foundation";
+  switch (intensity) {
+    case "beginner":
+      if (days > 70) return "foundation";
+      return days > 35 ? "build" : "performance";
+    case "advanced":
+      return days > 60 ? "build" : "performance";
+    case "resitter":
+      return days > 60 ? "performance" : "final";
+    case "intermediate":
+    default:
+      if (days > 140) return "foundation";
+      return days > 70 ? "build" : "performance";
+  }
 }
 
 export function buildStudyDurations(hoursPerWeek: number): Array<30 | 45 | 60 | 90 | 120> {
@@ -68,20 +88,52 @@ export function taskTypeForPhase(
   phase: StudyPhase,
   index: number,
   hasMistakeEvidence: boolean,
+  options: {
+    intensity?: IntensityTier;
+    /** The user explicitly rated this subject not-studied or low. */
+    foundationBias?: boolean;
+  } = {},
 ): StrategyTaskType {
+  const { intensity = "intermediate", foundationBias = false } = options;
+
   if (hasMistakeEvidence && (phase === "performance" || phase === "final") && index % 4 === 3) {
     return "mistake-review";
   }
-  if (phase === "foundation") {
-    return index % 3 === 0 ? "concept-deepdive" : index % 3 === 1 ? "scenario-drill" : "timed-sba";
+
+  const base = ((): StrategyTaskType => {
+    if (phase === "foundation") {
+      return index % 3 === 0 ? "concept-deepdive" : index % 3 === 1 ? "scenario-drill" : "timed-sba";
+    }
+    if (phase === "build") {
+      return index % 4 === 0 ? "concept-deepdive" : index % 4 === 1 ? "timed-sba" : index % 4 === 2 ? "scenario-drill" : "active-recall";
+    }
+    if (phase === "performance") {
+      return index % 4 === 0 ? "timed-sba" : index % 4 === 1 ? "scenario-drill" : index % 4 === 2 ? "mixed-mock" : "active-recall";
+    }
+    return index % 3 === 0 ? "mixed-mock" : index % 3 === 1 ? "timed-sba" : "active-recall";
+  })();
+
+  // A subject the user says they have not studied never opens with recall or a
+  // mock — there is nothing to recall yet.
+  if (foundationBias && phase !== "final") {
+    if (base === "active-recall" || base === "mixed-mock") return "scenario-drill";
+    if (base === "timed-sba" && index % 2 === 0) return "concept-deepdive";
   }
-  if (phase === "build") {
-    return index % 4 === 0 ? "concept-deepdive" : index % 4 === 1 ? "timed-sba" : index % 4 === 2 ? "scenario-drill" : "active-recall";
+
+  // Preparation stage shifts the mix rather than the subject.
+  if (intensity === "beginner" && phase !== "final") {
+    if (base === "mixed-mock") return "scenario-drill";
+    if (base === "active-recall") return "concept-deepdive";
   }
-  if (phase === "performance") {
-    return index % 4 === 0 ? "timed-sba" : index % 4 === 1 ? "scenario-drill" : index % 4 === 2 ? "mixed-mock" : "active-recall";
+  if (intensity === "advanced" && base === "concept-deepdive" && index % 3 !== 0) {
+    return "active-recall";
   }
-  return index % 3 === 0 ? "mixed-mock" : index % 3 === 1 ? "timed-sba" : "active-recall";
+  if (intensity === "resitter") {
+    if (base === "concept-deepdive" && !foundationBias) return "timed-sba";
+    if (base === "scenario-drill" && index % 3 === 2) return "mixed-mock";
+  }
+
+  return base;
 }
 
 function questionCount(minutes: number, examPath: ExamPath | undefined): number {
@@ -96,6 +148,7 @@ export function buildSpecificTask({
   examPath,
   phase,
   hasMistakeEvidence = false,
+  intensity = "intermediate",
 }: {
   module: ModuleConfidence;
   index: number;
@@ -103,16 +156,22 @@ export function buildSpecificTask({
   examPath?: ExamPath;
   phase: StudyPhase;
   hasMistakeEvidence?: boolean;
+  intensity?: IntensityTier;
 }): StrategyTask {
   const subtopic = selectPreciseSubtopic(module, index);
   const isUbe = examPath ? isUbePath(examPath) : false;
-  const taskType = taskTypeForPhase(phase, index, hasMistakeEvidence);
+  // A weakness claim requires an explicit rating — never a neutral default.
+  const ratedWeak = module.rated === true && module.confidence <= 2;
+  const taskType = taskTypeForPhase(phase, index, hasMistakeEvidence, {
+    intensity,
+    foundationBias: ratedWeak,
+  });
   const q = questionCount(minutes, examPath);
   const timing = isUbe ? `${q} MBE questions in ${Math.round(q * 1.8)} mins` : `${q} SBA questions`;
-  const difficulty: TaskDifficulty = phase === "foundation" || module.confidence <= 2 ? "foundational" : phase === "final" ? "challenging" : "core";
+  const difficulty: TaskDifficulty = phase === "foundation" || ratedWeak ? "foundational" : phase === "final" ? "challenging" : "core";
   const bucket: TaskBucket = index % 5 < 3 ? "must" : index % 5 === 3 ? "should" : "optional";
   const rationale: StrategyRationale =
-    (module.weakSubtopics?.length ?? 0) > 0 || module.confidence <= 2
+    (module.weakSubtopics?.length ?? 0) > 0 || ratedWeak
       ? "weak-area"
       : taskType === "mixed-mock"
         ? "mock-prep"
@@ -152,10 +211,10 @@ export function buildSpecificTask({
     rationale,
     priority: bucket === "must" ? "high" : bucket === "should" ? "medium" : "low",
     why:
-      phase === "foundation"
-        ? `You need a precise rule base in ${subtopic} before heavier timed practice.`
-        : rationale === "weak-area"
-          ? `This targets a low-confidence or flagged area in ${module.name}.`
+      rationale === "weak-area"
+        ? `You rated ${module.name} lower, so Tentra is rebuilding ${subtopic} from the rule up.`
+        : phase === "foundation"
+          ? `You need a precise rule base in ${subtopic} before heavier timed practice.`
           : `This keeps a high-yield ${module.name} area moving toward exam pace.`,
     subtopic,
     difficulty,

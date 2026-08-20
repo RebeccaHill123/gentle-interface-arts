@@ -30,6 +30,12 @@ export interface ModuleConfidence {
   name: string;
   confidence: number; // 1-5
   weakSubtopics?: string[]; // names of subtopics user flagged as weak
+  /**
+   * True only when the user EXPLICITLY rated this subject. Absent/false means
+   * the value is a neutral default and must never be presented as a personal
+   * weakness or focus area.
+   */
+  rated?: boolean;
 }
 
 export interface OnboardingInput {
@@ -41,6 +47,11 @@ export interface OnboardingInput {
   examDate: string; // ISO
   hoursPerWeek: number;
   modules: ModuleConfidence[];
+  /**
+   * How the subject weighting was decided: explicit ratings, "I haven't
+   * started the syllabus yet", or balanced coverage (nothing rated).
+   */
+  confidenceSource?: "rated" | "not-started" | "balanced";
 }
 
 export type StrategyRationale =
@@ -144,6 +155,8 @@ export interface OnboardingDraft {
   intensity: IntensityTier;
   coverageMode: CoverageMode;
   modules: ModuleConfidence[];
+  /** Present from the three-stage setup; older two-step drafts omit it. */
+  confidenceSource?: "rated" | "not-started" | "balanced";
 }
 
 export const SQE1_MODULES = [

@@ -37,6 +37,18 @@ import {
   type StudyPlan,
 } from "@/lib/plan-store";
 import { getSubjectsForExamPath, defaultPathForExam, pathToExamType } from "@/lib/exam-paths";
+import {
+  buildConfidenceProfile,
+  confidenceToRating,
+  PREPARATION_STAGES,
+  PREPARATION_STAGE_LABELS,
+  RATING_LABELS,
+  RATING_ORDER,
+  RATING_TO_CONFIDENCE,
+  type ConfidenceRating,
+  type ConfidenceSource,
+  type PreparationStage,
+} from "@/lib/confidence";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 
@@ -107,19 +119,23 @@ export const Route = createFileRoute("/onboarding")({
       {
         name: "description",
         content:
-          "Two quick questions and Tentra builds your personalised, adaptive SQE study plan around your exam date.",
+          "Three quick steps and Tentra builds your personalised, adaptive SQE study plan around your exam date.",
       },
     ],
   }),
 });
 
-const STEP_COUNT = 2;
+const STEP_COUNT = 3;
 
-/** Safe defaults for everything no longer asked on first run. */
+/** Only the name is deferred — it does not affect plan quality. */
 const DEFAULTS = {
   name: "",
   intensity: "intermediate" as IntensityTier,
   coverageMode: "even" as CoverageMode,
+  /**
+   * Numeric placeholder for an UNRATED subject. It is never presented as
+   * personal data: `rated: false` is what distinguishes it from a real "Okay".
+   */
   neutralConfidence: 3,
 };
 
@@ -196,6 +212,7 @@ function seedModules(path: ExamPath): ModuleConfidence[] {
     name: s.name,
     confidence: DEFAULTS.neutralConfidence,
     weakSubtopics: [],
+    rated: false,
   }));
 }
 
@@ -229,15 +246,32 @@ function OnboardingPage() {
     draft?.hoursPerWeek ?? search.hours ?? 10,
   );
 
-
-  // Deferred fields — defaulted, still persisted so the generator contract
-  // and later refinement keep working.
   const [modules, setModules] = useState<ModuleConfidence[]>(
     draft?.modules?.length ? draft.modules : seedModules(draft?.examPath ?? defaultPathForExam(acquisitionType)),
   );
-  const intensity = draft?.intensity ?? DEFAULTS.intensity;
+  // Preparation stage (stored on the existing `intensity` model). A two-step
+  // legacy draft carries the defaulted "intermediate", which is NOT a real
+  // answer, so stage stays null until the user taps one.
+  const [stage, setStage] = useState<PreparationStage | null>(
+    draft?.confidenceSource ? (draft.intensity as PreparationStage) : null,
+  );
+  const [notStarted, setNotStarted] = useState(
+    draft?.confidenceSource === "not-started",
+  );
+  const [balancedAccepted, setBalancedAccepted] = useState(
+    draft?.confidenceSource === "balanced",
+  );
   const coverageMode = draft?.coverageMode ?? DEFAULTS.coverageMode;
   const name = draft?.name ?? DEFAULTS.name;
+  const intensity: IntensityTier = stage ?? DEFAULTS.intensity;
+
+  const ratedCount = modules.filter((m) => m.rated).length;
+  const allRated = modules.length > 0 && ratedCount === modules.length;
+  const confidenceSource: ConfidenceSource = notStarted
+    ? "not-started"
+    : ratedCount > 0
+      ? "rated"
+      : "balanced";
 
   const activeOption = useMemo(
     () => EXAM_OPTIONS.find((o) => o.value === examType) ?? EXAM_OPTIONS[0],
@@ -287,10 +321,20 @@ function OnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checking]);
 
-  // Step view events.
+  // Step view events. No subject ratings are ever sent — counts only.
   useEffect(() => {
     if (checking) return;
-    trackEvent(step === 1 ? "exam_date_viewed" : "weekly_hours_viewed", eventBase);
+    if (step === 1) {
+      trackEvent("exam_date_viewed", eventBase);
+      trackEvent("weekly_hours_viewed", eventBase);
+    } else if (step === 2) {
+      trackEvent("preparation_stage_viewed", eventBase);
+    } else {
+      trackEvent("confidence_rating_viewed", {
+        ...eventBase,
+        subjectCount: modules.length,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checking, step]);
 
@@ -302,12 +346,16 @@ function OnboardingPage() {
     if (opt.path !== examPath) setExamPath(opt.path);
   }, [examType, examPath]);
 
+  // Changing exam reseeds the syllabus and discards ratings that belonged to
+  // the previous exam, so no stale confidence data survives.
   useEffect(() => {
     setModules((prev) => {
       const seeded = seedModules(examPath);
       if (prev.length === seeded.length && prev.every((m, i) => m.name === seeded[i]?.name)) {
         return prev;
       }
+      setNotStarted(false);
+      setBalancedAccepted(false);
       return seeded;
     });
   }, [examPath]);
@@ -324,6 +372,7 @@ function OnboardingPage() {
       intensity,
       coverageMode,
       modules,
+      ...(stage ? { confidenceSource } : {}),
     });
   }, [
     checking,
@@ -336,6 +385,8 @@ function OnboardingPage() {
     intensity,
     coverageMode,
     modules,
+    stage,
+    confidenceSource,
   ]);
 
   const sessionShape = useMemo(() => {
@@ -351,23 +402,100 @@ function OnboardingPage() {
     return null;
   };
 
+  const rateModule = (id: string, rating: ConfidenceRating) => {
+    setNotStarted(false);
+    setModules((prev) =>
+      prev.map((m) =>
+        m.id === id
+          ? { ...m, confidence: RATING_TO_CONFIDENCE[rating], rated: true }
+          : m,
+      ),
+    );
+    trackEvent("confidence_subject_rated", {
+      ...eventBase,
+      subjectCount: modules.length,
+    });
+  };
+
+  // "I haven't started the syllabus yet" marks every subject not-studied so
+  // the plan is explicitly foundation-first rather than weakness-based.
+  const applyNotStarted = (value: boolean) => {
+    setNotStarted(value);
+    setBalancedAccepted(false);
+    setModules((prev) =>
+      prev.map((m) =>
+        value
+          ? { ...m, confidence: RATING_TO_CONFIDENCE["not-studied"], rated: true }
+          : { ...m, confidence: DEFAULTS.neutralConfidence, rated: false },
+      ),
+    );
+    if (value) trackEvent("preparation_stage_selected", { ...eventBase, notStarted: true });
+  };
+
+  const acceptBalanced = (value: boolean) => {
+    setBalancedAccepted(value);
+    if (value) {
+      trackEvent("balanced_coverage_selected", {
+        ...eventBase,
+        ratedCount,
+        subjectCount: modules.length,
+      });
+    }
+  };
+
   const next = () => {
-    const err = validateStep1();
-    if (err) return setError(err);
+    if (step === 1) {
+      const err = validateStep1();
+      if (err) return setError(err);
+      setError(null);
+      trackEvent("exam_date_completed", { ...eventBase, examDate });
+      trackEvent("weekly_hours_completed", { ...eventBase, hoursPerWeek });
+      trackEvent("onboarding_step_complete", { step: 1, stepLabel: "Exam", examType, examPath });
+      setStep(2);
+      return;
+    }
+    if (!stage) {
+      return setError("Please tell us where you are in your preparation.");
+    }
     setError(null);
-    trackEvent("exam_date_completed", { ...eventBase, examDate });
-    trackEvent("onboarding_step_complete", { step: 1, stepLabel: "Exam", examType, examPath });
-    setStep(2);
+    trackEvent("onboarding_step_complete", {
+      step: 2,
+      stepLabel: "Preparation",
+      examType,
+      examPath,
+    });
+    setStep(3);
   };
 
   const back = () => {
     setError(null);
-    setStep(1);
+    setStep((s) => Math.max(1, s - 1));
   };
 
   const handleGenerate = async () => {
     setError(null);
-    trackEvent("weekly_hours_completed", { ...eventBase, hoursPerWeek });
+    if (!stage) {
+      setStep(2);
+      setError("Please tell us where you are in your preparation.");
+      return;
+    }
+    if (!notStarted && !allRated && !balancedAccepted) {
+      setError(
+        "Please rate each subject, or choose balanced coverage for the ones you haven't rated.",
+      );
+      return;
+    }
+    trackEvent("confidence_rating_completed", {
+      ...eventBase,
+      ratedCount,
+      subjectCount: modules.length,
+      confidenceSource,
+    });
+    trackEvent("personalised_plan_build_clicked", {
+      ...eventBase,
+      hoursPerWeek,
+      confidenceSource,
+    });
     trackEvent("plan_build_clicked", { ...eventBase, hoursPerWeek, examDate });
     setSubmitting(true);
     try {
@@ -388,7 +516,9 @@ function OnboardingPage() {
         examDate,
         hoursPerWeek,
         modules,
+        confidenceSource,
       };
+
 
       // Signed-in WITH access: generate the full plan and land on the dashboard.
       const { data: userData } = await supabase.auth.getUser();
@@ -499,9 +629,10 @@ function OnboardingPage() {
             transition={{ type: "spring", stiffness: 120, damping: 20 }}
           />
         </div>
-        <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-          <span className="text-foreground">Your exam</span>
-          <span className={cn(step >= 2 && "text-foreground")}>Your time</span>
+        <div className="flex justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span className="text-foreground">Exam &amp; time</span>
+          <span className={cn(step >= 2 && "text-foreground")}>Preparation</span>
+          <span className={cn(step >= 3 && "text-foreground")}>Confidence</span>
         </div>
       </div>
 
@@ -516,28 +647,57 @@ function OnboardingPage() {
               transition={{ duration: 0.25 }}
             >
               {step === 1 ? (
-                <StepExamDate
-                  option={activeOption}
-                  examType={examType}
-                  onExamChange={(value) => {
-                    setExamType(value);
-                    setExamPickerOpen(false);
-                    trackEvent("onboarding_exam_switched", {
+                <div className="space-y-8">
+                  <StepExamDate
+                    option={activeOption}
+                    examType={examType}
+                    onExamChange={(value) => {
+                      setExamType(value);
+                      setExamPickerOpen(false);
+                      trackEvent("onboarding_exam_switched", {
+                        ...eventBase,
+                        from: examType,
+                        to: value,
+                      });
+                    }}
+                    pickerOpen={examPickerOpen}
+                    setPickerOpen={setExamPickerOpen}
+                    examDate={examDate}
+                    setExamDate={setExamDate}
+                  />
+                  <div className="border-t border-border/60 pt-6">
+                    <StepHours
+                      hoursPerWeek={hoursPerWeek}
+                      setHoursPerWeek={setHoursPerWeek}
+                      sessionShape={sessionShape}
+                    />
+                  </div>
+                </div>
+              ) : step === 2 ? (
+                <StepPreparation
+                  stage={stage}
+                  onSelect={(value) => {
+                    setStage(value);
+                    setError(null);
+                    if (value === "beginner") applyNotStarted(true);
+                    trackEvent("preparation_stage_selected", {
                       ...eventBase,
-                      from: examType,
-                      to: value,
+                      stage: value,
                     });
                   }}
-                  pickerOpen={examPickerOpen}
-                  setPickerOpen={setExamPickerOpen}
-                  examDate={examDate}
-                  setExamDate={setExamDate}
                 />
               ) : (
-                <StepHours
+                <StepConfidence
+                  modules={modules}
+                  onRate={rateModule}
+                  notStarted={notStarted}
+                  onNotStartedChange={applyNotStarted}
+                  balancedAccepted={balancedAccepted}
+                  onBalancedAccepted={acceptBalanced}
+                  examTitle={activeOption.title}
+                  examDate={examDate}
                   hoursPerWeek={hoursPerWeek}
-                  setHoursPerWeek={setHoursPerWeek}
-                  sessionShape={sessionShape}
+                  stage={stage}
                 />
               )}
             </motion.div>
@@ -564,7 +724,7 @@ function OnboardingPage() {
             >
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Button>
-            {step === 1 ? (
+            {step < STEP_COUNT ? (
               <Button
                 type="button"
                 onClick={next}
@@ -588,7 +748,7 @@ function OnboardingPage() {
                   </>
                 ) : (
                   <>
-                    {activeOption.ctaLabel} <Sparkles className="ml-1 h-4 w-4" />
+                    Build my personalised plan <Sparkles className="ml-1 h-4 w-4" />
                   </>
                 )}
               </Button>
@@ -597,9 +757,9 @@ function OnboardingPage() {
         </div>
 
         <p className="mt-4 px-1 text-center text-[12.5px] leading-[1.5] text-muted-foreground">
-          You&apos;ll get a balanced starting plan across the whole syllabus. It becomes more
-          personalised as you study with Tentra.
+          Your plan keeps recalibrating as you complete sessions and log practice results.
         </p>
+
       </div>
 
       {/* Sticky mobile action bar */}
@@ -616,7 +776,7 @@ function OnboardingPage() {
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Button>
           )}
-          {step === 1 ? (
+          {step < STEP_COUNT ? (
             <Button
               type="button"
               onClick={next}
@@ -635,7 +795,7 @@ function OnboardingPage() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  {activeOption.ctaLabel} <Sparkles className="ml-1 h-4 w-4" />
+                  Build my plan <Sparkles className="ml-1 h-4 w-4" />
                 </>
               )}
             </Button>
@@ -692,7 +852,7 @@ function StepExamDate({
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 1 of 2"
+        kicker="Step 1 of 3"
         title={option.dateHeading}
         sub="Tentra will work backwards from your exam date."
       />
@@ -827,11 +987,16 @@ function StepHours({
 }) {
   return (
     <div className="space-y-6">
-      <StepHeader
-        kicker="Step 2 of 2"
-        title="How many hours can you realistically study each week?"
-        sub="Don't worry — your plan can change whenever life does."
-      />
+      <div>
+        <h2 className="text-[1.15rem] font-normal leading-[1.2] tracking-[-0.01em] text-foreground">
+          How many hours can you realistically study each week?
+        </h2>
+        <p className="mt-1.5 text-[13px] leading-[1.5] text-muted-foreground">
+          Your weekly hours set the total study time Tentra schedules. You can change this
+          whenever life does.
+        </p>
+      </div>
+
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {HOUR_PRESETS.map((preset) => {
@@ -876,12 +1041,237 @@ function StepHours({
         />
         <p className="text-xs text-muted-foreground">{sessionShape}</p>
       </div>
+    </div>
+  );
+}
 
-      <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
-        <p className="text-[13px] leading-[1.55] text-muted-foreground">
-          We&apos;ll build a balanced starting plan across your full syllabus. You can personalise
-          it further — confidence per subject, weak topics, intensity — once you&apos;re inside.
-        </p>
+/* ---------- Stage 2: preparation stage ---------- */
+
+function StepPreparation({
+  stage,
+  onSelect,
+}: {
+  stage: PreparationStage | null;
+  onSelect: (v: PreparationStage) => void;
+}) {
+  return (
+    <div className="space-y-6">
+      <StepHeader
+        kicker="Step 2 of 3"
+        title="Where are you in your preparation?"
+        sub="This changes how Tentra balances learning, recall and exam practice."
+      />
+      <div className="grid gap-2" role="radiogroup" aria-label="Preparation stage">
+        {PREPARATION_STAGES.map((opt) => {
+          const active = stage === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              role="radio"
+              aria-checked={active}
+              onClick={() => onSelect(opt.value)}
+              className={cn(
+                "flex min-h-12 items-start gap-3 rounded-2xl border p-3.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                active
+                  ? "border-pink bg-gradient-pink-blue/10 shadow-glow"
+                  : "border-border bg-background/40 hover:border-muted-foreground",
+              )}
+            >
+              <span className="flex-1">
+                <span className="block text-[14.5px] font-semibold text-foreground">
+                  {opt.title}
+                </span>
+                <span className="mt-0.5 block text-[12.5px] leading-[1.45] text-muted-foreground">
+                  {opt.blurb}
+                </span>
+              </span>
+              {active && <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-pink" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Stage 3: syllabus confidence ---------- */
+
+function StepConfidence({
+  modules,
+  onRate,
+  notStarted,
+  onNotStartedChange,
+  balancedAccepted,
+  onBalancedAccepted,
+  examTitle,
+  examDate,
+  hoursPerWeek,
+  stage,
+}: {
+  modules: ModuleConfidence[];
+  onRate: (id: string, rating: ConfidenceRating) => void;
+  notStarted: boolean;
+  onNotStartedChange: (v: boolean) => void;
+  balancedAccepted: boolean;
+  onBalancedAccepted: (v: boolean) => void;
+  examTitle: string;
+  examDate: string;
+  hoursPerWeek: number;
+  stage: PreparationStage | null;
+}) {
+  const ratedCount = modules.filter((m) => m.rated).length;
+  const profile = buildConfidenceProfile(
+    modules,
+    notStarted ? "not-started" : undefined,
+  );
+
+  return (
+    <div className="space-y-5">
+      <StepHeader
+        kicker="Step 3 of 3"
+        title="How confident are you in each subject?"
+        sub="One tap each. This decides how your weekly hours are shared out."
+      />
+
+      <button
+        type="button"
+        aria-pressed={notStarted}
+        onClick={() => onNotStartedChange(!notStarted)}
+        className={cn(
+          "flex min-h-12 w-full items-center gap-2.5 rounded-2xl border p-3.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          notStarted
+            ? "border-pink bg-gradient-pink-blue/10 shadow-glow"
+            : "border-border bg-background/40 hover:border-muted-foreground",
+        )}
+      >
+        {notStarted ? (
+          <CheckCircle2 className="h-4.5 w-4.5 shrink-0 text-pink" />
+        ) : (
+          <Sparkles className="h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
+        <span className="text-[13.5px] leading-[1.45] text-foreground">
+          I haven&apos;t started the syllabus yet
+          <span className="mt-0.5 block text-[12px] text-muted-foreground">
+            Tentra builds a foundation-first, balanced plan across every subject.
+          </span>
+        </span>
+      </button>
+
+      {!notStarted && (
+        <>
+          <div
+            className="flex items-center justify-between text-[12px] text-muted-foreground"
+            aria-live="polite"
+          >
+            <span>
+              {ratedCount} of {modules.length} rated
+            </span>
+            <span className="h-1 w-24 overflow-hidden rounded-full bg-card">
+              <span
+                className="block h-full bg-gradient-pink-blue transition-all"
+                style={{ width: `${(ratedCount / Math.max(1, modules.length)) * 100}%` }}
+              />
+            </span>
+          </div>
+
+          <ul className="space-y-2">
+            {modules.map((m) => {
+              const current = confidenceToRating(m);
+              return (
+                <li
+                  key={m.id}
+                  className="rounded-2xl border border-border/60 bg-background/40 p-3"
+                >
+                  <div className="text-[13.5px] font-medium leading-[1.35] text-foreground">
+                    {m.name}
+                  </div>
+                  <div className="mt-2 grid grid-cols-4 gap-1.5">
+                    {RATING_ORDER.map((rating) => {
+                      const active = current === rating;
+                      return (
+                        <button
+                          key={rating}
+                          type="button"
+                          aria-pressed={active}
+                          aria-label={`${m.name}: ${RATING_LABELS[rating]}`}
+                          onClick={() => onRate(m.id, rating)}
+                          className={cn(
+                            "min-h-11 rounded-xl border px-1 text-[11.5px] leading-tight transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                            active
+                              ? "border-pink bg-gradient-pink-blue/10 font-semibold text-foreground shadow-glow"
+                              : "border-border bg-card/40 text-muted-foreground hover:border-muted-foreground",
+                          )}
+                        >
+                          {RATING_LABELS[rating]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+
+          {ratedCount < modules.length && (
+            <button
+              type="button"
+              aria-pressed={balancedAccepted}
+              onClick={() => onBalancedAccepted(!balancedAccepted)}
+              className={cn(
+                "flex min-h-11 w-full items-start gap-2 rounded-xl border p-3 text-left text-[12.5px] leading-[1.45] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                balancedAccepted
+                  ? "border-pink bg-gradient-pink-blue/10 text-foreground"
+                  : "border-border bg-background/40 text-muted-foreground hover:border-muted-foreground",
+              )}
+            >
+              {balancedAccepted ? (
+                <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+              ) : (
+                <Target className="mt-0.5 h-4 w-4 shrink-0" />
+              )}
+              Use balanced coverage for the subjects I haven&apos;t rated.
+            </button>
+          )}
+        </>
+      )}
+
+      {/* Compact pre-submission summary */}
+      <div className="rounded-2xl border border-border/60 bg-card/50 p-4">
+        <div className="text-[11px] font-medium uppercase tracking-[0.2em] text-muted-foreground">
+          Your setup
+        </div>
+        <dl className="mt-2 space-y-1 text-[13px] text-foreground">
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">Exam</dt>
+            <dd className="text-right">
+              {examTitle}
+              {examDate ? ` · ${examDate}` : ""}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">Weekly hours</dt>
+            <dd>{hoursPerWeek}h</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-muted-foreground">Preparation</dt>
+            <dd className="text-right">
+              {stage ? PREPARATION_STAGE_LABELS[stage] : "—"}
+            </dd>
+          </div>
+          {profile.weakest.length > 0 && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Lowest rated</dt>
+              <dd className="text-right">{profile.weakest.join(", ")}</dd>
+            </div>
+          )}
+          {profile.strongest.length > 0 && (
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Strongest rated</dt>
+              <dd className="text-right">{profile.strongest.join(", ")}</dd>
+            </div>
+          )}
+        </dl>
       </div>
     </div>
   );

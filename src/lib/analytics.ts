@@ -20,6 +20,16 @@ export type AnalyticsEvent =
   | "exam_date_completed"
   | "weekly_hours_viewed"
   | "weekly_hours_completed"
+  // Three-stage setup. Counts and completion state only — never subject
+  // ratings, plan tokens or other detailed study data.
+  | "preparation_stage_viewed"
+  | "preparation_stage_selected"
+  | "confidence_rating_viewed"
+  | "confidence_subject_rated"
+  | "confidence_rating_completed"
+  | "balanced_coverage_selected"
+  | "personalised_plan_build_clicked"
+  | "plan_reasoning_viewed"
   | "plan_build_clicked"
   | "plan_preview_created"
   | "onboarding_step_complete"
