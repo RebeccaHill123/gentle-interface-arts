@@ -393,51 +393,68 @@ function DashboardPage() {
     setTick((t) => t + 1);
   };
 
-  /* ---- Adaptive schedule actions (complete / skip / move) ---- */
+  /* ---- Daily execution actions (start / complete / skip / move) ---- */
 
   const findScheduled = (id: string) => scheduledToday.find((t) => t.id === id);
 
-  const handleCompleteTodayItem = (id: string) => {
-    const task = findScheduled(id);
-    if (task) {
-      if (task.status === "completed") {
-        void reopenScheduledTask(id).then(() => setTick((t) => t + 1));
+  const handleCompleteTodayItem = (task: ScheduledTask) => {
+    const scheduled = findScheduled(task.id);
+    if (scheduled) {
+      if (scheduled.status === "completed") {
+        void reopenScheduledTask(task.id).then(() => setTick((t) => t + 1));
         void voidStudyActivity(
-          makeIdempotencyKey("dashboard_task", today, id, task.title),
+          makeIdempotencyKey("dashboard_task", today, task.id, scheduled.title),
         );
         return;
       }
       // Mini-assessment first so completion carries graded evidence.
       setQuizTask({
-        index: scheduledToday.indexOf(task),
-        taskId: task.id,
-        title: task.title,
-        module: task.module,
-        minutes: task.minutes,
+        index: scheduledToday.indexOf(scheduled),
+        taskId: scheduled.id,
+        title: scheduled.title,
+        module: scheduled.module,
+        minutes: scheduled.minutes,
       });
       return;
     }
-    const idx = Number(id);
+    const idx = Number(task.id.replace("legacy-", ""));
     if (Number.isFinite(idx)) handleToggle(idx);
   };
 
-  const handleSkipTodayItem = (id: string) => {
-    if (!findScheduled(id)) return;
-    void skipScheduledTask(id).then(() => {
+  const handleSkipConfirmed = (reason: SkipReason) => {
+    const task = skipTarget;
+    setSkipTarget(null);
+    if (!task || !findScheduled(task.id)) return;
+    void skipScheduledTask(task.id, reason).then(() => {
       setTick((t) => t + 1);
-      toast.success("Skipped — Tentra will factor this into your next update.");
+      toast.success("Skipped — Tentra will factor that into your next update.");
     });
   };
 
-  const handleRescheduleTodayItem = (id: string) => {
-    if (!findScheduled(id)) return;
-    void rescheduleScheduledTask(id, addDaysKey(today, 1)).then((res) => {
+  const handleRescheduleConfirmed = (date: string) => {
+    const task = moveTarget;
+    setMoveTarget(null);
+    if (!task || !findScheduled(task.id)) return;
+    void rescheduleScheduledTask(task.id, date).then((res) => {
       if (!res.ok) {
         toast.error(res.reason ?? "Couldn't move that session.");
         return;
       }
       setTick((t) => t + 1);
-      toast.success("Moved to tomorrow.");
+      toast.success("Session moved.");
+    });
+  };
+
+  /** Missed work and long absences rebuild the FUTURE only, never history. */
+  const handleRecoverMissed = () => {
+    if (!stored) return;
+    void ensureSchedule(stored, analytics, "missed-work").then((res) => {
+      setStored(res.stored);
+      setSchedule(res.schedule);
+      setTick((t) => t + 1);
+      toast.success(
+        res.revision?.summary ?? "Your upcoming plan has been rebuilt around your real time.",
+      );
     });
   };
 
@@ -445,45 +462,40 @@ function DashboardPage() {
 
   const refresh = () => setTick((t) => t + 1);
 
-
-  const nextTaskIdx = plan.todayTasks.findIndex(
-    (_, i) => !completedTaskIds.includes(String(i)),
-  );
-  const nextTask = nextTaskIdx >= 0 ? plan.todayTasks[nextTaskIdx] : null;
-  const upNextItems = plan.todayTasks
-    .map((t, i) => ({ t, i, done: completedTaskIds.includes(String(i)) }))
-    .filter((x) => !x.done)
-    .slice(0, 3);
   const currentWeek = plan.weeklyFocus?.[0];
 
-
-  const weakestOverride: WeakestOverride | null =
-    mockPerf?.hasData && mockPerf.perTopic.length > 0
-      ? {
-          name: mockPerf.perTopic[0].topic,
-          accuracy: mockPerf.perTopic[0].accuracy,
-          attempted: mockPerf.perTopic[0].attempted,
-        }
-      : null;
-
-  const hasPerformanceData = Boolean(mockPerf?.hasData) || plan.todayTasks.length > 0;
-
-  const handleStartTodayItem = (id: string) => {
-    const item = todayItems.find((t) => t.id === id);
-    if (!item) return;
-    startPlannedSprint({
-      module: item.subject !== "Mixed practice" ? item.subject : undefined,
-      topic: item.subTopic ?? item.title,
-      focusMin: item.minutes,
-      breakMin: 5,
+  /** Start → Focus is one action: the session inherits the task's context. */
+  const handleStartTodayItem = (task: ScheduledTask) => {
+    const scheduled = findScheduled(task.id);
+    const { started } = startSession({
+      minutes: task.minutes,
+      breakMinutes: 5,
+      title: task.title,
+      module: task.module !== "Mixed practice" ? task.module : undefined,
+      subtopic: task.subtopic,
+      activityType: task.taskType,
+      why: task.why,
+      output: expectedOutput(task),
+      evidenceLabel: `${activityLabel(task)} · ${task.evidenceLabel ?? "Syllabus coverage"}`,
+      examPath: input.examType,
+      planned:
+        scheduled && schedule
+          ? {
+              taskId: scheduled.id,
+              scheduleVersion: schedule.scheduleVersion,
+              planId: schedule.planId,
+            }
+          : undefined,
+      origin: "today",
     });
+    if (!started) toast.info("Picking up the session you already have running.");
     navigate({ to: "/focus/sprint" });
   };
 
   return (
     <AppShell
-      title="Dashboard"
-      subtitle="Your calm command centre."
+      title="Today"
+      subtitle="What to do next, and why."
       actions={
         <RecordSessionDialog
           moduleNames={input.modules.map((m) => m.name)}
@@ -494,24 +506,28 @@ function DashboardPage() {
     >
       <div className="space-y-8">
         <SetPasswordCard />
-        <CommandCentre
-          userName={input.name}
-          examId={examId}
+        <TodayPanel
+          firstName={input.name}
           examLabel={examLabel}
-          subjectMinutes={subjectMinutes}
-          hasPerformanceData={hasPerformanceData}
-          weakestOverride={weakestOverride}
-          todayItems={todayItems}
-          onReviewWeak={() => navigate({ to: "/topics" })}
-          onStartPriority={() => navigate({ to: "/topics" })}
-          onStartFocus={() => navigate({ to: "/focus" })}
-          onStartDiagnostic={() => navigate({ to: "/practice" })}
+          today={today}
+          daysUntilExam={daysUntilExam}
+          tasks={todayTasks}
+          missed={missed}
+          daysSinceLastActivity={analytics?.consistency?.daysSinceLastSession ?? null}
+          weeklyDoneMins={weeklyDoneMins}
+          weeklyTargetMins={weeklyTargetMins}
+          activeSessionTitle={activeSession?.title}
+          onResumeSession={() => navigate({ to: "/focus/sprint" })}
+          onStart={handleStartTodayItem}
+          onComplete={handleCompleteTodayItem}
+          onSkip={setSkipTarget}
+          onReschedule={setMoveTarget}
+          onRecoverMissed={handleRecoverMissed}
           onGeneratePlan={() => navigate({ to: "/onboarding" })}
-          onStartItem={handleStartTodayItem}
-          onCompleteItem={handleCompleteTodayItem}
-          onSkipItem={handleSkipTodayItem}
-          onRescheduleItem={handleRescheduleTodayItem}
         />
+
+        {schedule && <WeeklyReview schedule={schedule} today={today} />}
+
 
         {revision && (
           <section className="rounded-2xl border border-border/40 bg-card p-5 shadow-card">
