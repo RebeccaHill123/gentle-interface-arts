@@ -148,6 +148,7 @@ export function buildSpecificTask({
   examPath,
   phase,
   hasMistakeEvidence = false,
+  intensity = "intermediate",
 }: {
   module: ModuleConfidence;
   index: number;
@@ -155,16 +156,22 @@ export function buildSpecificTask({
   examPath?: ExamPath;
   phase: StudyPhase;
   hasMistakeEvidence?: boolean;
+  intensity?: IntensityTier;
 }): StrategyTask {
   const subtopic = selectPreciseSubtopic(module, index);
   const isUbe = examPath ? isUbePath(examPath) : false;
-  const taskType = taskTypeForPhase(phase, index, hasMistakeEvidence);
+  // A weakness claim requires an explicit rating — never a neutral default.
+  const ratedWeak = module.rated === true && module.confidence <= 2;
+  const taskType = taskTypeForPhase(phase, index, hasMistakeEvidence, {
+    intensity,
+    foundationBias: ratedWeak,
+  });
   const q = questionCount(minutes, examPath);
   const timing = isUbe ? `${q} MBE questions in ${Math.round(q * 1.8)} mins` : `${q} SBA questions`;
-  const difficulty: TaskDifficulty = phase === "foundation" || module.confidence <= 2 ? "foundational" : phase === "final" ? "challenging" : "core";
+  const difficulty: TaskDifficulty = phase === "foundation" || ratedWeak ? "foundational" : phase === "final" ? "challenging" : "core";
   const bucket: TaskBucket = index % 5 < 3 ? "must" : index % 5 === 3 ? "should" : "optional";
   const rationale: StrategyRationale =
-    (module.weakSubtopics?.length ?? 0) > 0 || module.confidence <= 2
+    (module.weakSubtopics?.length ?? 0) > 0 || ratedWeak
       ? "weak-area"
       : taskType === "mixed-mock"
         ? "mock-prep"
