@@ -119,7 +119,7 @@ export const Route = createFileRoute("/onboarding")({
       {
         name: "description",
         content:
-          "Two quick questions and Tentra builds your personalised, adaptive SQE study plan around your exam date.",
+          "Three quick steps and Tentra builds your personalised, adaptive SQE study plan around your exam date.",
       },
     ],
   }),
@@ -852,7 +852,7 @@ function StepExamDate({
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 1 of 2"
+        kicker="Step 1 of 3"
         title={option.dateHeading}
         sub="Tentra will work backwards from your exam date."
       />
