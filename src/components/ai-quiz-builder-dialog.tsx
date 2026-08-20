@@ -85,9 +85,10 @@ export function AIQuizBuilderDialog({
 
   const analytics = useMemo(() => deriveAnalytics(loadPlan()), [open]);
   const subjects = analytics.subjects;
-  const recommended = subjects.slice().sort((a, b) => b.riskScore - a.riskScore)[0];
+  const recommended = pickEvidenceLedSubject(analytics);
   const targetSubject = subject === "auto" ? recommended?.module ?? "Mixed" : subject;
   const targetStat = subjects.find((s) => s.module === targetSubject);
+  const noGradedEvidence = !analytics.graded.hasData;
 
   // Reset on open
   useEffect(() => {
