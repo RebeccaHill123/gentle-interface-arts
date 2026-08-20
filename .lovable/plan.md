@@ -1,133 +1,154 @@
-# Tentra conversion audit — UK SQE landing page
+# Onboarding simplification — observed vs proposed
 
-Audit only. Nothing below has been implemented.
+Plan only. Nothing below is implemented.
 
-## Executive diagnosis
-
-The landing page itself is in good shape: it is already SQE-first, product-forward, mobile-aware and instrumented. The conversion problem is almost certainly not the homepage copy — it is the **commitment structure downstream of it**. Today the only path to any usable output is: 5-step onboarding form → plan *preview* → £9.99/month card required before the user has ever touched the product. There is no free tier, no trial, no email capture, and no proof (zero reviews, testimonials, user counts, or founder credibility) anywhere on the page. For TikTok traffic — cold, mobile, low-trust, price-sensitive students — that is a hard wall, which matches the observed drop to zero sign-ups after moving paid-only.
-
-Observed fact vs hypothesis is labelled throughout.
-
-## What is working
-
-- **SQE-primary hero** (`src/routes/index.tsx`, hero section): badge "Built for SQE1 · FLK1 & FLK2", H1 "The smarter way to plan your SQE revision", exam-date + hours-per-week promise. Audience and mechanism are clear in the first viewport.
-- **NY Bar correctly demoted**: single "Also available" card near the page bottom plus a dedicated `/new-york-bar` route. Hierarchy is right.
-- **Product shown before commitment**: `HeroPreviewCard` plus the interactive `FeatureShowcase` (Plan / Focus / Coach / Mocks / Analytics) sit directly under the hero.
-- **Four-step "How Tentra works"** section with numbered `StepCard`s (`#how`).
-- **Problem framing** present (static spreadsheets vs adaptive plan) and an editorial statement block.
-- **Mobile CTA discipline**: sticky bottom CTA appears only after the hero CTA scrolls out (`IntersectionObserver`), `min-h-11` tap targets, edge-to-edge preview card.
-- **Funnel instrumentation exists**: `homepage_viewed`, `how_it_works_viewed`, `build_plan_cta_clicked`, `pricing_section_viewed`, `founding_cta_clicked`, `checkout_started`, `checkout_abandoned`, `plan_reveal_viewed` in `src/lib/analytics.ts`.
-- **Head metadata and JSON-LD** are SQE-specific and self-canonical; `/sqe` and `/new-york-bar` have their own metadata.
-
-## Conversion blockers
-
-### 1. Hard paywall before any product use — CRITICAL
-Evidence: `/plan-reveal` shows only stats, focus tags, week-1 theme and one session, with copy "the full plan unlocks after activation"; `PendingCheckout` mounts Stripe immediately; there is no free path anywhere (`src/lib/founding.ts` exposes only `founding_monthly`). Landing CTAs all point to `/onboarding`, whose terminus is payment.
-Impact: the single largest drop-off. Cold TikTok traffic converts to paid at a small fraction of warm traffic; with no free tier there is no recoverable audience and no remarketing list.
-
-### 2. No trust or proof of any kind — CRITICAL
-Evidence: the testimonial slot was replaced by a brand statement ("Less time planning. More time making progress."). No reviews, student count, university/provider mentions, founder story, screenshots-with-attribution, refund promise, or "as used by" line. Only micro-trust is "Secure checkout via Stripe · Cancel anytime".
-Impact: asking for card details from an unknown brand with zero social proof. Hypothesis: this is the second-biggest blocker after the paywall.
-
-### 3. No email/lead capture — HIGH
-Evidence: no email field on the landing page; the only email the system ever sees is created by the Stripe webhook after payment. Abandoned `pending_plans` are cleaned up.
-Impact: 100% of non-payers are lost permanently; no nurture, no abandoned-checkout recovery.
-
-### 4. Five-step onboarding before value — HIGH
-Evidence: `STEPS` = Exam, You, Coverage, Focus, Review; step 4 blocks progress until at least one subject is chosen; step 2 asks for name, exam date, hours and intensity.
-Impact: each step is a mobile drop-off point, and every one is paid *before* the user knows what the plan looks like.
-
-### 5. Price presented with no anchor or risk reversal — HIGH
-Evidence: pricing card shows "£9.99 / month", "Cancel anytime", "An introductory rate for Tentra's earliest members". No struck-through comparison, no cost-vs-course-provider framing, no guarantee, no scarcity, no annual option.
-Impact: £9.99 reads as an unjustified subscription rather than a bargain against £3k+ SQE prep courses.
-
-### 6. CTA wording is inconsistent about what happens next — MEDIUM
-Evidence: "Build my SQE plan" (hero), "Build my personalised plan" (pricing card), "Unlock my personalised plan" (reveal). The first two imply a free build; payment then appears.
-Impact: expectation violation at the reveal step; hypothesis: measurable abandonment at `plan_reveal_viewed → checkout_started`.
-
-### 7. TikTok landing context is generic — MEDIUM
-Evidence: no `?utm`/`?src` awareness on `/` or `/onboarding`; no short-form-video asset on the page; hero preview is a static React mock rather than a motion demo.
-Impact: creative-to-page message mismatch for social traffic.
-
-### 8. Analytics cannot diagnose the funnel — MEDIUM
-Evidence: `src/lib/analytics.ts` only writes to `localStorage` and forwards to `window.plausible` / `posthog` / `gtag` / `dataLayer` *if present*; no provider script is mounted in `src/routes/__root.tsx`. There is no server-side sink.
-Impact: none of the existing events are actually collectable today — the drop to zero sign-ups cannot be attributed to a step.
-
-### 9. `robots.txt` blocks `/onboarding` — LOW (correct for SEO, but note)
-Evidence: `public/robots.txt` disallows `/onboarding`. Fine for indexing, but it also means no organic entry directly into the funnel; all organic traffic must pass the homepage.
-
-### 10. Cognitive load in the mid-page — LOW
-Evidence: features showcase, four steps, problem block, six SQE feature cards, statement block, pricing, six "What's included" items, NY Bar block. Considerable scroll depth before price on mobile.
-
-### 11. Accessibility/performance — LOW
-Evidence: several decorative gradient/blur layers (`BackgroundBlobs`, blurred `-z-10` glows) — `motion-reduce:hidden` is applied in places but not consistently; body copy uses fractional sizes as low as `11.5px`/`12.5px` with `text-muted-foreground`, near the contrast/legibility floor on mobile.
-
-## Prioritised action plan
-
-### P0 — remove the commitment wall and start collecting signal
-
-1. **Give the plan away, gate the system.** Journey step: `/plan-reveal`. Show the full week 1 (all sessions, all subtopics) free and gate weeks 2+ / Focus / Coach / Mocks / Analytics. Hypothesis: showing real, complete output before payment lifts `plan_reveal_viewed → checkout_started` because the user has already experienced the value.
-2. **Introduce a free tier or 7-day trial.** Journey step: pricing card in `src/routes/index.tsx` + `/plan-reveal` CTA + `src/lib/founding.ts`. Recommended direction: "Start free — no card needed" as the primary CTA, Founding Member £9.99 as the upgrade. Hypothesis: sign-ups recover to pre-paywall levels; paid conversion happens after activation, not before.
-3. **Capture email before payment.** Journey step: end of `/onboarding` or top of `/plan-reveal` — "Email me my plan" single field. Hypothesis: recovers 100%-lost non-payers and enables abandoned-checkout email.
-4. **Mount a real analytics provider.** `src/routes/__root.tsx` + `src/lib/analytics.ts`. Hypothesis: without this no other change can be evaluated. This is a prerequisite for every test below.
-5. **Add first-party proof.** Journey step: new section between the problem block and pricing. Founder/why-we-built-it line, real student count once available, and honest early-stage framing rather than invented testimonials. Hypothesis: proof lifts pricing-section → CTA click.
-
-### P1 — reduce friction and justify the price
-
-6. **Compress onboarding to 3 steps.** `src/routes/onboarding.tsx`: merge Coverage + Focus into one screen, default subject selection to the full path so no blocking validation is needed, move name to after activation. Hypothesis: fewer steps raises `onboarding_start → plan_reveal_viewed`.
-7. **Reframe the price with an anchor and a guarantee.** Pricing card: "Less than one hour of tutoring" / "vs £3,000+ prep courses", plus a 14-day money-back line if commercially acceptable. Hypothesis: anchoring plus risk reversal lifts checkout starts at the same price point.
-8. **Align CTA promises.** Use "Build my free SQE plan" everywhere pre-payment and reserve "Unlock" for the paid step. Hypothesis: removing the expectation break reduces reveal-stage abandonment.
-9. **Objection block near pricing.** Short FAQ: is it SQE1 only, what if my exam date moves, what if I fall behind, can I cancel, is my data private. Hypothesis: handles the specific hesitations that stall a subscription decision.
-10. **TikTok landing continuity.** Read a `src`/`utm_source` param on `/` and swap the hero eyebrow to match the creative; add a short looping product clip in place of the static preview on mobile. Hypothesis: message match lifts hero CTA click-through from social.
-
-### P2 — polish
-
-11. Tighten the mid-page: fold the six SQE feature cards into the interactive showcase, drop the statement block, and pull pricing higher on mobile.
-12. Add `/sqe1`, `/flk1`, `/flk2` search-intent pages modelled on the existing `/sqe` route, each with genuine syllabus content rather than SEO filler; keep them linked from the footer, not the primary nav.
-13. Accessibility/performance pass: raise minimum body size to 13px, audit muted-foreground contrast, apply `motion-reduce` consistently to all blur/gradient decoration, and lazy-mount the showcase below the fold.
-
-## Suggested revised section order
+## 1. Current flow map (observed in `src/routes/onboarding.tsx`)
 
 ```text
-1  Hero (SQE badge, H1, promise, "Build my free SQE plan", social-proof strip)
-2  Product preview / interactive showcase
-3  How Tentra works (4 steps)
-4  The problem (spreadsheets vs adaptive plan)
-5  Proof (founder note + student count + early-access framing)
-6  Feature depth (SQE1 / FLK1 / FLK2 specifics)
-7  Pricing (free tier primary, Founding Member £9.99 upgrade, anchor + guarantee)
-8  Objections / FAQ
-9  New York Bar (secondary "Also available")
-10 Final CTA + footer
+Landing CTA (/, /sqe, /new-york-bar) → /onboarding (no search params passed)
+
+Step 1  Exam       SQE1 | SQE2 | NY Bar (UBE) | MPRE   (examPath derived 1:1)
+Step 2  You        name (required) + exam date (required, future)
+                   + hours/week slider (1–40, default 10)
+                   + intensity (4 cards, default "intermediate")
+Step 3  Coverage   "Cover everything" (even) vs "Advanced personalisation"
+Step 4  Focus      every subject listed, confidence slider per subject,
+                   weak-subtopic pickers (only when coverage = advanced);
+                   blocks if modules.length === 0
+Step 5  Review     summary → "Generate my plan"
+
+→ createPendingPlan (server) → /plan-reveal?token=… → Stripe → account
 ```
 
-## Three highest-value A/B tests
+Observed facts:
+- Draft is already persisted per keystroke to `sessionStorage` (`tentra.onboarding.draft.v1`) including `step`, and onboarding resumes at that step.
+- `modules` are auto-seeded from `getSubjectsForExamPath(examPath)` with `confidence: 3`, `weakSubtopics: []`. So step 4's validation can never actually fail in normal use — it is friction with no protective value.
+- Step 3 only changes whether step 4 shows subtopic pickers; `coverageMode` is not read by `preview-plan.ts` or `study-plan-logic.ts` at all.
+- `name` is only consumed by the dashboard greeting (`userName={input.name}`). The plan generator, plan-reveal and the Stripe webhook never read it.
+- `/onboarding` has no `validateSearch`, so the SQE homepage cannot currently pass intent through.
+- Server validation in `createPendingPlan` requires `examType`, future `examDate`, and `Array.isArray(modules)` — not `name`, not `intensity`, not `coverageMode`.
 
-1. **Free plan vs paywalled plan** at `/plan-reveal`: full week 1 free + upgrade prompt, versus today's locked preview. Primary metric: activated accounts per 100 homepage views.
-2. **Hero CTA framing**: "Build my free SQE plan" versus "Build my SQE plan". Primary metric: hero CTA click-through, secondary: reveal-to-checkout rate.
-3. **Price presentation**: bare £9.99 versus £9.99 with a cost anchor and a money-back guarantee. Primary metric: `checkout_started → checkout_completed`.
+## 2. Absolute minimum inputs for a credible SQE plan preview
 
-## Measurement plan
+Only three, per what `generatePreviewPlan` actually consumes:
 
-Primary conversion event: `checkout_completed` (paid activation). Secondary primary during the free-tier test: first authenticated dashboard view.
+1. **examPath** (drives the syllabus subject list and subtopic depth)
+2. **examDate** (drives days-to-exam, week count, and study phase)
+3. **hoursPerWeek** (drives session count and per-session durations)
 
-Funnel (existing events reused, additions marked NEW):
+Everything else is a modifier that already has a safe default.
+
+## 3. Proposed minimum viable flow (2 screens + reveal)
 
 ```text
-homepage_viewed
-  → build_plan_cta_clicked (surface, placement)
-  → onboarding_start
-  → onboarding_step_complete (step) [per step]
-  → plan_reveal_viewed
-  → founding_cta_clicked
-  → checkout_started
-  → checkout_completed | checkout_abandoned
-  → account_access_completed → dashboard_reached
+/onboarding?exam=sqe1  (preselected from the SQE homepage)
+
+Screen 1  "When's your exam?"
+          exam-path chips (SQE1 preselected; SQE2 · NY Bar · MPRE visible)
+          + date picker
+          → Continue
+
+Screen 2  "How much time have you got?"
+          hours/week slider with live "what your week looks like" preview
+          + optional single-tap experience row (New to it / Some prep / Resitting)
+          → Build my plan
+
+→ /plan-reveal (full week 1 visible) → payment → dashboard
 ```
 
-NEW events to add: `email_captured`, `free_plan_activated`, `paywall_viewed` (which surface blocked them), `upgrade_prompt_clicked`, `faq_item_opened`, `traffic_source_seen` (utm/src). Every event should carry `examType` and `source` so SQE vs NY Bar and TikTok vs organic can be separated.
+Two required taps and one date entry before the plan appears, versus five screens today. Screen 2's experience row is optional — skipping it keeps `intermediate`.
 
-## Facts vs hypotheses
+## 4. SQE1 preselection
 
-- **Observed in code**: SQE-first hero and metadata; NY Bar secondary; interactive showcase; 4-step how-it-works; sticky mobile CTA; 5-step onboarding with blocking subject validation; `/plan-reveal` partial preview then Stripe; single £9.99 Founding Member price with no free or trial path; no testimonial/proof content; no email capture; analytics module with no mounted provider; `robots.txt` disallowing `/onboarding`.
-- **Hypotheses (unmeasured)**: that the paywall and absent proof are the dominant causes of the sign-up collapse; the expected direction of each recommended change; the relative severity ranking. All of these need the P0 analytics work before they can be confirmed.
+Yes, safely: add `validateSearch` to `/onboarding` reading an optional `exam` param (`sqe1|sqe2|ube|mpre`), defaulting to `sqe1`. Homepage, `/sqe` and pricing CTAs pass `?exam=sqe1`; `/new-york-bar` passes `?exam=ube`. All four exam options remain visible and switchable on screen 1, so no route is removed — only the default changes. `defaultPathForExam` and `pathToExamType` already handle the mapping.
+
+## 5. Deferred-field table
+
+| Field | Today | Proposed | Collected instead |
+| --- | --- | --- | --- |
+| examPath | Step 1, required | Screen 1, preselected from `?exam` | — |
+| examDate | Step 2, required | Screen 1, required | — |
+| hoursPerWeek | Step 2, required | Screen 2, default 10 | — |
+| intensity | Step 2, 4 cards | Screen 2, optional 3-chip row, default `intermediate` | Settings / recalibrate |
+| name | Step 2, **required** | Removed | After payment, on first dashboard load (also available from Google/profile) |
+| coverageMode | Step 3, own screen | Removed entirely (unused by plan logic) | Replaced by the Topics page, which already does per-subtopic work |
+| module confidence | Step 4, per subject | Defaulted to 3 for all | Dashboard "Rate your confidence" prompt + existing Topics page |
+| weakSubtopics | Step 4, expandable | Defaulted to `[]` | Derived from real mock/quiz performance (`mock-performance.ts`), plus optional manual flagging in Topics |
+| Review step | Step 5 | Removed — `/plan-reveal` is the review | — |
+
+## 6. Recommended defaults
+
+- `examPath`: from `?exam`, else `SQE1_FULL`
+- `examType`: `pathToExamType(examPath)` (unchanged)
+- `intensity`: `intermediate`
+- `coverageMode`: `even` (kept in the type for back-compat, no longer surfaced)
+- `hoursPerWeek`: 10
+- module `confidence`: 3, `weakSubtopics`: `[]`
+- `name`: `""` at plan creation; dashboard greeting falls back to a name-free headline
+
+## 7. Technical risks and safeguards
+
+| Removal | Risk | Safeguard |
+| --- | --- | --- |
+| `name` required | Dashboard greeting renders "Welcome back, " with an empty name; `OnboardingInput.name` is typed non-optional | Make the greeting name-optional first, and keep `name: ""` in the payload so no type or server-validation change is forced |
+| module confidence defaults to 3 | `preview-plan.ts` weights allocations by `(6 - confidence)`; uniform 3 gives an even split, so week 1 looks less "personalised" | Compensate by ordering subjects by syllabus high-yield weight rather than confidence when all values are equal, so the plan still reads deliberately |
+| `weakSubtopics` empty | `rationale: "weak-area"` never fires on a first plan | Acceptable — the foundation-first phase is the correct week-1 output anyway; weak-area work should come from real assessment data |
+| `coverageMode` removed | Field exists in `OnboardingDraft`, `OnboardingInput` and stored plans | Keep the optional field and keep writing `"even"`; only delete the UI. No migration needed |
+| Step-5 review removed | Users lose a confirm step before a server write | `/plan-reveal` already shows every input back and can offer "Change my answers" |
+| Draft `step` values | Existing sessionStorage drafts carry `step: 3–5`, which would exceed the new step count | Clamp on load (`Math.min(newStepCount, draft.step)`) — the code already clamps, so verify the new bound |
+| `?exam` param | Unknown values | `validateSearch` whitelist, fall back to `sqe1` |
+
+## 8. Drafts and later refinement
+
+- Keep the existing per-keystroke `sessionStorage` draft; consider moving to `localStorage` so a TikTok user who leaves the browser can resume.
+- Preserve resume-at-step behaviour with the clamped bound.
+- Add a single **"Recalibrate my plan"** entry point (dashboard + settings) that reopens the full input set — exam date, hours, intensity, per-subject confidence — as an edit screen rather than a wizard. This is where the deferred fields land.
+- Contextual capture inside the dashboard: a dismissible "Rate your confidence across the syllabus" card, and a name prompt on first authenticated load.
+
+## 9. Suggested microcopy
+
+**Screen 1**
+- Eyebrow: `Step 1 of 2`
+- H1: `When's your SQE?`
+- Sub: `We build your plan backwards from exam day.`
+- Chip row label: `Exam` — `SQE1` · `SQE2` · `NY Bar` · `MPRE`
+- Field label: `Exam date`
+- Helper: `Not fixed yet? Use your best guess — you can change it any time.`
+- CTA: `Continue`
+
+**Screen 2**
+- Eyebrow: `Step 2 of 2`
+- H1: `How much time have you got?`
+- Sub: `Be honest — Tentra adapts when life gets in the way.`
+- Slider label: `Hours per week`
+- Live helper: existing `sessionShape` string (`Steady — 4–5 mixed sessions/wk`)
+- Optional row label: `Where are you now? (optional)` — `New to it` · `Some prep done` · `Resitting`
+- CTA: `Build my plan`
+- Micro: `Takes about 20 seconds. No card needed to see your plan.` (only if the free-preview P0 item ships)
+
+**Reveal**
+- Secondary link under the CTA: `Change my answers`
+
+## 10. Events for step-level abandonment
+
+Reuse `onboarding_start`, `onboarding_step_complete`, `onboarding_completed`, `plan_reveal_viewed`. Add:
+
+- `onboarding_step_viewed` — `{ step, stepLabel, examPath, source }` (the missing denominator; today only completions fire)
+- `onboarding_field_changed` — `{ field }`, throttled, to see which control stalls users
+- `onboarding_exam_switched` — `{ from, to }`, to validate SQE1 preselection
+- `onboarding_resumed` — `{ step }`
+- `onboarding_abandoned` — fired on `pagehide` with `{ step, secondsOnStep }`
+- `traffic_source_seen` — `{ source }` from `?src`/`utm_source`, stamped onto every later event
+
+All events should carry `examPath` and `source` so SQE vs NY Bar and TikTok vs organic separate cleanly. Note the P0 prerequisite from the previous audit: no analytics provider is mounted in `__root.tsx`, so none of this is collectable until one is.
+
+## 11. Recommended implementation sequence
+
+1. Mount an analytics provider and add `onboarding_step_viewed` to the **current** 5-step flow. Get one baseline funnel.
+2. Make `name` optional end-to-end (dashboard greeting first, then drop the field).
+3. Add `validateSearch` with `?exam` and pass it from all landing CTAs.
+4. Merge to the 2-screen flow: delete the Coverage screen, default confidence, delete the Review screen.
+5. Add the "Change my answers" link on `/plan-reveal`.
+6. Add "Recalibrate my plan" plus the dashboard confidence and name prompts.
+7. Move the draft to `localStorage` and verify step clamping.
+8. Compare the new funnel against the step 1 baseline before touching pricing.
