@@ -218,11 +218,15 @@ function SettingsPage() {
         <Card title="Study plan">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-foreground">Reset & re-plan</div>
+              <div className="text-sm font-semibold text-foreground">
+                Personalise this plan further
+              </div>
               <div className="text-xs text-muted-foreground">
-                Generate a new study plan from your current modules.
+                Rebuild your plan with a new exam date, weekly hours or subject focus. Optional —
+                your current plan keeps working either way.
               </div>
             </div>
+
             <Button
               onClick={handleReplan}
               variant="outline"
