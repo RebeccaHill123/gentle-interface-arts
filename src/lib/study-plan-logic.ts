@@ -88,20 +88,52 @@ export function taskTypeForPhase(
   phase: StudyPhase,
   index: number,
   hasMistakeEvidence: boolean,
+  options: {
+    intensity?: IntensityTier;
+    /** The user explicitly rated this subject not-studied or low. */
+    foundationBias?: boolean;
+  } = {},
 ): StrategyTaskType {
+  const { intensity = "intermediate", foundationBias = false } = options;
+
   if (hasMistakeEvidence && (phase === "performance" || phase === "final") && index % 4 === 3) {
     return "mistake-review";
   }
-  if (phase === "foundation") {
-    return index % 3 === 0 ? "concept-deepdive" : index % 3 === 1 ? "scenario-drill" : "timed-sba";
+
+  const base = ((): StrategyTaskType => {
+    if (phase === "foundation") {
+      return index % 3 === 0 ? "concept-deepdive" : index % 3 === 1 ? "scenario-drill" : "timed-sba";
+    }
+    if (phase === "build") {
+      return index % 4 === 0 ? "concept-deepdive" : index % 4 === 1 ? "timed-sba" : index % 4 === 2 ? "scenario-drill" : "active-recall";
+    }
+    if (phase === "performance") {
+      return index % 4 === 0 ? "timed-sba" : index % 4 === 1 ? "scenario-drill" : index % 4 === 2 ? "mixed-mock" : "active-recall";
+    }
+    return index % 3 === 0 ? "mixed-mock" : index % 3 === 1 ? "timed-sba" : "active-recall";
+  })();
+
+  // A subject the user says they have not studied never opens with recall or a
+  // mock — there is nothing to recall yet.
+  if (foundationBias && phase !== "final") {
+    if (base === "active-recall" || base === "mixed-mock") return "scenario-drill";
+    if (base === "timed-sba" && index % 2 === 0) return "concept-deepdive";
   }
-  if (phase === "build") {
-    return index % 4 === 0 ? "concept-deepdive" : index % 4 === 1 ? "timed-sba" : index % 4 === 2 ? "scenario-drill" : "active-recall";
+
+  // Preparation stage shifts the mix rather than the subject.
+  if (intensity === "beginner" && phase !== "final") {
+    if (base === "mixed-mock") return "scenario-drill";
+    if (base === "active-recall") return "concept-deepdive";
   }
-  if (phase === "performance") {
-    return index % 4 === 0 ? "timed-sba" : index % 4 === 1 ? "scenario-drill" : index % 4 === 2 ? "mixed-mock" : "active-recall";
+  if (intensity === "advanced" && base === "concept-deepdive" && index % 3 !== 0) {
+    return "active-recall";
   }
-  return index % 3 === 0 ? "mixed-mock" : index % 3 === 1 ? "timed-sba" : "active-recall";
+  if (intensity === "resitter") {
+    if (base === "concept-deepdive" && !foundationBias) return "timed-sba";
+    if (base === "scenario-drill" && index % 3 === 2) return "mixed-mock";
+  }
+
+  return base;
 }
 
 function questionCount(minutes: number, examPath: ExamPath | undefined): number {
