@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
 import { deriveAnalytics } from "@/lib/analytics-derive";
+import { pickEvidenceLedSubject, evidenceReason } from "@/lib/evidence-priority";
 
 type QuizFormat = "sba" | "recall" | "mixed" | "scenario" | "rapid";
 
