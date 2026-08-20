@@ -127,9 +127,36 @@ export async function ensureSchedule(
   if (options.persist !== false) {
     savePlan(next);
     void persistSchedule(next).catch((e) => console.warn("persistSchedule failed", e));
+    if (result.revision) {
+      void logRevision(result.schedule.planId, result.revision).catch(() => {});
+    }
   }
   return { stored: next, schedule: result.schedule, revision: result.revision };
 }
+
+/** Best-effort audit trail of every accepted recalibration. Never blocks the UI. */
+export async function logRevision(
+  planId: string,
+  revision: PlanRevisionRecord,
+): Promise<void> {
+  const { data } = await supabase.auth.getUser();
+  const uid = data.user?.id;
+  if (!uid) return;
+  await supabase.from("plan_revisions").upsert(
+    [
+      {
+        user_id: uid,
+        plan_id: planId,
+        schedule_version: revision.version,
+        trigger: revision.trigger,
+        summary: revision.summary,
+        changes: revision.changes as unknown as Json,
+      },
+    ],
+    { onConflict: "user_id,plan_id,schedule_version", ignoreDuplicates: true },
+  );
+}
+
 
 /**
  * Cloud write with cross-device safety: re-read the remote plan and merge task
