@@ -10,25 +10,14 @@
 // inside the handler body.
 
 import { createServerFn } from "@tanstack/react-start";
-import type {
-  OnboardingInput,
-  StoredPlan,
-  StudyPlan,
-} from "@/lib/plan-store";
+import type { OnboardingInput } from "@/lib/plan-store";
 import { buildStoredPreview } from "@/lib/preview-plan";
+import {
+  generateToken,
+  summariseForClient,
+  type PendingPlanSummary,
+} from "@/lib/pending-plans.summary";
 import type { StripeEnv } from "@/lib/stripe.server";
-
-const TOKEN_ALPHABET =
-  "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-function generateToken(): string {
-  const bytes = new Uint8Array(32);
-  crypto.getRandomValues(bytes);
-  let out = "";
-  for (let i = 0; i < bytes.length; i++) {
-    out += TOKEN_ALPHABET[bytes[i] % TOKEN_ALPHABET.length];
-  }
-  return out;
-}
 
 // Onboarding input reaches the server via createPendingPlan. We don't
 // require every OnboardingInput field to be strict; the shared plan
@@ -37,70 +26,8 @@ type PendingPlanCreateInput = {
   onboarding: OnboardingInput;
 };
 
-export type PendingPlanSummary = {
-  token: string;
-  status: "pending" | "paid" | "claimed" | "expired";
-  examLabel: string;
-  examType: string;
-  examDate: string;
-  daysUntilExam: number;
-  hoursPerWeek: number;
-  weeks: number;
-  focusModules: string[];
-  firstWeek: { theme: string; hours: number; modules: string[] } | null;
-  firstSession:
-    | { title: string; minutes: number; module: string; why?: string }
-    | null;
-  plan: StudyPlan;
-  hasEmail: boolean;
-};
+export type { PendingPlanSummary };
 
-const EXAM_LABELS: Record<string, string> = {
-  SQE1: "SQE1",
-  SQE2: "SQE2",
-  UBE: "NY Bar (UBE)",
-  MPRE: "MPRE",
-};
-
-function summariseForClient(row: {
-  token: string;
-  status: string;
-  plan_data: unknown;
-  onboarding_data: unknown;
-  email: string | null;
-}): PendingPlanSummary {
-  const stored = row.plan_data as StoredPlan;
-  const onboarding = row.onboarding_data as OnboardingInput;
-  const focus =
-    stored.plan.weeklyStrategy?.allocations
-      ?.slice(0, 3)
-      .map((a) => a.module) ?? [];
-  const firstWeek = stored.plan.weeklyFocus?.[0]
-    ? {
-        theme: stored.plan.weeklyFocus[0].theme,
-        hours: stored.plan.weeklyFocus[0].hours,
-        modules: stored.plan.weeklyFocus[0].modules ?? [],
-      }
-    : null;
-  const t0 = stored.plan.todayTasks?.[0];
-  return {
-    token: row.token,
-    status: row.status as PendingPlanSummary["status"],
-    examLabel: EXAM_LABELS[onboarding.examType] ?? onboarding.examType,
-    examType: onboarding.examType,
-    examDate: onboarding.examDate,
-    daysUntilExam: stored.daysUntilExam,
-    hoursPerWeek: onboarding.hoursPerWeek,
-    weeks: Math.max(1, Math.ceil(stored.daysUntilExam / 7)),
-    focusModules: focus,
-    firstWeek,
-    firstSession: t0
-      ? { title: t0.title, minutes: t0.minutes, module: t0.module, why: t0.why }
-      : null,
-    plan: stored.plan,
-    hasEmail: !!row.email,
-  };
-}
 
 export const createPendingPlan = createServerFn({ method: "POST" })
   .inputValidator((data: PendingPlanCreateInput) => {

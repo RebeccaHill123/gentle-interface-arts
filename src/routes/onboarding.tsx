@@ -62,11 +62,28 @@ interface OnboardingSearch {
   exam?: ExamParam;
   src?: string;
   placement?: string;
+  /** Optional YYYY-MM-DD carried back from the plan reveal ("change my answers"). */
+  date?: string;
+  /** Optional weekly hours carried back from the plan reveal. */
+  hours?: number;
 }
 
 
 function toStringOrUndefined(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value.slice(0, 40) : undefined;
+}
+
+/** Accept only a plain future-safe YYYY-MM-DD string. */
+function toDateOrUndefined(value: unknown): string | undefined {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  return Number.isNaN(new Date(`${value}T00:00:00`).getTime()) ? undefined : value;
+}
+
+function toHoursOrUndefined(value: unknown): number | undefined {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return undefined;
+  const rounded = Math.round(n);
+  return rounded >= 1 && rounded <= 60 ? rounded : undefined;
 }
 
 export const Route = createFileRoute("/onboarding")({
@@ -79,6 +96,8 @@ export const Route = createFileRoute("/onboarding")({
       exam,
       src: toStringOrUndefined(search.src ?? search.utm_source),
       placement: toStringOrUndefined(search.placement),
+      date: toDateOrUndefined(search.date),
+      hours: toHoursOrUndefined(search.hours),
     };
   },
   component: OnboardingPage,
@@ -185,7 +204,12 @@ function OnboardingPage() {
   const search = Route.useSearch();
   const [draft] = useState(() => loadOnboardingDraft());
   const [checking, setChecking] = useState(true);
-  const [step, setStep] = useState(() => Math.min(STEP_COUNT, Math.max(1, draft?.step ?? 1)));
+  // Returning from the plan reveal to change answers always restarts at
+  // step 1 so the exam and date are editable again.
+  const editingFromReveal = search.src === "plan_reveal";
+  const [step, setStep] = useState(() =>
+    editingFromReveal ? 1 : Math.min(STEP_COUNT, Math.max(1, draft?.step ?? 1)),
+  );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [examPickerOpen, setExamPickerOpen] = useState(false);
@@ -197,8 +221,14 @@ function OnboardingPage() {
   const [examPath, setExamPath] = useState<ExamPath>(
     draft?.examPath ?? defaultPathForExam(draft?.examType ?? acquisitionType),
   );
-  const [examDate, setExamDate] = useState(draft?.examDate ?? "");
-  const [hoursPerWeek, setHoursPerWeek] = useState(draft?.hoursPerWeek ?? 10);
+  // Search params repopulate the previous answers when the sessionStorage
+  // draft is gone (new tab, shared link), so "change my answers" never
+  // drops what the visitor already told us.
+  const [examDate, setExamDate] = useState(draft?.examDate ?? search.date ?? "");
+  const [hoursPerWeek, setHoursPerWeek] = useState(
+    draft?.hoursPerWeek ?? search.hours ?? 10,
+  );
+
 
   // Deferred fields — defaulted, still persisted so the generator contract
   // and later refinement keep working.
