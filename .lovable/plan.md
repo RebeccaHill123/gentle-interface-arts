@@ -1,150 +1,133 @@
-## New user journey
+# Tentra conversion audit — UK SQE landing page
+
+Audit only. Nothing below has been implemented.
+
+## Executive diagnosis
+
+The landing page itself is in good shape: it is already SQE-first, product-forward, mobile-aware and instrumented. The conversion problem is almost certainly not the homepage copy — it is the **commitment structure downstream of it**. Today the only path to any usable output is: 5-step onboarding form → plan *preview* → £9.99/month card required before the user has ever touched the product. There is no free tier, no trial, no email capture, and no proof (zero reviews, testimonials, user counts, or founder credibility) anywhere on the page. For TikTok traffic — cold, mobile, low-trust, price-sensitive students — that is a hard wall, which matches the observed drop to zero sign-ups after moving paid-only.
+
+Observed fact vs hypothesis is labelled throughout.
+
+## What is working
+
+- **SQE-primary hero** (`src/routes/index.tsx`, hero section): badge "Built for SQE1 · FLK1 & FLK2", H1 "The smarter way to plan your SQE revision", exam-date + hours-per-week promise. Audience and mechanism are clear in the first viewport.
+- **NY Bar correctly demoted**: single "Also available" card near the page bottom plus a dedicated `/new-york-bar` route. Hierarchy is right.
+- **Product shown before commitment**: `HeroPreviewCard` plus the interactive `FeatureShowcase` (Plan / Focus / Coach / Mocks / Analytics) sit directly under the hero.
+- **Four-step "How Tentra works"** section with numbered `StepCard`s (`#how`).
+- **Problem framing** present (static spreadsheets vs adaptive plan) and an editorial statement block.
+- **Mobile CTA discipline**: sticky bottom CTA appears only after the hero CTA scrolls out (`IntersectionObserver`), `min-h-11` tap targets, edge-to-edge preview card.
+- **Funnel instrumentation exists**: `homepage_viewed`, `how_it_works_viewed`, `build_plan_cta_clicked`, `pricing_section_viewed`, `founding_cta_clicked`, `checkout_started`, `checkout_abandoned`, `plan_reveal_viewed` in `src/lib/analytics.ts`.
+- **Head metadata and JSON-LD** are SQE-specific and self-canonical; `/sqe` and `/new-york-bar` have their own metadata.
+
+## Conversion blockers
+
+### 1. Hard paywall before any product use — CRITICAL
+Evidence: `/plan-reveal` shows only stats, focus tags, week-1 theme and one session, with copy "the full plan unlocks after activation"; `PendingCheckout` mounts Stripe immediately; there is no free path anywhere (`src/lib/founding.ts` exposes only `founding_monthly`). Landing CTAs all point to `/onboarding`, whose terminus is payment.
+Impact: the single largest drop-off. Cold TikTok traffic converts to paid at a small fraction of warm traffic; with no free tier there is no recoverable audience and no remarketing list.
+
+### 2. No trust or proof of any kind — CRITICAL
+Evidence: the testimonial slot was replaced by a brand statement ("Less time planning. More time making progress."). No reviews, student count, university/provider mentions, founder story, screenshots-with-attribution, refund promise, or "as used by" line. Only micro-trust is "Secure checkout via Stripe · Cancel anytime".
+Impact: asking for card details from an unknown brand with zero social proof. Hypothesis: this is the second-biggest blocker after the paywall.
+
+### 3. No email/lead capture — HIGH
+Evidence: no email field on the landing page; the only email the system ever sees is created by the Stripe webhook after payment. Abandoned `pending_plans` are cleaned up.
+Impact: 100% of non-payers are lost permanently; no nurture, no abandoned-checkout recovery.
+
+### 4. Five-step onboarding before value — HIGH
+Evidence: `STEPS` = Exam, You, Coverage, Focus, Review; step 4 blocks progress until at least one subject is chosen; step 2 asks for name, exam date, hours and intensity.
+Impact: each step is a mobile drop-off point, and every one is paid *before* the user knows what the plan looks like.
+
+### 5. Price presented with no anchor or risk reversal — HIGH
+Evidence: pricing card shows "£9.99 / month", "Cancel anytime", "An introductory rate for Tentra's earliest members". No struck-through comparison, no cost-vs-course-provider framing, no guarantee, no scarcity, no annual option.
+Impact: £9.99 reads as an unjustified subscription rather than a bargain against £3k+ SQE prep courses.
+
+### 6. CTA wording is inconsistent about what happens next — MEDIUM
+Evidence: "Build my SQE plan" (hero), "Build my personalised plan" (pricing card), "Unlock my personalised plan" (reveal). The first two imply a free build; payment then appears.
+Impact: expectation violation at the reveal step; hypothesis: measurable abandonment at `plan_reveal_viewed → checkout_started`.
+
+### 7. TikTok landing context is generic — MEDIUM
+Evidence: no `?utm`/`?src` awareness on `/` or `/onboarding`; no short-form-video asset on the page; hero preview is a static React mock rather than a motion demo.
+Impact: creative-to-page message mismatch for social traffic.
+
+### 8. Analytics cannot diagnose the funnel — MEDIUM
+Evidence: `src/lib/analytics.ts` only writes to `localStorage` and forwards to `window.plausible` / `posthog` / `gtag` / `dataLayer` *if present*; no provider script is mounted in `src/routes/__root.tsx`. There is no server-side sink.
+Impact: none of the existing events are actually collectable today — the drop to zero sign-ups cannot be attributed to a step.
+
+### 9. `robots.txt` blocks `/onboarding` — LOW (correct for SEO, but note)
+Evidence: `public/robots.txt` disallows `/onboarding`. Fine for indexing, but it also means no organic entry directly into the funnel; all organic traffic must pass the homepage.
+
+### 10. Cognitive load in the mid-page — LOW
+Evidence: features showcase, four steps, problem block, six SQE feature cards, statement block, pricing, six "What's included" items, NY Bar block. Considerable scroll depth before price on mobile.
+
+### 11. Accessibility/performance — LOW
+Evidence: several decorative gradient/blur layers (`BackgroundBlobs`, blurred `-z-10` glows) — `motion-reduce:hidden` is applied in places but not consistently; body copy uses fractional sizes as low as `11.5px`/`12.5px` with `text-muted-foreground`, near the contrast/legibility floor on mobile.
+
+## Prioritised action plan
+
+### P0 — remove the commitment wall and start collecting signal
+
+1. **Give the plan away, gate the system.** Journey step: `/plan-reveal`. Show the full week 1 (all sessions, all subtopics) free and gate weeks 2+ / Focus / Coach / Mocks / Analytics. Hypothesis: showing real, complete output before payment lifts `plan_reveal_viewed → checkout_started` because the user has already experienced the value.
+2. **Introduce a free tier or 7-day trial.** Journey step: pricing card in `src/routes/index.tsx` + `/plan-reveal` CTA + `src/lib/founding.ts`. Recommended direction: "Start free — no card needed" as the primary CTA, Founding Member £9.99 as the upgrade. Hypothesis: sign-ups recover to pre-paywall levels; paid conversion happens after activation, not before.
+3. **Capture email before payment.** Journey step: end of `/onboarding` or top of `/plan-reveal` — "Email me my plan" single field. Hypothesis: recovers 100%-lost non-payers and enables abandoned-checkout email.
+4. **Mount a real analytics provider.** `src/routes/__root.tsx` + `src/lib/analytics.ts`. Hypothesis: without this no other change can be evaluated. This is a prerequisite for every test below.
+5. **Add first-party proof.** Journey step: new section between the problem block and pricing. Founder/why-we-built-it line, real student count once available, and honest early-stage framing rather than invented testimonials. Hypothesis: proof lifts pricing-section → CTA click.
+
+### P1 — reduce friction and justify the price
+
+6. **Compress onboarding to 3 steps.** `src/routes/onboarding.tsx`: merge Coverage + Focus into one screen, default subject selection to the full path so no blocking validation is needed, move name to after activation. Hypothesis: fewer steps raises `onboarding_start → plan_reveal_viewed`.
+7. **Reframe the price with an anchor and a guarantee.** Pricing card: "Less than one hour of tutoring" / "vs £3,000+ prep courses", plus a 14-day money-back line if commercially acceptable. Hypothesis: anchoring plus risk reversal lifts checkout starts at the same price point.
+8. **Align CTA promises.** Use "Build my free SQE plan" everywhere pre-payment and reserve "Unlock" for the paid step. Hypothesis: removing the expectation break reduces reveal-stage abandonment.
+9. **Objection block near pricing.** Short FAQ: is it SQE1 only, what if my exam date moves, what if I fall behind, can I cancel, is my data private. Hypothesis: handles the specific hesitations that stall a subscription decision.
+10. **TikTok landing continuity.** Read a `src`/`utm_source` param on `/` and swap the hero eyebrow to match the creative; add a short looping product clip in place of the static preview on mobile. Hypothesis: message match lifts hero CTA click-through from social.
+
+### P2 — polish
+
+11. Tighten the mid-page: fold the six SQE feature cards into the interactive showcase, drop the statement block, and pull pricing higher on mobile.
+12. Add `/sqe1`, `/flk1`, `/flk2` search-intent pages modelled on the existing `/sqe` route, each with genuine syllabus content rather than SEO filler; keep them linked from the footer, not the primary nav.
+13. Accessibility/performance pass: raise minimum body size to 13px, audit muted-foreground contrast, apply `motion-reduce` consistently to all blur/gradient decoration, and lazy-mount the showcase below the fold.
+
+## Suggested revised section order
 
 ```text
-Landing → Onboarding (6 short screens) → Plan Reveal (concise, blurred tail)
-   → Stripe Checkout (email captured here) → Return page (poll webhook)
-   → Auto-provision Auth user + attach plan → Magic-link email sent
-   → Auto sign-in in same tab → Dashboard (with "Fine-tune your plan" card)
+1  Hero (SQE badge, H1, promise, "Build my free SQE plan", social-proof strip)
+2  Product preview / interactive showcase
+3  How Tentra works (4 steps)
+4  The problem (spreadsheets vs adaptive plan)
+5  Proof (founder note + student count + early-access framing)
+6  Feature depth (SQE1 / FLK1 / FLK2 specifics)
+7  Pricing (free tier primary, Founding Member £9.99 upgrade, anchor + guarantee)
+8  Objections / FAQ
+9  New York Bar (secondary "Also available")
+10 Final CTA + footer
 ```
 
-No standalone "create an account" screen. The Auth user is created **only** after Stripe confirms payment.
+## Three highest-value A/B tests
 
-## Onboarding simplification
+1. **Free plan vs paywalled plan** at `/plan-reveal`: full week 1 free + upgrade prompt, versus today's locked preview. Primary metric: activated accounts per 100 homepage views.
+2. **Hero CTA framing**: "Build my free SQE plan" versus "Build my SQE plan". Primary metric: hero CTA click-through, secondary: reveal-to-checkout rate.
+3. **Price presentation**: bare £9.99 versus £9.99 with a cost anchor and a money-back guarantee. Primary metric: `checkout_started → checkout_completed`.
 
-Rewrite `src/routes/onboarding.tsx` as a 6-step wizard, one decision per screen, large mobile controls, top progress bar (`Step X of 6`), back button, swipe-friendly:
+## Measurement plan
 
-1. Study route — SQE vs UBE/NY Bar
-2. Exam date — date picker
-3. Current progress — Not started / Some study / Substantial revision
-4. Weekly study hours — slider 2–40
-5. Preferred study days — day chips
-6. Route-essential field (SQE: SQE1 vs SQE2; UBE: MBE-heavy vs essay-heavy) — only what `study-plan-logic.ts` genuinely needs
+Primary conversion event: `checkout_completed` (paid activation). Secondary primary during the free-tier test: first authenticated dashboard view.
 
-All detailed preferences (session length, weak topics, notifications, rest days, revision methods) are removed from onboarding and moved to a dashboard "Fine-tune your plan" card.
+Funnel (existing events reused, additions marked NEW):
 
-State stored in existing `plan-store` draft during onboarding; on completion we call the existing plan generator, then persist to a new `pending_plans` table (see below) and navigate to `/plan-reveal`.
+```text
+homepage_viewed
+  → build_plan_cta_clicked (surface, placement)
+  → onboarding_start
+  → onboarding_step_complete (step) [per step]
+  → plan_reveal_viewed
+  → founding_cta_clicked
+  → checkout_started
+  → checkout_completed | checkout_abandoned
+  → account_access_completed → dashboard_reached
+```
 
-## Concise plan reveal (`/plan-reveal`)
+NEW events to add: `email_captured`, `free_plan_activated`, `paywall_viewed` (which surface blocked them), `upgrade_prompt_clicked`, `faq_item_opened`, `traffic_source_seen` (utm/src). Every event should carry `examType` and `source` so SQE vs NY Bar and TikTok vs organic can be separated.
 
-Replace the current full `plan-preview.tsx` reveal with a mobile-first celebratory page:
+## Facts vs hypotheses
 
-- Heading: **"Your personalised study plan is ready"**
-- Cards: exam + date, weeks remaining, recommended weekly hours, top 3 focus areas, week-1 preview, first recommended session
-- Remainder of the plan rendered blurred/locked with a subtle overlay
-- Primary CTA: **"Start my personalised plan"**
-- Beneath CTA: live price + trial terms pulled from Stripe (`stripe.prices.retrieve` on the existing `pro_monthly` lookup key) via a new public server fn `getSubscribePriceDisplay` — no hard-coded copy
-- Small print: "Cancel any time. Billed after your trial."
-
-Uses Tentra's existing pastel tokens; no new colors.
-
-## Pending-plan storage (server-side)
-
-New table `public.pending_plans`:
-
-- `id uuid pk`
-- `token text unique` (opaque 32-byte URL-safe, used as the Stripe `client_reference_id` and return-URL param)
-- `plan_data jsonb` (the generated plan)
-- `onboarding_data jsonb` (raw answers)
-- `email text nullable` (filled from Stripe after checkout)
-- `stripe_session_id text nullable`
-- `stripe_customer_id text nullable`
-- `status text` — `pending` | `paid` | `claimed` | `expired`
-- `claimed_user_id uuid nullable` (fk to `auth.users` on delete set null)
-- `created_at`, `updated_at`, `expires_at` (default `now() + interval '14 days'`)
-
-RLS: no anon/authenticated access; only service role reads/writes. All access goes through server functions.
-
-Expiry: a scheduled job every 24 h runs `UPDATE pending_plans SET status='expired' WHERE status='pending' AND expires_at < now()` and `DELETE FROM pending_plans WHERE status IN ('expired','claimed') AND updated_at < now() - interval '30 days'`. **This only touches `pending_plans` rows** — never `auth.users`, `profiles`, `user_plans`, Stripe customers, or subscriptions. The old `purge-unpaid` cron stays unscheduled and its route file stays deleted.
-
-## Checkout flow
-
-New server fn `createPendingCheckout({ pendingToken })`:
-1. Reads the `pending_plans` row by token.
-2. Creates a Stripe Checkout Session, `mode:'subscription'`, `ui_mode:'embedded_page'`, existing `pro_monthly` price, `client_reference_id = token`, `metadata.pending_token = token`, `subscription_data.metadata.pending_token = token`, `return_url = <origin>/checkout/return?token=…&session_id={CHECKOUT_SESSION_ID}`.
-3. Returns `clientSecret`.
-
-Reuse the existing embedded checkout component pattern — no redirect.
-
-## Webhook: provision user after payment
-
-Extend `src/routes/api/public/payments/webhook.ts`. On `checkout.session.completed`:
-
-1. Look up `pending_plans` by `session.client_reference_id` (idempotent — if `status='paid'|'claimed'` return early).
-2. Extract email from `session.customer_details.email`.
-3. **Existing user path:** `supabaseAdmin.auth.admin.listUsers` filtered by email → if found, attach: set `pending_plans.status='claimed'`, `claimed_user_id`, upsert plan into `user_plans` for that user, update their `profiles` with `stripe_customer_id`, `stripe_subscription_id`, `is_pro=true`, `subscription_status`, `current_period_end`. Send magic link via `supabaseAdmin.auth.admin.generateLink({ type: 'magiclink' })` with `redirectTo=/dashboard`.
-4. **New user path:** `supabaseAdmin.auth.admin.createUser({ email, email_confirm: true })`. Existing `handle_new_user` trigger creates the `profiles` row. Then repeat the attach + magic-link steps.
-5. Mark `pending_plans.status='paid'` first, then `'claimed'` after successful attach — guarded by row-level `UPDATE … WHERE status <> 'claimed'` so concurrent webhook retries are no-ops.
-
-The existing `customer.subscription.*` handlers keep updating `profiles` on renewal/cancel — no change to that logic.
-
-## Return page (`/checkout/return`)
-
-Shows a "Setting up your account…" spinner. Polls a new public server fn `pollPendingClaim({ token })` every 1.5 s (max 45 s) that returns `{ status, magicLinkToken? }`:
-
-- While `pending` → keep polling.
-- On `paid` but not yet `claimed` → keep polling (webhook still finishing).
-- On `claimed` → server fn calls `supabase.auth.verifyOtp` server-side is not possible for magic links, so instead: the webhook stores a one-time `access_token` on the row (generated via `generateLink({ type:'magiclink' })` — we capture `properties.hashed_token`). The return page uses it with `supabase.auth.verifyOtp({ type:'magiclink', token_hash })` client-side, which signs the user in without leaving the tab, then navigates to `/dashboard`. Magic-link email is still sent as a backup for cross-device recovery.
-- On timeout → show "We've emailed you a sign-in link" fallback.
-
-## Dashboard "Fine-tune your plan" card
-
-New dismissible card in `src/routes/dashboard.tsx` that opens a sheet collecting: session length, weak topics, notification prefs, rest days, revision methods. Writes to existing `profiles` / `user_plans` extras. Dismissible; not blocking.
-
-## Edge cases handled
-
-- **Abandoned checkout:** `pending_plans` row stays `pending`, expires after 14 days, then deleted after 30. No auth user was ever created.
-- **Failed payment:** Stripe doesn't fire `checkout.session.completed`; row stays `pending`; user can retry via same token.
-- **Duplicate email:** existing-user path in webhook attaches instead of creating.
-- **Webhook retries / double redirect:** idempotent via `status <> 'claimed'` guard and `onConflict` upserts.
-- **Expired magic link:** return page shows "Request a new sign-in link" that calls `supabase.auth.signInWithOtp({ email })`.
-- **Refresh mid-onboarding:** draft persisted in `plan-store` (existing).
-- **Refresh on reveal:** token in URL; server fn re-reads `pending_plans`.
-- **Refresh on return page:** token in URL; polling resumes.
-- **Existing logged-in user hits `/onboarding`:** flow still works; if webhook finds a matching auth user we attach to it.
-
-## Analytics
-
-Add `track()` calls in `src/lib/analytics.ts` for: `onboarding_started`, `onboarding_step_completed` (with `step` number only), `plan_generated`, `plan_reveal_viewed`, `checkout_started`, `checkout_completed`, `account_access_completed`, `dashboard_reached`. No answers, no PII, no payment data.
-
-## Files added / changed
-
-**Added**
-- `supabase/migrations/<ts>_pending_plans.sql` — table, RLS, grants, expiry cron
-- `src/lib/pending-plans.functions.ts` — `createPendingPlan`, `createPendingCheckout`, `pollPendingClaim`, `getSubscribePriceDisplay`
-- `src/routes/plan-reveal.tsx`
-- `src/routes/checkout.return.tsx`
-- `src/components/onboarding/*` — step components + progress bar
-- `src/components/dashboard/fine-tune-card.tsx`
-
-**Changed**
-- `src/routes/onboarding.tsx` — rewritten as 6-step wizard, ends by creating pending plan + navigating to `/plan-reveal`
-- `src/routes/api/public/payments/webhook.ts` — add `checkout.session.completed` handler that provisions/attaches user, attaches plan, generates magic link
-- `src/routes/dashboard.tsx` — add fine-tune card
-- `src/routes/subscribe.tsx` — kept for direct-subscribe path (existing users) but no longer part of new-user flow
-- `src/routes/plan-preview.tsx` — kept for signed-in users viewing their existing plan; removed from onboarding path
-
-**Not changed**
-- `src/lib/study-plan-logic.ts`, `src/lib/preview-plan.ts` (generation algorithm)
-- Stripe products / prices / existing `pro_monthly` price
-- Existing `profiles`, `user_plans`, subscription webhook branches
-- Existing users, sessions, or grandfathered flags
-- No purge / delete-user job reinstated
-
-## Confirmation on deletion safety
-
-The pending-plan expiry job only mutates `pending_plans` rows. It never calls `auth.admin.deleteUser`, never touches `profiles`, `user_plans`, Stripe customers, subscriptions, or analytics. The previously deleted `purge-unpaid` route stays deleted. Codebase has zero remaining calls to `auth.admin.deleteUser`.
-
-## Mobile test checklist (to run before publishing)
-
-1. iPhone Safari + Android Chrome, 360 px and 414 px widths.
-2. Complete onboarding SQE path → reveal → checkout with test card `4242…` → land on dashboard signed in.
-3. Repeat for UBE path.
-4. Abandon at checkout, wait, revisit `/plan-reveal?token=…` → resume works.
-5. Use existing account's email in checkout → dashboard shows same account, no duplicate.
-6. Decline card `4000…0002` → return page shows retry, no auth user created (verify in DB).
-7. Refresh at each step: onboarding, reveal, checkout, return page.
-8. Rotate device mid-onboarding.
-9. Open magic-link email on a second device → signs in there too.
-10. Verify Stripe dashboard shows one subscription per checkout even after webhook retry.
-11. Verify no `pending_plans` row older than 14 days remains in `pending`.
-12. Confirm `cron.job` still has no `purge-unpaid-accounts` entry.
+- **Observed in code**: SQE-first hero and metadata; NY Bar secondary; interactive showcase; 4-step how-it-works; sticky mobile CTA; 5-step onboarding with blocking subject validation; `/plan-reveal` partial preview then Stripe; single £9.99 Founding Member price with no free or trial path; no testimonial/proof content; no email capture; analytics module with no mounted provider; `robots.txt` disallowing `/onboarding`.
+- **Hypotheses (unmeasured)**: that the paywall and absent proof are the dominant causes of the sign-up collapse; the expected direction of each recommended change; the relative severity ranking. All of these need the P0 analytics work before they can be confirmed.
