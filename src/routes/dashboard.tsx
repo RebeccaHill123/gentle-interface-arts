@@ -64,19 +64,24 @@ import {
   reopenScheduledTask,
   skipScheduledTask,
   rescheduleScheduledTask,
+  missedTasks,
+  scheduleCapacity,
 } from "@/lib/plan/store";
 import { addDaysKey } from "@/lib/plan/dates";
-import type { PlanSchedule, ScheduledTask } from "@/lib/plan/types";
+import type { PlanSchedule, ScheduledTask, SkipReason } from "@/lib/plan/types";
+import { activityLabel, expectedOutput } from "@/lib/plan/task-presentation";
 
 
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
-import { CommandCentre, type TodayPlanItem, type WeakestOverride } from "@/components/dashboard/command-centre";
+import { TodayPanel } from "@/components/dashboard/today-panel";
+import { WeeklyReview } from "@/components/weekly-review";
+import { RescheduleSheet, SkipReasonSheet } from "@/components/plan-action-sheets";
 import { getUserExamId, aggregateSubjectMinutes, buildExamMap, untouchedTopics, type SubTopic } from "@/lib/topic-map";
 import { getExamLabel } from "@/lib/exam-label";
 import { loadMockPerformance, type MockPerformance } from "@/lib/mock-performance";
-import { startPlannedSprint } from "@/lib/focus-store";
+import { loadSession, startSession } from "@/lib/focus-session";
 import { normalizeStoredPlanTasks } from "@/lib/study-plan-logic";
 import {
   Accordion,
