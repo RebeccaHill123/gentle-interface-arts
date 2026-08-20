@@ -776,7 +776,7 @@ function OnboardingPage() {
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Button>
           )}
-          {step === 1 ? (
+          {step < STEP_COUNT ? (
             <Button
               type="button"
               onClick={next}
@@ -795,7 +795,7 @@ function OnboardingPage() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  {activeOption.ctaLabel} <Sparkles className="ml-1 h-4 w-4" />
+                  Build my plan <Sparkles className="ml-1 h-4 w-4" />
                 </>
               )}
             </Button>
