@@ -629,9 +629,10 @@ function OnboardingPage() {
             transition={{ type: "spring", stiffness: 120, damping: 20 }}
           />
         </div>
-        <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-          <span className="text-foreground">Your exam</span>
-          <span className={cn(step >= 2 && "text-foreground")}>Your time</span>
+        <div className="flex justify-between gap-2 text-[10px] uppercase tracking-wider text-muted-foreground">
+          <span className="text-foreground">Exam &amp; time</span>
+          <span className={cn(step >= 2 && "text-foreground")}>Preparation</span>
+          <span className={cn(step >= 3 && "text-foreground")}>Confidence</span>
         </div>
       </div>
 
@@ -646,28 +647,57 @@ function OnboardingPage() {
               transition={{ duration: 0.25 }}
             >
               {step === 1 ? (
-                <StepExamDate
-                  option={activeOption}
-                  examType={examType}
-                  onExamChange={(value) => {
-                    setExamType(value);
-                    setExamPickerOpen(false);
-                    trackEvent("onboarding_exam_switched", {
+                <div className="space-y-8">
+                  <StepExamDate
+                    option={activeOption}
+                    examType={examType}
+                    onExamChange={(value) => {
+                      setExamType(value);
+                      setExamPickerOpen(false);
+                      trackEvent("onboarding_exam_switched", {
+                        ...eventBase,
+                        from: examType,
+                        to: value,
+                      });
+                    }}
+                    pickerOpen={examPickerOpen}
+                    setPickerOpen={setExamPickerOpen}
+                    examDate={examDate}
+                    setExamDate={setExamDate}
+                  />
+                  <div className="border-t border-border/60 pt-6">
+                    <StepHours
+                      hoursPerWeek={hoursPerWeek}
+                      setHoursPerWeek={setHoursPerWeek}
+                      sessionShape={sessionShape}
+                    />
+                  </div>
+                </div>
+              ) : step === 2 ? (
+                <StepPreparation
+                  stage={stage}
+                  onSelect={(value) => {
+                    setStage(value);
+                    setError(null);
+                    if (value === "beginner") applyNotStarted(true);
+                    trackEvent("preparation_stage_selected", {
                       ...eventBase,
-                      from: examType,
-                      to: value,
+                      stage: value,
                     });
                   }}
-                  pickerOpen={examPickerOpen}
-                  setPickerOpen={setExamPickerOpen}
-                  examDate={examDate}
-                  setExamDate={setExamDate}
                 />
               ) : (
-                <StepHours
+                <StepConfidence
+                  modules={modules}
+                  onRate={rateModule}
+                  notStarted={notStarted}
+                  onNotStartedChange={applyNotStarted}
+                  balancedAccepted={balancedAccepted}
+                  onBalancedAccepted={acceptBalanced}
+                  examTitle={activeOption.title}
+                  examDate={examDate}
                   hoursPerWeek={hoursPerWeek}
-                  setHoursPerWeek={setHoursPerWeek}
-                  sessionShape={sessionShape}
+                  stage={stage}
                 />
               )}
             </motion.div>
