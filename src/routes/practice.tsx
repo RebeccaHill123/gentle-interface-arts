@@ -27,11 +27,28 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
+import { loadPlan } from "@/lib/plan-store";
 import {
-  loadPlan,
-  addStudySession,
-  adjustModuleConfidence,
-} from "@/lib/plan-store";
+  recordStudyActivity,
+  recordGradedAttempts,
+  makeIdempotencyKey,
+  flushStudyLogQueue,
+  type WriteResult,
+} from "@/lib/study-log";
+
+function newSessionId(): string {
+  return typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+}
+
+function fingerprint(text: string): string {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) {
+    h = (Math.imul(31, h) + text.charCodeAt(i)) | 0;
+  }
+  return `q_${(h >>> 0).toString(36)}`;
+}
 
 type PracticeSearch = {
   subject?: string;
@@ -121,6 +138,10 @@ function PracticeSessionPage() {
   const [questionStart, setQuestionStart] = useState<number>(0);
   const [sessionStart, setSessionStart] = useState<number>(0);
   const [confidenceBefore, setConfidenceBefore] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<string>(() => newSessionId());
+  const [examPath, setExamPath] = useState<string | undefined>(undefined);
+  const [saveResult, setSaveResult] = useState<WriteResult | null>(null);
+  const finishedRef = useRef(false);
 
   // Load config + start generation
   useEffect(() => {
@@ -186,6 +207,7 @@ function PracticeSessionPage() {
     setConfidenceBefore(mod?.confidence ?? null);
 
     const examType = (plan?.input.examType ?? "SQE1") as "SQE1" | "SQE2" | "UBE" | "MPRE";
+    setExamPath(plan?.input.examType ?? undefined);
 
     // Animate the thinking lines
     const tick = setInterval(() => {
@@ -278,8 +300,14 @@ function PracticeSessionPage() {
     if (current > 0) setCurrent(current - 1);
   }
 
-  function finishSession() {
+  async function finishSession() {
     if (!config) return;
+    if (finishedRef.current) {
+      setPhase("results");
+      return;
+    }
+    finishedRef.current = true;
+
     const totalMs = Date.now() - sessionStart;
     const minutes = Math.max(1, Math.round(totalMs / 60_000));
     const correct = answers.reduce<number>(
@@ -288,18 +316,43 @@ function PracticeSessionPage() {
     );
     const accuracy = correct / questions.length;
 
+    const activityKey = makeIdempotencyKey("practice", sessionId);
     try {
-      addStudySession({
-        date: new Date().toISOString().slice(0, 10),
-        minutes,
-        module: config.module,
-        sessionType: "quiz",
+      const activityResult = await recordStudyActivity({
+        idempotencyKey: activityKey,
+        activityType: "quiz",
+        source: "practice",
+        actualMinutes: minutes,
+        subject: config.module,
+        subtopic: config.topic ?? undefined,
+        examPath: examPath ?? null,
+        gradedAccuracy: accuracy,
         note: `${config.formatLabel} · ${correct}/${questions.length}`,
-        focus: accuracy,
       });
-      adjustModuleConfidence(config.module, accuracy);
+      setSaveResult(activityResult);
+
+      const attempts = questions.map((q, i) => {
+        const selected = answers[i];
+        return {
+          idempotencyKey: makeIdempotencyKey("practice-attempt", sessionId, i),
+          sourceType: "practice" as const,
+          sourceRef: sessionId,
+          questionFingerprint: fingerprint(q.prompt ?? String(i)),
+          subject: config.module,
+          subtopic: config.topic ?? undefined,
+          isCorrect: selected === q.correctIndex,
+          selectedAnswer: selected != null ? String.fromCharCode(65 + selected) : null,
+          durationSeconds: Math.round((perQuestionMs[i] ?? 0) / 1000),
+          examPath: examPath ?? null,
+        };
+      });
+      const attemptsResult = await recordGradedAttempts(attempts);
+      if (!attemptsResult.ok && activityResult.ok) {
+        setSaveResult(attemptsResult);
+      }
     } catch (e) {
       console.warn("session log failed", e);
+      setSaveResult({ ok: false, queued: true, error: "Could not save results" });
     }
     setPhase("results");
   }
@@ -356,10 +409,19 @@ function PracticeSessionPage() {
           answers={answers}
           perQuestionMs={perQuestionMs}
           confidenceBefore={confidenceBefore}
+          saveResult={saveResult}
+          onRetryFinish={() => {
+            flushStudyLogQueue().then((r) => {
+              setSaveResult(r.remaining === 0 ? { ok: true, queued: false } : { ok: false, queued: true });
+            });
+          }}
           onRetry={() => {
             setAnswers(new Array(questions.length).fill(null));
             setRevealedSet(new Set());
             setPerQuestionMs(new Array(questions.length).fill(0));
+            setSessionId(newSessionId());
+            setSaveResult(null);
+            finishedRef.current = false;
             beginSession();
           }}
           onNewDrill={() => navigate({ to: "/mocks" })}
@@ -776,6 +838,8 @@ function ResultsScreen({
   answers,
   perQuestionMs,
   confidenceBefore,
+  saveResult,
+  onRetryFinish,
   onRetry,
   onNewDrill,
 }: {
@@ -784,6 +848,8 @@ function ResultsScreen({
   answers: (number | null)[];
   perQuestionMs: number[];
   confidenceBefore: number | null;
+  saveResult: WriteResult | null;
+  onRetryFinish: () => void;
   onRetry: () => void;
   onNewDrill: () => void;
 }) {
@@ -948,6 +1014,15 @@ function ResultsScreen({
           </li>
         </ul>
       </section>
+
+      {saveResult && !saveResult.ok && saveResult.queued && (
+        <section className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-200">
+          <span>Saved on this device — we'll sync your results when you're back online.</span>
+          <Button size="sm" variant="outline" onClick={onRetryFinish} className="rounded-full">
+            Retry
+          </Button>
+        </section>
+      )}
 
       {/* Actions */}
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">

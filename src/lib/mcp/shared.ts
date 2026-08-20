@@ -1,6 +1,7 @@
 import type { ToolContext } from "@lovable.dev/mcp-js";
 import { supabaseForUser } from "./supabase";
 import { deriveAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
+import type { GradedResults } from "@/lib/graded-performance";
 import type { StoredPlan, StudySession, StrategyTask } from "@/lib/plan-store";
 
 export type ToolResult = {
@@ -76,6 +77,31 @@ export function recentSessions(
   );
 }
 
+/**
+ * Evidence-led priority ordering: low graded accuracy first, then
+ * no-coverage, then self-rated-low. Never ranks by minutes or mood.
+ */
+function evidenceLedSummary(analytics: AnalyticsBundle, limit = 4): string {
+  const items = analytics.needsAttention.slice(0, limit).map((n) => {
+    if (n.evidence === "low-graded-accuracy") return `${n.module} (${n.detail})`;
+    if (n.evidence === "no-coverage") return `${n.module} (no study time recorded)`;
+    return `${n.module} (self-rated low, no graded evidence yet)`;
+  });
+  if (items.length) return items.join(", ");
+  // Fallback: worst graded accuracy directly from graded results.
+  const fallback = analytics.graded.perSubject
+    .slice(0, limit)
+    .map((s) => `${s.subject} (${s.accuracy}% over ${s.attempted} graded questions)`);
+  return fallback.length ? fallback.join(", ") : "n/a — no graded or coverage evidence yet";
+}
+
+function gradedSummary(graded: GradedResults): string {
+  if (!graded.hasData || graded.accuracy === null) {
+    return "No graded data yet — no accuracy figure available.";
+  }
+  return `${graded.accuracy}% correct across ${graded.totalAttempted} graded questions.`;
+}
+
 /** Build a compact snapshot used by AI Coach / Tutor prompts. */
 export function buildSnapshot(
   plan: StoredPlan | null,
@@ -91,10 +117,7 @@ export function buildSnapshot(
     input?.examDate ? daysBetween(todayIso(), input.examDate) : null;
   const weekMins = recentSessions(plan, 7).reduce((a, s) => a + s.minutes, 0);
 
-  const weakest = analytics.weakest
-    .slice(0, 4)
-    .map((s) => `${s.module} (risk ${s.riskScore})`)
-    .join(", ");
+  const needsAttentionSummary = evidenceLedSummary(analytics);
   const recency = analytics.subjects
     .slice()
     .sort((a, b) => (b.recencyDays ?? 999) - (a.recencyDays ?? 999))
@@ -113,8 +136,20 @@ export function buildSnapshot(
       daysToExam !== null ? `, in ${daysToExam} days` : ""
     }`,
     `Weekly hours: ${(weekMins / 60).toFixed(1)}h done / ${input?.hoursPerWeek ?? "?"}h target (rolling 7d)`,
+    `Syllabus coverage: ${
+      analytics.coverage.subtopicPercent !== null
+        ? `${analytics.coverage.subtopicPercent}% (${analytics.coverage.subjectsTouched}/${analytics.coverage.totalSubjects} subjects touched)`
+        : "not enough data yet"
+    }`,
+    `Graded accuracy: ${gradedSummary(analytics.graded)}`,
+    `Consistency: ${analytics.consistency.studyDays}/${analytics.consistency.windowDays} days studied, ${analytics.consistency.currentStreak}-day streak`,
+    `Self-rated confidence (not a performance measure): ${
+      analytics.selfReported.avgFocusPct !== null
+        ? `avg focus ${analytics.selfReported.avgFocusPct}%`
+        : "not rated yet"
+    }`,
     `Today's plan: ${today || "no tasks scheduled"}`,
-    `Weakest / at-risk: ${weakest || "n/a"}`,
+    `Needs attention (evidence-led): ${needsAttentionSummary}`,
     `Recency gaps: ${recency || "n/a"}`,
     `=== END SNAPSHOT ===`,
   ].join("\n");

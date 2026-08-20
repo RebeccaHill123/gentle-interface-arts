@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
 import { deriveAnalytics } from "@/lib/analytics-derive";
+import { pickEvidenceLedSubject, evidenceReason } from "@/lib/evidence-priority";
 
 type QuizFormat = "sba" | "recall" | "mixed" | "scenario" | "rapid";
 
@@ -85,9 +86,10 @@ export function AIQuizBuilderDialog({
 
   const analytics = useMemo(() => deriveAnalytics(loadPlan()), [open]);
   const subjects = analytics.subjects;
-  const recommended = subjects.slice().sort((a, b) => b.riskScore - a.riskScore)[0];
+  const recommended = pickEvidenceLedSubject(analytics);
   const targetSubject = subject === "auto" ? recommended?.module ?? "Mixed" : subject;
   const targetStat = subjects.find((s) => s.module === targetSubject);
+  const noGradedEvidence = !analytics.graded.hasData;
 
   // Reset on open
   useEffect(() => {
@@ -157,10 +159,12 @@ export function AIQuizBuilderDialog({
     ].filter(Boolean) as string[];
 
     const rationale = targetStat
-      ? `${targetStat.module} sits at ${
+      ? `${targetStat.module}: ${
           targetStat.accuracy != null
-            ? `${targetStat.accuracy}% accuracy`
-            : `confidence ${targetStat.confidence}/5`
+            ? `${targetStat.accuracy}% graded accuracy across ${targetStat.gradedAttempts} questions`
+            : noGradedEvidence
+              ? `no graded data yet — self-rated confidence ${targetStat.confidence}/5`
+              : `self-rated confidence ${targetStat.confidence}/5`
         }${
           targetStat.recencyDays != null
             ? `, last revised ${targetStat.recencyDays} days ago`
@@ -432,17 +436,17 @@ export function AIQuizBuilderDialog({
                 </div>
                 <p className="mt-1 text-foreground">
                   {targetStat
-                    ? `${targetStat.module} sits at ${
+                    ? `${targetStat.module}: ${
                         targetStat.accuracy != null
-                          ? `${targetStat.accuracy}% accuracy`
-                          : `confidence ${targetStat.confidence}/5`
+                          ? `${targetStat.accuracy}% graded accuracy across ${targetStat.gradedAttempts} questions`
+                          : `no graded data yet — showing your self-rated confidence (${targetStat.confidence}/5)`
                       }${
                         targetStat.recencyDays != null
                           ? `, last revised ${targetStat.recencyDays} days ago`
                           : ""
-                      }. We're targeting ${
+                      }. Targeting ${
                         difficulty === "Adaptive" ? "adaptive" : difficulty.toLowerCase()
-                      } difficulty across ${questions} items to push it back into your strong band.`
+                      } difficulty across ${questions} items.`
                     : `Generated from a balanced view of your syllabus — log a few sessions to unlock fully personalised reasoning.`}
                 </p>
               </div>

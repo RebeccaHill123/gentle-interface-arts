@@ -61,7 +61,8 @@ import {
   type DbSection,
   type DbSimulation,
 } from "@/lib/full-mock-store";
-import { addStudySession, adjustModuleConfidence } from "@/lib/plan-store";
+import { adjustModuleConfidence } from "@/lib/plan-store";
+import { recordStudyActivity, makeIdempotencyKey, flushStudyLogQueue, type WriteResult } from "@/lib/study-log";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/mocks/simulation/$simId")({
@@ -134,6 +135,7 @@ function SimulationPage() {
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
   const [local, setLocal] = useState<LocalState>({});
   const [exitConfirm, setExitConfirm] = useState(false);
+  const [mockSaveResult, setMockSaveResult] = useState<WriteResult | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -193,6 +195,12 @@ function SimulationPage() {
         sim={sim}
         sections={sections}
         answers={answers}
+        saveResult={mockSaveResult}
+        onRetrySave={() => {
+          flushStudyLogQueue().then((r) => {
+            setMockSaveResult(r.remaining === 0 ? { ok: true, queued: false } : { ok: false, queued: true });
+          });
+        }}
         onRetake={() => navigate({ to: "/mocks" })}
       />
     );
@@ -233,15 +241,28 @@ function SimulationPage() {
             overall_score: overallScore,
             completed_at: new Date().toISOString(),
           });
-          try {
-            addStudySession({
-              date: new Date().toISOString().slice(0, 10),
-              minutes: Math.round(totalSeconds / 60),
-              module: blueprint.examType,
-              sessionType: "mock",
-              note: `${blueprint.examType} — full simulation completed`,
-            });
-          } catch {}
+          // overallScore is a 0-100 percentage (see sectionScore/overall calc above);
+          // convert to 0..1 for gradedAccuracy. Per-topic confidence is already
+          // applied per-section via adjustModuleConfidence above, so we deliberately
+          // do NOT pass gradedAccuracy here to avoid double-applying the same
+          // performance signal to module confidence twice.
+          const result = await recordStudyActivity({
+            idempotencyKey: makeIdempotencyKey("mock", sim.id),
+            activityType: "mock",
+            source: "mock",
+            actualMinutes: Math.round(totalSeconds / 60),
+            examPath: blueprint.examType,
+            subject: blueprint.examType,
+            note: `${blueprint.examType} — full simulation completed`,
+            metadata: {
+              pathway: sim.pathway,
+              overallScore: overallScore ?? null,
+            },
+          });
+          setMockSaveResult(result);
+          if (!result.ok && result.queued) {
+            toast.warning("Saved on this device — we'll sync your results when you're back online.");
+          }
           setPhase("results");
         }}
       />
@@ -996,11 +1017,15 @@ function ResultsView({
   sim,
   sections,
   answers,
+  saveResult,
+  onRetrySave,
   onRetake,
 }: {
   sim: DbSimulation;
   sections: DbSection[];
   answers: DbAnswer[];
+  saveResult: WriteResult | null;
+  onRetrySave: () => void;
   onRetake: () => void;
 }) {
   const navigate = useNavigate();
@@ -1099,6 +1124,15 @@ function ResultsView({
             }}
           >
             Add weak areas to my study plan
+          </Button>
+        </section>
+      )}
+
+      {saveResult && !saveResult.ok && saveResult.queued && (
+        <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-200">
+          <span>Saved on this device — we'll sync your results when you're back online.</span>
+          <Button size="sm" variant="outline" onClick={onRetrySave} className="rounded-full">
+            Retry
           </Button>
         </section>
       )}

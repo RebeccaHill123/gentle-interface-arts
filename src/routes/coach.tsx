@@ -24,7 +24,7 @@ import {
 import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { loadPlan, computeStreak } from "@/lib/plan-store";
-import { deriveAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
+import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Suggestion = { label: string; prompt: string };
@@ -37,8 +37,8 @@ function getModes(isUbe: boolean) {
       label: "Coach",
       blurb: "Strategy, planning and exam readiness.",
       systemHint: isUbe
-        ? "Reply as a senior bar exam study strategist. Prioritise sequencing, trade-offs, mock performance, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused."
-        : "Reply as a senior SQE study strategist. Prioritise sequencing, trade-offs, mock performance, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused.",
+        ? "Reply as a senior bar exam study strategist. Prioritise sequencing, trade-offs, graded accuracy, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused."
+        : "Reply as a senior SQE study strategist. Prioritise sequencing, trade-offs, graded accuracy, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused.",
     },
     {
       id: "tutor" as Mode,
@@ -55,9 +55,9 @@ function getSuggestionsByMode(mode: Mode, isUbe: boolean): Suggestion[] {
   if (mode === "coach") {
     return [
       { label: "Prioritise this week", prompt: "What should I prioritise this week based on my weak areas, recency decay and exam proximity? Give me a 3-step ordered plan with the reasoning behind each step." },
-      { label: "Review my mocks", prompt: "Review my recent mock performance and identify the highest-risk topics I need to drill before the exam. Tell me what's improving, what's regressing, and the next 3 sessions." },
+      { label: "Review my accuracy", prompt: "Review my recent graded accuracy and identify the subjects with evidence of weakness that I need to drill before the exam. Tell me what's improving, what needs attention, and the next 3 sessions." },
       { label: "Build a 7-day catch-up", prompt: "Build me a focused 7-day catch-up plan. Use my available hours, prioritise the highest-leverage modules, and tell me exactly what to do each day." },
-      { label: "Am I on track?", prompt: "Given my exam date, readiness and recent activity — am I on track? Be honest. If I'm not, prescribe what changes this week." },
+      { label: "Am I on track?", prompt: "Given my exam date, syllabus coverage and recent activity — am I on track? Be honest. If I'm not, prescribe what changes this week." },
       { label: "Highest mark-impact today", prompt: "What should I revise today for the single highest mark impact? Cite the data — recency, accuracy, syllabus weight — and give me a 60-minute session structure." },
     ];
   }
@@ -137,7 +137,7 @@ function CoachPage() {
       if (plan) {
         setExamType(plan.input.examType);
         setStreak(computeStreak(plan.sessions).current);
-        setAnalytics(deriveAnalytics(plan));
+        setAnalytics(await loadAnalytics(plan));
         if (plan.input?.examDate) {
           const d = Math.max(0, Math.round((+new Date(plan.input.examDate) - Date.now()) / 86_400_000));
           setDaysToExam(d);
@@ -198,23 +198,24 @@ function CoachPage() {
     return firstName ? `${part}, ${firstName}.` : `${part}.`;
   }, [firstName]);
 
-  // Intelligent contextual insight derived from exam distance + readiness
+  // Intelligent contextual insight derived from exam distance + graded accuracy
   const heroInsight = useMemo(() => {
     if (daysToExam === null) {
       return "Set an exam date in onboarding to unlock strategic guidance tailored to your timeline.";
     }
     if (daysToExam === 0) return "Exam day. Trust your preparation — review high-yield rules only.";
-    const r = analytics?.readiness?.score ?? null;
+    const acc = analytics?.graded.accuracy ?? null;
     const qType = isUbe ? "MBEs" : "SBAs";
     if (daysToExam <= 7) {
       return `You're ${daysToExam} days out — protect sleep, taper volume, and run timed ${qType} only on your weakest two modules.`;
     }
     if (daysToExam <= 21) {
-      if (r !== null && r < 65) return `${daysToExam} days out at ${r}% readiness — scale mock exposure now and cut anything that isn't moving the score.`;
+      if (acc !== null && acc < 65) return `${daysToExam} days out at ${acc}% graded accuracy — scale timed practice now and cut anything that isn't moving that number.`;
+      if (acc === null) return `${daysToExam} days out — no graded practice recorded yet, so today should be about answering graded questions, not just reading.`;
       return `${daysToExam} days out — today should be about consolidation and timed practice, not new volume.`;
     }
     if (daysToExam <= 45) {
-      return `You're ${daysToExam} days out — the window where strategy outperforms effort. Prioritise weak areas before broad coverage.`;
+      return `You're ${daysToExam} days out — the window where strategy outperforms effort. Prioritise areas with evidence of weakness before broad coverage.`;
     }
     if (daysToExam <= 90) {
       return `${daysToExam} days out — build depth on your weakest modules now while there's still time for spaced repetition to compound.`;
@@ -234,14 +235,17 @@ function CoachPage() {
     };
     const cards: Card[] = [];
 
-    // 1. Today's focus
-    const weakest = analytics?.weakest?.[0];
+    // 1. Today's focus — evidence-led: lowest graded accuracy first, then no-coverage, then self-rated-low
+    const attentionTop = analytics?.needsAttention?.[0];
+    const weakest = attentionTop
+      ? analytics?.subjects?.find((s) => s.module === attentionTop.module)
+      : analytics?.weakest?.[0];
     if (weakest) {
       cards.push({
         eyebrow: "Today's focus",
         icon: Target,
         title: weakest.module,
-        body: `Your lowest-confidence module — a focused 45-minute block here will move the needle furthest today.`,
+        body: attentionTop?.detail ?? `A focused 45-minute block here will move the needle furthest today.`,
         prompt: `Build me a 45-minute high-yield session on ${weakest.module}, structured around my weakest sub-topics, with a short ${qType} set at the end.`,
       });
     } else {
@@ -254,37 +258,34 @@ function CoachPage() {
       });
     }
 
-    // 2. Highest-risk area
-    const declining = analytics?.subjects
-      ?.filter((s) => s.trend !== null && (s.trend ?? 0) <= -5)
-      .sort((a, b) => (a.trend ?? 0) - (b.trend ?? 0))[0];
-    const stale = analytics?.subjects
-      ?.filter((s) => s.recencyDays !== null && s.recencyDays >= 10 && s.highYield >= 4)
-      .sort((a, b) => (b.recencyDays ?? 0) - (a.recencyDays ?? 0))[0];
+    // 2. Highest-risk area — evidence-led ranking: low graded accuracy, then no coverage, then self-rated-low
+    const lowAccuracy = analytics?.needsAttention?.find((n) => n.evidence === "low-graded-accuracy");
+    const noCoverage = analytics?.needsAttention?.find((n) => n.evidence === "no-coverage");
+    const selfRatedLow = analytics?.needsAttention?.find((n) => n.evidence === "self-rated-low");
 
-    if (declining) {
+    if (lowAccuracy) {
       cards.push({
         eyebrow: "Highest risk",
         icon: ShieldAlert,
-        title: `${declining.module} regressing`,
-        body: `Accuracy down ${Math.abs(declining.trend ?? 0)}% on recent sessions — left unaddressed this becomes an exam-day liability.`,
-        prompt: `Diagnose why ${declining.module} is regressing and prescribe the next three sessions to reverse the trend.`,
+        title: `${lowAccuracy.module} — low graded accuracy`,
+        body: lowAccuracy.detail,
+        prompt: `Diagnose why ${lowAccuracy.module} has low graded accuracy and prescribe the next three sessions to fix it.`,
       });
-    } else if (stale) {
+    } else if (noCoverage) {
       cards.push({
         eyebrow: "Highest risk",
         icon: ShieldAlert,
-        title: `${stale.module} going stale`,
-        body: `${stale.recencyDays} days since last revision on a high-yield module. Recency decay compounds quickly this close to exam.`,
-        prompt: `Build a 45-minute refresher for ${stale.module} that targets the highest-yield gaps and reverses recency decay.`,
+        title: `${noCoverage.module} untouched`,
+        body: noCoverage.detail,
+        prompt: `Build a 45-minute first-pass session for ${noCoverage.module} that gets meaningful coverage started.`,
       });
-    } else if (daysToExam !== null && (analytics?.readiness?.score ?? 100) < 65) {
+    } else if (selfRatedLow) {
       cards.push({
         eyebrow: "Highest risk",
         icon: ShieldAlert,
-        title: "Readiness below threshold",
-        body: `Readiness at ${analytics?.readiness?.score}% with ${daysToExam} days remaining — mock exposure needs to scale this week.`,
-        prompt: `My readiness is ${analytics?.readiness?.score}% with ${daysToExam} days to exam. What's the highest-leverage 7-day plan?`,
+        title: `${selfRatedLow.module} — self-rated low`,
+        body: `${selfRatedLow.detail} Not yet backed by graded evidence.`,
+        prompt: `Design a session for ${selfRatedLow.module} that builds confidence and starts generating graded evidence.`,
       });
     } else {
       cards.push({
@@ -297,16 +298,7 @@ function CoachPage() {
     }
 
     // 3. Recommended session
-    const peak = analytics?.peak;
-    if (peak) {
-      cards.push({
-        eyebrow: "Recommended session",
-        icon: CalendarClock,
-        title: `${peak.label} block`,
-        body: `You perform ${peak.uplift}% better in ${peak.label.toLowerCase()} blocks. Pair it with active recall on your weakest module.`,
-        prompt: `Design my next ${peak.label.toLowerCase()} block — 60 minutes, structured around my weakest module with active recall and one ${qType} set.`,
-      });
-    } else if (streak >= 3) {
+    if (streak >= 3) {
       cards.push({
         eyebrow: "Recommended session",
         icon: CalendarClock,

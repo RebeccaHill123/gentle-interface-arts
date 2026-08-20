@@ -1,540 +1,394 @@
-// Explainable analytics derivation for the Tentra dashboard.
-// Every metric here is computed from real tracked behaviour
-// (StudySession[], onboarding confidence, target hours, syllabus weights).
-// When data is insufficient, we return `null` instead of inventing a number —
-// the UI shows an "unlocking" message describing exactly what's needed.
+// Honest analytics derivation.
+//
+// Hard rules enforced here (Phase 1 truth pass):
+//  - "Accuracy" ONLY ever means graded correct answers / graded answers, and
+//    only ever comes from `graded-performance.ts`.
+//  - Self-reported focus/mood are wellbeing signals. They are never converted
+//    into accuracy, mock performance, readiness, mastery or a predicted score.
+//  - No predicted SQE score is produced in this phase.
+//  - Coverage uses the canonical full syllabus for the user's ExamPath.
+//  - Study minutes/time are reported as effort, never as performance.
+//  - Insufficient data returns `null`, never an invented number.
+import type { ExamPath, StoredPlan, StudySession } from "@/lib/plan-store";
+import { getSubjectByName } from "@/lib/sqe-syllabus";
+import { defaultPathForExam } from "@/lib/exam-paths";
+import {
+  EMPTY_GRADED_RESULTS,
+  MIN_SUBJECT_SAMPLE,
+  type GradedResults,
+} from "@/lib/graded-performance";
+import { computeCoverage, type CoverageResult, type CoverageSignal } from "@/lib/syllabus-coverage";
+import { localDateFor, type StudyEventRow } from "@/lib/study-log";
 
-import type { StoredPlan, StudySession } from "@/lib/plan-store";
-import { SQE_SYLLABUS, getSubjectByName } from "@/lib/sqe-syllabus";
-
-export interface ReadinessBreakdown {
-  // Each component is 0..100
-  mockPerformance: number | null;
-  syllabusCoverage: number;
-  consistency: number;
-  weakTopicImprovement: number | null;
-  revisionRecency: number;
-  hoursVsTarget: number;
-  confidence: number;
-}
-
-export interface ReadinessResult {
-  score: number; // 0..100
-  weights: Record<keyof ReadinessBreakdown, number>;
-  breakdown: ReadinessBreakdown;
-  componentsAvailable: number;
-}
-
-export interface PredictedScore {
-  score: number; // 0..100
-  passLikelihood: number; // 0..100
-  band: "Below pass" | "Borderline" | "Likely pass" | "Strong pass" | "Distinction range";
-  confidenceLow: number;
-  confidenceHigh: number;
-  basedOnMocks: number;
-}
-
-export interface PeakPerformance {
-  bucket: "early-morning" | "morning" | "midday" | "afternoon" | "evening" | "night";
-  label: string; // human readable
-  uplift: number; // % vs other buckets
-  sessionsInBucket: number;
-}
+// ───────── types
 
 export interface SubjectStat {
   module: string;
-  accuracy: number | null; // 0..100, null if no quiz/mock data
-  confidence: number; // 1..5
-  minutes: number; // total minutes logged (all-time)
-  recencyDays: number | null; // days since last session
-  trend: number | null; // +/- accuracy points vs prior period
-  syllabusWeight: number; // 0..1 from sqe-syllabus
-  highYield: number; // 1..5
-  riskScore: number; // 0..100, higher = more at risk
+  /** Graded accuracy 0..100. null unless there are enough graded answers. */
+  accuracy: number | null;
+  /** Number of graded answers behind `accuracy`. */
+  gradedAttempts: number;
+  /** Self-rated 1..5. Explicitly NOT performance. */
+  confidence: number;
+  /** Effort only. */
+  minutes: number;
+  recencyDays: number | null;
+  syllabusWeight: number;
+  highYield: number;
+}
+
+export interface AttentionItem {
+  module: string;
+  /** The evidence class — never inferred from time spent or mood. */
+  evidence: "low-graded-accuracy" | "no-coverage" | "self-rated-low";
+  detail: string;
+  sampleSize: number | null;
 }
 
 export interface WeeklyLoadPoint {
-  weekStart: string; // ISO date (Mon)
+  weekStart: string; // local YYYY-MM-DD (Monday)
   minutes: number;
   targetMinutes: number;
 }
 
-export interface MockTrendPoint {
-  index: number;
-  date: string;
-  accuracy: number;
-  minutes: number;
+export interface OnTrackWeek {
+  plannedMinutes: number;
+  completedMinutes: number;
+  /** 0..100, null when no weekly target is set. */
+  percent: number | null;
+  weekStart: string;
+  source: string;
+}
+
+export interface ConsistencyResult {
+  studyDays: number;
+  windowDays: number;
+  percent: number;
+  currentStreak: number;
+  source: string;
+}
+
+export interface SelfReportedQuality {
+  sessionsRated: number;
+  avgFocusPct: number | null;
+  avgMood: number | null;
+  /** Always shown next to these numbers in the UI. */
+  disclaimer: string;
 }
 
 export interface Insight {
   tone: "good" | "warn" | "info";
   text: string;
-  source: string; // e.g. "Last 14 days · 8 sessions"
+  source: string;
 }
 
 export interface AnalyticsBundle {
   hasAnyData: boolean;
+  /** True when canonical study_events are unavailable and we fell back to the legacy plan blob. */
+  usingLegacyFallback: boolean;
   totalSessions: number;
-  totalMockSessions: number;
   totalLoggedMinutes: number;
-  readiness: ReadinessResult | null;
-  predicted: PredictedScore | null;
-  peak: PeakPerformance | null;
+  graded: GradedResults;
+  coverage: CoverageResult;
+  onTrack: OnTrackWeek;
+  consistency: ConsistencyResult;
+  selfReported: SelfReportedQuality;
   subjects: SubjectStat[];
   strongest: SubjectStat[];
   weakest: SubjectStat[];
-  atRisk: SubjectStat[];
+  needsAttention: AttentionItem[];
   weeklyLoad: WeeklyLoadPoint[];
-  mockTrend: MockTrendPoint[];
   insights: Insight[];
 }
 
-// ---------- helpers ----------
+export interface DeriveOptions {
+  /** Canonical graded results. Omit only when they genuinely aren't loaded yet. */
+  graded?: GradedResults;
+  /** Canonical study events. When empty, the legacy plan blob is used as a compatibility view. */
+  events?: StudyEventRow[];
+}
+
+// ───────── helpers
 
 const DAY_MS = 86_400_000;
 
-function startOfWeek(d: Date): Date {
+/** Normalised activity record used internally — canonical or legacy. */
+interface Activity {
+  localDate: string;
+  occurredAt: number;
+  minutes: number;
+  subject: string | null;
+  subtopic: string | null;
+  activityType: string;
+  selfFocus: number | null;
+  selfMood: number | null;
+}
+
+function localMondayKey(d: Date): string {
   const x = new Date(d);
   const day = (x.getDay() + 6) % 7; // Mon = 0
   x.setHours(0, 0, 0, 0);
   x.setDate(x.getDate() - day);
-  return x;
+  return localDateFor(x);
 }
 
-function dateKey(d: Date): string {
-  return d.toISOString().slice(0, 10);
+function fromEvents(events: StudyEventRow[]): Activity[] {
+  return events.map((e) => ({
+    localDate: e.local_date,
+    occurredAt: new Date(e.occurred_at).getTime(),
+    minutes: e.actual_minutes ?? 0,
+    subject: e.subject,
+    subtopic: e.subtopic,
+    activityType: e.activity_type,
+    selfFocus: e.self_focus,
+    selfMood: e.self_mood,
+  }));
 }
 
-function bucketHour(h: number): PeakPerformance["bucket"] {
-  if (h < 6) return "night";
-  if (h < 9) return "early-morning";
-  if (h < 12) return "morning";
-  if (h < 14) return "midday";
-  if (h < 18) return "afternoon";
-  if (h < 22) return "evening";
-  return "night";
+function fromLegacy(sessions: StudySession[]): Activity[] {
+  return sessions.map((s) => ({
+    // Legacy rows mixed local and UTC keys; re-derive from the timestamp so
+    // every date key in analytics is the user's local date.
+    localDate: s.loggedAt ? localDateFor(new Date(s.loggedAt)) : s.date,
+    occurredAt: new Date(s.loggedAt ?? `${s.date}T12:00:00Z`).getTime(),
+    minutes: s.minutes ?? 0,
+    subject: s.module ?? null,
+    subtopic: null,
+    activityType: s.sessionType ?? "study",
+    selfFocus: typeof s.focus === "number" ? s.focus : null,
+    selfMood: typeof s.mood === "number" ? s.mood : null,
+  }));
 }
 
-const BUCKET_LABEL: Record<PeakPerformance["bucket"], string> = {
-  "early-morning": "early morning (6–9am)",
-  morning: "mid-morning (9am–12pm)",
-  midday: "midday (12–2pm)",
-  afternoon: "afternoon (2–6pm)",
-  evening: "evening (6–10pm)",
-  night: "late-night (10pm–6am)",
-};
-
-// Pseudo-accuracy per session — until per-question scoring is wired,
-// we estimate session quality from focus * (mood/5) when present.
-function sessionQuality(s: StudySession): number | null {
-  if (typeof s.focus === "number" && typeof s.mood === "number") {
-    return Math.max(0, Math.min(1, s.focus * (s.mood / 5)));
+function computeLocalStreak(dates: Set<string>): number {
+  let streak = 0;
+  const cursor = new Date();
+  if (!dates.has(localDateFor(cursor))) cursor.setDate(cursor.getDate() - 1);
+  while (dates.has(localDateFor(cursor))) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
   }
-  if (typeof s.focus === "number") return Math.max(0, Math.min(1, s.focus));
-  return null;
+  return streak;
 }
 
-// ---------- main ----------
+// ───────── main
 
-export function deriveAnalytics(plan: StoredPlan | null): AnalyticsBundle {
-  const sessions: StudySession[] = (plan?.sessions ?? []).slice().sort(
-    (a, b) => new Date(a.loggedAt).getTime() - new Date(b.loggedAt).getTime(),
-  );
+export function deriveAnalytics(
+  plan: StoredPlan | null,
+  opts: DeriveOptions = {},
+): AnalyticsBundle {
+  const graded = opts.graded ?? EMPTY_GRADED_RESULTS;
   const modules = plan?.input.modules ?? [];
-  const targetWeeklyMinutes = (plan?.input.hoursPerWeek ?? 0) * 60;
+  const examPath: ExamPath =
+    plan?.input.examPath ?? defaultPathForExam(plan?.input.examType ?? "SQE1");
+  const targetWeeklyMinutes = Math.max(0, (plan?.input.hoursPerWeek ?? 0) * 60);
+
+  const canonical = opts.events ?? [];
+  const usingLegacyFallback = canonical.length === 0;
+  const activities = (
+    usingLegacyFallback ? fromLegacy(plan?.sessions ?? []) : fromEvents(canonical)
+  ).sort((a, b) => a.occurredAt - b.occurredAt);
+
   const now = Date.now();
+  const totalLoggedMinutes = activities.reduce((a, s) => a + s.minutes, 0);
 
-  const mockSessions = sessions.filter(
-    (s) => s.sessionType === "mock" || s.sessionType === "quiz",
-  );
-  const totalLoggedMinutes = sessions.reduce((a, s) => a + s.minutes, 0);
-
-  // -------- subjects --------
+  // ── subjects: effort + graded accuracy, kept strictly separate
+  const gradedBySubject = new Map(graded.perSubject.map((s) => [s.subject, s]));
   const subjects: SubjectStat[] = modules.map((m) => {
-    const subjectSessions = sessions.filter((s) => s.module === m.name);
-    const minutes = subjectSessions.reduce((a, s) => a + s.minutes, 0);
-    const lastSession = subjectSessions[subjectSessions.length - 1];
-    const recencyDays = lastSession
-      ? Math.floor((now - new Date(lastSession.loggedAt).getTime()) / DAY_MS)
-      : null;
-
-    const quizzes = subjectSessions.filter(
-      (s) => (s.sessionType === "mock" || s.sessionType === "quiz") && sessionQuality(s) !== null,
-    );
-    const accuracy = quizzes.length
-      ? Math.round(
-          (quizzes.reduce((a, s) => a + (sessionQuality(s) ?? 0), 0) / quizzes.length) * 100,
-        )
-      : null;
-
-    let trend: number | null = null;
-    if (quizzes.length >= 4) {
-      const half = Math.floor(quizzes.length / 2);
-      const early = quizzes.slice(0, half);
-      const late = quizzes.slice(-half);
-      const avg = (arr: StudySession[]) =>
-        (arr.reduce((a, s) => a + (sessionQuality(s) ?? 0), 0) / arr.length) * 100;
-      trend = Math.round(avg(late) - avg(early));
-    }
-
+    const mine = activities.filter((s) => s.subject === m.name);
+    const minutes = mine.reduce((a, s) => a + s.minutes, 0);
+    const last = mine[mine.length - 1];
+    const g = gradedBySubject.get(m.name);
     const syllabus = getSubjectByName(m.name);
-    const syllabusWeight = syllabus?.weight ?? 0.05;
-    const highYield = syllabus?.highYield ?? 3;
-
-    // Risk: confidence gap × HY × weight × recency penalty
-    const confGap = Math.max(0, 5 - m.confidence) / 5;
-    const recencyPenalty = recencyDays === null ? 0.6 : Math.min(1, recencyDays / 14);
-    const accGap = accuracy === null ? 0.4 : Math.max(0, 70 - accuracy) / 70;
-    const riskScore = Math.round(
-      Math.min(
-        100,
-        100 *
-          (confGap * 0.35 +
-            (highYield / 5) * syllabusWeight * 1.2 +
-            recencyPenalty * 0.25 +
-            accGap * 0.3),
-      ),
-    );
-
     return {
       module: m.name,
-      accuracy,
+      accuracy: g && g.attempted >= MIN_SUBJECT_SAMPLE ? g.accuracy : null,
+      gradedAttempts: g?.attempted ?? 0,
       confidence: m.confidence,
       minutes,
-      recencyDays,
-      trend,
-      syllabusWeight,
-      highYield,
-      riskScore,
+      recencyDays: last ? Math.floor((now - last.occurredAt) / DAY_MS) : null,
+      syllabusWeight: syllabus?.weight ?? 0,
+      highYield: syllabus?.highYield ?? 3,
     };
   });
 
-  // -------- readiness components --------
-  const allMockQs = mockSessions.filter((s) => sessionQuality(s) !== null);
-  const mockPerformance = allMockQs.length
-    ? Math.round(
-        (allMockQs.reduce((a, s) => a + (sessionQuality(s) ?? 0), 0) / allMockQs.length) * 100,
-      )
-    : null;
+  // ── coverage against the canonical full syllabus
+  const signals: CoverageSignal[] = activities
+    .filter((a) => a.subject)
+    .map((a) => ({ subject: a.subject!, subtopic: a.subtopic, minutes: a.minutes }));
+  const coverage = computeCoverage(examPath, signals);
 
-  // Coverage = % of syllabus subjects (weighted) that have any logged minutes.
-  const coverageWeighted = subjects.length
-    ? subjects.reduce(
-        (a, s) => a + (s.minutes > 0 ? s.syllabusWeight : 0),
-        0,
-      ) /
-      Math.max(
-        0.01,
-        subjects.reduce((a, s) => a + s.syllabusWeight, 0),
-      )
-    : 0;
-  const syllabusCoverage = Math.round(coverageWeighted * 100);
-
-  // Consistency = % of last 14 days with at least one session.
-  const last14 = new Set<string>();
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(now - i * DAY_MS);
-    if (sessions.some((s) => s.date === dateKey(d))) last14.add(dateKey(d));
-  }
-  const consistency = Math.round((last14.size / 14) * 100);
-
-  // Weak topic improvement = avg trend across the bottom-confidence half.
-  const weakSubjects = [...subjects]
-    .sort((a, b) => a.confidence - b.confidence)
-    .slice(0, Math.max(1, Math.ceil(subjects.length / 2)));
-  const weakWithTrend = weakSubjects.filter((s) => s.trend !== null);
-  const weakTopicImprovement = weakWithTrend.length
-    ? Math.round(
-        50 +
-          (weakWithTrend.reduce((a, s) => a + (s.trend ?? 0), 0) / weakWithTrend.length) * 2,
-      )
-    : null;
-
-  // Recency = inverse avg days since last touch on weighted high-yield subjects.
-  const touched = subjects.filter((s) => s.recencyDays !== null);
-  const revisionRecency = touched.length
-    ? Math.round(
-        Math.max(
-          0,
-          100 -
-            (touched.reduce((a, s) => a + (s.recencyDays ?? 0) * (s.highYield / 5), 0) /
-              touched.reduce((a, s) => a + s.highYield / 5, 0)) *
-              5,
-        ),
-      )
-    : 0;
-
-  // Hours vs target — last-7-days actual vs target.
-  const last7Min = sessions
-    .filter((s) => now - new Date(s.loggedAt).getTime() < 7 * DAY_MS)
+  // ── on track this week (planned vs completed real minutes)
+  const weekStart = localMondayKey(new Date());
+  const weekMinutes = activities
+    .filter((a) => a.localDate >= weekStart)
     .reduce((a, s) => a + s.minutes, 0);
-  const hoursVsTarget = targetWeeklyMinutes > 0
-    ? Math.round(Math.min(100, (last7Min / targetWeeklyMinutes) * 100))
-    : 0;
-
-  // Confidence average (1..5 -> 0..100).
-  const confidenceAvg = subjects.length
-    ? Math.round((subjects.reduce((a, s) => a + s.confidence, 0) / subjects.length / 5) * 100)
-    : 0;
-
-  const breakdown: ReadinessBreakdown = {
-    mockPerformance,
-    syllabusCoverage,
-    consistency,
-    weakTopicImprovement,
-    revisionRecency,
-    hoursVsTarget,
-    confidence: confidenceAvg,
+  const onTrack: OnTrackWeek = {
+    plannedMinutes: targetWeeklyMinutes,
+    completedMinutes: weekMinutes,
+    percent:
+      targetWeeklyMinutes > 0
+        ? Math.min(999, Math.round((weekMinutes / targetWeeklyMinutes) * 100))
+        : null,
+    weekStart,
+    source: usingLegacyFallback
+      ? "Your saved sessions (this device's plan history)"
+      : "Recorded study events",
   };
 
-  // Weights — published in the UI tooltip.
-  const weights: Record<keyof ReadinessBreakdown, number> = {
-    mockPerformance: 0.4,
-    syllabusCoverage: 0.2,
-    consistency: 0.15,
-    weakTopicImprovement: 0.15,
-    revisionRecency: 0.1,
-    hoursVsTarget: 0,
-    confidence: 0,
+  // ── consistency (local dates only)
+  const dateSet = new Set(activities.map((a) => a.localDate));
+  const windowDays = 14;
+  let studyDays = 0;
+  for (let i = 0; i < windowDays; i++) {
+    const d = new Date(now - i * DAY_MS);
+    if (dateSet.has(localDateFor(d))) studyDays += 1;
+  }
+  const consistency: ConsistencyResult = {
+    studyDays,
+    windowDays,
+    percent: Math.round((studyDays / windowDays) * 100),
+    currentStreak: computeLocalStreak(dateSet),
+    source: `Days with at least one recorded session · last ${windowDays} days`,
   };
 
-  // Re-normalise weights over only the components we actually have data for.
-  const present = (Object.keys(weights) as (keyof ReadinessBreakdown)[]).filter(
-    (k) => breakdown[k] !== null && weights[k] > 0,
-  );
-  const presentWeightSum = present.reduce((a, k) => a + weights[k], 0);
-  const componentsAvailable = present.length;
+  // ── self-reported wellbeing (kept away from performance)
+  const rated = activities.filter((a) => a.selfFocus !== null || a.selfMood !== null);
+  const focusVals = rated.map((a) => a.selfFocus).filter((v): v is number => v !== null);
+  const moodVals = rated.map((a) => a.selfMood).filter((v): v is number => v !== null);
+  const selfReported: SelfReportedQuality = {
+    sessionsRated: rated.length,
+    avgFocusPct: focusVals.length
+      ? Math.round((focusVals.reduce((a, v) => a + v, 0) / focusVals.length) * 100)
+      : null,
+    avgMood: moodVals.length
+      ? Math.round((moodVals.reduce((a, v) => a + v, 0) / moodVals.length) * 10) / 10
+      : null,
+    disclaimer: "Self-reported by you at the end of a session — not a performance measure.",
+  };
 
-  let readiness: ReadinessResult | null = null;
-  if (presentWeightSum > 0 && sessions.length >= 3) {
-    const score = Math.round(
-      present.reduce(
-        (a, k) => a + ((breakdown[k] as number) * weights[k]) / presentWeightSum,
-        0,
-      ),
-    );
-    readiness = {
-      score: Math.max(0, Math.min(100, score)),
-      weights,
-      breakdown,
-      componentsAvailable,
-    };
-  }
+  // ── rankings: graded only, with sample size
+  const withGraded = subjects.filter((s) => s.accuracy !== null);
+  const strongest = [...withGraded].sort((a, b) => (b.accuracy ?? 0) - (a.accuracy ?? 0)).slice(0, 3);
+  const weakest = [...withGraded].sort((a, b) => (a.accuracy ?? 0) - (b.accuracy ?? 0)).slice(0, 3);
 
-  // -------- predicted score --------
-  let predicted: PredictedScore | null = null;
-  if (mockSessions.length >= 3 && mockPerformance !== null) {
-    // Trajectory: average of last 3 mocks weighted slightly more than overall mean.
-    const recent = mockSessions.slice(-3);
-    const recentAvg =
-      (recent.reduce((a, s) => a + (sessionQuality(s) ?? 0), 0) / recent.length) * 100;
-    const blended = Math.round(mockPerformance * 0.4 + recentAvg * 0.6);
-
-    // Confidence interval shrinks as we get more mocks.
-    const margin = Math.max(4, Math.round(18 / Math.sqrt(mockSessions.length)));
-    const confidenceLow = Math.max(0, blended - margin);
-    const confidenceHigh = Math.min(100, blended + margin);
-
-    // Pass likelihood: SQE1 effective threshold ~55–60%; logistic around 57.
-    const passLikelihood = Math.round(
-      100 / (1 + Math.exp(-(blended - 57) / 6)),
-    );
-
-    const band: PredictedScore["band"] =
-      blended >= 78
-        ? "Distinction range"
-        : blended >= 68
-          ? "Strong pass"
-          : blended >= 58
-            ? "Likely pass"
-            : blended >= 50
-              ? "Borderline"
-              : "Below pass";
-
-    predicted = {
-      score: blended,
-      passLikelihood,
-      band,
-      confidenceLow,
-      confidenceHigh,
-      basedOnMocks: mockSessions.length,
-    };
-  }
-
-  // -------- peak performance --------
-  let peak: PeakPerformance | null = null;
-  if (sessions.length >= 8) {
-    const buckets: Record<string, { sum: number; n: number }> = {};
-    for (const s of sessions) {
-      const q = sessionQuality(s);
-      if (q === null) continue;
-      const h = new Date(s.loggedAt).getHours();
-      const b = bucketHour(h);
-      buckets[b] = buckets[b] || { sum: 0, n: 0 };
-      buckets[b].sum += q;
-      buckets[b].n += 1;
+  // ── needs attention: evidence-led only
+  const needsAttention: AttentionItem[] = [];
+  for (const s of withGraded) {
+    if ((s.accuracy ?? 100) < 60) {
+      needsAttention.push({
+        module: s.module,
+        evidence: "low-graded-accuracy",
+        detail: `${s.accuracy}% correct across ${s.gradedAttempts} graded questions.`,
+        sampleSize: s.gradedAttempts,
+      });
     }
-    const entries = Object.entries(buckets).filter(([, v]) => v.n >= 2);
-    if (entries.length >= 2) {
-      const scored = entries.map(([b, v]) => ({ b, avg: v.sum / v.n, n: v.n }));
-      scored.sort((a, b) => b.avg - a.avg);
-      const top = scored[0];
-      const others = scored.slice(1);
-      const othersAvg = others.reduce((a, x) => a + x.avg, 0) / others.length;
-      const uplift = Math.round(((top.avg - othersAvg) / Math.max(0.01, othersAvg)) * 100);
-      peak = {
-        bucket: top.b as PeakPerformance["bucket"],
-        label: BUCKET_LABEL[top.b as PeakPerformance["bucket"]],
-        uplift: Math.max(0, uplift),
-        sessionsInBucket: top.n,
-      };
+  }
+  for (const name of coverage.untouchedSubjects) {
+    const s = subjects.find((x) => x.module === name);
+    needsAttention.push({
+      module: name,
+      evidence: "no-coverage",
+      detail: `No meaningful study time recorded yet${s && s.highYield >= 4 ? " · high-yield subject" : ""}.`,
+      sampleSize: null,
+    });
+  }
+  for (const m of modules) {
+    if (m.rated && m.confidence <= 2 && !needsAttention.some((n) => n.module === m.name)) {
+      needsAttention.push({
+        module: m.name,
+        evidence: "self-rated-low",
+        detail: `You rated your confidence ${m.confidence}/5. No graded evidence yet.`,
+        sampleSize: null,
+      });
     }
   }
 
-  // -------- weekly load (last 8 weeks) --------
+  // ── weekly effort (last 8 weeks, local weeks)
   const weeklyLoad: WeeklyLoadPoint[] = [];
-  const thisWeekStart = startOfWeek(new Date());
   for (let i = 7; i >= 0; i--) {
-    const ws = new Date(thisWeekStart);
-    ws.setDate(ws.getDate() - i * 7);
-    const we = new Date(ws);
-    we.setDate(we.getDate() + 7);
-    const minutes = sessions
-      .filter((s) => {
-        const t = new Date(s.loggedAt).getTime();
-        return t >= ws.getTime() && t < we.getTime();
-      })
+    const ws = new Date(now - i * 7 * DAY_MS);
+    const key = localMondayKey(ws);
+    const endDate = new Date(ws);
+    endDate.setDate(endDate.getDate() + 7);
+    const endKey = localMondayKey(endDate);
+    const minutes = activities
+      .filter((a) => a.localDate >= key && a.localDate < endKey)
       .reduce((a, s) => a + s.minutes, 0);
-    weeklyLoad.push({
-      weekStart: dateKey(ws),
-      minutes,
-      targetMinutes: targetWeeklyMinutes,
-    });
+    weeklyLoad.push({ weekStart: key, minutes, targetMinutes: targetWeeklyMinutes });
   }
 
-  // -------- mock trend --------
-  const mockTrend: MockTrendPoint[] = mockSessions
-    .map((s, i) => {
-      const q = sessionQuality(s);
-      if (q === null) return null;
-      return {
-        index: i + 1,
-        date: s.date,
-        accuracy: Math.round(q * 100),
-        minutes: s.minutes,
-      };
-    })
-    .filter((x): x is MockTrendPoint => x !== null);
-
-  // -------- rankings --------
-  const rated = subjects.filter((s) => s.accuracy !== null || s.minutes > 0);
-  const strongest = [...rated]
-    .sort((a, b) => (b.accuracy ?? b.confidence * 20) - (a.accuracy ?? a.confidence * 20))
-    .slice(0, 3);
-  const weakest = [...rated]
-    .sort((a, b) => (a.accuracy ?? a.confidence * 20) - (b.accuracy ?? b.confidence * 20))
-    .slice(0, 3);
-  const atRisk = [...subjects].sort((a, b) => b.riskScore - a.riskScore).slice(0, 4);
-
-  // -------- insights (data-derived only) --------
+  // ── insights (each states its evidence; none derived from mood)
   const insights: Insight[] = [];
-  if (peak) {
-    insights.push({
-      tone: "good",
-      text: `You score ${peak.uplift}% higher in ${peak.label} sessions.`,
-      source: `Based on ${peak.sessionsInBucket} sessions in this window.`,
-    });
-  }
-  const stale = subjects
-    .filter((s) => s.recencyDays !== null && s.recencyDays >= 10 && s.highYield >= 4)
-    .sort((a, b) => (b.recencyDays ?? 0) - (a.recencyDays ?? 0))[0];
-  if (stale) {
-    insights.push({
-      tone: "warn",
-      text: `${stale.module} hasn't been revised in ${stale.recencyDays} days — scheduling a refresh.`,
-      source: `High-yield subject (HY${stale.highYield}).`,
-    });
-  }
-  const improving = subjects
-    .filter((s) => s.trend !== null && (s.trend ?? 0) >= 5)
-    .sort((a, b) => (b.trend ?? 0) - (a.trend ?? 0))[0];
-  if (improving) {
-    insights.push({
-      tone: "good",
-      text: `${improving.module} accuracy is up ${improving.trend}% across recent sessions.`,
-      source: `Compared first vs latest half of your mocks.`,
-    });
-  }
-  const declining = subjects
-    .filter((s) => s.trend !== null && (s.trend ?? 0) <= -5)
-    .sort((a, b) => (a.trend ?? 0) - (b.trend ?? 0))[0];
-  if (declining) {
-    insights.push({
-      tone: "warn",
-      text: `${declining.module} accuracy has dropped ${Math.abs(declining.trend ?? 0)}% — flagged for spaced reinforcement.`,
-      source: `Period-over-period mock comparison.`,
-    });
-  }
-  if (targetWeeklyMinutes > 0) {
-    const ratio = last7Min / targetWeeklyMinutes;
-    if (ratio < 0.6 && sessions.length >= 3) {
+  if (graded.hasData && graded.trend.length === 2) {
+    const [early, late] = graded.trend;
+    const delta = late.accuracy - early.accuracy;
+    if (Math.abs(delta) >= 5) {
       insights.push({
-        tone: "warn",
-        text: `You're at ${Math.round(ratio * 100)}% of your weekly target. Under-training detected.`,
-        source: `Last 7 days · ${Math.round(last7Min)} of ${targetWeeklyMinutes} target minutes.`,
-      });
-    } else if (ratio > 1.4) {
-      insights.push({
-        tone: "warn",
-        text: `You're 40%+ above target this week — watch for burnout.`,
-        source: `Last 7 days · ${Math.round(last7Min)} minutes.`,
+        tone: delta > 0 ? "good" : "warn",
+        text: `Graded accuracy has ${delta > 0 ? "risen" : "fallen"} ${Math.abs(delta)} points, ${early.accuracy}% → ${late.accuracy}%.`,
+        source: `Earlier ${early.attempted} vs recent ${late.attempted} graded questions.`,
       });
     }
   }
-
-  // Coverage gap insight
-  if (subjects.length && syllabusCoverage < 60) {
-    const untouched = subjects
-      .filter((s) => s.minutes === 0)
-      .sort((a, b) => b.syllabusWeight - a.syllabusWeight)[0];
-    if (untouched) {
+  if (!graded.hasData) {
+    insights.push({
+      tone: "info",
+      text: "No graded answers recorded yet, so no accuracy is shown anywhere.",
+      source: "Accuracy requires answered practice, mini-test or mock questions.",
+    });
+  }
+  if (coverage.subtopicPercent !== null && coverage.untouchedSubjects.length) {
+    insights.push({
+      tone: "info",
+      text: `${coverage.subjectsTouched}/${coverage.totalSubjects} syllabus subjects have recorded study time.`,
+      source: coverage.source,
+    });
+  }
+  if (targetWeeklyMinutes > 0 && activities.length >= 3 && onTrack.percent !== null) {
+    if (onTrack.percent < 60) {
       insights.push({
-        tone: "info",
-        text: `Syllabus coverage is ${syllabusCoverage}%. ${untouched.module} (${Math.round(
-          untouched.syllabusWeight * 100,
-        )}% of paper) is untouched.`,
-        source: `Coverage = weighted share of syllabus with logged time.`,
+        tone: "warn",
+        text: `You're at ${onTrack.percent}% of your planned hours this week.`,
+        source: `${Math.round(weekMinutes)} of ${targetWeeklyMinutes} planned minutes since ${weekStart}.`,
+      });
+    } else if (onTrack.percent > 140) {
+      insights.push({
+        tone: "warn",
+        text: `You're well above your planned hours this week — watch for burnout.`,
+        source: `${Math.round(weekMinutes)} of ${targetWeeklyMinutes} planned minutes.`,
       });
     }
   }
 
   return {
-    hasAnyData: sessions.length > 0,
-    totalSessions: sessions.length,
-    totalMockSessions: mockSessions.length,
+    hasAnyData: activities.length > 0 || graded.hasData,
+    usingLegacyFallback,
+    totalSessions: activities.length,
     totalLoggedMinutes,
-    readiness,
-    predicted,
-    peak,
+    graded,
+    coverage,
+    onTrack,
+    consistency,
+    selfReported,
     subjects,
     strongest,
     weakest,
-    atRisk,
+    needsAttention,
     weeklyLoad,
-    mockTrend,
     insights,
   };
 }
 
-export const READINESS_LABELS: Record<keyof ReadinessBreakdown, string> = {
-  mockPerformance: "Mock performance",
-  syllabusCoverage: "Syllabus coverage",
-  consistency: "Revision consistency",
-  weakTopicImprovement: "Weak-topic improvement",
-  revisionRecency: "Revision recency",
-  hoursVsTarget: "Hours vs target",
-  confidence: "Self-rated confidence",
-};
-
-// Total syllabus weight count, for UI hints.
-export const SYLLABUS_SUBJECT_COUNT = SQE_SYLLABUS.length;
+/** Loads canonical inputs and derives the honest bundle. */
+export async function loadAnalytics(plan: StoredPlan | null): Promise<AnalyticsBundle> {
+  const [{ loadGradedResults }, { loadStudyEvents }] = await Promise.all([
+    import("@/lib/graded-performance"),
+    import("@/lib/study-log"),
+  ]);
+  const [graded, events] = await Promise.all([
+    loadGradedResults().catch(() => EMPTY_GRADED_RESULTS),
+    loadStudyEvents().catch(() => []),
+  ]);
+  return deriveAnalytics(plan, { graded, events });
+}

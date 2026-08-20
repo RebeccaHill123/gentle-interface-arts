@@ -42,13 +42,20 @@ import {
   clearPlan,
   pullPlanFromCloud,
   toggleTaskCompletion,
-  addStudySession,
-  adjustModuleConfidence,
   computeStreak,
-  todayKey,
   type StoredPlan,
 } from "@/lib/plan-store";
-import { deriveAnalytics, READINESS_LABELS, type ReadinessResult } from "@/lib/analytics-derive";
+import {
+  recordStudyActivity,
+  recordGradedAttempts,
+  voidStudyActivity,
+  makeIdempotencyKey,
+  questionFingerprint,
+  localDateFor,
+  flushStudyLogQueue,
+} from "@/lib/study-log";
+import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
+
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
@@ -136,10 +143,20 @@ function DashboardPage() {
     setStored(plan ? normalizeStoredPlanTasks(plan) : null);
   }, [tick]);
 
-  const analytics = useMemo(
-    () => (stored ? deriveAnalytics(stored) : null),
-    [stored],
-  );
+  const [analytics, setAnalytics] = useState<AnalyticsBundle | null>(null);
+  useEffect(() => {
+    if (!stored) return;
+    let active = true;
+    void flushStudyLogQueue()
+      .then(() => loadAnalytics(stored))
+      .then((bundle) => {
+        if (active) setAnalytics(bundle);
+      });
+    return () => {
+      active = false;
+    };
+  }, [stored]);
+
 
   const examLabel = getExamLabel(stored?.input.examType, stored?.input.examPath);
   const examId = getUserExamId(stored?.input.examType);
@@ -234,7 +251,9 @@ function DashboardPage() {
   const totalToday = plan.todayTasks.length;
   const progress = totalToday > 0 ? Math.round((completed / totalToday) * 100) : 0;
   const streak = computeStreak(sessions);
-  const readiness = analytics.readiness;
+  const gradedAccuracy = analytics.graded.accuracy;
+  const gradedAttempted = analytics.graded.totalAttempted;
+
 
   // Weekly progress (rolling 7 days)
   const weeklyTargetMins = (input.hoursPerWeek ?? 0) * 60;
@@ -257,11 +276,17 @@ function DashboardPage() {
     0,
   );
 
+  const taskActivityKey = (i: number) => {
+    const task = plan.todayTasks[i];
+    return makeIdempotencyKey("dashboard_task", localDateFor(), i, task?.title);
+  };
+
   const handleToggle = (i: number) => {
     const done = completedTaskIds.includes(String(i));
     if (done) {
-      // Un-complete without quiz
+      // Un-complete: void the canonical activity so effort/accuracy stay truthful.
       toggleTaskCompletion(i);
+      void voidStudyActivity(taskActivityKey(i)).then(() => setTick((t) => t + 1));
       setTick((t) => t + 1);
       return;
     }
@@ -270,19 +295,44 @@ function DashboardPage() {
     setQuizTask({ index: i, ...task });
   };
 
-  const handleQuizComplete = (accuracy: number, minutesSpent: number) => {
+  const handleQuizComplete = (
+    accuracy: number,
+    minutesSpent: number,
+    attempts: { fingerprint: string; isCorrect: boolean; selectedAnswer: string | null }[],
+  ) => {
     if (!quizTask) return;
+    const key = taskActivityKey(quizTask.index);
     toggleTaskCompletion(quizTask.index);
-    adjustModuleConfidence(quizTask.module, accuracy);
-    addStudySession({
-      date: todayKey(),
-      minutes: minutesSpent,
-      module: quizTask.module,
-      note: `Mini-assessment: ${Math.round(accuracy * 100)}% (${quizTask.title})`,
+    void recordStudyActivity({
+      idempotencyKey: key,
+      activityType: "quiz",
+      source: "dashboard_task",
+      actualMinutes: minutesSpent,
+      plannedMinutes: quizTask.minutes,
+      plannedTaskId: String(quizTask.index),
+      subject: quizTask.module,
+      examPath: input.examType,
+      note: `Mini-assessment (${quizTask.title})`,
+      gradedAccuracy: accuracy,
     });
+    if (attempts.length > 0) {
+      void recordGradedAttempts(
+        attempts.map((a, idx) => ({
+          idempotencyKey: makeIdempotencyKey(key, "q", idx, a.fingerprint),
+          sourceType: "mini_test" as const,
+          sourceRef: key,
+          questionFingerprint: a.fingerprint,
+          isCorrect: a.isCorrect,
+          subject: quizTask.module,
+          examPath: input.examType,
+          selectedAnswer: a.selectedAnswer,
+        })),
+      ).then(() => setTick((t) => t + 1));
+    }
     setQuizTask(null);
     setTick((t) => t + 1);
   };
+
 
   const refresh = () => setTick((t) => t + 1);
 
@@ -353,7 +403,8 @@ function DashboardPage() {
 
         <MetricsRow
           daysUntilExam={daysUntilExam}
-          readinessScore={readiness?.score ?? null}
+          gradedAccuracy={gradedAccuracy}
+          gradedAttempted={gradedAttempted}
           streak={streak}
           weeklyPct={weeklyPct}
           weeklyDoneMins={weeklyDoneMins}
@@ -494,14 +545,16 @@ function TodaysPlanCard({
 
 function MetricsRow({
   daysUntilExam,
-  readinessScore,
+  gradedAccuracy,
+  gradedAttempted,
   streak,
   weeklyPct,
   weeklyDoneMins,
   weeklyTargetMins,
 }: {
   daysUntilExam: number;
-  readinessScore: number | null;
+  gradedAccuracy: number | null;
+  gradedAttempted: number;
   streak: { current: number; longest: number; studiedToday: boolean };
   weeklyPct: number;
   weeklyDoneMins: number;
@@ -519,9 +572,13 @@ function MetricsRow({
         accent="pink"
       />
       <MetricCard
-        label="Readiness"
-        value={readinessScore !== null ? `${readinessScore}` : "—"}
-        sub={readinessScore !== null ? "/ 100" : "log 3+ sessions"}
+        label="Practice accuracy"
+        value={gradedAccuracy !== null ? `${gradedAccuracy}%` : "—"}
+        sub={
+          gradedAccuracy !== null
+            ? `${gradedAttempted} graded answer${gradedAttempted === 1 ? "" : "s"}`
+            : "no graded answers yet"
+        }
         icon={<Target className="h-3.5 w-3.5" />}
         accent="violet"
       />
@@ -823,92 +880,7 @@ function MiniRoadmap({
 }
 
 
-function ReadinessCard({ readiness }: { readiness: ReadinessResult | null }) {
-  const score = readiness?.score ?? null;
-  const circumference = 2 * Math.PI * 32;
-  const dash = score !== null ? (score / 100) * circumference : 0;
-  const band =
-    score === null
-      ? "Locked"
-      : score >= 80
-        ? "Strong"
-        : score >= 65
-          ? "On track"
-          : score >= 50
-            ? "Building"
-            : "Below pass";
-  const topDrivers = readiness
-    ? (Object.keys(readiness.breakdown) as (keyof typeof readiness.breakdown)[])
-        .filter((k) => readiness.weights[k] > 0 && readiness.breakdown[k] !== null)
-        .sort((a, b) => (readiness.breakdown[a] as number) - (readiness.breakdown[b] as number))
-        .slice(0, 2)
-    : [];
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div className="rounded-2xl bg-foreground/[0.025] p-5 cursor-help">
-          <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
-            Readiness
-          </div>
-          <div className="relative mt-2 grid h-20 w-20 place-items-center">
-            <svg className="absolute inset-0 -rotate-90" viewBox="0 0 80 80">
-              <defs>
-                <linearGradient id="readiness-ring" x1="0" x2="1" y1="0" y2="1">
-                  <stop offset="0%" stopColor="oklch(0.78 0.18 160)" />
-                  <stop offset="100%" stopColor="oklch(0.62 0.22 250)" />
-                </linearGradient>
-              </defs>
-              <circle cx="40" cy="40" r="32" fill="none" stroke="oklch(0.5 0.05 285 / 0.12)" strokeWidth="4" />
-              {score !== null && (
-                <circle
-                  cx="40"
-                  cy="40"
-                  r="32"
-                  fill="none"
-                  stroke="url(#readiness-ring)"
-                  strokeWidth="4"
-                  strokeLinecap="round"
-                  strokeDasharray={`${dash} ${circumference}`}
-                />
-              )}
-            </svg>
-            <div className="text-center">
-              <div className="font-display text-2xl text-foreground">
-                {score !== null ? `${score}` : "—"}
-              </div>
-              <div className="text-[9px] tracking-wider text-muted-foreground/80">
-                {score !== null ? band : "log 3+"}
-              </div>
-            </div>
-          </div>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent side="bottom" className="max-w-[260px]">
-        {score === null ? (
-          <p className="text-xs">
-            Predicted readiness unlocks after 3 logged sessions. It blends completion vs target,
-            weak-area confidence and review outcomes (mocks &amp; quizzes).
-          </p>
-        ) : (
-          <div className="space-y-1.5 text-xs">
-            <p className="font-medium">Predicted exam readiness: {score}%</p>
-            <p className="text-muted-foreground">
-              Weighted blend of completion, weak areas and review accuracy.
-            </p>
-            {topDrivers.length > 0 && (
-              <p className="text-muted-foreground">
-                Pulling you down:{" "}
-                {topDrivers
-                  .map((k) => `${READINESS_LABELS[k]} (${Math.round(readiness!.breakdown[k] as number)}%)`)
-                  .join(", ")}
-              </p>
-            )}
-          </div>
-        )}
-      </TooltipContent>
-    </Tooltip>
-  );
-}
+
 
 
 function StreakCard({
@@ -1626,12 +1598,15 @@ function RecordSessionDialog({
       toast.error("Add a number of minutes");
       return;
     }
-    addStudySession({
-      date: todayKey(),
-      minutes: m,
-      module: moduleName || undefined,
-      note: note.trim() || undefined,
+    void recordStudyActivity({
+      idempotencyKey: makeIdempotencyKey("manual_log", Date.now(), m, moduleName),
+      activityType: "study",
+      source: "manual_log",
+      actualMinutes: m,
+      subject: moduleName || null,
+      note: note.trim() || null,
     });
+
     toast.success(`Logged ${m} minutes${moduleName ? ` of ${moduleName}` : ""}`);
     setOpen(false);
     setMinutes("30");
@@ -1766,7 +1741,11 @@ function QuizDialog({
   examType: "SQE1" | "SQE2" | "UBE" | "MPRE";
   confidence: number;
   onClose: () => void;
-  onComplete: (accuracy: number, minutesSpent: number) => void;
+  onComplete: (
+    accuracy: number,
+    minutesSpent: number,
+    attempts: { fingerprint: string; isCorrect: boolean; selectedAnswer: string | null }[],
+  ) => void;
 }) {
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1849,7 +1828,13 @@ function QuizDialog({
       1,
       Math.round((Date.now() - startedAt) / 60000),
     );
-    onComplete(accuracy, minutesSpent);
+    const attempts = (questions ?? []).map((question, i) => ({
+      fingerprint: questionFingerprint(task.module, question.prompt),
+      isCorrect: answers[i] === question.correctIndex,
+      selectedAnswer:
+        typeof answers[i] === "number" ? String.fromCharCode(65 + answers[i]) : null,
+    }));
+    onComplete(accuracy, minutesSpent, attempts);
   };
 
   const q = questions?.[current];
