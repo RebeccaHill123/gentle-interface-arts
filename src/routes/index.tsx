@@ -186,7 +186,6 @@ function LandingPage() {
                 </Link>
                 <PremiumCta
                   to="/onboarding"
-                  search={{ exam: "sqe1", src: "landing" }}
                   search={{ exam: "sqe1", src: "landing", placement: "header" }}
                   className="px-4 md:px-5"
                 >
