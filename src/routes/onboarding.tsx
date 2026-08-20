@@ -37,6 +37,18 @@ import {
   type StudyPlan,
 } from "@/lib/plan-store";
 import { getSubjectsForExamPath, defaultPathForExam, pathToExamType } from "@/lib/exam-paths";
+import {
+  buildConfidenceProfile,
+  confidenceToRating,
+  PREPARATION_STAGES,
+  PREPARATION_STAGE_LABELS,
+  RATING_LABELS,
+  RATING_ORDER,
+  RATING_TO_CONFIDENCE,
+  type ConfidenceRating,
+  type ConfidenceSource,
+  type PreparationStage,
+} from "@/lib/confidence";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 
