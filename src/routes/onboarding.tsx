@@ -724,7 +724,7 @@ function OnboardingPage() {
             >
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Button>
-            {step === 1 ? (
+            {step < STEP_COUNT ? (
               <Button
                 type="button"
                 onClick={next}
@@ -748,7 +748,7 @@ function OnboardingPage() {
                   </>
                 ) : (
                   <>
-                    {activeOption.ctaLabel} <Sparkles className="ml-1 h-4 w-4" />
+                    Build my personalised plan <Sparkles className="ml-1 h-4 w-4" />
                   </>
                 )}
               </Button>
@@ -757,9 +757,9 @@ function OnboardingPage() {
         </div>
 
         <p className="mt-4 px-1 text-center text-[12.5px] leading-[1.5] text-muted-foreground">
-          You&apos;ll get a balanced starting plan across the whole syllabus. It becomes more
-          personalised as you study with Tentra.
+          Your plan keeps recalibrating as you complete sessions and log practice results.
         </p>
+
       </div>
 
       {/* Sticky mobile action bar */}
