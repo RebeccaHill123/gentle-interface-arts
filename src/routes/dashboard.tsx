@@ -50,6 +50,8 @@ import {
   recordGradedAttempts,
   voidStudyActivity,
   makeIdempotencyKey,
+  questionFingerprint,
+  localDateFor,
   flushStudyLogQueue,
 } from "@/lib/study-log";
 import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
@@ -401,7 +403,8 @@ function DashboardPage() {
 
         <MetricsRow
           daysUntilExam={daysUntilExam}
-          readinessScore={readiness?.score ?? null}
+          gradedAccuracy={gradedAccuracy}
+          gradedAttempted={gradedAttempted}
           streak={streak}
           weeklyPct={weeklyPct}
           weeklyDoneMins={weeklyDoneMins}
@@ -542,14 +545,16 @@ function TodaysPlanCard({
 
 function MetricsRow({
   daysUntilExam,
-  readinessScore,
+  gradedAccuracy,
+  gradedAttempted,
   streak,
   weeklyPct,
   weeklyDoneMins,
   weeklyTargetMins,
 }: {
   daysUntilExam: number;
-  readinessScore: number | null;
+  gradedAccuracy: number | null;
+  gradedAttempted: number;
   streak: { current: number; longest: number; studiedToday: boolean };
   weeklyPct: number;
   weeklyDoneMins: number;
@@ -567,9 +572,13 @@ function MetricsRow({
         accent="pink"
       />
       <MetricCard
-        label="Readiness"
-        value={readinessScore !== null ? `${readinessScore}` : "—"}
-        sub={readinessScore !== null ? "/ 100" : "log 3+ sessions"}
+        label="Practice accuracy"
+        value={gradedAccuracy !== null ? `${gradedAccuracy}%` : "—"}
+        sub={
+          gradedAccuracy !== null
+            ? `${gradedAttempted} graded answer${gradedAttempted === 1 ? "" : "s"}`
+            : "no graded answers yet"
+        }
         icon={<Target className="h-3.5 w-3.5" />}
         accent="violet"
       />
@@ -1732,7 +1741,11 @@ function QuizDialog({
   examType: "SQE1" | "SQE2" | "UBE" | "MPRE";
   confidence: number;
   onClose: () => void;
-  onComplete: (accuracy: number, minutesSpent: number) => void;
+  onComplete: (
+    accuracy: number,
+    minutesSpent: number,
+    attempts: { fingerprint: string; isCorrect: boolean; selectedAnswer: string | null }[],
+  ) => void;
 }) {
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1815,7 +1828,13 @@ function QuizDialog({
       1,
       Math.round((Date.now() - startedAt) / 60000),
     );
-    onComplete(accuracy, minutesSpent);
+    const attempts = (questions ?? []).map((question, i) => ({
+      fingerprint: questionFingerprint(task.module, question.question),
+      isCorrect: answers[i] === question.correctIndex,
+      selectedAnswer:
+        typeof answers[i] === "number" ? String.fromCharCode(65 + answers[i]) : null,
+    }));
+    onComplete(accuracy, minutesSpent, attempts);
   };
 
   const q = questions?.[current];
