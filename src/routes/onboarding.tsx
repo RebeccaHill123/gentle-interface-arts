@@ -125,13 +125,17 @@ export const Route = createFileRoute("/onboarding")({
   }),
 });
 
-const STEP_COUNT = 2;
+const STEP_COUNT = 3;
 
-/** Safe defaults for everything no longer asked on first run. */
+/** Only the name is deferred — it does not affect plan quality. */
 const DEFAULTS = {
   name: "",
   intensity: "intermediate" as IntensityTier,
   coverageMode: "even" as CoverageMode,
+  /**
+   * Numeric placeholder for an UNRATED subject. It is never presented as
+   * personal data: `rated: false` is what distinguishes it from a real "Okay".
+   */
   neutralConfidence: 3,
 };
 
