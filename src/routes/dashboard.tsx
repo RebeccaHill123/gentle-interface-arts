@@ -122,10 +122,13 @@ function DashboardPage() {
   const [tab, setTab] = useState<DashboardTab>("week");
   const [quizTask, setQuizTask] = useState<{
     index: number;
+    /** Stable adaptive-schedule task id, when the plan has a schedule. */
+    taskId?: string;
     title: string;
     module: string;
     minutes: number;
   } | null>(null);
+
 
   // Hydrate plan from cloud on mount; redirect to onboarding if user has none.
   useEffect(() => {
