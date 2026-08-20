@@ -170,6 +170,36 @@ function DashboardPage() {
     };
   }, [stored]);
 
+  // Adaptive schedule: recalibrate the FUTURE from real evidence. Idempotent —
+  // unchanged evidence returns revision === null and we don't re-render.
+  const [schedule, setSchedule] = useState<PlanSchedule | null>(null);
+  useEffect(() => {
+    if (!stored || !analytics) return;
+    let active = true;
+    void ensureSchedule(stored, analytics, "completion")
+      .then((res) => {
+        if (!active) return;
+        setSchedule(res.schedule);
+        if (res.revision) setStored(res.stored);
+      })
+      .catch((e) => console.warn("ensureSchedule failed", e));
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analytics]);
+
+  useEffect(() => {
+    const existing = getSchedule(stored);
+    if (existing) setSchedule(existing);
+  }, [stored]);
+
+  const today = localDateFor();
+  const scheduledToday: ScheduledTask[] = useMemo(
+    () => (schedule ? tasksForDate(schedule, today) : []),
+    [schedule, today],
+  );
+
 
   const examLabel = getExamLabel(stored?.input.examType, stored?.input.examPath);
   const examId = getUserExamId(stored?.input.examType);
