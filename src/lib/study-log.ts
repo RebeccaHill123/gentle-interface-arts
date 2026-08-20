@@ -521,3 +521,23 @@ export function makeIdempotencyKey(...parts: (string | number | undefined | null
     .map((p) => String(p).replace(/[^a-zA-Z0-9_:.-]/g, "-").slice(0, 60))
     .join(":");
 }
+
+/**
+ * Stable, non-reversible fingerprint for a question. Question text/prompts must
+ * never be persisted in analytics tables, so we store this instead.
+ */
+export function questionFingerprint(...parts: (string | number | undefined | null)[]): string {
+  const raw = parts
+    .filter((p) => p !== undefined && p !== null && p !== "")
+    .map((p) => String(p).trim().toLowerCase().replace(/\s+/g, " "))
+    .join("|");
+  let h1 = 0x811c9dc5;
+  let h2 = 0x01000193;
+  for (let i = 0; i < raw.length; i++) {
+    const c = raw.charCodeAt(i);
+    h1 = (h1 ^ c) * 16777619 >>> 0;
+    h2 = (h2 + c * (i + 1)) >>> 0;
+  }
+  return `q_${h1.toString(36)}${h2.toString(36)}`;
+}
+
