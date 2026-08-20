@@ -215,15 +215,63 @@ function SettingsPage() {
           )}
         </Card>
 
+        <Card title="Plan settings">
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              Change your availability or exam date and Tentra rebuilds only your upcoming days —
+              your logged history stays exactly as it is.
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="hours" className="text-xs text-muted-foreground">
+                  Hours per week
+                </Label>
+                <Input
+                  id="hours"
+                  type="number"
+                  min={1}
+                  max={60}
+                  value={hoursPerWeek}
+                  onChange={(e) => setHoursPerWeek(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="examDate" className="text-xs text-muted-foreground">
+                  Exam date
+                </Label>
+                <Input
+                  id="examDate"
+                  type="date"
+                  value={examDate}
+                  onChange={(e) => setExamDate(e.target.value)}
+                  className="rounded-xl"
+                />
+              </div>
+            </div>
+            <Button
+              onClick={handleApplyPlanSettings}
+              disabled={applying || !hoursPerWeek || !examDate}
+              className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+            >
+              {applying ? (
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+              ) : (
+                <CalendarClock className="mr-1.5 h-4 w-4" />
+              )}
+              {applying ? "Updating plan…" : "Update my plan"}
+            </Button>
+          </div>
+        </Card>
+
         <Card title="Study plan">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-sm font-semibold text-foreground">
-                Personalise this plan further
+                Start again from scratch
               </div>
               <div className="text-xs text-muted-foreground">
-                Rebuild your plan with a new exam date, weekly hours or subject focus. Optional —
-                your current plan keeps working either way.
+                Rebuild your plan from new onboarding answers. This clears your current plan.
               </div>
             </div>
 
@@ -238,6 +286,7 @@ function SettingsPage() {
             </Button>
           </div>
         </Card>
+
 
         <Card title="Sign out">
           <div className="flex flex-wrap items-center justify-between gap-3">
