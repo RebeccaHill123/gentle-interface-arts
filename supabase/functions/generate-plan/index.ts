@@ -500,9 +500,14 @@ Deno.serve(async (req) => {
   let daysUntilExam = 1;
   try {
     body = await req.json();
-    if (!body || !Array.isArray(body.modules) || body.modules.length === 0 || !body.examDate || !body.name) {
+    if (!body || !Array.isArray(body.modules) || body.modules.length === 0 || !body.examDate) {
       throw new Error("Invalid plan request");
     }
+    // Name is optional (deferred in onboarding) and never affects allocation.
+    // Unrated subjects are clamped to neutral so weakness is never inferred.
+    body.modules = body.modules.map((m) =>
+      m.rated === true ? m : { ...m, confidence: 3, weakSubtopics: m.weakSubtopics ?? [] },
+    );
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     daysUntilExam = Math.max(
