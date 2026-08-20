@@ -12,6 +12,12 @@
 // Pure and client-safe: no server-only imports.
 
 import type { OnboardingInput, StoredPlan } from "@/lib/plan-store";
+import {
+  buildConfidenceProfile,
+  PREPARATION_STAGE_EFFECT,
+  PREPARATION_STAGE_LABELS,
+  type PreparationStage,
+} from "@/lib/confidence";
 import { buildWeekOneSchedule, type WeekOneSchedule } from "@/lib/week-one";
 
 const TOKEN_ALPHABET =
