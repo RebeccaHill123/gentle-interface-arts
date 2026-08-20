@@ -522,7 +522,42 @@ function DashboardPage() {
           onStartDiagnostic={() => navigate({ to: "/practice" })}
           onGeneratePlan={() => navigate({ to: "/onboarding" })}
           onStartItem={handleStartTodayItem}
+          onCompleteItem={handleCompleteTodayItem}
+          onSkipItem={handleSkipTodayItem}
+          onRescheduleItem={handleRescheduleTodayItem}
         />
+
+        {revision && (
+          <section className="rounded-2xl border border-border/40 bg-card p-5 shadow-card">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-medium text-foreground">What changed in your plan</h2>
+                <p className="mt-1 text-xs text-muted-foreground/80">
+                  {new Date(revision.at).toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "short",
+                  })}{" "}
+                  · updated automatically from your logged work
+                </p>
+              </div>
+              <span className="rounded-full bg-foreground/[0.05] px-2 py-0.5 text-[10px] text-muted-foreground">
+                v{revision.version}
+              </span>
+            </div>
+            <p className="mt-3 text-sm text-foreground/90">{revision.summary}</p>
+            {revision.changes.length > 0 && (
+              <ul className="mt-3 space-y-1.5">
+                {revision.changes.slice(0, 5).map((change, i) => (
+                  <li key={i} className="flex gap-2 text-xs text-muted-foreground">
+                    <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-pink/70" />
+                    <span>{change.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
 
 
         <MetricsRow
