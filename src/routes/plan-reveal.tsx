@@ -186,12 +186,21 @@ function PlanRevealPage() {
               remainingWeeks: summary.locked.remainingWeeks,
             });
           }
+          if (entry.target === reasoningRef.current && !reasoningSeen.current) {
+            reasoningSeen.current = true;
+            trackEvent("plan_reasoning_viewed", {
+              ...eventBase,
+              confidenceSource: summary.reasoning.confidenceSource,
+              ratedCount: summary.reasoning.ratedCount,
+            });
+          }
         }
       },
       { threshold: 0.25 },
     );
     if (weekOneRef.current) observer.observe(weekOneRef.current);
     if (boundaryRef.current) observer.observe(boundaryRef.current);
+    if (reasoningRef.current) observer.observe(reasoningRef.current);
     return () => observer.disconnect();
   }, [summary, eventBase]);
 
