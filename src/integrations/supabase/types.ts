@@ -477,6 +477,39 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_revisions: {
+        Row: {
+          changes: Json
+          created_at: string
+          id: string
+          plan_id: string
+          schedule_version: number
+          summary: string
+          trigger: string
+          user_id: string
+        }
+        Insert: {
+          changes?: Json
+          created_at?: string
+          id?: string
+          plan_id: string
+          schedule_version: number
+          summary: string
+          trigger: string
+          user_id: string
+        }
+        Update: {
+          changes?: Json
+          created_at?: string
+          id?: string
+          plan_id?: string
+          schedule_version?: number
+          summary?: string
+          trigger?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           cancel_at_period_end: boolean

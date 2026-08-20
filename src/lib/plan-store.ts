@@ -140,7 +140,14 @@ export interface StoredPlan {
   generatedAt: string;
   completedTaskIds: string[];
   sessions?: StudySession[];
+  /**
+   * Phase 2 adaptive schedule (authoritative forward plan). Additive: legacy
+   * readers continue to use `plan.todayTasks`, which is mirrored from it.
+   * Typed loosely here to avoid a circular import with `@/lib/plan/*`.
+   */
+  schedule?: unknown;
 }
+
 
 const KEY = "tentra.plan.v1";
 const DRAFT_KEY = "tentra.onboarding.draft.v1";

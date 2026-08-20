@@ -55,6 +55,19 @@ import {
   flushStudyLogQueue,
 } from "@/lib/study-log";
 import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
+import {
+  ensureSchedule,
+  getSchedule,
+  tasksForDate,
+  latestRevision,
+  completeScheduledTask,
+  reopenScheduledTask,
+  skipScheduledTask,
+  rescheduleScheduledTask,
+} from "@/lib/plan/store";
+import { addDaysKey } from "@/lib/plan/dates";
+import type { PlanSchedule, ScheduledTask } from "@/lib/plan/types";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
@@ -109,10 +122,13 @@ function DashboardPage() {
   const [tab, setTab] = useState<DashboardTab>("week");
   const [quizTask, setQuizTask] = useState<{
     index: number;
+    /** Stable adaptive-schedule task id, when the plan has a schedule. */
+    taskId?: string;
     title: string;
     module: string;
     minutes: number;
   } | null>(null);
+
 
   // Hydrate plan from cloud on mount; redirect to onboarding if user has none.
   useEffect(() => {
@@ -157,6 +173,36 @@ function DashboardPage() {
     };
   }, [stored]);
 
+  // Adaptive schedule: recalibrate the FUTURE from real evidence. Idempotent —
+  // unchanged evidence returns revision === null and we don't re-render.
+  const [schedule, setSchedule] = useState<PlanSchedule | null>(null);
+  useEffect(() => {
+    if (!stored || !analytics) return;
+    let active = true;
+    void ensureSchedule(stored, analytics, "completion")
+      .then((res) => {
+        if (!active) return;
+        setSchedule(res.schedule);
+        if (res.revision) setStored(res.stored);
+      })
+      .catch((e) => console.warn("ensureSchedule failed", e));
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [analytics]);
+
+  useEffect(() => {
+    const existing = getSchedule(stored);
+    if (existing) setSchedule(existing);
+  }, [stored]);
+
+  const today = localDateFor();
+  const scheduledToday: ScheduledTask[] = useMemo(
+    () => (schedule ? tasksForDate(schedule, today) : []),
+    [schedule, today],
+  );
+
 
   const examLabel = getExamLabel(stored?.input.examType, stored?.input.examPath);
   const examId = getUserExamId(stored?.input.examType);
@@ -167,8 +213,35 @@ function DashboardPage() {
 
   const todayItems: TodayPlanItem[] = useMemo(() => {
     if (!stored) return [];
+    // Authoritative source: the adaptive schedule.
+    if (scheduledToday.length > 0) {
+      return scheduledToday.map((t) => ({
+        id: t.id,
+        title: t.title,
+        subject: t.module,
+        subTopic: t.subtopic,
+        minutes: t.minutes,
+        format:
+          t.taskType === "timed-sba" || t.taskType === "mixed-mock"
+            ? "Practice"
+            : t.taskType === "concept-deepdive"
+              ? "Learn"
+              : t.taskType === "active-recall" || t.taskType === "mistake-review"
+                ? "Review"
+                : "Study",
+        priority:
+          t.priority === "high"
+            ? "must"
+            : t.difficulty === "foundational"
+              ? "weak-spot"
+              : "high-yield",
+        reason: t.why,
+        done: t.status === "completed",
+      }));
+    }
     const { plan, completedTaskIds } = stored;
     if (plan.todayTasks.length > 0) {
+
       return plan.todayTasks.map((t, i) => {
         const done = completedTaskIds.includes(String(i));
         const priority =
@@ -221,7 +294,7 @@ function DashboardPage() {
       reason: "Build performance data so Tentra can pinpoint weak areas.",
     });
     return items;
-  }, [stored, examId, examLabel, subjectMinutes]);
+  }, [stored, scheduledToday, examId, examLabel, subjectMinutes]);
 
   const [mockPerf, setMockPerf] = useState<MockPerformance | null>(null);
   useEffect(() => {
@@ -302,14 +375,15 @@ function DashboardPage() {
   ) => {
     if (!quizTask) return;
     const key = taskActivityKey(quizTask.index);
-    toggleTaskCompletion(quizTask.index);
+    if (quizTask.taskId) void completeScheduledTask(quizTask.taskId).then(() => setTick((t) => t + 1));
+    else toggleTaskCompletion(quizTask.index);
     void recordStudyActivity({
       idempotencyKey: key,
       activityType: "quiz",
       source: "dashboard_task",
       actualMinutes: minutesSpent,
       plannedMinutes: quizTask.minutes,
-      plannedTaskId: String(quizTask.index),
+      plannedTaskId: quizTask.taskId ?? String(quizTask.index),
       subject: quizTask.module,
       examPath: input.examType,
       note: `Mini-assessment (${quizTask.title})`,
@@ -333,8 +407,58 @@ function DashboardPage() {
     setTick((t) => t + 1);
   };
 
+  /* ---- Adaptive schedule actions (complete / skip / move) ---- */
+
+  const findScheduled = (id: string) => scheduledToday.find((t) => t.id === id);
+
+  const handleCompleteTodayItem = (id: string) => {
+    const task = findScheduled(id);
+    if (task) {
+      if (task.status === "completed") {
+        void reopenScheduledTask(id).then(() => setTick((t) => t + 1));
+        void voidStudyActivity(
+          makeIdempotencyKey("dashboard_task", today, id, task.title),
+        );
+        return;
+      }
+      // Mini-assessment first so completion carries graded evidence.
+      setQuizTask({
+        index: scheduledToday.indexOf(task),
+        taskId: task.id,
+        title: task.title,
+        module: task.module,
+        minutes: task.minutes,
+      });
+      return;
+    }
+    const idx = Number(id);
+    if (Number.isFinite(idx)) handleToggle(idx);
+  };
+
+  const handleSkipTodayItem = (id: string) => {
+    if (!findScheduled(id)) return;
+    void skipScheduledTask(id).then(() => {
+      setTick((t) => t + 1);
+      toast.success("Skipped — Tentra will factor this into your next update.");
+    });
+  };
+
+  const handleRescheduleTodayItem = (id: string) => {
+    if (!findScheduled(id)) return;
+    void rescheduleScheduledTask(id, addDaysKey(today, 1)).then((res) => {
+      if (!res.ok) {
+        toast.error(res.reason ?? "Couldn't move that session.");
+        return;
+      }
+      setTick((t) => t + 1);
+      toast.success("Moved to tomorrow.");
+    });
+  };
+
+  const revision = latestRevision(schedule);
 
   const refresh = () => setTick((t) => t + 1);
+
 
   const nextTaskIdx = plan.todayTasks.findIndex(
     (_, i) => !completedTaskIds.includes(String(i)),
@@ -398,7 +522,42 @@ function DashboardPage() {
           onStartDiagnostic={() => navigate({ to: "/practice" })}
           onGeneratePlan={() => navigate({ to: "/onboarding" })}
           onStartItem={handleStartTodayItem}
+          onCompleteItem={handleCompleteTodayItem}
+          onSkipItem={handleSkipTodayItem}
+          onRescheduleItem={handleRescheduleTodayItem}
         />
+
+        {revision && (
+          <section className="rounded-2xl border border-border/40 bg-card p-5 shadow-card">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-medium text-foreground">What changed in your plan</h2>
+                <p className="mt-1 text-xs text-muted-foreground/80">
+                  {new Date(revision.at).toLocaleDateString(undefined, {
+                    day: "numeric",
+                    month: "short",
+                  })}{" "}
+                  · updated automatically from your logged work
+                </p>
+              </div>
+              <span className="rounded-full bg-foreground/[0.05] px-2 py-0.5 text-[10px] text-muted-foreground">
+                v{revision.version}
+              </span>
+            </div>
+            <p className="mt-3 text-sm text-foreground/90">{revision.summary}</p>
+            {revision.changes.length > 0 && (
+              <ul className="mt-3 space-y-1.5">
+                {revision.changes.slice(0, 5).map((change, i) => (
+                  <li key={i} className="flex gap-2 text-xs text-muted-foreground">
+                    <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-pink/70" />
+                    <span>{change.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        )}
+
 
 
         <MetricsRow
