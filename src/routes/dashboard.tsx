@@ -55,6 +55,19 @@ import {
   flushStudyLogQueue,
 } from "@/lib/study-log";
 import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
+import {
+  ensureSchedule,
+  getSchedule,
+  tasksForDate,
+  latestRevision,
+  completeScheduledTask,
+  reopenScheduledTask,
+  skipScheduledTask,
+  rescheduleScheduledTask,
+} from "@/lib/plan/store";
+import { addDaysKey } from "@/lib/plan/dates";
+import type { PlanSchedule, ScheduledTask } from "@/lib/plan/types";
+
 
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
