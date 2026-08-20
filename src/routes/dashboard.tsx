@@ -274,11 +274,17 @@ function DashboardPage() {
     0,
   );
 
+  const taskActivityKey = (i: number) => {
+    const task = plan.todayTasks[i];
+    return makeIdempotencyKey("dashboard_task", localDateFor(), i, task?.title);
+  };
+
   const handleToggle = (i: number) => {
     const done = completedTaskIds.includes(String(i));
     if (done) {
-      // Un-complete without quiz
+      // Un-complete: void the canonical activity so effort/accuracy stay truthful.
       toggleTaskCompletion(i);
+      void voidStudyActivity(taskActivityKey(i)).then(() => setTick((t) => t + 1));
       setTick((t) => t + 1);
       return;
     }
@@ -287,19 +293,44 @@ function DashboardPage() {
     setQuizTask({ index: i, ...task });
   };
 
-  const handleQuizComplete = (accuracy: number, minutesSpent: number) => {
+  const handleQuizComplete = (
+    accuracy: number,
+    minutesSpent: number,
+    attempts: { fingerprint: string; isCorrect: boolean; selectedAnswer: string | null }[],
+  ) => {
     if (!quizTask) return;
+    const key = taskActivityKey(quizTask.index);
     toggleTaskCompletion(quizTask.index);
-    adjustModuleConfidence(quizTask.module, accuracy);
-    addStudySession({
-      date: todayKey(),
-      minutes: minutesSpent,
-      module: quizTask.module,
-      note: `Mini-assessment: ${Math.round(accuracy * 100)}% (${quizTask.title})`,
+    void recordStudyActivity({
+      idempotencyKey: key,
+      activityType: "quiz",
+      source: "dashboard_task",
+      actualMinutes: minutesSpent,
+      plannedMinutes: quizTask.minutes,
+      plannedTaskId: String(quizTask.index),
+      subject: quizTask.module,
+      examPath: input.examType,
+      note: `Mini-assessment (${quizTask.title})`,
+      gradedAccuracy: accuracy,
     });
+    if (attempts.length > 0) {
+      void recordGradedAttempts(
+        attempts.map((a, idx) => ({
+          idempotencyKey: makeIdempotencyKey(key, "q", idx, a.fingerprint),
+          sourceType: "mini_test" as const,
+          sourceRef: key,
+          questionFingerprint: a.fingerprint,
+          isCorrect: a.isCorrect,
+          subject: quizTask.module,
+          examPath: input.examType,
+          selectedAnswer: a.selectedAnswer,
+        })),
+      ).then(() => setTick((t) => t + 1));
+    }
     setQuizTask(null);
     setTick((t) => t + 1);
   };
+
 
   const refresh = () => setTick((t) => t + 1);
 
