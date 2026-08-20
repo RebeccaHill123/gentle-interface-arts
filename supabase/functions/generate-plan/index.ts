@@ -430,7 +430,7 @@ function buildDeterministicPlan(body: PlanRequest): StudyPlanResponse {
   });
 
   return {
-    overview: `${body.name}, this plan leads with ${priorityModules.map((m) => m.name).join(", ")} because they combine high exam yield with your current confidence, exam date and revision recency. Week 1 is in ${phaseLabel(phase).toLowerCase()} mode, so blocks name exact subtopics and build usable rules before heavier recall, mocks or mistake review.`,
+    overview: `${body.name?.trim() ? `${body.name.trim()}, this plan` : "This plan"} leads with ${priorityModules.map((m) => m.name).join(", ")} because they combine high exam yield with your current confidence, exam date and revision recency. Week 1 is in ${phaseLabel(phase).toLowerCase()} mode, so blocks name exact subtopics and build usable rules before heavier recall, mocks or mistake review.`,
     weeklyStrategy: {
       summary: `This week allocates ${body.hoursPerWeek} hours across high-yield named subtopics, with the priority on ${priorityModules.map((m) => m.name).join(" and ")}. Blocks progress from rule scaffolds into application and only use mistake review where real performance evidence exists.`,
       allocations,
