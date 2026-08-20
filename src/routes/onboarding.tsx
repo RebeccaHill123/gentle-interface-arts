@@ -59,10 +59,11 @@ const EXAM_PARAM_TO_TYPE: Record<ExamParam, ExamType> = {
 };
 
 interface OnboardingSearch {
-  exam: ExamParam;
+  exam?: ExamParam;
   src?: string;
   placement?: string;
 }
+
 
 function toStringOrUndefined(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value.slice(0, 40) : undefined;
