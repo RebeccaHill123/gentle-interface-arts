@@ -67,7 +67,7 @@ import {
   missedTasks,
   scheduleCapacity,
 } from "@/lib/plan/store";
-import { addDaysKey } from "@/lib/plan/dates";
+import { diffDaysKey } from "@/lib/plan/dates";
 import type { PlanSchedule, ScheduledTask, SkipReason } from "@/lib/plan/types";
 import { activityLabel, expectedOutput } from "@/lib/plan/task-presentation";
 
@@ -81,7 +81,7 @@ import { RescheduleSheet, SkipReasonSheet } from "@/components/plan-action-sheet
 import { getUserExamId, aggregateSubjectMinutes, buildExamMap, untouchedTopics, type SubTopic } from "@/lib/topic-map";
 import { getExamLabel } from "@/lib/exam-label";
 import { loadMockPerformance, type MockPerformance } from "@/lib/mock-performance";
-import { loadSession, startSession } from "@/lib/focus-session";
+import { loadSession, startSession, type ActiveSession } from "@/lib/focus-session";
 import { normalizeStoredPlanTasks } from "@/lib/study-plan-logic";
 import {
   Accordion,
@@ -208,6 +208,24 @@ function DashboardPage() {
     [schedule, today],
   );
 
+
+  const missed = useMemo(() => missedTasks(schedule, today), [schedule, today]);
+  const capacity = useMemo(() => scheduleCapacity(schedule, today, 10), [schedule, today]);
+
+  // Days since any recorded study activity — drives the return-after-absence
+  // recovery card. Derived from logged sessions, never from app opens.
+  const daysSinceLastActivity = useMemo(() => {
+    const dates = (stored?.sessions ?? []).map((sx) => sx.date).sort();
+    const last = dates[dates.length - 1];
+    return last ? diffDaysKey(last, today) : null;
+  }, [stored, today]);
+
+  const [skipTarget, setSkipTarget] = useState<ScheduledTask | null>(null);
+  const [moveTarget, setMoveTarget] = useState<ScheduledTask | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  useEffect(() => {
+    setActiveSession(loadSession());
+  }, [tick]);
 
   const examLabel = getExamLabel(stored?.input.examType, stored?.input.examPath);
   const examId = getUserExamId(stored?.input.examType);
@@ -513,7 +531,7 @@ function DashboardPage() {
           daysUntilExam={daysUntilExam}
           tasks={todayTasks}
           missed={missed}
-          daysSinceLastActivity={analytics?.consistency?.daysSinceLastSession ?? null}
+          daysSinceLastActivity={daysSinceLastActivity}
           weeklyDoneMins={weeklyDoneMins}
           weeklyTargetMins={weeklyTargetMins}
           activeSessionTitle={activeSession?.title}
