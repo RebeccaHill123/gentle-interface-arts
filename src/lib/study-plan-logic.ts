@@ -24,11 +24,31 @@ export function daysUntilExam(iso: string): number {
   return Math.max(1, Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000));
 }
 
+/**
+ * Phase = how far along the learn → recall → practice → review arc week one
+ * should start. Both the time available AND the user's stated preparation
+ * stage move it, so two people sitting on the same date get different plans.
+ *
+ *   beginner      : teaching first, only reaching timed work close to the exam
+ *   intermediate  : balanced; foundations while there is still runway
+ *   advanced       : starts at build/practice, foundations only as repair
+ *   resitter       : exam-condition led immediately
+ */
 export function getStudyPhase(days: number, intensity: IntensityTier = "intermediate"): StudyPhase {
   if (days <= 21) return "final";
-  if (days <= 49 || intensity === "resitter") return "performance";
-  if (days <= 98 || intensity === "advanced") return "build";
-  return "foundation";
+  switch (intensity) {
+    case "beginner":
+      if (days > 70) return "foundation";
+      return days > 35 ? "build" : "performance";
+    case "advanced":
+      return days > 60 ? "build" : "performance";
+    case "resitter":
+      return days > 60 ? "performance" : "final";
+    case "intermediate":
+    default:
+      if (days > 140) return "foundation";
+      return days > 70 ? "build" : "performance";
+  }
 }
 
 export function buildStudyDurations(hoursPerWeek: number): Array<30 | 45 | 60 | 90 | 120> {
