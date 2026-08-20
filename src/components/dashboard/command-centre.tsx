@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 import {
   AlertTriangle,
   ArrowRight,
+  CalendarClock,
+  CheckCircle2,
   Circle,
   Compass,
   Flame,
@@ -9,6 +11,8 @@ import {
   Sparkles,
   Target,
   Timer,
+  Undo2,
+  XCircle,
   Zap,
 } from "lucide-react";
 import {
@@ -170,9 +174,15 @@ const PRIORITY_LABEL: Record<string, { label: string; cls: string }> = {
 export function TodayPlanCard({
   item,
   onStart,
+  onComplete,
+  onSkip,
+  onReschedule,
 }: {
   item: TodayPlanItem;
   onStart?: () => void;
+  onComplete?: () => void;
+  onSkip?: () => void;
+  onReschedule?: () => void;
 }) {
   const meta = PRIORITY_LABEL[item.priority] ?? PRIORITY_LABEL.should;
   return (
@@ -211,14 +221,50 @@ export function TodayPlanCard({
             </p>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onStart}
-          aria-label={`Start ${item.title}`}
-          className="grid h-11 w-11 shrink-0 place-items-center self-center rounded-full border border-border/60 bg-background transition-all group-hover:border-transparent group-hover:bg-gradient-pink-blue group-hover:text-primary-foreground group-hover:shadow-glow"
-        >
-          <Play className="h-4 w-4" />
-        </button>
+        <div className="flex shrink-0 flex-col items-center justify-center gap-1.5 self-center">
+          <button
+            type="button"
+            onClick={onStart}
+            aria-label={`Start ${item.title}`}
+            className="grid h-11 w-11 place-items-center rounded-full border border-border/60 bg-background transition-all group-hover:border-transparent group-hover:bg-gradient-pink-blue group-hover:text-primary-foreground group-hover:shadow-glow"
+          >
+            <Play className="h-4 w-4" />
+          </button>
+          {(onComplete || onSkip || onReschedule) && (
+            <div className="flex items-center gap-1">
+              {onComplete && (
+                <button
+                  type="button"
+                  onClick={onComplete}
+                  aria-label={item.done ? `Reopen ${item.title}` : `Mark ${item.title} complete`}
+                  className="grid h-6 w-6 place-items-center rounded-full border border-border/60 bg-background text-muted-foreground transition-colors hover:border-emerald-500/40 hover:text-emerald-500"
+                >
+                  {item.done ? <Undo2 className="h-3 w-3" /> : <CheckCircle2 className="h-3 w-3" />}
+                </button>
+              )}
+              {!item.done && onSkip && (
+                <button
+                  type="button"
+                  onClick={onSkip}
+                  aria-label={`Skip ${item.title}`}
+                  className="grid h-6 w-6 place-items-center rounded-full border border-border/60 bg-background text-muted-foreground transition-colors hover:border-amber-500/40 hover:text-amber-500"
+                >
+                  <XCircle className="h-3 w-3" />
+                </button>
+              )}
+              {!item.done && onReschedule && (
+                <button
+                  type="button"
+                  onClick={onReschedule}
+                  aria-label={`Move ${item.title} to tomorrow`}
+                  className="grid h-6 w-6 place-items-center rounded-full border border-border/60 bg-background text-muted-foreground transition-colors hover:border-cyan/40 hover:text-cyan"
+                >
+                  <CalendarClock className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
       </div>
     </li>
   );
@@ -371,6 +417,9 @@ export function CommandCentre({
   onGeneratePlan,
   todayItems,
   onStartItem,
+  onCompleteItem,
+  onSkipItem,
+  onRescheduleItem,
 }: {
   userName: string;
   examId: ExamId;
@@ -386,6 +435,9 @@ export function CommandCentre({
   onGeneratePlan?: () => void;
   todayItems?: TodayPlanItem[];
   onStartItem?: (id: string) => void;
+  onCompleteItem?: (id: string) => void;
+  onSkipItem?: (id: string) => void;
+  onRescheduleItem?: (id: string) => void;
 }) {
   const map = buildExamMap(examId, progress, subjectMinutes);
   const cov = coverage(map);
@@ -530,6 +582,9 @@ export function CommandCentre({
                   key={item.id}
                   item={item}
                   onStart={() => onStartItem?.(item.id)}
+                  onComplete={onCompleteItem ? () => onCompleteItem(item.id) : undefined}
+                  onSkip={onSkipItem ? () => onSkipItem(item.id) : undefined}
+                  onReschedule={onRescheduleItem ? () => onRescheduleItem(item.id) : undefined}
                 />
               ))}
             </ul>
