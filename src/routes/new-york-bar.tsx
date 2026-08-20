@@ -103,6 +103,7 @@ function NyBarPage() {
               >
                 <Link
                   to={to as never}
+                  search={(isAuthenticated ? undefined : { exam: "ube", src: "ny_bar_page" }) as never}
                   onClick={() =>
                     trackEvent("build_plan_cta_clicked", {
                       surface: "ny_bar_page",

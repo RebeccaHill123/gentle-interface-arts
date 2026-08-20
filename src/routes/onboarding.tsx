@@ -15,12 +15,9 @@ import {
   GraduationCap,
   Target,
   Sparkles,
-  Layers3,
   Calendar,
   Clock,
   CheckCircle2,
-  RefreshCw,
-  ChevronDown,
   Scale,
   Landmark,
 } from "lucide-react";
@@ -39,20 +36,51 @@ import {
   type StoredPlan,
   type StudyPlan,
 } from "@/lib/plan-store";
-import {
-  getSubjectsForExamPath,
-  getSubtopicsForSubject,
-  defaultPathForExam,
-  pathToExamType,
-  isUbePath,
-} from "@/lib/exam-paths";
-import { buildStoredPreview, savePreviewToLocal } from "@/lib/preview-plan";
+import { getSubjectsForExamPath, defaultPathForExam, pathToExamType } from "@/lib/exam-paths";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
+
+/**
+ * First-run onboarding is deliberately two screens: exam + date, then weekly
+ * hours. Everything else the generator understands (intensity, coverage mode,
+ * per-module confidence, name) is defaulted here and can be refined later from
+ * Settings → Study plan. See DEFAULTS below.
+ */
+
+type ExamParam = "sqe1" | "sqe2" | "ube" | "mpre";
+
+const EXAM_PARAMS: ExamParam[] = ["sqe1", "sqe2", "ube", "mpre"];
+
+const EXAM_PARAM_TO_TYPE: Record<ExamParam, ExamType> = {
+  sqe1: "SQE1",
+  sqe2: "SQE2",
+  ube: "UBE",
+  mpre: "MPRE",
+};
+
+interface OnboardingSearch {
+  exam?: ExamParam;
+  src?: string;
+  placement?: string;
+}
+
+
+function toStringOrUndefined(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value.slice(0, 40) : undefined;
+}
 
 export const Route = createFileRoute("/onboarding")({
   // No auth gate — onboarding runs for anonymous visitors so they can
   // experience the personalised plan BEFORE being asked to sign up.
+  validateSearch: (search: Record<string, unknown>): OnboardingSearch => {
+    const raw = typeof search.exam === "string" ? search.exam.toLowerCase() : "";
+    const exam = (EXAM_PARAMS as string[]).includes(raw) ? (raw as ExamParam) : "sqe1";
+    return {
+      exam,
+      src: toStringOrUndefined(search.src ?? search.utm_source),
+      placement: toStringOrUndefined(search.placement),
+    };
+  },
   component: OnboardingPage,
   head: () => ({
     meta: [
@@ -60,19 +88,21 @@ export const Route = createFileRoute("/onboarding")({
       {
         name: "description",
         content:
-          "A personalised, adaptive SQE study plan built from your exam path, intensity and weak subtopics.",
+          "Two quick questions and Tentra builds your personalised, adaptive SQE study plan around your exam date.",
       },
     ],
   }),
 });
 
-const STEPS = [
-  { id: 1, label: "Exam" },
-  { id: 2, label: "You" },
-  { id: 3, label: "Coverage" },
-  { id: 4, label: "Focus" },
-  { id: 5, label: "Review" },
-] as const;
+const STEP_COUNT = 2;
+
+/** Safe defaults for everything no longer asked on first run. */
+const DEFAULTS = {
+  name: "",
+  intensity: "intermediate" as IntensityTier,
+  coverageMode: "even" as CoverageMode,
+  neutralConfidence: 3,
+};
 
 interface ExamOption {
   value: ExamType;
@@ -80,6 +110,8 @@ interface ExamOption {
   title: string;
   blurb: string;
   icon: typeof GraduationCap;
+  ctaLabel: string;
+  dateHeading: string;
 }
 
 const EXAM_OPTIONS: ExamOption[] = [
@@ -89,6 +121,8 @@ const EXAM_OPTIONS: ExamOption[] = [
     title: "SQE1",
     blurb: "FLK1 + FLK2 — England & Wales Solicitors Qualifying Exam.",
     icon: Scale,
+    ctaLabel: "Build my SQE plan",
+    dateHeading: "When are you sitting SQE1?",
   },
   {
     value: "SQE2",
@@ -96,6 +130,8 @@ const EXAM_OPTIONS: ExamOption[] = [
     title: "SQE2",
     blurb: "Skills assessments — interviewing, advocacy, drafting.",
     icon: GraduationCap,
+    ctaLabel: "Build my SQE plan",
+    dateHeading: "When are you sitting SQE2?",
   },
   {
     value: "UBE",
@@ -103,6 +139,8 @@ const EXAM_OPTIONS: ExamOption[] = [
     title: "NY Bar",
     blurb: "Uniform Bar Exam (MBE + MEE + MPT) — qualifies for NY admission.",
     icon: Landmark,
+    ctaLabel: "Build my NY Bar plan",
+    dateHeading: "When are you sitting the NY Bar?",
   },
   {
     value: "MPRE",
@@ -110,135 +148,139 @@ const EXAM_OPTIONS: ExamOption[] = [
     title: "MPRE",
     blurb: "Multistate Professional Responsibility Exam — 60 MCQs on ABA ethics rules.",
     icon: Target,
+    ctaLabel: "Build my MPRE plan",
+    dateHeading: "When are you sitting the MPRE?",
   },
 ];
 
+const HOUR_PRESETS = [5, 10, 15, 20] as const;
 
-const INTENSITY_OPTIONS: {
-  value: IntensityTier;
-  title: string;
-  blurb: string;
-  icon: typeof GraduationCap;
-}[] = [
-  {
-    value: "beginner",
-    title: "Beginner",
-    blurb: "New to the syllabus. Concept-first pacing.",
-    icon: Sparkles,
-  },
-  {
-    value: "intermediate",
-    title: "Intermediate",
-    blurb: "Studied the basics. Ready for active recall + practice questions.",
-    icon: Target,
-  },
-  {
-    value: "advanced",
-    title: "Advanced",
-    blurb: "Confident overall. Mock-heavy, weak-area surgery.",
-    icon: GraduationCap,
-  },
-  {
-    value: "resitter",
-    title: "Resitter",
-    blurb: "Done it before. Ruthless focus on weak topics + mocks.",
-    icon: RefreshCw,
-  },
-];
+/**
+ * Relative date shortcuts. Deliberately computed from today rather than
+ * hardcoded sitting windows, so nothing goes stale.
+ */
+const DATE_PRESETS = [
+  { label: "In 3 months", months: 3 },
+  { label: "In 6 months", months: 6 },
+  { label: "In 12 months", months: 12 },
+] as const;
 
+function isoInMonths(months: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
 
+function seedModules(path: ExamPath): ModuleConfidence[] {
+  return getSubjectsForExamPath(path).map((s, i) => ({
+    id: String(i),
+    name: s.name,
+    confidence: DEFAULTS.neutralConfidence,
+    weakSubtopics: [],
+  }));
+}
 
 function OnboardingPage() {
   const navigate = useNavigate();
+  const search = Route.useSearch();
   const [draft] = useState(() => loadOnboardingDraft());
   const [checking, setChecking] = useState(true);
-  const [step, setStep] = useState(() => Math.min(STEPS.length, Math.max(1, draft?.step ?? 1)));
+  const [step, setStep] = useState(() => Math.min(STEP_COUNT, Math.max(1, draft?.step ?? 1)));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [examPickerOpen, setExamPickerOpen] = useState(false);
 
-  // Step 1 — which exam
-  const [examType, setExamType] = useState<ExamType>(draft?.examType ?? "SQE1");
+  const acquisitionType = EXAM_PARAM_TO_TYPE[search.exam ?? "sqe1"];
 
-  // Step 2 — which path within that exam
+  // Exam + path. Draft wins on resume; otherwise the acquisition route decides.
+  const [examType, setExamType] = useState<ExamType>(draft?.examType ?? acquisitionType);
   const [examPath, setExamPath] = useState<ExamPath>(
-    draft?.examPath ?? defaultPathForExam(draft?.examType ?? "SQE1"),
+    draft?.examPath ?? defaultPathForExam(draft?.examType ?? acquisitionType),
   );
-
-  // Step 3
-  const [name, setName] = useState(draft?.name ?? "");
   const [examDate, setExamDate] = useState(draft?.examDate ?? "");
   const [hoursPerWeek, setHoursPerWeek] = useState(draft?.hoursPerWeek ?? 10);
-  const [intensity, setIntensity] = useState<IntensityTier>(draft?.intensity ?? "intermediate");
 
-  // Step 4
-  const [coverageMode, setCoverageMode] = useState<CoverageMode>(draft?.coverageMode ?? "even");
+  // Deferred fields — defaulted, still persisted so the generator contract
+  // and later refinement keep working.
+  const [modules, setModules] = useState<ModuleConfidence[]>(
+    draft?.modules?.length ? draft.modules : seedModules(draft?.examPath ?? defaultPathForExam(acquisitionType)),
+  );
+  const intensity = draft?.intensity ?? DEFAULTS.intensity;
+  const coverageMode = draft?.coverageMode ?? DEFAULTS.coverageMode;
+  const name = draft?.name ?? DEFAULTS.name;
 
-  // Step 5
-  const [modules, setModules] = useState<ModuleConfidence[]>(draft?.modules ?? []);
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const activeOption = useMemo(
+    () => EXAM_OPTIONS.find((o) => o.value === examType) ?? EXAM_OPTIONS[0],
+    [examType],
+  );
 
-  // Prefill name from profile if signed-in. If a plan already exists in the
-  // cloud (signed-in returning user), jump straight to dashboard.
+  const eventBase = useMemo(
+    () => ({
+      examType,
+      examPath,
+      source: search.src ?? null,
+      placement: search.placement ?? null,
+      viewport:
+        typeof window !== "undefined" && window.innerWidth < 768 ? "mobile" : "desktop",
+    }),
+    [examType, examPath, search.src, search.placement],
+  );
+
+  // Signed-in returning user with a plan → straight to the dashboard.
   useEffect(() => {
     (async () => {
       try {
         const { data: userData } = await supabase.auth.getUser();
-        const uid = userData.user?.id;
-        if (uid) {
+        if (userData.user?.id) {
           const existing = await pullPlanFromCloud();
           if (existing) {
             navigate({ to: "/dashboard" });
             return;
           }
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("first_name, display_name")
-            .eq("user_id", uid)
-            .maybeSingle();
-          if (!draft?.name) {
-            if (profile?.first_name) setName(profile.first_name);
-            else if (profile?.display_name) setName(profile.display_name);
-          }
         }
       } catch {
-        // Anonymous visitor — that's fine, continue onboarding.
+        // Anonymous visitor — continue onboarding.
       }
       setChecking(false);
     })();
-  }, [draft?.name, navigate]);
+  }, [navigate]);
 
-  // Fire onboarding_start exactly once when an anonymous/new visitor lands
-  // on step 1 with no saved progress. Resumes don't re-fire.
   useEffect(() => {
     if (checking) return;
-    const hasProgress = (draft?.step ?? 1) > 1 || (draft?.modules?.length ?? 0) > 0;
+    const hasProgress = (draft?.step ?? 1) > 1 || !!draft?.examDate;
     if (!hasProgress) {
+      trackEvent("onboarding_started", eventBase);
       trackEvent("onboarding_start", { examType });
+    } else {
+      trackEvent("onboarding_resumed", { ...eventBase, step });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checking]);
 
-  // Each exam now maps to exactly one path. Keep them in sync.
+  // Step view events.
+  useEffect(() => {
+    if (checking) return;
+    trackEvent(step === 1 ? "exam_date_viewed" : "weekly_hours_viewed", eventBase);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checking, step]);
+
+  // Each supported exam maps to exactly one path; keep them in sync and
+  // re-seed the module list whenever the path changes.
   useEffect(() => {
     const opt = EXAM_OPTIONS.find((o) => o.value === examType);
-    if (opt && opt.path !== examPath) setExamPath(opt.path);
+    if (!opt) return;
+    if (opt.path !== examPath) setExamPath(opt.path);
   }, [examType, examPath]);
 
-
-  // Reset module list when path changes
   useEffect(() => {
-    const list = getSubjectsForExamPath(examPath);
-    if (draft?.examPath === examPath && draft.modules.length > 0) return;
-    setModules(
-      list.map((s, i) => ({
-        id: String(i),
-        name: s.name,
-        confidence: 3,
-        weakSubtopics: [],
-      })),
-    );
-    setExpanded(null);
-  }, [draft, examPath]);
+    setModules((prev) => {
+      const seeded = seedModules(examPath);
+      if (prev.length === seeded.length && prev.every((m, i) => m.name === seeded[i]?.name)) {
+        return prev;
+      }
+      return seeded;
+    });
+  }, [examPath]);
 
   useEffect(() => {
     if (checking) return;
@@ -253,79 +295,62 @@ function OnboardingPage() {
       coverageMode,
       modules,
     });
-  }, [checking, step, examType, examPath, name, examDate, hoursPerWeek, intensity, coverageMode, modules]);
-
-  const updateConfidence = (idx: number, value: number) => {
-    setModules((prev) =>
-      prev.map((m, i) => (i === idx ? { ...m, confidence: value } : m)),
-    );
-  };
-
-  const toggleWeakSubtopic = (moduleName: string, subtopic: string) => {
-    setModules((prev) =>
-      prev.map((m) => {
-        if (m.name !== moduleName) return m;
-        const set = new Set(m.weakSubtopics ?? []);
-        if (set.has(subtopic)) set.delete(subtopic);
-        else set.add(subtopic);
-        return { ...m, weakSubtopics: Array.from(set) };
-      }),
-    );
-  };
+  }, [
+    checking,
+    step,
+    examType,
+    examPath,
+    name,
+    examDate,
+    hoursPerWeek,
+    intensity,
+    coverageMode,
+    modules,
+  ]);
 
   const sessionShape = useMemo(() => {
-    if (hoursPerWeek <= 5) return "Light — 3–4 short sessions/wk";
-    if (hoursPerWeek <= 12) return "Steady — 4–5 mixed sessions/wk";
-    if (hoursPerWeek <= 20) return "Strong — 5–6 deep sessions/wk";
-    return "Intensive — daily focus + mocks";
+    if (hoursPerWeek <= 5) return "Light — 3–4 short sessions each week";
+    if (hoursPerWeek <= 12) return "Steady — 4–5 mixed sessions each week";
+    if (hoursPerWeek <= 20) return "Strong — 5–6 deep sessions each week";
+    return "Intensive — daily focus blocks plus mocks";
   }, [hoursPerWeek]);
 
-  const weakModules = useMemo(
-    () => modules.filter((m) => m.confidence <= 2 || (m.weakSubtopics?.length ?? 0) > 0),
-    [modules],
-  );
-
-  const canContinue = (): string | null => {
-    if (step === 2) {
-      if (!name.trim()) return "Please tell us your name.";
-      if (!examDate) return "Please pick your exam date.";
-      if (new Date(examDate).getTime() <= Date.now())
-        return "Exam date must be in the future.";
-      if (hoursPerWeek < 1 || hoursPerWeek > 40)
-        return "Hours per week should be between 1 and 40.";
-    }
-    if (step === 4 && modules.length === 0) return "Choose at least one subject to continue.";
+  const validateStep1 = (): string | null => {
+    if (!examDate) return "Please choose your exam date.";
+    if (new Date(examDate).getTime() <= Date.now()) return "Exam date must be in the future.";
     return null;
   };
 
   const next = () => {
-    const err = canContinue();
+    const err = validateStep1();
     if (err) return setError(err);
     setError(null);
-    trackEvent("onboarding_step_complete", {
-      step,
-      stepLabel: STEPS[step - 1]?.label ?? null,
-      examType,
-      examPath,
-    });
-    setStep((s) => Math.min(STEPS.length, s + 1));
+    trackEvent("exam_date_completed", { ...eventBase, examDate });
+    trackEvent("onboarding_step_complete", { step: 1, stepLabel: "Exam", examType, examPath });
+    setStep(2);
   };
+
   const back = () => {
     setError(null);
-    setStep((s) => Math.max(1, s - 1));
+    setStep(1);
   };
 
   const handleGenerate = async () => {
     setError(null);
+    trackEvent("weekly_hours_completed", { ...eventBase, hoursPerWeek });
+    trackEvent("plan_build_clicked", { ...eventBase, hoursPerWeek, examDate });
     setSubmitting(true);
     try {
-      if (!name.trim() || !examDate || new Date(examDate).getTime() <= Date.now()) {
-        setError("Please check your name and choose a future exam date before continuing.");
+      const err = validateStep1();
+      if (err) {
+        setError(err);
+        setStep(1);
         return;
       }
+
       const resolvedExamType = pathToExamType(examPath);
       const onboarding = {
-        name: name.trim(),
+        name,
         examType: resolvedExamType,
         examPath,
         intensity,
@@ -335,9 +360,7 @@ function OnboardingPage() {
         modules,
       };
 
-      // If the visitor is already signed in AND has active access, keep
-      // the pre-existing behaviour: generate the full plan via edge fn
-      // and land them on the dashboard.
+      // Signed-in WITH access: generate the full plan and land on the dashboard.
       const { data: userData } = await supabase.auth.getUser();
       if (userData.user) {
         const { data: profile } = await supabase
@@ -387,6 +410,7 @@ function OnboardingPage() {
           };
           await savePlanAndSync(stored);
           clearOnboardingDraft();
+          trackEvent("plan_preview_created", { ...eventBase, authed: true });
           trackEvent("onboarding_completed", {
             examType: resolvedExamType,
             hoursPerWeek,
@@ -397,12 +421,12 @@ function OnboardingPage() {
         }
       }
 
-      // Anonymous OR signed-in-without-access path: create a server-side
-      // pending plan and route to the concise reveal → checkout flow. No
-      // Supabase Auth user is created until Stripe confirms payment.
+      // Anonymous OR signed-in-without-access: create a server-side pending
+      // plan and route to the reveal → checkout flow.
       const { createPendingPlan } = await import("@/lib/pending-plans.functions");
       const { token } = await createPendingPlan({ data: { onboarding } });
       clearOnboardingDraft();
+      trackEvent("plan_preview_created", { ...eventBase, authed: false });
       trackEvent("onboarding_completed", {
         examType: resolvedExamType,
         hoursPerWeek,
@@ -425,46 +449,34 @@ function OnboardingPage() {
     );
   }
 
-  const progress = (step / STEPS.length) * 100;
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-background pb-32 md:pb-16">
       <BackgroundBlobs />
 
-      <div className="relative mx-auto flex max-w-6xl items-center justify-between px-6 py-6">
+      <div className="relative mx-auto flex max-w-6xl items-center justify-between px-4 py-5 md:px-6 md:py-6">
         <BrandMark />
         <div className="text-xs text-muted-foreground">
-          Step {step} of {STEPS.length}
+          Step {step} of {STEP_COUNT}
         </div>
       </div>
 
-      {/* Stepper */}
-      <div className="relative mx-auto w-full max-w-2xl px-6">
+      <div className="relative mx-auto w-full max-w-2xl px-4 md:px-6">
         <div className="mb-2 h-1 w-full overflow-hidden rounded-full bg-card">
           <motion.div
             className="h-full bg-gradient-pink-blue"
             initial={false}
-            animate={{ width: `${progress}%` }}
+            animate={{ width: `${(step / STEP_COUNT) * 100}%` }}
             transition={{ type: "spring", stiffness: 120, damping: 20 }}
           />
         </div>
         <div className="flex justify-between text-[10px] uppercase tracking-wider text-muted-foreground">
-          {STEPS.map((s) => (
-            <span
-              key={s.id}
-              className={cn(
-                "transition-colors",
-                step >= s.id && "text-foreground",
-              )}
-            >
-              {s.label}
-            </span>
-          ))}
+          <span className="text-foreground">Your exam</span>
+          <span className={cn(step >= 2 && "text-foreground")}>Your time</span>
         </div>
       </div>
 
-      <div className="relative mx-auto w-full max-w-2xl px-6 pt-6">
-        <div className="rounded-2xl border border-border/60 bg-card/60 p-6 backdrop-blur md:p-10">
+      <div className="relative mx-auto w-full max-w-2xl px-4 pt-6 md:px-6">
+        <div className="rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur md:p-10">
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -473,51 +485,33 @@ function OnboardingPage() {
               exit={{ opacity: 0, x: -16 }}
               transition={{ duration: 0.25 }}
             >
-              {step === 1 && (
-                <StepExam value={examType} onChange={setExamType} />
-              )}
-              {step === 2 && (
-                <StepIntensity
-                  name={name}
-                  setName={setName}
+              {step === 1 ? (
+                <StepExamDate
+                  option={activeOption}
+                  examType={examType}
+                  onExamChange={(value) => {
+                    setExamType(value);
+                    setExamPickerOpen(false);
+                    trackEvent("onboarding_exam_switched", {
+                      ...eventBase,
+                      from: examType,
+                      to: value,
+                    });
+                  }}
+                  pickerOpen={examPickerOpen}
+                  setPickerOpen={setExamPickerOpen}
                   examDate={examDate}
                   setExamDate={setExamDate}
+                />
+              ) : (
+                <StepHours
                   hoursPerWeek={hoursPerWeek}
                   setHoursPerWeek={setHoursPerWeek}
-                  intensity={intensity}
-                  setIntensity={setIntensity}
                   sessionShape={sessionShape}
-                />
-              )}
-              {step === 3 && (
-                <StepCoverage value={coverageMode} onChange={setCoverageMode} />
-              )}
-              {step === 4 && (
-                <StepFocus
-                  modules={modules}
-                  coverageMode={coverageMode}
-                  expanded={expanded}
-                  setExpanded={setExpanded}
-                  updateConfidence={updateConfidence}
-                  toggleWeakSubtopic={toggleWeakSubtopic}
-                />
-              )}
-              {step === 5 && (
-                <StepReview
-                  name={name}
-                  examType={examType}
-                  examPath={examPath}
-                  intensity={intensity}
-                  coverageMode={coverageMode}
-                  examDate={examDate}
-                  hoursPerWeek={hoursPerWeek}
-                  weakModules={weakModules}
-                  totalModules={modules.length}
                 />
               )}
             </motion.div>
           </AnimatePresence>
-
 
           {error && (
             <div
@@ -536,15 +530,16 @@ function OnboardingPage() {
               variant="ghost"
               onClick={back}
               disabled={step === 1 || submitting}
+              className="min-h-11"
             >
               <ArrowLeft className="mr-1 h-4 w-4" /> Back
             </Button>
-            {step < STEPS.length ? (
+            {step === 1 ? (
               <Button
                 type="button"
                 onClick={next}
                 size="lg"
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+                className="min-h-11 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 Continue <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
@@ -554,42 +549,48 @@ function OnboardingPage() {
                 onClick={handleGenerate}
                 size="lg"
                 disabled={submitting}
-                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+                className="min-h-11 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 {submitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Building your adaptive plan…
+                    Building your plan…
                   </>
                 ) : (
                   <>
-                    Build my adaptive plan{" "}
-                    <Sparkles className="ml-1 h-4 w-4" />
+                    {activeOption.ctaLabel} <Sparkles className="ml-1 h-4 w-4" />
                   </>
                 )}
               </Button>
             )}
           </div>
         </div>
+
+        <p className="mt-4 px-1 text-center text-[12.5px] leading-[1.5] text-muted-foreground">
+          You&apos;ll get a balanced starting plan across the whole syllabus. It becomes more
+          personalised as you study with Tentra.
+        </p>
       </div>
 
       {/* Sticky mobile action bar */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/90 px-4 py-3 backdrop-blur md:hidden">
         <div className="mx-auto flex max-w-2xl items-center gap-3">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={back}
-            disabled={step === 1 || submitting}
-            className="flex-1"
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" /> Back
-          </Button>
-          {step < STEPS.length ? (
+          {step > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={back}
+              disabled={submitting}
+              className="min-h-11 flex-1"
+            >
+              <ArrowLeft className="mr-1 h-4 w-4" /> Back
+            </Button>
+          )}
+          {step === 1 ? (
             <Button
               type="button"
               onClick={next}
-              className="flex-[2] rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
+              className="min-h-12 flex-[2] rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
             >
               Continue <ArrowRight className="ml-1 h-4 w-4" />
             </Button>
@@ -598,13 +599,13 @@ function OnboardingPage() {
               type="button"
               onClick={handleGenerate}
               disabled={submitting}
-              className="flex-[2] rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
+              className="min-h-12 flex-[2] rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
             >
               {submitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
-                  Build plan <Sparkles className="ml-1 h-4 w-4" />
+                  {activeOption.ctaLabel} <Sparkles className="ml-1 h-4 w-4" />
                 </>
               )}
             </Button>
@@ -617,513 +618,241 @@ function OnboardingPage() {
 
 /* ---------- Step components ---------- */
 
-function StepHeader({ kicker, title, sub }: { kicker: string; title: React.ReactNode; sub: string }) {
+function StepHeader({
+  kicker,
+  title,
+  sub,
+}: {
+  kicker: string;
+  title: React.ReactNode;
+  sub: string;
+}) {
   return (
     <div>
       <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
         {kicker}
       </div>
-      <h1 className="mt-2 text-2xl font-normal text-foreground md:text-3xl">
+      <h1 className="mt-2 text-[1.6rem] font-normal leading-[1.15] tracking-[-0.02em] text-foreground md:text-3xl">
         {title}
       </h1>
-      <p className="mt-2 text-sm text-muted-foreground">{sub}</p>
+      <p className="mt-2 text-sm leading-[1.55] text-muted-foreground">{sub}</p>
     </div>
   );
 }
 
-function StepExam({
-  value,
-  onChange,
-}: {
-  value: ExamType;
-  onChange: (v: ExamType) => void;
-}) {
-  return (
-    <div className="space-y-6">
-      <StepHeader
-        kicker="Step 1"
-        title={<>Which exam are you preparing for?</>}
-        sub="Pick your jurisdiction — we'll tailor the syllabus, scoring weights and mock cadence."
-      />
-      <div className="grid gap-3">
-        {EXAM_OPTIONS.map((opt) => {
-          const Icon = opt.icon;
-          const active = value === opt.value;
-          return (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => onChange(opt.value)}
-              className={cn(
-                "group flex items-center gap-4 rounded-2xl border p-4 text-left transition-all",
-                active
-                  ? "border-pink bg-gradient-pink-blue/10 shadow-glow"
-                  : "border-border bg-background/40 hover:border-muted-foreground",
-              )}
-            >
-              <div
-                className={cn(
-                  "flex h-10 w-10 items-center justify-center rounded-xl transition-colors",
-                  active
-                    ? "bg-gradient-pink-blue text-primary-foreground"
-                    : "bg-card text-muted-foreground",
-                )}
-              >
-                <Icon className="h-5 w-5" />
-              </div>
-              <div className="flex-1">
-                <div className="font-semibold text-foreground">{opt.title}</div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
-                  {opt.blurb}
-                </div>
-              </div>
-              {active && <CheckCircle2 className="h-5 w-5 text-pink" />}
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-// (StepPath removed — each supported exam maps to exactly one path.)
-
-
-function StepIntensity({
-  name,
-  setName,
+function StepExamDate({
+  option,
+  examType,
+  onExamChange,
+  pickerOpen,
+  setPickerOpen,
   examDate,
   setExamDate,
-  hoursPerWeek,
-  setHoursPerWeek,
-  intensity,
-  setIntensity,
-  sessionShape,
 }: {
-  name: string;
-  setName: (v: string) => void;
+  option: ExamOption;
+  examType: ExamType;
+  onExamChange: (v: ExamType) => void;
+  pickerOpen: boolean;
+  setPickerOpen: (v: boolean) => void;
   examDate: string;
   setExamDate: (v: string) => void;
-  hoursPerWeek: number;
-  setHoursPerWeek: (v: number) => void;
-  intensity: IntensityTier;
-  setIntensity: (v: IntensityTier) => void;
-  sessionShape: string;
 }) {
+  const minDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 2"
-        title={<>Tell us about <span className="text-gradient-pink-violet">you</span></>}
-        sub="We'll calibrate the plan's intensity, pacing and task mix to match."
+        kicker="Step 1 of 2"
+        title={option.dateHeading}
+        sub="Tentra will work backwards from your exam date."
       />
 
-      <div className="space-y-1.5">
-        <Label htmlFor="name">What should we call you?</Label>
-        <Input
-          id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          maxLength={60}
-          required
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor="examDate" className="flex items-center gap-1.5">
-            <Calendar className="h-3.5 w-3.5" /> Exam date
-          </Label>
-          <Input
-            id="examDate"
-            type="date"
-            value={examDate}
-            onChange={(e) => setExamDate(e.target.value)}
-            min={new Date(Date.now() + 86400000).toISOString().slice(0, 10)}
-            required
-          />
-        </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="hours" className="flex items-center gap-1.5">
-            <Clock className="h-3.5 w-3.5" /> Hours per week:{" "}
-            <span className="font-semibold text-foreground">{hoursPerWeek}</span>
-          </Label>
-          <Slider
-            id="hours"
-            min={1}
-            max={40}
-            step={1}
-            value={[hoursPerWeek]}
-            onValueChange={(v) => setHoursPerWeek(v[0])}
-            className="pt-3"
-          />
-          <p className="text-xs text-muted-foreground">{sessionShape}</p>
-        </div>
-      </div>
-
       <div className="space-y-2">
-        <Label>Confidence level</Label>
-        <div className="grid grid-cols-2 gap-2">
-          {INTENSITY_OPTIONS.map((opt) => {
-            const Icon = opt.icon;
-            const active = intensity === opt.value;
+        <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          Quick options
+        </div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {DATE_PRESETS.map((preset) => {
+            const iso = isoInMonths(preset.months);
+            const active = examDate === iso;
             return (
               <button
-                key={opt.value}
+                key={preset.label}
                 type="button"
-                onClick={() => setIntensity(opt.value)}
+                aria-pressed={active}
+                onClick={() => setExamDate(iso)}
                 className={cn(
-                  "rounded-2xl border p-3 text-left transition-all",
+                  "min-h-11 rounded-xl border px-3 py-2.5 text-left text-[13.5px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                   active
-                    ? "border-pink bg-gradient-pink-blue/10 shadow-glow"
-                    : "border-border bg-background/40 hover:border-muted-foreground",
+                    ? "border-pink bg-gradient-pink-blue/10 text-foreground shadow-glow"
+                    : "border-border bg-background/40 text-muted-foreground hover:border-muted-foreground hover:text-foreground",
                 )}
               >
-                <div className="flex items-center gap-2">
-                  <Icon
-                    className={cn(
-                      "h-4 w-4",
-                      active ? "text-pink" : "text-muted-foreground",
-                    )}
-                  />
-                  <span className="font-semibold text-foreground">
-                    {opt.title}
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {opt.blurb}
-                </p>
+                <span className="flex items-center gap-2">
+                  {active ? (
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-pink" />
+                  ) : (
+                    <Calendar className="h-4 w-4 shrink-0" />
+                  )}
+                  {preset.label}
+                </span>
               </button>
             );
           })}
         </div>
       </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="examDate" className="flex items-center gap-1.5">
+          <Calendar className="h-3.5 w-3.5" /> Or pick your exact exam date
+        </Label>
+        <Input
+          id="examDate"
+          type="date"
+          value={examDate}
+          onChange={(e) => setExamDate(e.target.value)}
+          min={minDate}
+          required
+          className="min-h-12 text-base"
+        />
+        <p className="text-xs text-muted-foreground">
+          Not fixed yet? Use your best guess — you can change it any time.
+        </p>
+      </div>
+
+      <div className="border-t border-border/60 pt-4">
+        {!pickerOpen ? (
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            aria-expanded={false}
+            className="inline-flex min-h-11 items-center text-[13px] text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+          >
+            Studying for a different exam? Change exam
+          </button>
+        ) : (
+          <div className="space-y-3">
+            <div
+              id="exam-picker-label"
+              className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground"
+            >
+              Choose your exam
+            </div>
+            <div className="grid gap-2" role="radiogroup" aria-labelledby="exam-picker-label">
+              {EXAM_OPTIONS.map((opt) => {
+                const Icon = opt.icon;
+                const active = examType === opt.value;
+                return (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => onExamChange(opt.value)}
+                    className={cn(
+                      "flex min-h-11 items-center gap-3 rounded-2xl border p-3.5 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                      active
+                        ? "border-pink bg-gradient-pink-blue/10 shadow-glow"
+                        : "border-border bg-background/40 hover:border-muted-foreground",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                        active
+                          ? "bg-gradient-pink-blue text-primary-foreground"
+                          : "bg-card text-muted-foreground",
+                      )}
+                    >
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <span className="flex-1">
+                      <span className="block text-[14.5px] font-semibold text-foreground">
+                        {opt.title}
+                      </span>
+                      <span className="mt-0.5 block text-xs leading-[1.45] text-muted-foreground">
+                        {opt.blurb}
+                      </span>
+                    </span>
+                    {active && <CheckCircle2 className="h-5 w-5 shrink-0 text-pink" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function StepCoverage({
-  value,
-  onChange,
+function StepHours({
+  hoursPerWeek,
+  setHoursPerWeek,
+  sessionShape,
 }: {
-  value: CoverageMode;
-  onChange: (v: CoverageMode) => void;
+  hoursPerWeek: number;
+  setHoursPerWeek: (v: number) => void;
+  sessionShape: string;
 }) {
-  const options: {
-    value: CoverageMode;
-    title: string;
-    blurb: string;
-    bullets: string[];
-    icon: typeof Layers3;
-  }[] = [
-    {
-      value: "even",
-      title: "Cover Everything",
-      blurb: "Balanced revision across every selected module.",
-      bullets: [
-        "Even weighting tuned by SQE high-yield",
-        "Best for your first complete pass",
-        "Smart defaults — no extra setup",
-      ],
-      icon: Layers3,
-    },
-    {
-      value: "advanced",
-      title: "Advanced Personalisation",
-      blurb: "Pick weak subtopics — get a sharper, surgical plan.",
-      bullets: [
-        "Drill into weak subtopics per module",
-        "More sessions + spaced repetition on weak areas",
-        "Built for resitters and final push",
-      ],
-      icon: Sparkles,
-    },
-  ];
-
   return (
     <div className="space-y-6">
       <StepHeader
-        kicker="Step 3"
-        title={<>How should we shape your coverage?</>}
-        sub="Both modes use Tentra's adaptive engine — Advanced just listens harder to your weak spots."
+        kicker="Step 2 of 2"
+        title="How many hours can you realistically study each week?"
+        sub="Don't worry — your plan can change whenever life does."
       />
-      <div className="grid gap-3 md:grid-cols-2">
-        {options.map((opt) => {
-          const Icon = opt.icon;
-          const active = value === opt.value;
+
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {HOUR_PRESETS.map((preset) => {
+          const isLast = preset === HOUR_PRESETS[HOUR_PRESETS.length - 1];
+          const active = isLast ? hoursPerWeek >= preset : hoursPerWeek === preset;
           return (
             <button
-              key={opt.value}
+              key={preset}
               type="button"
-              onClick={() => onChange(opt.value)}
+              aria-pressed={active}
+              onClick={() => setHoursPerWeek(preset)}
               className={cn(
-                "rounded-2xl border p-5 text-left transition-all",
+                "min-h-12 rounded-xl border px-3 py-2.5 text-center transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
                 active
                   ? "border-pink bg-gradient-pink-blue/10 shadow-glow"
                   : "border-border bg-background/40 hover:border-muted-foreground",
               )}
             >
-              <div className="flex items-center gap-2">
-                <div
-                  className={cn(
-                    "flex h-9 w-9 items-center justify-center rounded-xl",
-                    active
-                      ? "bg-gradient-pink-blue text-primary-foreground"
-                      : "bg-card text-muted-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                </div>
-                <div className="font-semibold text-foreground">{opt.title}</div>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">{opt.blurb}</p>
-              <ul className="mt-3 space-y-1.5">
-                {opt.bullets.map((b) => (
-                  <li
-                    key={b}
-                    className="flex items-start gap-2 text-xs text-foreground/80"
-                  >
-                    <CheckCircle2
-                      className={cn(
-                        "mt-0.5 h-3.5 w-3.5 shrink-0",
-                        active ? "text-pink" : "text-muted-foreground",
-                      )}
-                    />
-                    {b}
-                  </li>
-                ))}
-              </ul>
+              <span className="block text-[15px] font-semibold text-foreground">
+                {isLast ? `${preset}+` : preset}
+              </span>
+              <span className="block text-[11px] text-muted-foreground">hrs/wk</span>
             </button>
           );
         })}
       </div>
-    </div>
-  );
-}
-
-function StepFocus({
-  modules,
-  coverageMode,
-  expanded,
-  setExpanded,
-  updateConfidence,
-  toggleWeakSubtopic,
-}: {
-  modules: ModuleConfidence[];
-  coverageMode: CoverageMode;
-  expanded: string | null;
-  setExpanded: (v: string | null) => void;
-  updateConfidence: (idx: number, value: number) => void;
-  toggleWeakSubtopic: (moduleName: string, subtopic: string) => void;
-}) {
-  return (
-    <div className="space-y-6">
-      <StepHeader
-        kicker="Step 4"
-        title={<>How confident are you in each area?</>}
-        sub={
-          coverageMode === "advanced"
-            ? "Tap a module to flag specific weak subtopics — we'll give them more reps."
-            : "Rate each subject 1 (weak) to 5 (strong). The engine handles the rest."
-        }
-      />
 
       <div className="space-y-2">
-        {modules.map((m, idx) => {
-          const subtopics = getSubtopicsForSubject(m.name);
-          const isOpen = expanded === m.name;
-          const weakCount = m.weakSubtopics?.length ?? 0;
-          return (
-            <div
-              key={m.id}
-              className="rounded-2xl border border-border bg-background/40 transition-colors"
-            >
-              <div className="flex items-center justify-between gap-3 p-3">
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-foreground truncate">
-                    {m.name}
-                  </div>
-                  {coverageMode === "advanced" && weakCount > 0 && (
-                    <div className="mt-0.5 text-[11px] text-pink">
-                      {weakCount} weak subtopic{weakCount === 1 ? "" : "s"} flagged
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  {[1, 2, 3, 4, 5].map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => updateConfidence(idx, v)}
-                      className={cn(
-                        "h-7 w-7 rounded-full text-xs font-medium transition-colors",
-                        m.confidence === v
-                          ? "bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                          : "bg-card text-muted-foreground hover:text-foreground",
-                      )}
-                      aria-label={`${m.name}: ${v}`}
-                    >
-                      {v}
-                    </button>
-                  ))}
-                </div>
-                {coverageMode === "advanced" && subtopics.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setExpanded(isOpen ? null : m.name)}
-                    className="ml-1 rounded-full p-1 text-muted-foreground hover:text-foreground"
-                    aria-label="Toggle subtopics"
-                  >
-                    <ChevronDown
-                      className={cn(
-                        "h-4 w-4 transition-transform",
-                        isOpen && "rotate-180",
-                      )}
-                    />
-                  </button>
-                )}
-              </div>
-
-              <AnimatePresence initial={false}>
-                {coverageMode === "advanced" && isOpen && subtopics.length > 0 && (
-                  <motion.div
-                    key="subs"
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: "auto", opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden"
-                  >
-                    <div className="border-t border-border px-3 pb-3 pt-3">
-                      <div className="mb-2 text-[11px] uppercase tracking-wider text-muted-foreground">
-                        Tap subtopics you find hardest
-                      </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {subtopics.map((t) => {
-                          const selected = (m.weakSubtopics ?? []).includes(t.name);
-                          return (
-                            <button
-                              key={t.id}
-                              type="button"
-                              onClick={() => toggleWeakSubtopic(m.name, t.name)}
-                              className={cn(
-                                "rounded-full border px-3 py-1 text-xs transition-colors",
-                                selected
-                                  ? "border-pink bg-gradient-pink-blue/15 text-foreground"
-                                  : "border-border bg-card text-muted-foreground hover:text-foreground",
-                              )}
-                            >
-                              {t.name}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function StepReview({
-  name,
-  examType,
-  examPath,
-  intensity,
-  coverageMode,
-  examDate,
-  hoursPerWeek,
-  weakModules,
-  totalModules,
-}: {
-  name: string;
-  examType: ExamType;
-  examPath: ExamPath;
-  intensity: IntensityTier;
-  coverageMode: CoverageMode;
-  examDate: string;
-  hoursPerWeek: number;
-  weakModules: ModuleConfidence[];
-  totalModules: number;
-}) {
-  const examLabel = EXAM_OPTIONS.find((e) => e.value === examType)?.title ?? examType;
-  const intensityLabel =
-    INTENSITY_OPTIONS.find((i) => i.value === intensity)?.title ?? intensity;
-  const days = Math.max(
-    1,
-    Math.ceil((new Date(examDate).getTime() - Date.now()) / 86400000),
-  );
-  void examPath;
-
-  const rows: { k: string; v: React.ReactNode }[] = [
-    { k: "Name", v: name || "—" },
-    { k: "Exam", v: examLabel },
-    { k: "Exam date", v: `${examDate} · ${days} days` },
-    { k: "Hours / week", v: `${hoursPerWeek}h` },
-    { k: "Intensity", v: intensityLabel },
-    {
-      k: "Coverage",
-      v: coverageMode === "even" ? "Cover Everything" : "Advanced Personalisation",
-    },
-    { k: "Subjects", v: `${totalModules} selected` },
-  ];
-
-
-  return (
-    <div className="space-y-6">
-      <StepHeader
-        kicker="Step 5"
-        title={
-          <>
-            Ready to build your <span className="text-gradient-pink-violet">plan</span>
-          </>
-        }
-        sub="The engine weights high-yield + your weak areas, schedules spaced repetition, and adapts as you study."
-      />
-
-      <div className="rounded-2xl border border-border bg-background/40 p-4">
-        <dl className="grid grid-cols-1 gap-y-2 text-sm sm:grid-cols-2">
-          {rows.map((r) => (
-            <div key={r.k} className="flex justify-between sm:block">
-              <dt className="text-xs uppercase tracking-wider text-muted-foreground">
-                {r.k}
-              </dt>
-              <dd className="font-medium text-foreground sm:mt-0.5">{r.v}</dd>
-            </div>
-          ))}
-        </dl>
+        <Label htmlFor="hours" className="flex items-center gap-1.5">
+          <Clock className="h-3.5 w-3.5" /> Fine-tune:{" "}
+          <span className="font-semibold text-foreground">{hoursPerWeek} hours</span>
+        </Label>
+        <Slider
+          id="hours"
+          min={1}
+          max={40}
+          step={1}
+          value={[hoursPerWeek]}
+          onValueChange={(v) => setHoursPerWeek(v[0])}
+          aria-label="Hours available per week"
+          className="pt-3"
+        />
+        <p className="text-xs text-muted-foreground">{sessionShape}</p>
       </div>
 
-      {weakModules.length > 0 && (
-        <div className="rounded-2xl border border-pink/40 bg-gradient-pink-blue/10 p-4">
-          <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-            Weak focus
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            We'll concentrate extra sessions, spaced repetition and quizzes on:
-          </p>
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {weakModules.slice(0, 12).map((m) => (
-              <span
-                key={m.id}
-                className="rounded-full border border-pink/40 bg-card px-2.5 py-1 text-xs text-foreground"
-              >
-                {m.name}
-                {(m.weakSubtopics?.length ?? 0) > 0 && (
-                  <span className="ml-1 text-pink">
-                    · {m.weakSubtopics!.length}
-                  </span>
-                )}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="rounded-2xl border border-border/60 bg-background/40 p-4">
+        <p className="text-[13px] leading-[1.55] text-muted-foreground">
+          We&apos;ll build a balanced starting plan across your full syllabus. You can personalise
+          it further — confidence per subject, weak topics, intensity — once you&apos;re inside.
+        </p>
+      </div>
     </div>
   );
 }

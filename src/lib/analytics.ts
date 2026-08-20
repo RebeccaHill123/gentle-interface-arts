@@ -13,9 +13,19 @@
 
 export type AnalyticsEvent =
   | "onboarding_start"
+  | "onboarding_started"
+  | "onboarding_resumed"
+  | "onboarding_exam_switched"
+  | "exam_date_viewed"
+  | "exam_date_completed"
+  | "weekly_hours_viewed"
+  | "weekly_hours_completed"
+  | "plan_build_clicked"
+  | "plan_preview_created"
   | "onboarding_step_complete"
   | "onboarding_completed"
   | "preview_viewed"
+
   | "plan_reveal_viewed"
   | "pricing_section_viewed"
   | "founding_cta_clicked"

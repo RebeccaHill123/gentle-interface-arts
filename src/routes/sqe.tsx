@@ -99,6 +99,7 @@ function SqePage() {
               >
                 <Link
                   to={to as never}
+                  search={(isAuthenticated ? undefined : { exam: "sqe1", src: "sqe_page" }) as never}
                   onClick={() =>
                     trackEvent("build_plan_cta_clicked", { surface: "sqe_page", placement: "hero" })
                   }
@@ -157,6 +158,7 @@ function SqePage() {
               >
                 <Link
                   to={to as never}
+                  search={(isAuthenticated ? undefined : { exam: "sqe1", src: "sqe_page" }) as never}
                   onClick={() =>
                     trackEvent("build_plan_cta_clicked", {
                       surface: "sqe_page",

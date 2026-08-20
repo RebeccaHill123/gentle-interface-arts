@@ -184,7 +184,11 @@ function LandingPage() {
                 >
                   Sign in
                 </Link>
-                <PremiumCta to="/onboarding" className="px-4 md:px-5">
+                <PremiumCta
+                  to="/onboarding"
+                  search={{ exam: "sqe1", src: "landing", placement: "header" }}
+                  className="px-4 md:px-5"
+                >
                   Get started
                 </PremiumCta>
               </>
@@ -221,6 +225,7 @@ function LandingPage() {
                   ) : (
                     <PremiumCta
                       to="/onboarding"
+                      search={{ exam: "sqe1", src: "landing" }}
                       size="lg"
                       className="w-full md:w-auto"
                       onClick={() =>
@@ -490,6 +495,7 @@ function LandingPage() {
                   <div className="mt-8 flex flex-col items-center gap-3">
                     <PremiumCta
                       to="/onboarding"
+                      search={{ exam: "sqe1", src: "landing" }}
                       size="lg"
                       className="w-full"
                       onClick={() => trackEvent("founding_cta_clicked", { surface: "landing" })}
@@ -607,6 +613,7 @@ function LandingPage() {
         >
           <PremiumCta
             to="/onboarding"
+            search={{ exam: "sqe1", src: "landing" }}
             size="lg"
             className="w-full"
             onClick={() =>
@@ -807,6 +814,7 @@ function InlineCta({
     <div className="mt-8 flex justify-center md:mt-12">
       <PremiumCta
         to={isAuthenticated ? ctaTo : "/onboarding"}
+        search={isAuthenticated ? undefined : { exam: "sqe1", src: "landing", placement }}
         size="lg"
         className="w-full sm:w-auto"
         onClick={() =>
