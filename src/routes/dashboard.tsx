@@ -591,6 +591,22 @@ function DashboardPage() {
         />
       </div>
 
+      <SkipReasonSheet
+        open={!!skipTarget}
+        taskTitle={skipTarget?.title}
+        onCancel={() => setSkipTarget(null)}
+        onSkip={handleSkipConfirmed}
+      />
+      <RescheduleSheet
+        open={!!moveTarget}
+        taskTitle={moveTarget?.title}
+        taskMinutes={moveTarget?.minutes ?? 30}
+        days={capacity}
+        today={today}
+        onCancel={() => setMoveTarget(null)}
+        onPick={handleRescheduleConfirmed}
+      />
+
       {quizTask && (
         <QuizDialog
           task={quizTask}
