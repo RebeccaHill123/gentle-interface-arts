@@ -14,7 +14,10 @@ interface PlanRequest {
   name: string;
   examDate: string; // ISO date
   hoursPerWeek: number;
-  modules: { id: string; name: string; confidence: number; weakSubtopics?: string[] }[]; // confidence 1-5
+  // confidence 1-5. `rated` is true only when the student explicitly rated the
+  // subject; unrated subjects are held at neutral 3 so nothing can be
+  // described as a personal weakness without supporting input.
+  modules: { id: string; name: string; confidence: number; weakSubtopics?: string[]; rated?: boolean }[];
   examType: ExamType;
   examPath?: ExamPath;
   intensity?: IntensityTier;
