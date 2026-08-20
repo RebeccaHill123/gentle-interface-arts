@@ -70,10 +70,7 @@ function FocusPage() {
   }, []);
 
   useEffect(() => {
-    const id = setInterval(
-      () => setLineIdx((i) => (i + 1) % MOTIVATIONAL_LINES.length),
-      12000,
-    );
+    const id = setInterval(() => setLineIdx((i) => (i + 1) % MOTIVATIONAL_LINES.length), 12000);
     return () => clearInterval(id);
   }, []);
 
@@ -211,22 +208,13 @@ function FocusPage() {
                 {session.module}
               </div>
             )}
-            <div className="text-xl font-normal text-foreground md:text-2xl">
-              {session.title}
-            </div>
+            <div className="text-xl font-normal text-foreground md:text-2xl">{session.title}</div>
             {session.evidenceLabel && (
-              <div className="text-[11.5px] text-muted-foreground">
-                {session.evidenceLabel}
-              </div>
+              <div className="text-[11.5px] text-muted-foreground">{session.evidenceLabel}</div>
             )}
           </div>
 
-          <TimerRing
-            remainingMs={remaining}
-            progress={progress}
-            phase={phase}
-            paused={isPaused}
-          />
+          <TimerRing remainingMs={remaining} progress={progress} phase={phase} paused={isPaused} />
 
           {session.output && phase === "focus" && (
             <p className="max-w-md text-[12.5px] text-muted-foreground">
@@ -282,9 +270,7 @@ function FocusPage() {
         <div className="mt-4 flex items-center justify-center gap-6 text-xs text-muted-foreground">
           <div>
             Elapsed{" "}
-            <span className="font-semibold text-foreground">
-              {fmt(elapsedMs(session, now))}
-            </span>
+            <span className="font-semibold text-foreground">{fmt(elapsedMs(session, now))}</span>
           </div>
           <div className="h-3 w-px bg-border" />
           <div>

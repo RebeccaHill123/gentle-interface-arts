@@ -98,8 +98,16 @@ export function expectedOutput(t: ScheduledTask): string {
 }
 
 export const SKIP_REASONS: { id: SkipReason; label: string; effect: string }[] = [
-  { id: "no-time", label: "No time today", effect: "Tentra will try to fit it into a lighter day." },
-  { id: "too-hard", label: "Too hard right now", effect: "Tentra will schedule foundations first." },
+  {
+    id: "no-time",
+    label: "No time today",
+    effect: "Tentra will try to fit it into a lighter day.",
+  },
+  {
+    id: "too-hard",
+    label: "Too hard right now",
+    effect: "Tentra will schedule foundations first.",
+  },
   {
     id: "already-covered",
     label: "Already covered this",

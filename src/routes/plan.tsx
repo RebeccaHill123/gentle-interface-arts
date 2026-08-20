@@ -74,10 +74,7 @@ function PlanPage() {
     [schedule, today],
   );
   const missed = useMemo(() => missedTasks(schedule, today), [schedule, today]);
-  const capacity = useMemo(
-    () => scheduleCapacity(schedule, today, 10),
-    [schedule, today],
-  );
+  const capacity = useMemo(() => scheduleCapacity(schedule, today, 10), [schedule, today]);
   const examLabel = getExamLabel(stored?.input.examType, stored?.input.examPath);
 
   const byDate = useMemo(() => {
@@ -123,9 +120,7 @@ function PlanPage() {
 
             <section className="rounded-3xl border border-border/50 bg-card p-5 shadow-card">
               <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-                <h2 className="truncate text-[14px] font-medium text-foreground">
-                  Next 14 days
-                </h2>
+                <h2 className="truncate text-[14px] font-medium text-foreground">Next 14 days</h2>
                 <Link
                   to="/topics"
                   className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-pink"

@@ -53,14 +53,8 @@ function greeting(name?: string): string {
 }
 
 export function TodayPanel(props: TodayPanelProps) {
-  const {
-    tasks,
-    missed,
-    daysUntilExam,
-    weeklyDoneMins,
-    weeklyTargetMins,
-    daysSinceLastActivity,
-  } = props;
+  const { tasks, missed, daysUntilExam, weeklyDoneMins, weeklyTargetMins, daysSinceLastActivity } =
+    props;
 
   const open = tasks.filter((t) => t.status === "scheduled");
   const done = tasks.filter((t) => t.status === "completed");
@@ -127,8 +121,8 @@ export function TodayPanel(props: TodayPanelProps) {
               : `Welcome back — it's been ${daysSinceLastActivity} days`}
           </div>
           <p className="mt-1 text-[12px] text-muted-foreground">
-            Tentra won't pile it all onto today. Rebuild the rest of your plan around the
-            time you actually have left.
+            Tentra won't pile it all onto today. Rebuild the rest of your plan around the time you
+            actually have left.
           </p>
           <Button
             onClick={props.onRecoverMissed}
@@ -226,8 +220,8 @@ export function TodayPanel(props: TodayPanelProps) {
           <h3 className="mt-2 font-display text-lg text-foreground">Today is done</h3>
           <p className="mx-auto mt-1 max-w-md text-[12.5px] text-muted-foreground">
             {doneMins} minutes logged across {done.length} session
-            {done.length === 1 ? "" : "s"}. Everything else stays where it is — you're ahead,
-            not behind.
+            {done.length === 1 ? "" : "s"}. Everything else stays where it is — you're ahead, not
+            behind.
           </p>
           <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
             <Link
@@ -249,8 +243,7 @@ export function TodayPanel(props: TodayPanelProps) {
           <Sparkles className="mx-auto h-5 w-5 text-pink" />
           <h3 className="mt-2 text-sm font-medium text-foreground">No plan yet</h3>
           <p className="mx-auto mt-1 max-w-md text-[12.5px] text-muted-foreground">
-            Tentra schedules your study around your exam date and the hours you actually
-            have.
+            Tentra schedules your study around your exam date and the hours you actually have.
           </p>
           {props.onGeneratePlan && (
             <Button
@@ -267,9 +260,7 @@ export function TodayPanel(props: TodayPanelProps) {
       {tasks.length > 0 && (
         <div className="rounded-3xl border border-border/50 bg-card p-5 shadow-card">
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-            <h3 className="truncate text-[13.5px] font-medium text-foreground">
-              Rest of today
-            </h3>
+            <h3 className="truncate text-[13.5px] font-medium text-foreground">Rest of today</h3>
             <span className="shrink-0 text-[11.5px] text-muted-foreground">
               {done.length}/{tasks.length} done
               {skipped.length > 0 ? ` · ${skipped.length} skipped` : ""}

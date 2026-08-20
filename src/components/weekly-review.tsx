@@ -91,13 +91,7 @@ export function computeWeeklyReview(
   };
 }
 
-export function WeeklyReview({
-  schedule,
-  today,
-}: {
-  schedule: PlanSchedule;
-  today: string;
-}) {
+export function WeeklyReview({ schedule, today }: { schedule: PlanSchedule; today: string }) {
   const from = addDaysKey(today, -6);
   const stats = useMemo(
     () => computeWeeklyReview(schedule.tasks, from, today),
@@ -148,8 +142,8 @@ export function WeeklyReview({
         )}
         {stats.neglectedModule && (
           <li>
-            <span className="font-medium text-foreground">{stats.neglectedModule}</span> fell
-            behind its planned time — Tentra will weight it in your next update.
+            <span className="font-medium text-foreground">{stats.neglectedModule}</span> fell behind
+            its planned time — Tentra will weight it in your next update.
           </li>
         )}
         {stats.topSkipReason && (

@@ -18,7 +18,6 @@ import {
 import { ProfileMenu } from "@/components/profile-menu";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-
 export type AppRoute =
   | "/dashboard"
   | "/plan"
@@ -158,7 +157,9 @@ function DesktopSidebar() {
                   : "font-normal text-muted-foreground hover:bg-foreground/[0.03] hover:text-foreground"
               }`}
             >
-              <Icon className={`h-[15px] w-[15px] ${active ? "text-foreground" : "text-muted-foreground/80 group-hover:text-foreground"}`} />
+              <Icon
+                className={`h-[15px] w-[15px] ${active ? "text-foreground" : "text-muted-foreground/80 group-hover:text-foreground"}`}
+              />
               {item.label}
             </Link>
           );
@@ -205,7 +206,6 @@ function DesktopSidebar() {
     </aside>
   );
 }
-
 
 function MobileBottomNav() {
   const path = useRouterState({ select: (s) => s.location.pathname });
