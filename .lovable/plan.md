@@ -1,154 +1,124 @@
-# Onboarding simplification — observed vs proposed
+# Tentra Product Audit — SQE Paid-Product Readiness
 
-Plan only. Nothing below is implemented.
+## Executive verdict
 
-## 1. Current flow map (observed in `src/routes/onboarding.tsx`)
+Tentra today is a **well-designed revision timetable with a convincing analytics veneer**, not yet a credible £9.99/month SQE study product. The onboarding, plan reveal and visual craft are genuinely strong. Behind them, three structural failures undermine the core promise:
 
-```text
-Landing CTA (/, /sqe, /new-york-bar) → /onboarding (no search params passed)
+1. **The plan is not adaptive.** `todayTasks` and `weeklyFocus` are generated once at onboarding and never rebuilt. There is no caller of `generate-plan` after signup, no day rollover, no overdue model. The only way to change an exam date or weekly hours is Settings → "Re-plan", which destructively deletes the plan row (and the session history stored inside the same JSON blob).
+2. **The headline numbers are not real.** `/analytics` "accuracy", "Mock performance" and "Predicted SQE score" are computed from `focus × (mood/5)` — self-reported feelings. Real graded data exists (`mock_answers.is_correct`, practice quiz accuracy) but full-mock scores are discarded before reaching the analytics pipeline, and `mock-performance.ts` (real per-topic accuracy) is never surfaced on `/analytics`.
+3. **The question bank is thin.** Full mocks present a structurally correct SQE1 360-question blueprint but fill it by rotating ~14–20 unique questions roughly 18×. Practice quizzes are AI-generated at runtime, never persisted, never cached, with no grounding/RAG and no visible accuracy disclaimer.
 
-Step 1  Exam       SQE1 | SQE2 | NY Bar (UBE) | MPRE   (examPath derived 1:1)
-Step 2  You        name (required) + exam date (required, future)
-                   + hours/week slider (1–40, default 10)
-                   + intensity (4 cards, default "intermediate")
-Step 3  Coverage   "Cover everything" (even) vs "Advanced personalisation"
-Step 4  Focus      every subject listed, confidence slider per subject,
-                   weak-subtopic pickers (only when coverage = advanced);
-                   blocks if modules.length === 0
-Step 5  Review     summary → "Generate my plan"
+Usage data corroborates: 53 stored plans, **41 never updated after creation**, 4 with any task completion, **0 mock answers ever recorded**, and 40 orphaned plans whose `user_id` no longer exists in `auth.users`.
 
-→ createPendingPlan (server) → /plan-reveal?token=… → Stripe → account
-```
+Verdict: the acquisition funnel is ahead of the product. Ship no further paid-conversion optimisation until the adaptive loop and honest measurement exist.
 
-Observed facts:
-- Draft is already persisted per keystroke to `sessionStorage` (`tentra.onboarding.draft.v1`) including `step`, and onboarding resumes at that step.
-- `modules` are auto-seeded from `getSubjectsForExamPath(examPath)` with `confidence: 3`, `weakSubtopics: []`. So step 4's validation can never actually fail in normal use — it is friction with no protective value.
-- Step 3 only changes whether step 4 shows subtopic pickers; `coverageMode` is not read by `preview-plan.ts` or `study-plan-logic.ts` at all.
-- `name` is only consumed by the dashboard greeting (`userName={input.name}`). The plan generator, plan-reveal and the Stripe webhook never read it.
-- `/onboarding` has no `validateSearch`, so the SQE homepage cannot currently pass intent through.
-- Server validation in `createPendingPlan` requires `examType`, future `examDate`, and `Array.isArray(modules)` — not `name`, not `intensity`, not `coverageMode`.
+## Product map
 
-## 2. Absolute minimum inputs for a credible SQE plan preview
+| Area | Route / module | Real data? | State |
+|---|---|---|---|
+| Onboarding (3-stage) | `onboarding.tsx`, `confidence.ts` | Yes | Strong |
+| Plan reveal / paywall | `plan-reveal.tsx`, `week-one.ts` | Yes | Strong |
+| Plan generation (paid) | `supabase/functions/generate-plan` | Yes, once | One-shot |
+| Plan preview (free) | `study-plan-logic.ts`, `preview-plan.ts` | Yes, once | Divergent duplicate of server logic |
+| Dashboard | `dashboard.tsx` (1994 lines), `command-centre.tsx` | Partly | ~1000 lines orphaned dead UI |
+| Focus / sprints | `focus.*.tsx`, `focus-store.ts` | Yes | Works; double-log risk |
+| Practice quizzes | `practice.tsx` | AI runtime | No persistence |
+| Full mocks | `mocks.*`, `full-mock-questions.ts` | Yes (Supabase) | Bank near-empty |
+| Flashcards | `flashcards.tsx`, `generated_flashcards` | Yes | localStorage-only progress, no sessions logged |
+| Topics | `topics.tsx`, `topic-map.ts` | Yes | Best-in-class area |
+| Analytics | `analytics.tsx`, `analytics-derive.ts` | **Proxy** | Misleading |
+| AI Coach / Tutor | `coach.tsx`, `api/coach.ts`, 2 MCP tools | Grounded snapshot | Read-only; 3 duplicated prompts |
+| Community | `community.tsx` | No | Static placeholder, desktop-only nav |
+| Settings | `settings.tsx` | Yes | No incremental edits, no export/delete |
 
-Only three, per what `generatePreviewPlan` actually consumes:
-
-1. **examPath** (drives the syllabus subject list and subtopic depth)
-2. **examDate** (drives days-to-exam, week count, and study phase)
-3. **hoursPerWeek** (drives session count and per-session durations)
-
-Everything else is a modifier that already has a safe default.
-
-## 3. Proposed minimum viable flow (2 screens + reveal)
+## Core loop — intended vs actual
 
 ```text
-/onboarding?exam=sqe1  (preselected from the SQE homepage)
-
-Screen 1  "When's your exam?"
-          exam-path chips (SQE1 preselected; SQE2 · NY Bar · MPRE visible)
-          + date picker
-          → Continue
-
-Screen 2  "How much time have you got?"
-          hours/week slider with live "what your week looks like" preview
-          + optional single-tap experience row (New to it / Some prep / Resitting)
-          → Build my plan
-
-→ /plan-reveal (full week 1 visible) → payment → dashboard
+INTENDED:  plan -> study today -> log real performance -> recalibrate -> new plan
+ACTUAL:    plan -> study today -> log proxy signal -> (dead end)
+                                          |
+                    adjustModuleConfidence writes a score
+                                          |
+                                    nothing reads it
 ```
 
-Two required taps and one date entry before the plan appears, versus five screens today. Screen 2's experience row is optional — skipping it keeps `intermediate`.
+## Findings register (severity ordered)
 
-## 4. SQE1 preselection
+**P0 — breaks the paid promise**
+- F1. Plan never regenerates; no scheduled or event-driven recalibration.
+- F2. Analytics accuracy/predicted score built on mood × focus, not correctness.
+- F3. Full-mock graded score discarded at `mocks.simulation.$simId.tsx` — the most rigorous data source moves no metric.
+- F4. Mock bank rotates ~20 questions to fill 360 slots; a serious candidate detects this in one sitting.
+- F5. No overdue / missed / rollover model; `completedTaskIds` are array indices, not date-scoped.
+- F6. Settings cannot change exam date or hours without destroying plan + session history behind a native `confirm()`.
 
-Yes, safely: add `validateSearch` to `/onboarding` reading an optional `exam` param (`sqe1|sqe2|ube|mpre`), defaulting to `sqe1`. Homepage, `/sqe` and pricing CTAs pass `?exam=sqe1`; `/new-york-bar` passes `?exam=ube`. All four exam options remain visible and switchable on screen 1, so no route is removed — only the default changes. `defaultPathForExam` and `pathToExamType` already handle the mapping.
+**P1 — integrity and trust**
+- F7. Whole-plan last-write-wins `upsert`; two devices silently delete each other's sessions. Push is fire-and-forget with console-only failure.
+- F8. Mixed timezone date keys — some sessions stamped local (`todayKey()`), some UTC (`toISOString().slice(0,10)`), corrupting streaks and 14-day consistency for non-UTC users.
+- F9. Undo-complete removes neither the logged session nor the confidence adjustment.
+- F10. `addStudySession` called from 6 sites with no idempotency — manual log + focus sprint double counts.
+- F11. Practice results not persisted; lost on refresh. No per-question log anywhere.
+- F12. Flashcard study invisible to minutes, streaks and analytics despite a `"flashcards"` session type existing in the enum and UI.
+- F13. No RAG/grounding or verification for AI-generated legal content; no user-visible accuracy or "not legal advice" disclaimer in practice or coach UI.
+- F14. 40/53 orphaned plans; no data export, no account-deletion flow (GDPR gap).
 
-## 5. Deferred-field table
+**P2 — quality and maintenance**
+- F15. Duplicate plan engines (edge function vs client) drift for identical inputs; MPRE silently falls back to SQE subjects.
+- F16. Dashboard dead code (~1000 lines) plus unused `tab` state.
+- F17. Coach/Tutor mode toggle is cosmetic — same endpoint, same Coach system prompt; three duplicated prompt copies.
+- F18. Quiz-gated task completion dead-ends if `generate-quiz` fails (no "mark done anyway").
+- F19. Dashboard hydration has no catch — a failed cloud pull hangs the spinner forever.
+- F20. Community placeholder shipped in desktop nav; `syllabusCoverage` denominator is the user's onboarding modules, not the full syllabus, so it can read 100% with syllabus gaps.
 
-| Field | Today | Proposed | Collected instead |
-| --- | --- | --- | --- |
-| examPath | Step 1, required | Screen 1, preselected from `?exam` | — |
-| examDate | Step 2, required | Screen 1, required | — |
-| hoursPerWeek | Step 2, required | Screen 2, default 10 | — |
-| intensity | Step 2, 4 cards | Screen 2, optional 3-chip row, default `intermediate` | Settings / recalibrate |
-| name | Step 2, **required** | Removed | After payment, on first dashboard load (also available from Google/profile) |
-| coverageMode | Step 3, own screen | Removed entirely (unused by plan logic) | Replaced by the Topics page, which already does per-subtopic work |
-| module confidence | Step 4, per subject | Defaulted to 3 for all | Dashboard "Rate your confidence" prompt + existing Topics page |
-| weakSubtopics | Step 4, expandable | Defaulted to `[]` | Derived from real mock/quiz performance (`mock-performance.ts`), plus optional manual flagging in Topics |
-| Review step | Step 5 | Removed — `/plan-reveal` is the review | — |
+## Truth table — advertised vs implemented
 
-## 6. Recommended defaults
+| Claim | Reality | Status |
+|---|---|---|
+| "Personalised plan from your exam date and real hours" | True at generation time | ✅ |
+| "Adapts to your progress and performance" | Never regenerates | ❌ False |
+| "Recalibrates automatically" | No recalibration code path | ❌ False |
+| "Predicted SQE score" | Derived from mood × focus | ❌ Misleading |
+| "Tracks your weak areas" | Real for mocks (unused on /analytics); analytics version is proxy | ⚠️ Partial |
+| "Full SQE1 mock (360 questions)" | ~20 unique questions rotated | ❌ Misleading |
+| "Practice questions" | Real AI questions, ungrounded, unsaved | ⚠️ Partial |
+| "AI Coach that knows your plan" | Real grounded snapshot, read-only | ⚠️ Partial |
+| "Spaced repetition flashcards" | Binary shuffle, local-only progress | ❌ Misleading |
+| "Community" | Static placeholder | ❌ Absent |
 
-- `examPath`: from `?exam`, else `SQE1_FULL`
-- `examType`: `pathToExamType(examPath)` (unchanged)
-- `intensity`: `intermediate`
-- `coverageMode`: `even` (kept in the type for back-compat, no longer surfaced)
-- `hoursPerWeek`: 10
-- module `confidence`: 3, `weakSubtopics`: `[]`
-- `name`: `""` at plan creation; dashboard greeting falls back to a name-free headline
+## Product strategy
 
-## 7. Technical risks and safeguards
+Reposition from *timetable* to **performance-led study operating system**: one honest measurement layer (graded answers only), one plan engine (server, shared), one loop that visibly changes tomorrow based on today. Everything advertised must be traceable to graded data or explicit user input. Anything else says "Not enough data yet".
 
-| Removal | Risk | Safeguard |
-| --- | --- | --- |
-| `name` required | Dashboard greeting renders "Welcome back, " with an empty name; `OnboardingInput.name` is typed non-optional | Make the greeting name-optional first, and keep `name: ""` in the payload so no type or server-validation change is forced |
-| module confidence defaults to 3 | `preview-plan.ts` weights allocations by `(6 - confidence)`; uniform 3 gives an even split, so week 1 looks less "personalised" | Compensate by ordering subjects by syllabus high-yield weight rather than confidence when all values are equal, so the plan still reads deliberately |
-| `weakSubtopics` empty | `rationale: "weak-area"` never fires on a first plan | Acceptable — the foundation-first phase is the correct week-1 output anyway; weak-area work should come from real assessment data |
-| `coverageMode` removed | Field exists in `OnboardingDraft`, `OnboardingInput` and stored plans | Keep the optional field and keep writing `"even"`; only delete the UI. No migration needed |
-| Step-5 review removed | Users lose a confirm step before a server write | `/plan-reveal` already shows every input back and can offer "Change my answers" |
-| Draft `step` values | Existing sessionStorage drafts carry `step: 3–5`, which would exceed the new step count | Clamp on load (`Math.min(newStepCount, draft.step)`) — the code already clamps, so verify the new bound |
-| `?exam` param | Unknown values | `validateSearch` whitelist, fall back to `sqe1` |
+## Prioritised roadmap / 6-week build sequence
 
-## 8. Drafts and later refinement
+- **Week 1 — Truth.** Unify plan storage to per-row sessions with idempotency keys and a single local/UTC date convention. Persist full-mock and practice scores as graded results. Strip mood-based "accuracy" from `/analytics`; replace with graded accuracy or "Not enough data yet".
+- **Week 2 — One engine.** Delete the client plan duplicate; call the edge function for preview and paid alike. Add MPRE. Version `StoredPlan` with explicit migrations.
+- **Week 3 — Adaptive loop.** Date-scoped task completion, day rollover, overdue states, and a nightly/on-open recalibration that reads graded accuracy + confidence and rewrites `todayTasks`/`weeklyFocus`. Show a "what changed and why" diff.
+- **Week 4 — Question bank.** Author/curate a real SQE1 bank (target 1,200+ FLK1/FLK2 items, blueprint-weighted), persist every attempt per question, retire rotation. Add grounding and citations to AI generation plus a visible accuracy disclaimer.
+- **Week 5 — Execution + control.** Incremental Settings (exam date, hours, confidence) that trigger recalibration without data loss; remove dashboard dead code; give Coach scoped write actions ("adjust my week") with user confirmation.
+- **Week 6 — Trust + retention.** True SM-2 scheduling with cloud-synced flashcard progress and logged sessions; data export and account deletion; orphaned-plan cleanup; remove or build Community.
 
-- Keep the existing per-keystroke `sessionStorage` draft; consider moving to `localStorage` so a TikTok user who leaves the browser can resume.
-- Preserve resume-at-step behaviour with the clamped bound.
-- Add a single **"Recalibrate my plan"** entry point (dashboard + settings) that reopens the full input set — exam date, hours, intensity, per-subject confidence — as an edit screen rather than a wizard. This is where the deferred fields land.
-- Contextual capture inside the dashboard: a dismissible "Rate your confidence across the syllabus" card, and a name prompt on first authenticated load.
+## Acceptance criteria
 
-## 9. Suggested microcopy
+- Changing the exam date in Settings updates today's tasks within one load, preserves all history, and shows a change explanation.
+- Missing three days produces visible overdue items and a redistributed week, not a frozen list.
+- Every number on `/analytics` traces to a graded answer row or an explicit user input; no metric derives from mood.
+- Completing a full mock changes readiness and weak areas.
+- No question repeats inside a single mock sitting.
+- Two devices used the same day lose no sessions.
+- Undo-complete fully reverses its session and confidence effects.
+- Export and delete-my-data both work from Settings.
 
-**Screen 1**
-- Eyebrow: `Step 1 of 2`
-- H1: `When's your SQE?`
-- Sub: `We build your plan backwards from exam day.`
-- Chip row label: `Exam` — `SQE1` · `SQE2` · `NY Bar` · `MPRE`
-- Field label: `Exam date`
-- Helper: `Not fixed yet? Use your best guess — you can change it any time.`
-- CTA: `Continue`
+## User scenarios to validate
 
-**Screen 2**
-- Eyebrow: `Step 2 of 2`
-- H1: `How much time have you got?`
-- Sub: `Be honest — Tentra adapts when life gets in the way.`
-- Slider label: `Hours per week`
-- Live helper: existing `sessionShape` string (`Steady — 4–5 mixed sessions/wk`)
-- Optional row label: `Where are you now? (optional)` — `New to it` · `Some prep done` · `Resitting`
-- CTA: `Build my plan`
-- Micro: `Takes about 20 seconds. No card needed to see your plan.` (only if the free-preview P0 item ships)
+1. Part-time resitter, 12 weeks out, misses a week — plan rebalances, tone stays supportive, no fake weakness claims.
+2. Beginner, 9 months out, scores 42% on a diagnostic — foundations expand, predicted readiness moves on graded data only.
+3. Advanced candidate, 4 weeks out, two devices — mocks drive the final-review plan and nothing is lost.
 
-**Reveal**
-- Secondary link under the CTA: `Change my answers`
+## Founder decisions needed
 
-## 10. Events for step-level abandonment
-
-Reuse `onboarding_start`, `onboarding_step_complete`, `onboarding_completed`, `plan_reveal_viewed`. Add:
-
-- `onboarding_step_viewed` — `{ step, stepLabel, examPath, source }` (the missing denominator; today only completions fire)
-- `onboarding_field_changed` — `{ field }`, throttled, to see which control stalls users
-- `onboarding_exam_switched` — `{ from, to }`, to validate SQE1 preselection
-- `onboarding_resumed` — `{ step }`
-- `onboarding_abandoned` — fired on `pagehide` with `{ step, secondsOnStep }`
-- `traffic_source_seen` — `{ source }` from `?src`/`utm_source`, stamped onto every later event
-
-All events should carry `examPath` and `source` so SQE vs NY Bar and TikTok vs organic separate cleanly. Note the P0 prerequisite from the previous audit: no analytics provider is mounted in `__root.tsx`, so none of this is collectable until one is.
-
-## 11. Recommended implementation sequence
-
-1. Mount an analytics provider and add `onboarding_step_viewed` to the **current** 5-step flow. Get one baseline funnel.
-2. Make `name` optional end-to-end (dashboard greeting first, then drop the field).
-3. Add `validateSearch` with `?exam` and pass it from all landing CTAs.
-4. Merge to the 2-screen flow: delete the Coverage screen, default confidence, delete the Review screen.
-5. Add the "Change my answers" link on `/plan-reveal`.
-6. Add "Recalibrate my plan" plus the dashboard confidence and name prompts.
-7. Move the draft to `localStorage` and verify step clamping.
-8. Compare the new funnel against the step 1 baseline before touching pricing.
+1. **Question bank**: licence a real SQE bank, commission authored content, or fund AI + human legal review? This is the largest cost and the biggest credibility lever.
+2. **Honesty timing**: soften "adaptive" and "360-question mock" marketing now, or hold until Week 3–4 ships?
+3. **Cloud-first migration**: accept a one-off migration of localStorage plans into relational tables (recommended) or keep the blob?
+4. **Community**: build (cohorts/leaderboards) or remove from nav?
+5. **Price**: £9.99 is under-priced for the Week 1–6 product; hold as Founding Member rate and raise for new cohorts?
