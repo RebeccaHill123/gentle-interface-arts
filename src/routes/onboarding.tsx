@@ -321,10 +321,20 @@ function OnboardingPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checking]);
 
-  // Step view events.
+  // Step view events. No subject ratings are ever sent — counts only.
   useEffect(() => {
     if (checking) return;
-    trackEvent(step === 1 ? "exam_date_viewed" : "weekly_hours_viewed", eventBase);
+    if (step === 1) {
+      trackEvent("exam_date_viewed", eventBase);
+      trackEvent("weekly_hours_viewed", eventBase);
+    } else if (step === 2) {
+      trackEvent("preparation_stage_viewed", eventBase);
+    } else {
+      trackEvent("confidence_rating_viewed", {
+        ...eventBase,
+        subjectCount: modules.length,
+      });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [checking, step]);
 
@@ -336,12 +346,16 @@ function OnboardingPage() {
     if (opt.path !== examPath) setExamPath(opt.path);
   }, [examType, examPath]);
 
+  // Changing exam reseeds the syllabus and discards ratings that belonged to
+  // the previous exam, so no stale confidence data survives.
   useEffect(() => {
     setModules((prev) => {
       const seeded = seedModules(examPath);
       if (prev.length === seeded.length && prev.every((m, i) => m.name === seeded[i]?.name)) {
         return prev;
       }
+      setNotStarted(false);
+      setBalancedAccepted(false);
       return seeded;
     });
   }, [examPath]);
@@ -358,6 +372,7 @@ function OnboardingPage() {
       intensity,
       coverageMode,
       modules,
+      ...(stage ? { confidenceSource } : {}),
     });
   }, [
     checking,
@@ -370,6 +385,8 @@ function OnboardingPage() {
     intensity,
     coverageMode,
     modules,
+    stage,
+    confidenceSource,
   ]);
 
   const sessionShape = useMemo(() => {
@@ -385,18 +402,74 @@ function OnboardingPage() {
     return null;
   };
 
+  const rateModule = (id: string, rating: ConfidenceRating) => {
+    setNotStarted(false);
+    setModules((prev) =>
+      prev.map((m) =>
+        m.id === id
+          ? { ...m, confidence: RATING_TO_CONFIDENCE[rating], rated: true }
+          : m,
+      ),
+    );
+    trackEvent("confidence_subject_rated", {
+      ...eventBase,
+      subjectCount: modules.length,
+    });
+  };
+
+  // "I haven't started the syllabus yet" marks every subject not-studied so
+  // the plan is explicitly foundation-first rather than weakness-based.
+  const applyNotStarted = (value: boolean) => {
+    setNotStarted(value);
+    setBalancedAccepted(false);
+    setModules((prev) =>
+      prev.map((m) =>
+        value
+          ? { ...m, confidence: RATING_TO_CONFIDENCE["not-studied"], rated: true }
+          : { ...m, confidence: DEFAULTS.neutralConfidence, rated: false },
+      ),
+    );
+    if (value) trackEvent("preparation_stage_selected", { ...eventBase, notStarted: true });
+  };
+
+  const acceptBalanced = (value: boolean) => {
+    setBalancedAccepted(value);
+    if (value) {
+      trackEvent("balanced_coverage_selected", {
+        ...eventBase,
+        ratedCount,
+        subjectCount: modules.length,
+      });
+    }
+  };
+
   const next = () => {
-    const err = validateStep1();
-    if (err) return setError(err);
+    if (step === 1) {
+      const err = validateStep1();
+      if (err) return setError(err);
+      setError(null);
+      trackEvent("exam_date_completed", { ...eventBase, examDate });
+      trackEvent("weekly_hours_completed", { ...eventBase, hoursPerWeek });
+      trackEvent("onboarding_step_complete", { step: 1, stepLabel: "Exam", examType, examPath });
+      setStep(2);
+      return;
+    }
+    if (!stage) {
+      return setError("Please tell us where you are in your preparation.");
+    }
     setError(null);
-    trackEvent("exam_date_completed", { ...eventBase, examDate });
-    trackEvent("onboarding_step_complete", { step: 1, stepLabel: "Exam", examType, examPath });
-    setStep(2);
+    trackEvent("onboarding_step_complete", {
+      step: 2,
+      stepLabel: "Preparation",
+      examType,
+      examPath,
+    });
+    setStep(3);
   };
 
   const back = () => {
     setError(null);
-    setStep(1);
+    setStep((s) => Math.max(1, s - 1));
   };
 
   const handleGenerate = async () => {
