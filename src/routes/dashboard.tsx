@@ -1829,7 +1829,7 @@ function QuizDialog({
       Math.round((Date.now() - startedAt) / 60000),
     );
     const attempts = (questions ?? []).map((question, i) => ({
-      fingerprint: questionFingerprint(task.module, question.question),
+      fingerprint: questionFingerprint(task.module, question.prompt),
       isCorrect: answers[i] === question.correctIndex,
       selectedAnswer:
         typeof answers[i] === "number" ? String.fromCharCode(65 + answers[i]) : null,
