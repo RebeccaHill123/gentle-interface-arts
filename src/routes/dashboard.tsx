@@ -216,90 +216,71 @@ function DashboardPage() {
     [stored],
   );
 
-  const todayItems: TodayPlanItem[] = useMemo(() => {
+  // Today's work, always in schedule shape so the panel has one contract.
+  // The adaptive schedule is authoritative; the legacy envelope and a syllabus
+  // fallback only fill in for plans generated before the engine existed.
+  const todayTasks: ScheduledTask[] = useMemo(() => {
     if (!stored) return [];
-    // Authoritative source: the adaptive schedule.
-    if (scheduledToday.length > 0) {
-      return scheduledToday.map((t) => ({
-        id: t.id,
-        title: t.title,
-        subject: t.module,
-        subTopic: t.subtopic,
-        minutes: t.minutes,
-        format:
-          t.taskType === "timed-sba" || t.taskType === "mixed-mock"
-            ? "Practice"
-            : t.taskType === "concept-deepdive"
-              ? "Learn"
-              : t.taskType === "active-recall" || t.taskType === "mistake-review"
-                ? "Review"
-                : "Study",
-        priority:
-          t.priority === "high"
-            ? "must"
-            : t.difficulty === "foundational"
-              ? "weak-spot"
-              : "high-yield",
-        reason: t.why,
-        done: t.status === "completed",
-      }));
-    }
+    if (scheduledToday.length > 0) return scheduledToday;
+
     const { plan, completedTaskIds } = stored;
     if (plan.todayTasks.length > 0) {
-
-      return plan.todayTasks.map((t, i) => {
-        const done = completedTaskIds.includes(String(i));
-        const priority =
-          t.bucket === "must" || t.priority === "high"
-            ? "must"
-            : t.rationale === "weak-area"
-              ? "weak-spot"
-              : t.rationale === "high-yield"
-                ? "high-yield"
-                : "must";
-        return {
-          id: String(i),
-          title: t.title,
-          subject: t.module,
-          subTopic: t.subtopic,
-          minutes: t.minutes,
-          format:
-            t.taskType === "timed-sba" || t.taskType === "mixed-mock"
-              ? "Practice"
-              : t.taskType === "concept-deepdive"
-                ? "Learn"
-                : t.taskType === "active-recall" || t.taskType === "mistake-review"
-                  ? "Review"
-                  : "Study",
-          priority: priority as TodayPlanItem["priority"],
-          reason: t.why ?? "",
-          done,
-        };
-      });
+      return plan.todayTasks.map((t, i) => ({
+        id: `legacy-${i}`,
+        date: today,
+        module: t.module,
+        subtopic: t.subtopic,
+        title: t.title,
+        minutes: t.minutes,
+        taskType: t.taskType ?? "concept-deepdive",
+        difficulty: t.difficulty ?? "core",
+        bucket: t.bucket ?? "must",
+        priority: t.priority ?? "medium",
+        why: t.why ?? "",
+        output: t.output,
+        status: completedTaskIds.includes(String(i)) ? "completed" : "scheduled",
+        createdInVersion: 0,
+        evidenceLabel: "From your saved plan",
+      }));
     }
+
     const map = buildExamMap(examId, undefined, subjectMinutes);
     const picks: SubTopic[] = untouchedTopics(map, 2);
-    const items: TodayPlanItem[] = picks.map((s, i) => ({
+    const derived: ScheduledTask[] = picks.map((s, i) => ({
       id: `derived-${i}`,
+      date: today,
+      module: s.subject,
+      subtopic: s.name,
       title: `${s.name} — first pass`,
-      subject: s.subject,
-      subTopic: s.name,
       minutes: 45,
-      format: "Learn",
-      priority: s.isHighYield ? "high-yield" : "must",
-      reason: s.isHighYield ? "High-yield syllabus topic" : "Priority syllabus coverage",
+      taskType: "concept-deepdive",
+      difficulty: "foundational",
+      bucket: "must",
+      priority: "medium",
+      why: s.isHighYield
+        ? "High-yield syllabus topic with no coverage recorded yet."
+        : "Syllabus coverage — nothing recorded here yet.",
+      status: "scheduled",
+      createdInVersion: 0,
+      evidenceLabel: "Not covered yet",
     }));
-    items.push({
+    derived.push({
       id: "derived-practice",
+      date: today,
+      module: "Mixed practice",
       title: examLabel === "UBE" ? "Mixed MBE practice" : `Mixed ${examLabel} practice`,
-      subject: "Mixed practice",
       minutes: 20,
-      format: "Practice",
-      priority: "must",
-      reason: "Build performance data so Tentra can pinpoint weak areas.",
+      taskType: "timed-sba",
+      difficulty: "core",
+      bucket: "must",
+      priority: "medium",
+      why: "Builds the graded evidence Tentra needs to pinpoint weak areas.",
+      status: "scheduled",
+      createdInVersion: 0,
+      evidenceLabel: "No graded evidence yet",
     });
-    return items;
-  }, [stored, scheduledToday, examId, examLabel, subjectMinutes]);
+    return derived;
+  }, [stored, scheduledToday, examId, examLabel, subjectMinutes, today]);
 
   const [mockPerf, setMockPerf] = useState<MockPerformance | null>(null);
   useEffect(() => {
