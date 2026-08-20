@@ -45,6 +45,39 @@ function SettingsPage() {
   const [signingOut, setSigningOut] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [openingPortal, setOpeningPortal] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [hoursPerWeek, setHoursPerWeek] = useState("");
+  const [examDate, setExamDate] = useState("");
+
+  useEffect(() => {
+    const stored = loadPlan();
+    if (!stored) return;
+    setHoursPerWeek(String(stored.input.hoursPerWeek ?? ""));
+    setExamDate(stored.input.examDate ?? "");
+  }, []);
+
+  const handleApplyPlanSettings = async () => {
+    const hours = Number(hoursPerWeek);
+    if (!Number.isFinite(hours) || hours < 1) {
+      toast.error("Enter a realistic number of hours per week.");
+      return;
+    }
+    setApplying(true);
+    try {
+      const result = await applyPlanSettings({ hoursPerWeek: hours, examDate }, null);
+      if (!result) {
+        toast.error("No plan found to update.");
+        return;
+      }
+      toast.success("Plan updated — only your upcoming days changed.");
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not update your plan. Please try again.");
+    } finally {
+      setApplying(false);
+    }
+  };
+
 
   useEffect(() => {
     (async () => {
