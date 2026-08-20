@@ -18,6 +18,7 @@ import type {
   PlanSchedule,
   RecalibrationTrigger,
   ScheduledTask,
+  SkipReason,
 } from "./types";
 
 /** Triggers that always rebuild, even when the evidence fingerprint matches. */
@@ -319,20 +320,56 @@ export function setTaskStatus(
   schedule: PlanSchedule,
   taskId: string,
   status: ScheduledTask["status"],
-  nowIso?: string,
+  detail: {
+    nowIso?: string;
+    actualMinutes?: number;
+    sessionId?: string;
+    skipReason?: SkipReason;
+  } = {},
 ): PlanSchedule {
+  const now = detail.nowIso ?? new Date().toISOString();
   return {
     ...schedule,
-    tasks: schedule.tasks.map((t) =>
-      t.id === taskId
-        ? {
-            ...t,
-            status,
-            completedAt: status === "completed" ? nowIso ?? new Date().toISOString() : undefined,
-          }
-        : t,
-    ),
+    tasks: schedule.tasks.map((t) => {
+      if (t.id !== taskId) return t;
+      if (status === "completed") {
+        return {
+          ...t,
+          status,
+          completedAt: now,
+          actualMinutes: detail.actualMinutes ?? t.actualMinutes,
+          sessionId: detail.sessionId ?? t.sessionId,
+          skipReason: undefined,
+          skippedAt: undefined,
+        };
+      }
+      if (status === "skipped") {
+        return {
+          ...t,
+          status,
+          completedAt: undefined,
+          skipReason: detail.skipReason ?? "other",
+          skippedAt: now,
+        };
+      }
+      return { ...t, status, completedAt: undefined, skipReason: undefined, skippedAt: undefined };
+    }),
   };
+}
+
+/** Days with remaining capacity in the next `days` days, for reschedule UI. */
+export function capacityOutlook(
+  schedule: PlanSchedule,
+  fromDate: string,
+  days = 7,
+): { date: string; usedMinutes: number; freeMinutes: number }[] {
+  const out: { date: string; usedMinutes: number; freeMinutes: number }[] = [];
+  for (let i = 0; i < days; i++) {
+    const date = addDaysKey(fromDate, i);
+    const used = minutesOnDay(schedule.tasks, date);
+    out.push({ date, usedMinutes: used, freeMinutes: Math.max(0, MAX_DAY_MINUTES - used) });
+  }
+  return out;
 }
 
 /** Student-driven reschedule of a single future task. Capacity is respected. */

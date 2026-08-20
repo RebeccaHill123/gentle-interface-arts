@@ -1,18 +1,30 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Navigate, redirect, useNavigate } from "@tanstack/react-router";
-import { ArrowLeft, Pause, Play, Square, SkipForward } from "lucide-react";
+import { ArrowLeft, Check, Pause, Play, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { waitForAuthUser } from "@/lib/auth-session";
 import {
-  loadActiveSprint,
-  saveActiveSprint,
-  remainingMs,
+  claimLogSlot,
+  clearSession,
+  creditableMinutes,
   elapsedMs,
-  MOTIVATIONAL_LINES,
-  type ActiveSprint,
-} from "@/lib/focus-store";
-import { todayKey } from "@/lib/plan-store";
-import { recordStudyActivity, makeIdempotencyKey } from "@/lib/study-log";
+  isStale,
+  loadSession,
+  pauseSession,
+  progress as sessionProgress,
+  remainingMs,
+  resumeSession,
+  startBreak,
+  targetMs,
+  type ActiveSession,
+} from "@/lib/focus-session";
+import {
+  SessionCompleteSheet,
+  type SessionCompletionResult,
+} from "@/components/session-complete-sheet";
+import { completeScheduledTask } from "@/lib/plan/store";
+import { recordStudyActivity } from "@/lib/study-log";
+import { MOTIVATIONAL_LINES } from "@/lib/focus-store";
 import { Confetti } from "@/components/confetti";
 import { toast } from "sonner";
 
@@ -27,7 +39,7 @@ export const Route = createFileRoute("/focus/sprint")({
   component: FocusPage,
   head: () => ({
     meta: [
-      { title: "Focus sprint · Tentra" },
+      { title: "Focus session · Tentra" },
       { name: "description", content: "Distraction-free deep work timer." },
     ],
   }),
@@ -40,230 +52,131 @@ function fmt(ms: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-const LAST_SUMMARY_KEY = "tentra.focus.lastSummary.v1";
-
-interface FocusSummary {
-  focusMin: number;
-  blocksToday: number;
-  module?: string;
-  topic?: string;
-  endedEarly: boolean;
-  finishedAt: number;
-}
-
-function saveSummary(s: FocusSummary) {
-  try {
-    localStorage.setItem(LAST_SUMMARY_KEY, JSON.stringify(s));
-  } catch {
-    /* ignore */
-  }
-}
-
-function countFocusBlocksToday(): number {
-  try {
-    const raw = localStorage.getItem("tentra.plan.v1");
-    const stored = raw ? JSON.parse(raw) : null;
-    return (stored?.sessions ?? []).filter(
-      (s: { date: string; sessionType?: string }) =>
-        s.date === todayKey() && s.sessionType === "focus",
-    ).length;
-  } catch {
-    return 0;
-  }
-}
-
 function FocusPage() {
   const navigate = useNavigate();
-  const [sprint, setSprint] = useState<ActiveSprint | null>(() => loadActiveSprint());
+  const [session, setSession] = useState<ActiveSession | null>(() => loadSession());
   const [now, setNow] = useState(Date.now());
   const [lineIdx, setLineIdx] = useState(0);
   const [confettiKey, setConfettiKey] = useState(0);
-  const [completed, setCompleted] = useState<{
-    focusMin: number;
-    blocksToday: number;
-  } | null>(null);
-  const completedFiredRef = useRef(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const autoFiredRef = useRef(false);
 
-  // 1s tick
+  // Wall-clock ticking: the timer is always derived from stamps, so a
+  // backgrounded tab or a locked phone can never desynchronise it.
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 250);
     return () => clearInterval(id);
   }, []);
 
-  // Rotate motivational line every 12s
   useEffect(() => {
-    const id = setInterval(
-      () => setLineIdx((i) => (i + 1) % MOTIVATIONAL_LINES.length),
-      12000,
-    );
+    const id = setInterval(() => setLineIdx((i) => (i + 1) % MOTIVATIONAL_LINES.length), 12000);
     return () => clearInterval(id);
   }, []);
 
-  const phase = sprint?.phase ?? "focus";
-  const remaining = sprint ? remainingMs(sprint, now) : 0;
-  const target = sprint ? (phase === "focus" ? sprint.focusMs : sprint.breakMs) : 1;
-
-  const progress = sprint ? 1 - remaining / Math.max(1, target) : 0;
-  const isPaused = !!sprint?.pausedAt;
-
-  // Detect phase completion
+  // An abandoned session is discarded rather than credited.
   useEffect(() => {
-    if (!sprint) return;
-    if (remaining > 0) {
-      completedFiredRef.current = false;
-      return;
+    if (session && isStale(session)) {
+      clearSession();
+      setSession(null);
+      toast.info("That session was left running, so it wasn't logged.");
     }
-    if (completedFiredRef.current) return;
-    completedFiredRef.current = true;
+  }, [session, now]);
 
-    if (sprint.phase === "focus") {
-      // Log completed focus session — one record per sprint, keyed off its start time
-      // so the auto-complete effect and a manual "End session" click can never both log it.
-      const focusMin = Math.round(sprint.focusMs / 60000);
-      const plannedMin = Math.round(sprint.focusMs / 60000);
-      recordStudyActivity({
-        idempotencyKey: makeIdempotencyKey("focus", sprint.startedAt),
-        activityType: "focus",
-        source: "focus_sprint",
-        actualMinutes: focusMin,
-        plannedMinutes: plannedMin,
-        subject: sprint.module ?? null,
-        subtopic: sprint.topic ?? null,
-        note: sprint.topic
-          ? `Focus sprint · ${focusMin}m · ${sprint.topic}`
-          : `Focus sprint · ${focusMin}m`,
-      }).catch((e) => console.warn("focus log failed", e));
+  const phase = session?.phase ?? "focus";
+  const remaining = session ? remainingMs(session, now) : 0;
+  const progress = session ? sessionProgress(session, now) : 0;
+  const isPaused = !!session?.pausedAt;
 
-      // Count today's focus blocks (incl. this one)
-      const stored = (() => {
-        try {
-          const raw = localStorage.getItem("tentra.plan.v1");
-          return raw ? JSON.parse(raw) : null;
-        } catch {
-          return null;
-        }
-      })();
-      const sessionsToday = (stored?.sessions ?? []).filter(
-        (s: { date: string; sessionType?: string }) =>
-          s.date === todayKey() && s.sessionType === "focus",
-      ).length;
-
+  // Focus phase reaching zero opens the completion flow — it never logs by
+  // itself, so the recorded minutes always reflect what the student confirms.
+  useEffect(() => {
+    if (!session || remaining > 0) return;
+    if (autoFiredRef.current) return;
+    autoFiredRef.current = true;
+    if (session.phase === "focus") {
       setConfettiKey((k) => k + 1);
-      setCompleted({ focusMin, blocksToday: sessionsToday });
-      saveSummary({
-        focusMin,
-        blocksToday: sessionsToday,
-        module: sprint.module,
-        topic: sprint.topic,
-        endedEarly: false,
-        finishedAt: Date.now(),
-      });
-
-      // If a break is configured, transition into break phase paused — let user start it.
-      if (sprint.breakMs > 0) {
-        const next: ActiveSprint = {
-          ...sprint,
-          phase: "break",
-          phaseStartedAt: Date.now(),
-          pausedAt: Date.now(),
-          pausedTotalMs: 0,
-        };
-        saveActiveSprint(next);
-        setSprint(next);
-      } else {
-        saveActiveSprint(null);
-      }
+      setSheetOpen(true);
     } else {
-      // Break completed — clear sprint.
-      saveActiveSprint(null);
-      toast.success("Break over — ready for the next sprint?");
+      clearSession();
+      setSession(null);
+      toast.success("Break over — ready for the next session?");
+      navigate({ to: "/dashboard" });
     }
-  }, [remaining, sprint]);
+  }, [remaining, session, navigate]);
 
-  if (!sprint) return <Navigate to="/focus" replace />;
+  if (!session) return <Navigate to="/focus" replace />;
 
   const handlePauseToggle = () => {
-    if (!sprint) return;
-    if (sprint.pausedAt) {
-      const addPaused = Date.now() - sprint.pausedAt;
-      const next: ActiveSprint = {
-        ...sprint,
-        pausedAt: undefined,
-        pausedTotalMs: sprint.pausedTotalMs + addPaused,
-      };
-      saveActiveSprint(next);
-      setSprint(next);
-    } else {
-      const next: ActiveSprint = { ...sprint, pausedAt: Date.now() };
-      saveActiveSprint(next);
-      setSprint(next);
-    }
+    setSession(session.pausedAt ? resumeSession(session) : pauseSession(session));
   };
 
-  const handleEnd = () => {
-    if (!sprint) return;
-    let loggedMins = 0;
-    let endedEarly = false;
-    if (sprint.phase === "focus") {
-      const mins = Math.round(elapsedMs(sprint, Date.now()) / 60000);
-      if (mins >= 2) {
-        const plannedMin = Math.round(sprint.focusMs / 60000);
-        // Same idempotency key as the auto-complete path — whichever fires
-        // first for this sprint wins, the other is a no-op upsert.
-        recordStudyActivity({
-          idempotencyKey: makeIdempotencyKey("focus", sprint.startedAt),
-          activityType: "focus",
-          source: "focus_sprint",
-          actualMinutes: mins,
-          plannedMinutes: plannedMin,
-          subject: sprint.module ?? null,
-          subtopic: sprint.topic ?? null,
-          note: sprint.topic
-            ? `Focus sprint (ended early) · ${mins}m · ${sprint.topic}`
-            : `Focus sprint (ended early) · ${mins}m`,
-        }).catch((e) => console.warn("focus log failed", e));
-        toast.success(`Logged ${mins}m of focus.`);
-        loggedMins = mins;
-        endedEarly = true;
+  const handleFinish = async (result: SessionCompletionResult) => {
+    setSaving(true);
+    // Claim the single log slot for this session — the auto-finish path and a
+    // manual finish can never both write.
+    const claimed = claimLogSlot(session);
+    if (claimed) {
+      try {
+        await recordStudyActivity({
+          idempotencyKey: claimed.sessionId,
+          activityType: "study",
+          source: claimed.planned ? "dashboard_task" : "focus_sprint",
+          actualMinutes: result.actualMinutes,
+          plannedMinutes: Math.round(claimed.plannedMs / 60000),
+          plannedTaskId: claimed.planned?.taskId ?? null,
+          subject: claimed.module ?? null,
+          subtopic: claimed.subtopic ?? null,
+          examPath: claimed.examPath ?? null,
+          selfFocus: result.selfFocus,
+          note: `${claimed.title} · ${result.actualMinutes}m`,
+          metadata: {
+            producedOutput: result.producedOutput,
+            activityType: claimed.activityType ?? "custom",
+            origin: claimed.origin,
+          },
+        });
+        if (claimed.planned) {
+          await completeScheduledTask(claimed.planned.taskId, {
+            actualMinutes: result.actualMinutes,
+            sessionId: claimed.sessionId,
+          });
+        }
+      } catch (e) {
+        console.warn("session log failed", e);
       }
     }
-    const blocksToday = countFocusBlocksToday();
-    saveSummary({
-      focusMin: loggedMins || (completed?.focusMin ?? 0),
-      blocksToday,
-      module: sprint.module,
-      topic: sprint.topic,
-      endedEarly,
-      finishedAt: Date.now(),
-    });
-    saveActiveSprint(null);
-    navigate({ to: "/focus/summary" });
+    setSaving(false);
+    setSheetOpen(false);
+
+    const hasBreak = session.breakMs > 0 && session.phase === "focus";
+    if (result.wantsQuickCheck) {
+      clearSession();
+      setSession(null);
+      navigate({ to: "/practice" });
+      return;
+    }
+    if (hasBreak) {
+      const next = startBreak({ ...session, loggedAt: Date.now() });
+      autoFiredRef.current = false;
+      setSession(next);
+      toast.success(`Logged ${result.actualMinutes} min. Break time.`);
+      return;
+    }
+    clearSession();
+    setSession(null);
+    toast.success(`Logged ${result.actualMinutes} min.`);
+    navigate({ to: "/dashboard" });
   };
 
-  const handleStartBreak = () => {
-    if (!sprint) return;
-    const next: ActiveSprint = {
-      ...sprint,
-      phase: "break",
-      phaseStartedAt: Date.now(),
-      pausedAt: undefined,
-      pausedTotalMs: 0,
-    };
-    saveActiveSprint(next);
-    setSprint(next);
-    setCompleted(null);
+  const handleAbandon = () => {
+    clearSession();
+    setSession(null);
+    navigate({ to: "/dashboard" });
   };
-
-  const handleSkipBreak = () => {
-    saveActiveSprint(null);
-    navigate({ to: "/focus/summary" });
-  };
-
-  if (!sprint) return null;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
-      {/* Animated ambient background */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-gradient-hero opacity-90" />
         <div className="absolute -left-32 top-1/4 h-[40rem] w-[40rem] rounded-full bg-pink/15 blur-3xl animate-blob" />
@@ -271,118 +184,85 @@ function FocusPage() {
           className="absolute -right-32 bottom-1/4 h-[40rem] w-[40rem] rounded-full bg-accent/15 blur-3xl animate-blob"
           style={{ animationDelay: "-4s" }}
         />
-        <div
-          className="absolute left-1/3 top-2/3 h-[30rem] w-[30rem] rounded-full bg-violet/15 blur-3xl animate-blob"
-          style={{ animationDelay: "-8s" }}
-        />
       </div>
 
       <Confetti fire={confettiKey} />
 
-      <div className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-6 py-6">
+      <div className="relative mx-auto flex min-h-screen max-w-3xl flex-col px-5 py-6">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => navigate({ to: "/focus" })}
-            className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 px-3 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur transition-colors hover:text-foreground"
+            onClick={() => navigate({ to: "/dashboard" })}
+            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-border bg-card/60 px-3 text-xs font-medium text-muted-foreground backdrop-blur transition-colors hover:text-foreground"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Exit
+            <ArrowLeft className="h-3.5 w-3.5" /> Leave running
           </button>
           <div className="rounded-full border border-border bg-card/60 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-pink backdrop-blur">
             {phase === "focus" ? "Focus" : "Break"}
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
-          {(sprint.module || sprint.topic) && (
-            <div className="space-y-1">
-              {sprint.module && (
-                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-pink">
-                  {sprint.module}
-                </div>
-              )}
-              {sprint.topic && (
-                <div className="text-2xl font-normal text-foreground md:text-3xl">
-                  {sprint.topic}
-                </div>
-              )}
-            </div>
-          )}
-
-          <TimerRing
-            remainingMs={remaining}
-            progress={progress}
-            phase={phase}
-            paused={isPaused}
-          />
-
-          <div className="min-h-[2.5rem] max-w-md">
-            {completed ? (
-              <div className="space-y-1 animate-fade-in">
-                <div className="font-display text-2xl text-gradient-tentra">
-                  Sprint complete 🎉
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {completed.focusMin} minutes of deep work logged ·{" "}
-                  {completed.blocksToday} block
-                  {completed.blocksToday === 1 ? "" : "s"} today
-                </div>
+        <div className="flex flex-1 flex-col items-center justify-center gap-7 text-center">
+          <div className="space-y-1">
+            {session.module && (
+              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-pink">
+                {session.module}
               </div>
-            ) : (
-              <p
-                key={lineIdx}
-                className="animate-fade-in text-sm italic text-muted-foreground md:text-base"
-              >
-                "{MOTIVATIONAL_LINES[lineIdx]}"
-              </p>
+            )}
+            <div className="text-xl font-normal text-foreground md:text-2xl">{session.title}</div>
+            {session.evidenceLabel && (
+              <div className="text-[11.5px] text-muted-foreground">{session.evidenceLabel}</div>
             )}
           </div>
 
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {completed && phase === "break" ? (
-              <>
-                <Button
-                  onClick={handleStartBreak}
-                  size="lg"
-                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
-                >
-                  <Play className="mr-2 h-4 w-4" />
-                  Start {Math.round(sprint.breakMs / 60000)}m break
-                </Button>
-                <Button
-                  onClick={handleSkipBreak}
-                  variant="outline"
-                  size="lg"
-                  className="rounded-full"
-                >
-                  <SkipForward className="mr-2 h-4 w-4" /> Skip break
-                </Button>
-              </>
+          <TimerRing remainingMs={remaining} progress={progress} phase={phase} paused={isPaused} />
+
+          {session.output && phase === "focus" && (
+            <p className="max-w-md text-[12.5px] text-muted-foreground">
+              Finish with: {session.output}
+            </p>
+          )}
+
+          <p
+            key={lineIdx}
+            className="min-h-[2rem] max-w-md animate-fade-in text-sm italic text-muted-foreground"
+          >
+            "{MOTIVATIONAL_LINES[lineIdx]}"
+          </p>
+
+          <div className="flex w-full max-w-md flex-col gap-2 sm:flex-row sm:justify-center">
+            <Button
+              onClick={handlePauseToggle}
+              size="lg"
+              className="min-h-12 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:brightness-[1.06]"
+            >
+              {isPaused ? (
+                <>
+                  <Play className="mr-2 h-4 w-4" /> Resume
+                </>
+              ) : (
+                <>
+                  <Pause className="mr-2 h-4 w-4" /> Pause
+                </>
+              )}
+            </Button>
+            {phase === "focus" ? (
+              <Button
+                onClick={() => setSheetOpen(true)}
+                variant="outline"
+                size="lg"
+                className="min-h-12 rounded-full"
+              >
+                <Check className="mr-2 h-4 w-4" /> Finish and log
+              </Button>
             ) : (
-              <>
-                <Button
-                  onClick={handlePauseToggle}
-                  size="lg"
-                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
-                >
-                  {isPaused ? (
-                    <>
-                      <Play className="mr-2 h-4 w-4" /> Resume
-                    </>
-                  ) : (
-                    <>
-                      <Pause className="mr-2 h-4 w-4" /> Pause
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={handleEnd}
-                  variant="outline"
-                  size="lg"
-                  className="rounded-full"
-                >
-                  <Square className="mr-2 h-4 w-4" /> End session
-                </Button>
-              </>
+              <Button
+                onClick={handleAbandon}
+                variant="outline"
+                size="lg"
+                className="min-h-12 rounded-full"
+              >
+                <SkipForward className="mr-2 h-4 w-4" /> Skip break
+              </Button>
             )}
           </div>
         </div>
@@ -390,19 +270,29 @@ function FocusPage() {
         <div className="mt-4 flex items-center justify-center gap-6 text-xs text-muted-foreground">
           <div>
             Elapsed{" "}
-            <span className="font-semibold text-foreground">
-              {fmt(elapsedMs(sprint, now))}
-            </span>
+            <span className="font-semibold text-foreground">{fmt(elapsedMs(session, now))}</span>
           </div>
           <div className="h-3 w-px bg-border" />
           <div>
             Target{" "}
             <span className="font-semibold text-foreground">
-              {Math.round(target / 60000)}m
+              {Math.round(targetMs(session) / 60000)}m
             </span>
           </div>
         </div>
       </div>
+
+      <SessionCompleteSheet
+        open={sheetOpen}
+        title={session.title}
+        subtitle={[session.module, session.subtopic].filter(Boolean).join(" · ")}
+        suggestedMinutes={Math.max(5, creditableMinutes(session, now))}
+        expectedOutput={session.output}
+        canQuickCheck={!!session.module}
+        saving={saving}
+        onCancel={() => setSheetOpen(false)}
+        onConfirm={(r) => void handleFinish(r)}
+      />
     </div>
   );
 }
@@ -418,31 +308,21 @@ function TimerRing({
   phase: "focus" | "break";
   paused: boolean;
 }) {
-  const size = 320;
+  const size = 300;
   const stroke = 14;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const dash = c * Math.max(0, Math.min(1, progress));
-
   const label = useMemo(() => fmt(remainingMs), [remainingMs]);
 
   return (
-    <div
-      className="relative"
-      style={{ width: size, height: size }}
-    >
-      {/* Outer glow */}
+    <div className="relative w-full max-w-[300px]" style={{ aspectRatio: "1 / 1" }}>
       <div
         className={`absolute inset-0 rounded-full bg-gradient-pink-blue opacity-30 blur-2xl ${
           paused ? "" : "animate-pulse"
         }`}
       />
-      <svg
-        viewBox={`0 0 ${size} ${size}`}
-        className="relative -rotate-90"
-        width={size}
-        height={size}
-      >
+      <svg viewBox={`0 0 ${size} ${size}`} className="relative h-full w-full -rotate-90">
         <defs>
           <linearGradient id="focus-ring" x1="0" x2="1" y1="0" y2="1">
             <stop offset="0%" stopColor="oklch(0.72 0.24 350)" />
@@ -472,7 +352,7 @@ function TimerRing({
       </svg>
       <div className="absolute inset-0 grid place-items-center">
         <div className="text-center">
-          <div className="font-display text-[5.5rem] leading-none tracking-tight text-foreground tabular-nums md:text-[6rem]">
+          <div className="font-display text-[4.5rem] leading-none tracking-tight text-foreground tabular-nums md:text-[5.5rem]">
             {label}
           </div>
           <div className="mt-2 text-[11px] font-semibold uppercase tracking-[0.3em] text-pink">

@@ -29,6 +29,8 @@ export interface SubjectPriority {
   reason: string;
   /** Weight used to apportion study blocks. */
   weight: number;
+  /** Very short chip shown on a task card. Always traceable to real data. */
+  label: string;
 }
 
 const RECENCY_GAP_DAYS = 10;
@@ -46,6 +48,7 @@ export function scoreSubject(s: SubjectEvidence): SubjectPriority {
       evidence: "low-graded-accuracy",
       reason: `${acc}% correct across ${s.gradedAttempts} graded questions.`,
       weight: 2.4,
+      label: `${acc}% correct in ${s.gradedAttempts} graded questions`,
     };
   }
 
@@ -56,6 +59,7 @@ export function scoreSubject(s: SubjectEvidence): SubjectPriority {
       evidence: "no-coverage",
       reason: "No study time or graded answers recorded yet.",
       weight: 2.0,
+      label: "Not covered yet",
     };
   }
 
@@ -66,6 +70,7 @@ export function scoreSubject(s: SubjectEvidence): SubjectPriority {
       evidence: "recency-gap",
       reason: `Last worked on ${s.recencyDays} days ago — due for spaced review.`,
       weight: 1.5,
+      label: `Last studied ${s.recencyDays} days ago`,
     };
   }
 
@@ -76,6 +81,7 @@ export function scoreSubject(s: SubjectEvidence): SubjectPriority {
       evidence: "self-rated-low",
       reason: "You rated this low. No graded evidence yet, so it stays a supporting priority.",
       weight: 1.4,
+      label: "You rated this low",
     };
   }
 
@@ -87,6 +93,9 @@ export function scoreSubject(s: SubjectEvidence): SubjectPriority {
     reason: strongGraded
       ? `${s.accuracy}% correct across ${s.gradedAttempts} graded questions — kept on maintenance review.`
       : "Kept moving on syllabus merit.",
+    label: strongGraded
+      ? `${s.accuracy}% correct — maintenance review`
+      : "Syllabus coverage",
     weight: strongGraded ? 0.7 : s.rated && (s.confidence ?? 3) >= 4 ? 0.8 : 1,
   };
 }

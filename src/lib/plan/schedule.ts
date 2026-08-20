@@ -217,6 +217,8 @@ export function buildSchedule(args: BuildScheduleArgs): ScheduledTask[] {
                 ? "medium"
                 : base.priority ?? "medium",
           why: priority ? `${priority.reason} ${base.why ?? ""}`.trim() : base.why ?? "",
+          evidence: priority?.evidence ?? "rotation",
+          evidenceLabel: priority?.label ?? "Syllabus coverage",
           output: base.output,
           status: "scheduled",
           createdInVersion: version,

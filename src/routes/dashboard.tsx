@@ -64,19 +64,29 @@ import {
   reopenScheduledTask,
   skipScheduledTask,
   rescheduleScheduledTask,
+  missedTasks,
+  scheduleCapacity,
 } from "@/lib/plan/store";
-import { addDaysKey } from "@/lib/plan/dates";
-import type { PlanSchedule, ScheduledTask } from "@/lib/plan/types";
-
+import { diffDaysKey } from "@/lib/plan/dates";
+import type { PlanSchedule, ScheduledTask, SkipReason } from "@/lib/plan/types";
+import { activityLabel, expectedOutput } from "@/lib/plan/task-presentation";
 
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
 import { AppShell } from "@/components/app-shell";
-import { CommandCentre, type TodayPlanItem, type WeakestOverride } from "@/components/dashboard/command-centre";
-import { getUserExamId, aggregateSubjectMinutes, buildExamMap, untouchedTopics, type SubTopic } from "@/lib/topic-map";
+import { TodayPanel } from "@/components/dashboard/today-panel";
+import { WeeklyReview } from "@/components/weekly-review";
+import { RescheduleSheet, SkipReasonSheet } from "@/components/plan-action-sheets";
+import {
+  getUserExamId,
+  aggregateSubjectMinutes,
+  buildExamMap,
+  untouchedTopics,
+  type SubTopic,
+} from "@/lib/topic-map";
 import { getExamLabel } from "@/lib/exam-label";
 import { loadMockPerformance, type MockPerformance } from "@/lib/mock-performance";
-import { startPlannedSprint } from "@/lib/focus-store";
+import { loadSession, startSession, type ActiveSession } from "@/lib/focus-session";
 import { normalizeStoredPlanTasks } from "@/lib/study-plan-logic";
 import {
   Accordion,
@@ -84,12 +94,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface QuizQuestion {
   prompt: string;
@@ -128,7 +133,6 @@ function DashboardPage() {
     module: string;
     minutes: number;
   } | null>(null);
-
 
   // Hydrate plan from cloud on mount; redirect to onboarding if user has none.
   useEffect(() => {
@@ -203,98 +207,93 @@ function DashboardPage() {
     [schedule, today],
   );
 
+  const missed = useMemo(() => missedTasks(schedule, today), [schedule, today]);
+  const capacity = useMemo(() => scheduleCapacity(schedule, today, 10), [schedule, today]);
+
+  // Days since any recorded study activity — drives the return-after-absence
+  // recovery card. Derived from logged sessions, never from app opens.
+  const daysSinceLastActivity = useMemo(() => {
+    const dates = (stored?.sessions ?? []).map((sx) => sx.date).sort();
+    const last = dates[dates.length - 1];
+    return last ? diffDaysKey(last, today) : null;
+  }, [stored, today]);
+
+  const [skipTarget, setSkipTarget] = useState<ScheduledTask | null>(null);
+  const [moveTarget, setMoveTarget] = useState<ScheduledTask | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveSession | null>(null);
+  useEffect(() => {
+    setActiveSession(loadSession());
+  }, [tick]);
 
   const examLabel = getExamLabel(stored?.input.examType, stored?.input.examPath);
   const examId = getUserExamId(stored?.input.examType);
-  const subjectMinutes = useMemo(
-    () => aggregateSubjectMinutes(stored?.sessions ?? []),
-    [stored],
-  );
+  const subjectMinutes = useMemo(() => aggregateSubjectMinutes(stored?.sessions ?? []), [stored]);
 
-  const todayItems: TodayPlanItem[] = useMemo(() => {
+  // Today's work, always in schedule shape so the panel has one contract.
+  // The adaptive schedule is authoritative; the legacy envelope and a syllabus
+  // fallback only fill in for plans generated before the engine existed.
+  const todayTasks: ScheduledTask[] = useMemo(() => {
     if (!stored) return [];
-    // Authoritative source: the adaptive schedule.
-    if (scheduledToday.length > 0) {
-      return scheduledToday.map((t) => ({
-        id: t.id,
-        title: t.title,
-        subject: t.module,
-        subTopic: t.subtopic,
-        minutes: t.minutes,
-        format:
-          t.taskType === "timed-sba" || t.taskType === "mixed-mock"
-            ? "Practice"
-            : t.taskType === "concept-deepdive"
-              ? "Learn"
-              : t.taskType === "active-recall" || t.taskType === "mistake-review"
-                ? "Review"
-                : "Study",
-        priority:
-          t.priority === "high"
-            ? "must"
-            : t.difficulty === "foundational"
-              ? "weak-spot"
-              : "high-yield",
-        reason: t.why,
-        done: t.status === "completed",
-      }));
-    }
+    if (scheduledToday.length > 0) return scheduledToday;
+
     const { plan, completedTaskIds } = stored;
     if (plan.todayTasks.length > 0) {
-
-      return plan.todayTasks.map((t, i) => {
-        const done = completedTaskIds.includes(String(i));
-        const priority =
-          t.bucket === "must" || t.priority === "high"
-            ? "must"
-            : t.rationale === "weak-area"
-              ? "weak-spot"
-              : t.rationale === "high-yield"
-                ? "high-yield"
-                : "must";
-        return {
-          id: String(i),
-          title: t.title,
-          subject: t.module,
-          subTopic: t.subtopic,
-          minutes: t.minutes,
-          format:
-            t.taskType === "timed-sba" || t.taskType === "mixed-mock"
-              ? "Practice"
-              : t.taskType === "concept-deepdive"
-                ? "Learn"
-                : t.taskType === "active-recall" || t.taskType === "mistake-review"
-                  ? "Review"
-                  : "Study",
-          priority: priority as TodayPlanItem["priority"],
-          reason: t.why ?? "",
-          done,
-        };
-      });
+      return plan.todayTasks.map((t, i) => ({
+        id: `legacy-${i}`,
+        date: today,
+        module: t.module,
+        subtopic: t.subtopic,
+        title: t.title,
+        minutes: t.minutes,
+        taskType: t.taskType ?? "concept-deepdive",
+        difficulty: t.difficulty ?? "core",
+        bucket: t.bucket ?? "must",
+        priority: t.priority ?? "medium",
+        why: t.why ?? "",
+        output: t.output,
+        status: completedTaskIds.includes(String(i)) ? "completed" : "scheduled",
+        createdInVersion: 0,
+        evidenceLabel: "From your saved plan",
+      }));
     }
+
     const map = buildExamMap(examId, undefined, subjectMinutes);
     const picks: SubTopic[] = untouchedTopics(map, 2);
-    const items: TodayPlanItem[] = picks.map((s, i) => ({
+    const derived: ScheduledTask[] = picks.map((s, i) => ({
       id: `derived-${i}`,
+      date: today,
+      module: s.subject,
+      subtopic: s.name,
       title: `${s.name} — first pass`,
-      subject: s.subject,
-      subTopic: s.name,
       minutes: 45,
-      format: "Learn",
-      priority: s.isHighYield ? "high-yield" : "must",
-      reason: s.isHighYield ? "High-yield syllabus topic" : "Priority syllabus coverage",
+      taskType: "concept-deepdive",
+      difficulty: "foundational",
+      bucket: "must",
+      priority: "medium",
+      why: s.isHighYield
+        ? "High-yield syllabus topic with no coverage recorded yet."
+        : "Syllabus coverage — nothing recorded here yet.",
+      status: "scheduled",
+      createdInVersion: 0,
+      evidenceLabel: "Not covered yet",
     }));
-    items.push({
+    derived.push({
       id: "derived-practice",
+      date: today,
+      module: "Mixed practice",
       title: examLabel === "UBE" ? "Mixed MBE practice" : `Mixed ${examLabel} practice`,
-      subject: "Mixed practice",
       minutes: 20,
-      format: "Practice",
-      priority: "must",
-      reason: "Build performance data so Tentra can pinpoint weak areas.",
+      taskType: "timed-sba",
+      difficulty: "core",
+      bucket: "must",
+      priority: "medium",
+      why: "Builds the graded evidence Tentra needs to pinpoint weak areas.",
+      status: "scheduled",
+      createdInVersion: 0,
+      evidenceLabel: "No graded evidence yet",
     });
-    return items;
-  }, [stored, scheduledToday, examId, examLabel, subjectMinutes]);
+    return derived;
+  }, [stored, scheduledToday, examId, examLabel, subjectMinutes, today]);
 
   const [mockPerf, setMockPerf] = useState<MockPerformance | null>(null);
   useEffect(() => {
@@ -327,7 +326,6 @@ function DashboardPage() {
   const gradedAccuracy = analytics.graded.accuracy;
   const gradedAttempted = analytics.graded.totalAttempted;
 
-
   // Weekly progress (rolling 7 days)
   const weeklyTargetMins = (input.hoursPerWeek ?? 0) * 60;
   const sevenDaysAgo = Date.now() - 7 * 86400000;
@@ -336,9 +334,7 @@ function DashboardPage() {
   );
   const weeklyDoneMins = weekSessions.reduce((a, s) => a + s.minutes, 0);
   const weeklyPct =
-    weeklyTargetMins > 0
-      ? Math.min(100, Math.round((weeklyDoneMins / weeklyTargetMins) * 100))
-      : 0;
+    weeklyTargetMins > 0 ? Math.min(100, Math.round((weeklyDoneMins / weeklyTargetMins) * 100)) : 0;
   const weeklyRemainingMins = Math.max(0, weeklyTargetMins - weeklyDoneMins);
   const activeDays = new Set(weekSessions.map((s) => s.date)).size;
   const blocksPlanned = plan.todayTasks.length;
@@ -375,7 +371,8 @@ function DashboardPage() {
   ) => {
     if (!quizTask) return;
     const key = taskActivityKey(quizTask.index);
-    if (quizTask.taskId) void completeScheduledTask(quizTask.taskId).then(() => setTick((t) => t + 1));
+    if (quizTask.taskId)
+      void completeScheduledTask(quizTask.taskId).then(() => setTick((t) => t + 1));
     else toggleTaskCompletion(quizTask.index);
     void recordStudyActivity({
       idempotencyKey: key,
@@ -407,51 +404,68 @@ function DashboardPage() {
     setTick((t) => t + 1);
   };
 
-  /* ---- Adaptive schedule actions (complete / skip / move) ---- */
+  /* ---- Daily execution actions (start / complete / skip / move) ---- */
 
   const findScheduled = (id: string) => scheduledToday.find((t) => t.id === id);
 
-  const handleCompleteTodayItem = (id: string) => {
-    const task = findScheduled(id);
-    if (task) {
-      if (task.status === "completed") {
-        void reopenScheduledTask(id).then(() => setTick((t) => t + 1));
+  const handleCompleteTodayItem = (task: ScheduledTask) => {
+    const scheduled = findScheduled(task.id);
+    if (scheduled) {
+      if (scheduled.status === "completed") {
+        void reopenScheduledTask(task.id).then(() => setTick((t) => t + 1));
         void voidStudyActivity(
-          makeIdempotencyKey("dashboard_task", today, id, task.title),
+          makeIdempotencyKey("dashboard_task", today, task.id, scheduled.title),
         );
         return;
       }
       // Mini-assessment first so completion carries graded evidence.
       setQuizTask({
-        index: scheduledToday.indexOf(task),
-        taskId: task.id,
-        title: task.title,
-        module: task.module,
-        minutes: task.minutes,
+        index: scheduledToday.indexOf(scheduled),
+        taskId: scheduled.id,
+        title: scheduled.title,
+        module: scheduled.module,
+        minutes: scheduled.minutes,
       });
       return;
     }
-    const idx = Number(id);
+    const idx = Number(task.id.replace("legacy-", ""));
     if (Number.isFinite(idx)) handleToggle(idx);
   };
 
-  const handleSkipTodayItem = (id: string) => {
-    if (!findScheduled(id)) return;
-    void skipScheduledTask(id).then(() => {
+  const handleSkipConfirmed = (reason: SkipReason) => {
+    const task = skipTarget;
+    setSkipTarget(null);
+    if (!task || !findScheduled(task.id)) return;
+    void skipScheduledTask(task.id, reason).then(() => {
       setTick((t) => t + 1);
-      toast.success("Skipped — Tentra will factor this into your next update.");
+      toast.success("Skipped — Tentra will factor that into your next update.");
     });
   };
 
-  const handleRescheduleTodayItem = (id: string) => {
-    if (!findScheduled(id)) return;
-    void rescheduleScheduledTask(id, addDaysKey(today, 1)).then((res) => {
+  const handleRescheduleConfirmed = (date: string) => {
+    const task = moveTarget;
+    setMoveTarget(null);
+    if (!task || !findScheduled(task.id)) return;
+    void rescheduleScheduledTask(task.id, date).then((res) => {
       if (!res.ok) {
         toast.error(res.reason ?? "Couldn't move that session.");
         return;
       }
       setTick((t) => t + 1);
-      toast.success("Moved to tomorrow.");
+      toast.success("Session moved.");
+    });
+  };
+
+  /** Missed work and long absences rebuild the FUTURE only, never history. */
+  const handleRecoverMissed = () => {
+    if (!stored) return;
+    void ensureSchedule(stored, analytics, "missed-work").then((res) => {
+      setStored(res.stored);
+      setSchedule(res.schedule);
+      setTick((t) => t + 1);
+      toast.success(
+        res.revision?.summary ?? "Your upcoming plan has been rebuilt around your real time.",
+      );
     });
   };
 
@@ -459,45 +473,40 @@ function DashboardPage() {
 
   const refresh = () => setTick((t) => t + 1);
 
-
-  const nextTaskIdx = plan.todayTasks.findIndex(
-    (_, i) => !completedTaskIds.includes(String(i)),
-  );
-  const nextTask = nextTaskIdx >= 0 ? plan.todayTasks[nextTaskIdx] : null;
-  const upNextItems = plan.todayTasks
-    .map((t, i) => ({ t, i, done: completedTaskIds.includes(String(i)) }))
-    .filter((x) => !x.done)
-    .slice(0, 3);
   const currentWeek = plan.weeklyFocus?.[0];
 
-
-  const weakestOverride: WeakestOverride | null =
-    mockPerf?.hasData && mockPerf.perTopic.length > 0
-      ? {
-          name: mockPerf.perTopic[0].topic,
-          accuracy: mockPerf.perTopic[0].accuracy,
-          attempted: mockPerf.perTopic[0].attempted,
-        }
-      : null;
-
-  const hasPerformanceData = Boolean(mockPerf?.hasData) || plan.todayTasks.length > 0;
-
-  const handleStartTodayItem = (id: string) => {
-    const item = todayItems.find((t) => t.id === id);
-    if (!item) return;
-    startPlannedSprint({
-      module: item.subject !== "Mixed practice" ? item.subject : undefined,
-      topic: item.subTopic ?? item.title,
-      focusMin: item.minutes,
-      breakMin: 5,
+  /** Start → Focus is one action: the session inherits the task's context. */
+  const handleStartTodayItem = (task: ScheduledTask) => {
+    const scheduled = findScheduled(task.id);
+    const { started } = startSession({
+      minutes: task.minutes,
+      breakMinutes: 5,
+      title: task.title,
+      module: task.module !== "Mixed practice" ? task.module : undefined,
+      subtopic: task.subtopic,
+      activityType: task.taskType,
+      why: task.why,
+      output: expectedOutput(task),
+      evidenceLabel: `${activityLabel(task)} · ${task.evidenceLabel ?? "Syllabus coverage"}`,
+      examPath: input.examType,
+      planned:
+        scheduled && schedule
+          ? {
+              taskId: scheduled.id,
+              scheduleVersion: schedule.scheduleVersion,
+              planId: schedule.planId,
+            }
+          : undefined,
+      origin: "today",
     });
+    if (!started) toast.info("Picking up the session you already have running.");
     navigate({ to: "/focus/sprint" });
   };
 
   return (
     <AppShell
-      title="Dashboard"
-      subtitle="Your calm command centre."
+      title="Today"
+      subtitle="What to do next, and why."
       actions={
         <RecordSessionDialog
           moduleNames={input.modules.map((m) => m.name)}
@@ -508,24 +517,27 @@ function DashboardPage() {
     >
       <div className="space-y-8">
         <SetPasswordCard />
-        <CommandCentre
-          userName={input.name}
-          examId={examId}
+        <TodayPanel
+          firstName={input.name}
           examLabel={examLabel}
-          subjectMinutes={subjectMinutes}
-          hasPerformanceData={hasPerformanceData}
-          weakestOverride={weakestOverride}
-          todayItems={todayItems}
-          onReviewWeak={() => navigate({ to: "/topics" })}
-          onStartPriority={() => navigate({ to: "/topics" })}
-          onStartFocus={() => navigate({ to: "/focus" })}
-          onStartDiagnostic={() => navigate({ to: "/practice" })}
+          today={today}
+          daysUntilExam={daysUntilExam}
+          tasks={todayTasks}
+          missed={missed}
+          daysSinceLastActivity={daysSinceLastActivity}
+          weeklyDoneMins={weeklyDoneMins}
+          weeklyTargetMins={weeklyTargetMins}
+          activeSessionTitle={activeSession?.title}
+          onResumeSession={() => navigate({ to: "/focus/sprint" })}
+          onStart={handleStartTodayItem}
+          onComplete={handleCompleteTodayItem}
+          onSkip={setSkipTarget}
+          onReschedule={setMoveTarget}
+          onRecoverMissed={handleRecoverMissed}
           onGeneratePlan={() => navigate({ to: "/onboarding" })}
-          onStartItem={handleStartTodayItem}
-          onCompleteItem={handleCompleteTodayItem}
-          onSkipItem={handleSkipTodayItem}
-          onRescheduleItem={handleRescheduleTodayItem}
         />
+
+        {schedule && <WeeklyReview schedule={schedule} today={today} />}
 
         {revision && (
           <section className="rounded-2xl border border-border/40 bg-card p-5 shadow-card">
@@ -558,8 +570,6 @@ function DashboardPage() {
           </section>
         )}
 
-
-
         <MetricsRow
           daysUntilExam={daysUntilExam}
           gradedAccuracy={gradedAccuracy}
@@ -571,13 +581,27 @@ function DashboardPage() {
         />
       </div>
 
+      <SkipReasonSheet
+        open={!!skipTarget}
+        taskTitle={skipTarget?.title}
+        onCancel={() => setSkipTarget(null)}
+        onSkip={handleSkipConfirmed}
+      />
+      <RescheduleSheet
+        open={!!moveTarget}
+        taskTitle={moveTarget?.title}
+        taskMinutes={moveTarget?.minutes ?? 30}
+        days={capacity}
+        today={today}
+        onCancel={() => setMoveTarget(null)}
+        onPick={handleRescheduleConfirmed}
+      />
+
       {quizTask && (
         <QuizDialog
           task={quizTask}
           examType={input.examType}
-          confidence={
-            input.modules.find((m) => m.name === quizTask.module)?.confidence ?? 3
-          }
+          confidence={input.modules.find((m) => m.name === quizTask.module)?.confidence ?? 3}
           onClose={() => setQuizTask(null)}
           onComplete={handleQuizComplete}
         />
@@ -599,9 +623,7 @@ function SectionHeader({
     <div className="flex items-end justify-between gap-4">
       <div>
         <h2 className="text-base font-medium text-foreground">{title}</h2>
-        {subtitle && (
-          <p className="mt-1 text-xs text-muted-foreground/80">{subtitle}</p>
-        )}
+        {subtitle && <p className="mt-1 text-xs text-muted-foreground/80">{subtitle}</p>}
       </div>
       {action}
     </div>
@@ -636,8 +658,7 @@ function TodaysPlanCard({
     const h = m / 60;
     return `${h.toFixed(1).replace(/\.0$/, "")}h`;
   };
-  const pct =
-    plannedMins > 0 ? Math.round((completedPlannedMins / plannedMins) * 100) : 0;
+  const pct = plannedMins > 0 ? Math.round((completedPlannedMins / plannedMins) * 100) : 0;
   return (
     <section className="relative overflow-hidden rounded-3xl border border-border/40 bg-card p-6 md:p-8 shadow-card">
       <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-gradient-pink-blue opacity-[0.08] blur-3xl" />
@@ -660,9 +681,8 @@ function TodaysPlanCard({
             </h2>
             {nextTask ? (
               <p className="mt-1.5 text-sm text-muted-foreground">
-                Next up:{" "}
-                <span className="text-foreground/90">{nextTask.title}</span>{" "}
-                · {nextTask.module} · {nextTask.minutes}m
+                Next up: <span className="text-foreground/90">{nextTask.title}</span> ·{" "}
+                {nextTask.module} · {nextTask.minutes}m
               </p>
             ) : (
               <p className="mt-1.5 text-sm text-muted-foreground">
@@ -744,12 +764,11 @@ function MetricsRow({
       <MetricCard
         label="Streak"
         value={String(streak.current)}
-        sub={streak.studiedToday ? "active today" : streak.current > 0 ? "log to keep" : "start today"}
+        sub={
+          streak.studiedToday ? "active today" : streak.current > 0 ? "log to keep" : "start today"
+        }
         icon={
-          <Flame
-            className="h-3.5 w-3.5"
-            fill={streak.studiedToday ? "currentColor" : "none"}
-          />
+          <Flame className="h-3.5 w-3.5" fill={streak.studiedToday ? "currentColor" : "none"} />
         }
         accent={streak.studiedToday ? "pink" : "muted"}
       />
@@ -794,9 +813,7 @@ function MetricCard({
         <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/80">
           {label}
         </span>
-        <span className={`grid h-6 w-6 place-items-center rounded-full ${accentBg}`}>
-          {icon}
-        </span>
+        <span className={`grid h-6 w-6 place-items-center rounded-full ${accentBg}`}>{icon}</span>
       </div>
       <div className="mt-3 flex items-baseline gap-1.5">
         <span className="font-display text-2xl text-foreground">{value}</span>
@@ -827,7 +844,10 @@ function WeekFocusAccordion({
     outcome?: string;
   }[];
 }) {
-  const total = Math.max(1, allocations.reduce((acc, a) => acc + a.hours, 0));
+  const total = Math.max(
+    1,
+    allocations.reduce((acc, a) => acc + a.hours, 0),
+  );
   return (
     <div
       role="region"
@@ -838,25 +858,23 @@ function WeekFocusAccordion({
         {allocations.map((a) => {
           const pct = Math.round((a.hours / total) * 100);
           const meta = RATIONALE_META[a.rationale];
-          const slug = a.module.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+          const slug = a.module
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/(^-|-$)/g, "");
           const itemId = `week-focus-${slug}`;
           const triggerLabel = `${a.module}, ${a.hours} hours, ${pct}% of week${meta ? `, ${meta.label}` : ""}. Expand to see focus subtopics and approach.`;
           return (
-            <AccordionItem
-              key={a.module}
-              value={a.module}
-              id={itemId}
-              className="border-b-0 px-5"
-            >
+            <AccordionItem key={a.module} value={a.module} id={itemId} className="border-b-0 px-5">
               <AccordionTrigger aria-label={triggerLabel} className="hover:no-underline py-4">
                 <div className="flex flex-1 items-center justify-between gap-4 pr-3">
                   <div className="min-w-0 flex-1 text-left">
-                    <div className="truncate text-sm font-medium text-foreground">
-                      {a.module}
-                    </div>
+                    <div className="truncate text-sm font-medium text-foreground">{a.module}</div>
                     <div aria-hidden="true" className="mt-0.5 flex items-center gap-2">
                       {meta && (
-                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}>
+                        <span
+                          className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}
+                        >
                           {meta.label}
                         </span>
                       )}
@@ -896,7 +914,9 @@ function WeekFocusAccordion({
                   )}
                   {a.method && (
                     <div>
-                      <dt className="inline font-medium text-foreground/80">Suggested approach: </dt>
+                      <dt className="inline font-medium text-foreground/80">
+                        Suggested approach:{" "}
+                      </dt>
                       <dd className="inline">{a.method}</dd>
                     </div>
                   )}
@@ -916,7 +936,6 @@ function WeekFocusAccordion({
   );
 }
 
-
 function UpNextBlock({
   task,
   onClick,
@@ -924,7 +943,9 @@ function UpNextBlock({
   task: import("@/lib/plan-store").StrategyTask;
   onClick: () => void;
 }) {
-  const priority = task.bucket ?? (task.priority === "high" ? "must" : task.priority === "low" ? "optional" : "should");
+  const priority =
+    task.bucket ??
+    (task.priority === "high" ? "must" : task.priority === "low" ? "optional" : "should");
   const meta = BUCKET_META[priority];
   return (
     <li>
@@ -941,7 +962,10 @@ function UpNextBlock({
             aria-label="Mark complete"
             className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-muted-foreground/30 text-muted-foreground transition-colors group-hover:border-pink group-hover:text-pink"
           >
-            <Check className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" strokeWidth={3} />
+            <Check
+              className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100"
+              strokeWidth={3}
+            />
           </span>
         </div>
         <div className="min-w-0 flex-1 space-y-1">
@@ -959,11 +983,7 @@ function UpNextBlock({
   );
 }
 
-function MiniRoadmap({
-  weeks,
-}: {
-  weeks: import("@/lib/plan-store").WeeklyFocusEntry[];
-}) {
+function MiniRoadmap({ weeks }: { weeks: import("@/lib/plan-store").WeeklyFocusEntry[] }) {
   const [openWeek, setOpenWeek] = useState<number>(weeks[0]?.week ?? 1);
   const limited = weeks.slice(0, 6);
   return (
@@ -990,9 +1010,7 @@ function MiniRoadmap({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate text-sm font-medium text-foreground">
-                      {w.theme}
-                    </span>
+                    <span className="truncate text-sm font-medium text-foreground">{w.theme}</span>
                     {isActive && (
                       <span className="rounded-full bg-pink/10 px-1.5 py-0.5 text-[10px] font-medium text-pink/90">
                         This week
@@ -1038,10 +1056,6 @@ function MiniRoadmap({
   );
 }
 
-
-
-
-
 function StreakCard({
   streak,
 }: {
@@ -1063,9 +1077,7 @@ function StreakCard({
             className={`h-6 w-6 ${active ? "text-pink/90" : "text-muted-foreground/60"}`}
             fill={active ? "currentColor" : "none"}
           />
-          <span className="font-display text-4xl text-foreground">
-            {streak.current}
-          </span>
+          <span className="font-display text-4xl text-foreground">{streak.current}</span>
         </div>
         <span className="text-xs text-muted-foreground/80">
           {streak.current === 1 ? "day" : "days"}
@@ -1079,9 +1091,7 @@ function StreakCard({
             : "Log a session to start"}
       </div>
       {streak.longest > streak.current && (
-        <div className="mt-1 text-[10px] text-muted-foreground/70">
-          Best: {streak.longest}
-        </div>
+        <div className="mt-1 text-[10px] text-muted-foreground/70">Best: {streak.longest}</div>
       )}
     </div>
   );
@@ -1126,9 +1136,7 @@ function CountdownRing({ days }: { days: number }) {
         </svg>
         <div className="text-center">
           <div className="font-display text-2xl text-foreground">{days}</div>
-          <div className="text-[9px] tracking-wider text-muted-foreground/80">
-            days
-          </div>
+          <div className="text-[9px] tracking-wider text-muted-foreground/80">days</div>
         </div>
       </div>
     </div>
@@ -1143,8 +1151,7 @@ function MasteryHeatmap({ stored }: { stored: StoredPlan }) {
   const rows = useMemo(() => {
     return stored.input.modules.map((m) => {
       const target =
-        stored.plan.masteryTargets.find((t) => t.module === m.name)
-          ?.targetConfidence ?? 5;
+        stored.plan.masteryTargets.find((t) => t.module === m.name)?.targetConfidence ?? 5;
       return {
         name: m.name,
         current: m.confidence,
@@ -1181,12 +1188,10 @@ function MasteryHeatmap({ stored }: { stored: StoredPlan }) {
                 }}
               />
             ))}
-          <span className="ml-1">High</span>
+            <span className="ml-1">High</span>
           </div>
         </div>
-        <div className="text-xs text-muted-foreground">
-          Each cell = 1 week (next 14 weeks)
-        </div>
+        <div className="text-xs text-muted-foreground">Each cell = 1 week (next 14 weeks)</div>
       </div>
 
       <div className="grid grid-cols-[140px_1fr_70px] items-center gap-3 px-1 text-sm font-semibold text-foreground">
@@ -1198,13 +1203,8 @@ function MasteryHeatmap({ stored }: { stored: StoredPlan }) {
       </div>
 
       {visibleRows.map((r) => (
-        <div
-          key={r.name}
-          className="grid grid-cols-[140px_1fr_70px] items-center gap-3"
-        >
-          <div className="truncate text-xs font-medium text-foreground">
-            {r.name}
-          </div>
+        <div key={r.name} className="grid grid-cols-[140px_1fr_70px] items-center gap-3">
+          <div className="truncate text-xs font-medium text-foreground">{r.name}</div>
           <div className="flex gap-1">
             {r.cells.map((v, i) => (
               <div
@@ -1231,7 +1231,9 @@ function MasteryHeatmap({ stored }: { stored: StoredPlan }) {
           onClick={() => setExpanded((e) => !e)}
           className="mt-2 w-full rounded-xl border border-border/60 bg-background/40 px-3 py-2 text-xs font-medium text-foreground transition-colors hover:border-pink/40 hover:bg-card"
         >
-          {expanded ? "Show less" : `Show ${hiddenCount} more module${hiddenCount === 1 ? "" : "s"}`}
+          {expanded
+            ? "Show less"
+            : `Show ${hiddenCount} more module${hiddenCount === 1 ? "" : "s"}`}
         </button>
       )}
     </div>
@@ -1245,12 +1247,10 @@ function NoPlanState() {
         <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-gradient-pink-blue shadow-glow">
           <BookOpen className="h-6 w-6 text-primary-foreground" />
         </div>
-        <h1 className="mt-5 text-3xl font-normal text-foreground">
-          No plan yet
-        </h1>
+        <h1 className="mt-5 text-3xl font-normal text-foreground">No plan yet</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Tell Tentra your exam date and confidence levels and we'll build your
-          personalised study plan.
+          Tell Tentra your exam date and confidence levels and we'll build your personalised study
+          plan.
         </p>
         <Button
           asChild
@@ -1265,11 +1265,23 @@ function NoPlanState() {
 
 const RATIONALE_META: Record<string, { label: string; cls: string; dot: string }> = {
   "high-yield": { label: "High yield", cls: "bg-pink/8 text-pink/85", dot: "bg-pink" },
-  "weak-area": { label: "Weak area", cls: "bg-destructive/8 text-destructive/85", dot: "bg-destructive" },
+  "weak-area": {
+    label: "Weak area",
+    cls: "bg-destructive/8 text-destructive/85",
+    dot: "bg-destructive",
+  },
   "recency-gap": { label: "Refresh", cls: "bg-amber-500/8 text-amber-500/85", dot: "bg-amber-400" },
   "mixed-practice": { label: "Mixed practice", cls: "bg-cyan/8 text-cyan/85", dot: "bg-cyan" },
-  "mock-prep": { label: "Mock recovery", cls: "bg-violet-500/8 text-violet-400/85", dot: "bg-violet-400" },
-  "ethics-cornerstone": { label: "Ethics", cls: "bg-emerald-500/8 text-emerald-500/85", dot: "bg-emerald-400" },
+  "mock-prep": {
+    label: "Mock recovery",
+    cls: "bg-violet-500/8 text-violet-400/85",
+    dot: "bg-violet-400",
+  },
+  "ethics-cornerstone": {
+    label: "Ethics",
+    cls: "bg-emerald-500/8 text-emerald-500/85",
+    dot: "bg-emerald-400",
+  },
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -1283,7 +1295,10 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 function RationaleChip({ rationale }: { rationale: string }) {
-  const meta = RATIONALE_META[rationale] ?? { label: rationale, cls: "bg-muted text-muted-foreground" };
+  const meta = RATIONALE_META[rationale] ?? {
+    label: rationale,
+    cls: "bg-muted text-muted-foreground",
+  };
   return (
     <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${meta.cls}`}>
       {meta.label}
@@ -1381,9 +1396,7 @@ function Stat({
 }) {
   return (
     <div>
-      <div className="text-[11px] font-medium text-muted-foreground/80">
-        {label}
-      </div>
+      <div className="text-[11px] font-medium text-muted-foreground/80">{label}</div>
       <div
         className={`mt-1.5 font-display text-2xl ${
           accent ? "text-gradient-tentra" : "text-foreground"
@@ -1409,7 +1422,10 @@ function AllocationBars({
     outcome?: string;
   }[];
 }) {
-  const total = Math.max(1, allocations.reduce((acc, a) => acc + a.hours, 0));
+  const total = Math.max(
+    1,
+    allocations.reduce((acc, a) => acc + a.hours, 0),
+  );
   return (
     <div className="space-y-4">
       <div className="flex items-baseline justify-between">
@@ -1435,10 +1451,7 @@ function AllocationBars({
         {allocations.map((a) => {
           const pct = Math.round((a.hours / total) * 100);
           return (
-            <li
-              key={a.module}
-              className="flex items-start gap-4 py-4 first:pt-0 last:pb-0"
-            >
+            <li key={a.module} className="flex items-start gap-4 py-4 first:pt-0 last:pb-0">
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium text-foreground">{a.module}</span>
@@ -1491,9 +1504,21 @@ function AllocationBars({
 }
 
 const BUCKET_META: Record<string, { label: string; sub: string; cls: string }> = {
-  must: { label: "Must do this week", sub: "Highest-yield priorities", cls: "bg-pink/10 text-pink/90" },
-  should: { label: "Should do this week", sub: "Strengthens the week", cls: "bg-cyan/10 text-cyan/90" },
-  optional: { label: "Optional stretch", sub: "Catch-up or extension", cls: "bg-foreground/[0.05] text-muted-foreground" },
+  must: {
+    label: "Must do this week",
+    sub: "Highest-yield priorities",
+    cls: "bg-pink/10 text-pink/90",
+  },
+  should: {
+    label: "Should do this week",
+    sub: "Strengthens the week",
+    cls: "bg-cyan/10 text-cyan/90",
+  },
+  optional: {
+    label: "Optional stretch",
+    sub: "Catch-up or extension",
+    cls: "bg-foreground/[0.05] text-muted-foreground",
+  },
 };
 
 const DIFFICULTY_LABEL: Record<string, string> = {
@@ -1513,9 +1538,13 @@ function BlockGroups({
 }) {
   const indexed = tasks.map((t, i) => ({ t, i }));
   const groups: Array<{ key: "must" | "should" | "optional" }> = [
-    { key: "must" }, { key: "should" }, { key: "optional" },
+    { key: "must" },
+    { key: "should" },
+    { key: "optional" },
   ];
-  const fallbackBucket = (t: import("@/lib/plan-store").StrategyTask): "must" | "should" | "optional" =>
+  const fallbackBucket = (
+    t: import("@/lib/plan-store").StrategyTask,
+  ): "must" | "should" | "optional" =>
     t.bucket ?? (t.priority === "high" ? "must" : t.priority === "low" ? "optional" : "should");
 
   return (
@@ -1529,7 +1558,9 @@ function BlockGroups({
           <div key={key} className="space-y-2">
             <div className="flex items-baseline justify-between">
               <div className="flex items-center gap-2">
-                <span className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${meta.cls}`}>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${meta.cls}`}
+                >
                   {meta.label}
                 </span>
                 <span className="text-[11px] text-muted-foreground/70">{meta.sub}</span>
@@ -1545,7 +1576,9 @@ function BlockGroups({
                   <li
                     key={i}
                     className={`group flex items-start gap-4 rounded-2xl p-5 transition-colors ${
-                      done ? "bg-emerald-400/[0.04]" : "bg-foreground/[0.015] hover:bg-foreground/[0.035]"
+                      done
+                        ? "bg-emerald-400/[0.04]"
+                        : "bg-foreground/[0.015] hover:bg-foreground/[0.035]"
                     }`}
                   >
                     <Tooltip>
@@ -1554,7 +1587,9 @@ function BlockGroups({
                           type="button"
                           role="checkbox"
                           aria-checked={done}
-                          aria-label={done ? `Mark "${t.title}" incomplete` : `Mark "${t.title}" complete`}
+                          aria-label={
+                            done ? `Mark "${t.title}" incomplete` : `Mark "${t.title}" complete`
+                          }
                           onClick={() => onToggle(i)}
                           className={`relative mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full border-2 outline-none transition-all duration-200 cursor-pointer focus-visible:ring-2 focus-visible:ring-pink/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-90 ${
                             done
@@ -1565,7 +1600,10 @@ function BlockGroups({
                           {done ? (
                             <Check className="h-5 w-5" strokeWidth={3} />
                           ) : (
-                            <Check className="h-4 w-4 text-muted-foreground/0 transition-opacity group-hover:text-pink/60 group-hover:opacity-100" strokeWidth={3} />
+                            <Check
+                              className="h-4 w-4 text-muted-foreground/0 transition-opacity group-hover:text-pink/60 group-hover:opacity-100"
+                              strokeWidth={3}
+                            />
                           )}
                         </button>
                       </TooltipTrigger>
@@ -1574,10 +1612,14 @@ function BlockGroups({
                       </TooltipContent>
                     </Tooltip>
                     <div className="min-w-0 flex-1 space-y-1.5">
-                      <p className={`text-sm font-medium leading-snug ${done ? "text-muted-foreground line-through decoration-emerald-400/60" : "text-foreground"}`}>
+                      <p
+                        className={`text-sm font-medium leading-snug ${done ? "text-muted-foreground line-through decoration-emerald-400/60" : "text-foreground"}`}
+                      >
                         {t.title}
                       </p>
-                      <div className={`flex flex-wrap items-center gap-1.5 ${done ? "opacity-60" : ""}`}>
+                      <div
+                        className={`flex flex-wrap items-center gap-1.5 ${done ? "opacity-60" : ""}`}
+                      >
                         <span className="text-[11px] text-muted-foreground">{t.module}</span>
                         {t.rationale && <RationaleChip rationale={t.rationale} />}
                         {t.taskType && <TypeChip type={t.taskType} />}
@@ -1588,24 +1630,32 @@ function BlockGroups({
                         )}
                       </div>
                       {t.subtopic && (
-                        <p className={`text-[11px] text-muted-foreground/80 ${done ? "opacity-60" : ""}`}>
+                        <p
+                          className={`text-[11px] text-muted-foreground/80 ${done ? "opacity-60" : ""}`}
+                        >
                           <span className="font-medium text-foreground/80">Focus subtopic: </span>
                           {t.subtopic}
                         </p>
                       )}
                       {t.why && (
-                        <p className={`text-[11px] italic text-muted-foreground/80 ${done ? "opacity-60" : ""}`}>
+                        <p
+                          className={`text-[11px] italic text-muted-foreground/80 ${done ? "opacity-60" : ""}`}
+                        >
                           {t.why}
                         </p>
                       )}
                       {t.output && (
-                        <p className={`text-[11px] text-muted-foreground/80 ${done ? "opacity-60" : ""}`}>
+                        <p
+                          className={`text-[11px] text-muted-foreground/80 ${done ? "opacity-60" : ""}`}
+                        >
                           <span className="font-medium text-foreground/80">Outcome: </span>
                           {t.output}
                         </p>
                       )}
                     </div>
-                    <span className={`shrink-0 text-sm font-semibold ${done ? "text-emerald-300" : "text-cyan"}`}>
+                    <span
+                      className={`shrink-0 text-sm font-semibold ${done ? "text-emerald-300" : "text-cyan"}`}
+                    >
                       {done ? "Done" : `${t.minutes}m`}
                     </span>
                   </li>
@@ -1619,11 +1669,7 @@ function BlockGroups({
   );
 }
 
-function WeeklyFocusList({
-  weeks,
-}: {
-  weeks: import("@/lib/plan-store").WeeklyFocusEntry[];
-}) {
+function WeeklyFocusList({ weeks }: { weeks: import("@/lib/plan-store").WeeklyFocusEntry[] }) {
   return (
     <ol className="divide-y divide-border/40">
       {weeks.slice(0, 6).map((w, i) => {
@@ -1632,16 +1678,24 @@ function WeeklyFocusList({
           ? [
               { key: "review", label: "Review", value: balance.review, cls: "bg-cyan/60" },
               { key: "recall", label: "Recall", value: balance.recall, cls: "bg-pink/60" },
-              { key: "practice", label: "Timed practice", value: balance.practice, cls: "bg-violet-400/60" },
-              { key: "mistakes", label: "Mistake review", value: balance.mistakes, cls: "bg-amber-400/60" },
+              {
+                key: "practice",
+                label: "Timed practice",
+                value: balance.practice,
+                cls: "bg-violet-400/60",
+              },
+              {
+                key: "mistakes",
+                label: "Mistake review",
+                value: balance.mistakes,
+                cls: "bg-amber-400/60",
+              },
             ]
           : [];
         return (
           <li key={w.week} className="py-4 first:pt-0 last:pb-0">
             <div className="flex items-center justify-between">
-              <div className="text-[11px] font-medium text-muted-foreground/80">
-                Week {w.week}
-              </div>
+              <div className="text-[11px] font-medium text-muted-foreground/80">Week {w.week}</div>
               <div className="flex items-center gap-2">
                 <div className="text-[11px] text-muted-foreground/70">{w.hours}h</div>
                 {i === 0 && (
@@ -1651,9 +1705,7 @@ function WeeklyFocusList({
                 )}
               </div>
             </div>
-            <div className="mt-1.5 text-sm font-medium text-foreground">
-              {w.theme}
-            </div>
+            <div className="mt-1.5 text-sm font-medium text-foreground">{w.theme}</div>
             {w.reason && (
               <p className="mt-1.5 text-[11px] text-muted-foreground/80">
                 <span className="font-medium text-foreground/80">Why this week? </span>
@@ -1712,9 +1764,7 @@ function Panel({
     <section className="rounded-3xl bg-card p-8 shadow-card">
       <div className="mb-6">
         <h2 className="text-lg font-medium text-foreground">{title}</h2>
-        {subtitle && (
-          <p className="mt-1 text-xs text-muted-foreground/80">{subtitle}</p>
-        )}
+        {subtitle && <p className="mt-1 text-xs text-muted-foreground/80">{subtitle}</p>}
       </div>
       {children}
     </section>
@@ -1798,9 +1848,7 @@ function RecordSessionDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Log a study session</DialogTitle>
-          <DialogDescription>
-            Track your time to keep your streak going.
-          </DialogDescription>
+          <DialogDescription>Track your time to keep your streak going.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           {todayTasks.length > 0 && (
@@ -1808,10 +1856,7 @@ function RecordSessionDialog({
               <Label>Suggested activity</Label>
               <Select value={suggestedIdx} onValueChange={applySuggested}>
                 <SelectTrigger className="w-full">
-                  <SelectValue
-                    placeholder="Pick from today's plan"
-                    className="block truncate"
-                  />
+                  <SelectValue placeholder="Pick from today's plan" className="block truncate" />
                 </SelectTrigger>
                 <SelectContent className="max-w-[calc(100vw-3rem)] sm:max-w-[28rem]">
                   <SelectItem value="__none">None — log freely</SelectItem>
@@ -1869,11 +1914,7 @@ function RecordSessionDialog({
             />
           </div>
           <DialogFooter>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => setOpen(false)}
-            >
+            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button
@@ -1921,23 +1962,19 @@ function QuizDialog({
       setLoading(true);
       setError(null);
       try {
-        const { data, error: fnErr } = await supabase.functions.invoke(
-          "generate-quiz",
-          {
-            body: {
-              module: task.module,
-              topic: task.title,
-              examType,
-              confidence,
-            },
+        const { data, error: fnErr } = await supabase.functions.invoke("generate-quiz", {
+          body: {
+            module: task.module,
+            topic: task.title,
+            examType,
+            confidence,
           },
-        );
+        });
         if (cancelled) return;
         if (fnErr) throw fnErr;
         if (data?.error) throw new Error(data.error);
         const qs: QuizQuestion[] = (data?.questions ?? []).filter(
-          (q: QuizQuestion) =>
-            q && Array.isArray(q.options) && q.options.length === 4,
+          (q: QuizQuestion) => q && Array.isArray(q.options) && q.options.length === 4,
         );
         if (qs.length === 0) throw new Error("No questions returned");
         setQuestions(qs);
@@ -1957,10 +1994,7 @@ function QuizDialog({
   const total = questions?.length ?? 0;
   const correctCount = useMemo(() => {
     if (!questions) return 0;
-    return answers.reduce(
-      (acc, a, i) => (a === questions[i]?.correctIndex ? acc + 1 : acc),
-      0,
-    );
+    return answers.reduce((acc, a, i) => (a === questions[i]?.correctIndex ? acc + 1 : acc), 0);
   }, [answers, questions]);
   const accuracy = total > 0 ? correctCount / total : 0;
 
@@ -1983,15 +2017,11 @@ function QuizDialog({
   };
 
   const handleFinish = () => {
-    const minutesSpent = Math.max(
-      1,
-      Math.round((Date.now() - startedAt) / 60000),
-    );
+    const minutesSpent = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
     const attempts = (questions ?? []).map((question, i) => ({
       fingerprint: questionFingerprint(task.module, question.prompt),
       isCorrect: answers[i] === question.correctIndex,
-      selectedAnswer:
-        typeof answers[i] === "number" ? String.fromCharCode(65 + answers[i]) : null,
+      selectedAnswer: typeof answers[i] === "number" ? String.fromCharCode(65 + answers[i]) : null,
     }));
     onComplete(accuracy, minutesSpent, attempts);
   };
@@ -2005,8 +2035,7 @@ function QuizDialog({
         <DialogHeader>
           <DialogTitle>Mini-assessment · {task.module}</DialogTitle>
           <DialogDescription>
-            10 quick questions on{" "}
-            <span className="text-foreground">{task.title}</span>. Your score
+            10 quick questions on <span className="text-foreground">{task.title}</span>. Your score
             adjusts your topic mastery.
           </DialogDescription>
         </DialogHeader>
@@ -2033,9 +2062,7 @@ function QuizDialog({
               <span>
                 Question {current + 1} of {questions.length}
               </span>
-              <span>
-                {correctCount} correct so far
-              </span>
+              <span>{correctCount} correct so far</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div
@@ -2050,11 +2077,9 @@ function QuizDialog({
               {q.options.map((opt, i) => {
                 const isCorrect = i === q.correctIndex;
                 const isPicked = selected === i;
-                let cls =
-                  "border-border bg-background/40 hover:border-pink/40 hover:bg-card";
+                let cls = "border-border bg-background/40 hover:border-pink/40 hover:bg-card";
                 if (revealed) {
-                  if (isCorrect)
-                    cls = "border-green-500/60 bg-green-500/10 text-foreground";
+                  if (isCorrect) cls = "border-green-500/60 bg-green-500/10 text-foreground";
                   else if (isPicked)
                     cls = "border-destructive/60 bg-destructive/10 text-foreground";
                   else cls = "border-border bg-background/30 text-muted-foreground";
@@ -2071,9 +2096,7 @@ function QuizDialog({
                       {String.fromCharCode(65 + i)}
                     </span>
                     <span className="flex-1">{opt}</span>
-                    {revealed && isCorrect && (
-                      <Check className="h-4 w-4 text-green-500" />
-                    )}
+                    {revealed && isCorrect && <Check className="h-4 w-4 text-green-500" />}
                     {revealed && isPicked && !isCorrect && (
                       <X className="h-4 w-4 text-destructive" />
                     )}

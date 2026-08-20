@@ -14,9 +14,9 @@ import {
 import {
   FOCUS_PRESETS,
   loadFocusPrefs,
-  saveActiveSprint,
   saveFocusPrefs,
 } from "@/lib/focus-store";
+import { startSession } from "@/lib/focus-session";
 
 export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
   const navigate = useNavigate();
@@ -44,18 +44,19 @@ export function FocusLauncher({ moduleNames }: { moduleNames: string[] }) {
     const bMin = isCustomRun
       ? Math.max(0, Math.min(60, customBreak || 5))
       : FOCUS_PRESETS.find((p) => p.id === effectivePresetId)?.breakMin ?? 5;
-    const now = Date.now();
-    saveActiveSprint({
-      startedAt: now,
-      focusMs: fMin * 60 * 1000,
-      breakMs: bMin * 60 * 1000,
-      module: module || undefined,
-      topic: topic.trim() || undefined,
-      presetId: effectivePresetId,
-      pausedTotalMs: 0,
-      phase: "focus",
-      phaseStartedAt: now,
-    });
+    // Free-form sprints share the single session record with planned blocks,
+    // so two timers can never run at once.
+    startSession(
+      {
+        minutes: fMin,
+        breakMinutes: bMin,
+        title: topic.trim() || (module ? `${module} study` : "Focus session"),
+        module: module || undefined,
+        subtopic: topic.trim() || undefined,
+        origin: "focus",
+      },
+      { replace: true },
+    );
     saveFocusPrefs({
       lastPresetId: effectivePresetId,
       lastModule: module || undefined,

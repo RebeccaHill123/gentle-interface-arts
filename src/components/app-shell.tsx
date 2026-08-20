@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
 import {
+  CalendarClock,
   LayoutDashboard,
   Flame,
   Sparkles,
@@ -17,9 +18,10 @@ import {
 import { ProfileMenu } from "@/components/profile-menu";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
-
 export type AppRoute =
   | "/dashboard"
+  | "/plan"
+  | "/practice"
   | "/focus"
   | "/coach"
   | "/mocks"
@@ -28,20 +30,26 @@ export type AppRoute =
   | "/community"
   | "/settings";
 
+// Primary navigation follows the daily loop: what to do now, what's coming,
+// how to practise, how it's going, and who to ask.
 const NAV: { to: AppRoute; label: string; icon: typeof LayoutDashboard }[] = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/focus", label: "Focus", icon: Flame },
-  { to: "/coach", label: "AI Coach", icon: Sparkles },
-  { to: "/mocks", label: "Mocks & Practice", icon: Scale },
-  { to: "/topics", label: "Topics", icon: Compass },
-  { to: "/analytics", label: "Analytics", icon: BarChart3 },
+  { to: "/dashboard", label: "Today", icon: LayoutDashboard },
+  { to: "/plan", label: "Plan", icon: CalendarClock },
+  { to: "/practice", label: "Practice", icon: Scale },
+  { to: "/analytics", label: "Progress", icon: BarChart3 },
+  { to: "/coach", label: "Coach", icon: Sparkles },
+];
+
+// Supporting surfaces: reachable, but never competing with the daily loop.
+const SECONDARY_NAV: { to: AppRoute; label: string; icon: typeof LayoutDashboard }[] = [
+  { to: "/focus", label: "Focus timer", icon: Flame },
+  { to: "/mocks", label: "Mock exams", icon: Scale },
+  { to: "/topics", label: "Topic map", icon: Compass },
   { to: "/community", label: "Community", icon: Users },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
-const MOBILE_NAV = NAV.filter((n) =>
-  ["/dashboard", "/focus", "/coach", "/topics", "/settings"].includes(n.to),
-);
+const MOBILE_NAV = NAV;
 
 interface AppShellProps {
   children: ReactNode;
@@ -149,7 +157,30 @@ function DesktopSidebar() {
                   : "font-normal text-muted-foreground hover:bg-foreground/[0.03] hover:text-foreground"
               }`}
             >
-              <Icon className={`h-[15px] w-[15px] ${active ? "text-foreground" : "text-muted-foreground/80 group-hover:text-foreground"}`} />
+              <Icon
+                className={`h-[15px] w-[15px] ${active ? "text-foreground" : "text-muted-foreground/80 group-hover:text-foreground"}`}
+              />
+              {item.label}
+            </Link>
+          );
+        })}
+        <div className="mt-4 px-2.5 pb-1 text-[10.5px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+          More
+        </div>
+        {SECONDARY_NAV.map((item) => {
+          const Icon = item.icon;
+          const active = path === item.to || path.startsWith(item.to + "/");
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] tracking-[-0.005em] transition-colors ${
+                active
+                  ? "bg-foreground/[0.05] font-medium text-foreground"
+                  : "font-normal text-muted-foreground hover:bg-foreground/[0.03] hover:text-foreground"
+              }`}
+            >
+              <Icon className="h-[15px] w-[15px] text-muted-foreground/80 group-hover:text-foreground" />
               {item.label}
             </Link>
           );
@@ -175,7 +206,6 @@ function DesktopSidebar() {
     </aside>
   );
 }
-
 
 function MobileBottomNav() {
   const path = useRouterState({ select: (s) => s.location.pathname });
@@ -230,7 +260,7 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <nav className="mt-7 space-y-0.5">
-          {NAV.map((item) => {
+          {[...NAV, ...SECONDARY_NAV].map((item) => {
             const Icon = item.icon;
             const active = path === item.to || path.startsWith(item.to + "/");
             return (
