@@ -339,11 +339,19 @@ function PlanRevealPage() {
           />
         </div>
 
+        {/* Priority areas — only ever called "yours" when genuinely rated. */}
         {summary.focusModules.length > 0 && (
           <section className="mt-6 rounded-2xl border border-border/60 bg-card/60 p-5 backdrop-blur">
             <h2 className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground">
-              Main areas of focus
+              {summary.reasoning.confidenceSource === "rated"
+                ? "Your priority areas"
+                : "Your starting priorities"}
             </h2>
+            <p className="mt-2 text-[13px] leading-[1.55] text-muted-foreground">
+              {summary.reasoning.confidenceSource === "rated"
+                ? "You rated these areas lower, so Tentra has given them more attention."
+                : "Tentra is beginning with balanced foundation coverage across the syllabus."}
+            </p>
             <div className="mt-3 flex flex-wrap gap-2">
               {summary.focusModules.map((m) => (
                 <span
@@ -354,8 +362,86 @@ function PlanRevealPage() {
                 </span>
               ))}
             </div>
+            {summary.reasoning.strongModules.length > 0 && (
+              <p className="mt-3 text-[12.5px] leading-[1.5] text-muted-foreground">
+                {summary.reasoning.strongModules.join(", ")} stay on spaced review so your
+                whole syllabus is still covered.
+              </p>
+            )}
           </section>
         )}
+
+        {/* Why this plan looks like this */}
+        <section
+          ref={reasoningRef}
+          className="mt-6 rounded-2xl border border-border/60 bg-card/50 p-5 backdrop-blur"
+          aria-labelledby="reasoning-heading"
+        >
+          <h2
+            id="reasoning-heading"
+            className="text-[11px] font-medium uppercase tracking-[0.24em] text-muted-foreground"
+          >
+            Why this plan looks like this
+          </h2>
+          <ul className="mt-3 space-y-2.5 text-[13.5px] leading-[1.55] text-foreground">
+            <li className="flex gap-2.5">
+              <Calendar className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+              <span>
+                <span className="font-medium">{summary.daysUntilExam} days</span> until your{" "}
+                {summary.examHeading} — {summary.weeks} usable{" "}
+                {summary.weeks === 1 ? "week" : "weeks"} of planning.
+              </span>
+            </li>
+            <li className="flex gap-2.5">
+              <Clock className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+              <span>
+                <span className="font-medium">{summary.hoursPerWeek}h a week</span> sets how
+                many sessions Tentra schedules and how long each one runs.
+              </span>
+            </li>
+            <li className="flex gap-2.5">
+              <Target className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+              <span>
+                <span className="font-medium">{summary.reasoning.preparationStage}</span> —{" "}
+                {summary.reasoning.preparationEffect}
+              </span>
+            </li>
+            <li className="flex gap-2.5">
+              <ListChecks className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+              <span>
+                {summary.reasoning.confidenceSource === "rated" ? (
+                  <>
+                    You rated{" "}
+                    <span className="font-medium">
+                      {summary.reasoning.ratedCount} of{" "}
+                      {summary.reasoning.subjectCount} subjects
+                    </span>
+                    , so hours are weighted towards the lower-rated ones — with a floor so no
+                    subject is dropped and a cap so none takes over the week.
+                  </>
+                ) : summary.reasoning.confidenceSource === "not-started" ? (
+                  <>
+                    You haven&apos;t started the syllabus yet, so every subject starts with
+                    foundation-first coverage rather than assumed weakness.
+                  </>
+                ) : (
+                  <>
+                    You didn&apos;t rate subjects, so hours are spread evenly across the full
+                    syllabus by exam yield — nothing is labelled a personal weakness.
+                  </>
+                )}
+              </span>
+            </li>
+            <li className="flex gap-2.5">
+              <RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
+              <span>
+                From here Tentra recalibrates from what you actually do — completed sessions
+                and real practice results take priority over self-ratings.
+              </span>
+            </li>
+          </ul>
+        </section>
+
 
         {/* 2. Complete week one */}
         <section ref={weekOneRef} className="mt-8" aria-labelledby="week-one-heading">
