@@ -56,6 +56,7 @@ function CheckoutReturnPage() {
     }
 
     trackEvent("checkout_completed", {});
+    trackEvent("trial_started", {});
     let cancelled = false;
     const MAX_MS = 60_000;
 
