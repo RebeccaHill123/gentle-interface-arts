@@ -147,6 +147,8 @@ function SubscribePage() {
     );
   }
 
+  const billingDate = firstBillingDateLabel();
+
   const includedFeatures = [
     "Adaptive daily study plan",
     "AI Coach and Tutor",
@@ -196,22 +198,42 @@ function SubscribePage() {
                         Founding Member
                       </div>
                       <h2 className="mt-6 font-display text-[2.15rem] font-light leading-none tracking-[-0.02em] text-foreground md:text-[2.4rem]">
-                        Founding Member Access
+                        Start your 7-day free trial
                       </h2>
                       <div className="mt-6 flex items-baseline justify-center gap-2">
                         <span className="text-[3rem] font-light leading-none tracking-[-0.03em] text-foreground md:text-[3.5rem]">
-                          £9.99
+                          £0
                         </span>
                         <span className="text-[14px] font-normal text-muted-foreground">
-                          / month
+                          due today
                         </span>
                       </div>
                       <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
-                        Full access to your personalised study system. Cancel anytime.
+                        Get full access to Tentra free for 7 days. Add your card
+                        today and you won't be charged until{" "}
+                        <span className="font-medium">{billingDate}</span>. After
+                        that, your subscription continues at £9.99/month unless
+                        cancelled.
                       </p>
-                      <p className="mx-auto mt-2 max-w-sm text-[12.5px] leading-[1.55] text-muted-foreground">
-                        An introductory rate for Tentra's earliest members.
-                      </p>
+                      <ul className="mx-auto mt-5 max-w-sm space-y-1.5 text-left text-[13px] leading-[1.5] text-muted-foreground">
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
+                          £0 due today
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
+                          7 days of full access
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
+                          Then £9.99/month
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
+                          Cancel anytime before {billingDate} to avoid being
+                          charged
+                        </li>
+                      </ul>
                     </div>
 
                     <div className="mt-8 flex flex-col items-center gap-3">
@@ -224,12 +246,12 @@ function SubscribePage() {
                         {checkingAuth ? (
                           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Checking…</>
                         ) : (
-                          "Start my personalised plan"
+                          "Start my free trial"
                         )}
                       </Button>
                       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
                         <ShieldCheck className="h-3 w-3" />
-                        Secure checkout via Stripe · Cancel anytime
+                        Card required · £0 today · £9.99/month from {billingDate} · Cancel anytime
                       </div>
                       {auth.user && (
                         <button
@@ -275,12 +297,12 @@ function SubscribePage() {
                   ← Back
                 </button>
                 <div className="text-[12px] font-medium text-foreground">
-                  Founding Member · £9.99 / month
+                  Free for 7 days · then £9.99 / month
                 </div>
               </div>
               <StripeEmbeddedCheckout priceId={FOUNDING_MEMBER_PRICE_ID} returnUrl={returnUrl} />
               <p className="mt-3 text-center text-[11.5px] text-muted-foreground">
-                After payment, you'll be taken to build your personalised plan.
+£0 is charged today. Your first payment of £9.99 is on {billingDate}, unless you cancel before then.
               </p>
             </section>
           )}
