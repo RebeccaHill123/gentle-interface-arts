@@ -519,6 +519,7 @@ export type Database = {
           email: string | null
           first_name: string | null
           grandfathered_pro: boolean
+          has_used_trial: boolean
           id: string
           is_pro: boolean
           last_name: string | null
@@ -527,6 +528,8 @@ export type Database = {
           stripe_price_id: string | null
           stripe_subscription_id: string | null
           subscription_status: string | null
+          trial_end: string | null
+          trial_start: string | null
           updated_at: string
           user_id: string
         }
@@ -538,6 +541,7 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           grandfathered_pro?: boolean
+          has_used_trial?: boolean
           id?: string
           is_pro?: boolean
           last_name?: string | null
@@ -546,6 +550,8 @@ export type Database = {
           stripe_price_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
+          trial_end?: string | null
+          trial_start?: string | null
           updated_at?: string
           user_id: string
         }
@@ -557,6 +563,7 @@ export type Database = {
           email?: string | null
           first_name?: string | null
           grandfathered_pro?: boolean
+          has_used_trial?: boolean
           id?: string
           is_pro?: boolean
           last_name?: string | null
@@ -565,6 +572,8 @@ export type Database = {
           stripe_price_id?: string | null
           stripe_subscription_id?: string | null
           subscription_status?: string | null
+          trial_end?: string | null
+          trial_start?: string | null
           updated_at?: string
           user_id?: string
         }
