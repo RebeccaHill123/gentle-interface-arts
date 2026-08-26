@@ -5,8 +5,11 @@ import {
   createStripeClient,
   ensureSixMonthPrice,
   getStripeErrorMessage,
+  isTrialEligible,
   resolveOrCreateCustomer,
+  trialSubscriptionData,
 } from "@/lib/stripe.server";
+import { TRIAL_DAYS } from "@/lib/founding";
 
 export type SubscriptionPlanId =
   | "founding_monthly"
@@ -37,7 +40,7 @@ export const createSubscriptionCheckoutSession = createServerFn({
     return data;
   })
   .handler(async ({ data, context }): Promise<CheckoutResult> => {
-    const { userId, claims } = context;
+    const { userId, claims, supabase } = context;
     try {
       const stripe = createStripeClient(data.environment);
 
@@ -60,14 +63,31 @@ export const createSubscriptionCheckoutSession = createServerFn({
         userId,
       });
 
+      // Trial eligibility: never for existing/lapsed-with-trial customers.
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("has_used_trial, subscription_status")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const alreadySubscribed =
+        profile?.subscription_status === "active" ||
+        profile?.subscription_status === "trialing" ||
+        profile?.subscription_status === "past_due";
+      const trialEligible =
+        !alreadySubscribed &&
+        (await isTrialEligible(stripe, customerId, !!profile?.has_used_trial));
+
       const session = await stripe.checkout.sessions.create({
         line_items: [{ price: stripePrice.id, quantity: 1 }],
         mode: "subscription",
         ui_mode: "embedded_page",
         return_url: data.returnUrl,
         customer: customerId,
+        // Card details are mandatory even when £0 is due today.
+        payment_method_collection: "always",
         metadata: { userId, priceId: data.priceId },
         subscription_data: {
+          ...(trialEligible ? trialSubscriptionData(TRIAL_DAYS) : {}),
           metadata: { userId, priceId: data.priceId },
         },
         // Charge exactly the displayed price — no tax added on top.
