@@ -181,3 +181,62 @@ export async function resolveOrCreateCustomer(
   });
   return created.id;
 }
+
+/**
+ * Trial eligibility. A customer gets the 7-day trial only if:
+ *  - they have no active/trialing/past_due subscription (existing paying
+ *    subscribers are never given a trial), and
+ *  - they have never had a subscription with a trial before (no repeat
+ *    trials on the same Stripe customer record).
+ *
+ * `profileUsedTrial` carries the app-side flag (`profiles.has_used_trial`)
+ * which also guards the case where the customer record was recreated.
+ */
+export async function isTrialEligible(
+  stripe: Stripe,
+  customerId: string | null | undefined,
+  profileUsedTrial = false,
+): Promise<boolean> {
+  if (profileUsedTrial) return false;
+  if (!customerId) return true;
+  try {
+    const subs = await stripe.subscriptions.list({
+      customer: customerId,
+      status: "all",
+      limit: 100,
+    });
+    for (const sub of subs.data) {
+      if (sub.trial_start || sub.trial_end) return false;
+      if (
+        sub.status === "active" ||
+        sub.status === "trialing" ||
+        sub.status === "past_due" ||
+        sub.status === "unpaid"
+      ) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    // Fail closed: if we cannot verify history, do not hand out a trial.
+    return false;
+  }
+}
+
+/**
+ * Subscription creation params for a card-required trial. Stripe collects a
+ * payment method up front, charges £0 today, and bills the full price when
+ * the trial ends. If no payment method is attached the subscription is
+ * cancelled rather than left in an unpaid limbo, so a trial can never start
+ * without valid card details.
+ */
+export function trialSubscriptionData(
+  trialDays: number,
+): Stripe.Checkout.SessionCreateParams.SubscriptionData {
+  return {
+    trial_period_days: trialDays,
+    trial_settings: {
+      end_behavior: { missing_payment_method: "cancel" },
+    },
+  };
+}
