@@ -230,9 +230,7 @@ export async function isTrialEligible(
  * cancelled rather than left in an unpaid limbo, so a trial can never start
  * without valid card details.
  */
-export function trialSubscriptionData(
-  trialDays: number,
-): Stripe.Checkout.SessionCreateParams.SubscriptionData {
+export function trialSubscriptionData(trialDays: number) {
   return {
     trial_period_days: trialDays,
     trial_settings: {
