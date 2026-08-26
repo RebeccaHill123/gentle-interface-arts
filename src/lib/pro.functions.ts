@@ -131,6 +131,8 @@ export interface SubscriptionSummary {
   hasAccess: boolean;
   isGrandfathered: boolean;
   isSubscriber: boolean;
+  isTrialing: boolean;
+  trialEnd: string | null;
   plan: SubscriptionPlanId | null;
   status: string | null;
   currentPeriodEnd: string | null;
@@ -144,7 +146,7 @@ export const getSubscriptionSummary = createServerFn({ method: "GET" })
     const { data } = await supabase
       .from("profiles")
       .select(
-        "is_pro, grandfathered_pro, stripe_price_id, subscription_status, current_period_end, cancel_at_period_end",
+        "is_pro, grandfathered_pro, stripe_price_id, subscription_status, current_period_end, cancel_at_period_end, trial_end",
       )
       .eq("user_id", userId)
       .maybeSingle();
@@ -159,6 +161,10 @@ export const getSubscriptionSummary = createServerFn({ method: "GET" })
       hasAccess: !!data?.grandfathered_pro || !!data?.is_pro || isSubscriber,
       isGrandfathered: !!data?.grandfathered_pro,
       isSubscriber,
+      isTrialing: status === "trialing",
+      trialEnd: data?.trial_end
+        ? new Date(data.trial_end as string).toISOString()
+        : null,
       plan: (data?.stripe_price_id as SubscriptionPlanId | null) ?? null,
       status,
       currentPeriodEnd: data?.current_period_end
