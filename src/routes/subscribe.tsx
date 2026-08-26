@@ -11,7 +11,10 @@ import { signOut } from "@/lib/use-auth";
 import { useAuth } from "@/lib/use-auth";
 import { useSubscription } from "@/hooks/useSubscription";
 import { loadPlan } from "@/lib/plan-store";
-import { FOUNDING_MEMBER_PRICE_ID } from "@/lib/founding";
+import {
+  FOUNDING_MEMBER_PRICE_ID,
+  firstBillingDateLabel,
+} from "@/lib/founding";
 import { trackEvent } from "@/lib/analytics";
 
 export const Route = createFileRoute("/subscribe")({
