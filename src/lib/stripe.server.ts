@@ -234,7 +234,7 @@ export function trialSubscriptionData(trialDays: number) {
   return {
     trial_period_days: trialDays,
     trial_settings: {
-      end_behavior: { missing_payment_method: "cancel" },
+      end_behavior: { missing_payment_method: "cancel" as const },
     },
   };
 }
