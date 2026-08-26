@@ -193,7 +193,15 @@ export function TodayPanel(props: TodayPanelProps) {
               >
                 <Play className="mr-2 h-4 w-4" /> Start {next.minutes}-min session
               </Button>
-              <div className="grid grid-cols-2 gap-2 sm:flex">
+              <div className="grid grid-cols-3 gap-2 sm:flex">
+                <Button
+                  onClick={() => props.onComplete(next)}
+                  variant="outline"
+                  size="lg"
+                  className="min-h-12 rounded-full"
+                >
+                  <CheckCircle2 className="mr-1.5 h-4 w-4" /> Done
+                </Button>
                 <Button
                   onClick={() => props.onReschedule(next)}
                   variant="outline"
@@ -298,14 +306,24 @@ export function TodayPanel(props: TodayPanelProps) {
                     </div>
                   </div>
                   {t.status === "scheduled" ? (
-                    <button
-                      type="button"
-                      onClick={() => props.onStart(t)}
-                      className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-pink/50 hover:text-pink"
-                      aria-label={`Start ${t.title}`}
-                    >
-                      <Play className="h-4 w-4" />
-                    </button>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => props.onComplete(t)}
+                        className="grid h-11 w-11 place-items-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-pink/50 hover:text-pink"
+                        aria-label={`Mark ${t.title} done`}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => props.onStart(t)}
+                        className="grid h-11 w-11 place-items-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-pink/50 hover:text-pink"
+                        aria-label={`Start ${t.title}`}
+                      >
+                        <Play className="h-4 w-4" />
+                      </button>
+                    </div>
                   ) : t.status === "completed" ? (
                     <span className="shrink-0 rounded-full bg-pink/10 px-2.5 py-1 text-[11px] font-medium text-pink">
                       Done
@@ -313,10 +331,10 @@ export function TodayPanel(props: TodayPanelProps) {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => props.onReschedule(t)}
+                      onClick={() => props.onComplete(t)}
                       className="shrink-0 rounded-full border border-border/60 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground"
                     >
-                      Skipped · move
+                      Skipped · mark done
                     </button>
                   )}
                 </li>
