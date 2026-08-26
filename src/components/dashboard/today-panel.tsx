@@ -193,7 +193,15 @@ export function TodayPanel(props: TodayPanelProps) {
               >
                 <Play className="mr-2 h-4 w-4" /> Start {next.minutes}-min session
               </Button>
-              <div className="grid grid-cols-2 gap-2 sm:flex">
+              <div className="grid grid-cols-3 gap-2 sm:flex">
+                <Button
+                  onClick={() => props.onComplete(next)}
+                  variant="outline"
+                  size="lg"
+                  className="min-h-12 rounded-full"
+                >
+                  <CheckCircle2 className="mr-1.5 h-4 w-4" /> Done
+                </Button>
                 <Button
                   onClick={() => props.onReschedule(next)}
                   variant="outline"
