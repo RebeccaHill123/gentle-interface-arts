@@ -22,3 +22,30 @@ export const FOUNDING_MEMBER_PRICE_ID = "founding_monthly" as const;
 
 export const FOUNDING_MEMBER_OPEN =
   (import.meta.env.VITE_FOUNDING_OPEN ?? "true") !== "false";
+
+// ---------------------------------------------------------------------------
+// 7-day free trial (card required, £0 today, then £9.99/month)
+// ---------------------------------------------------------------------------
+
+export const TRIAL_DAYS = 7 as const;
+
+/** Trial end / first billing date for a trial started at `from`. */
+export function trialEndDate(from: Date = new Date()): Date {
+  const d = new Date(from.getTime());
+  d.setDate(d.getDate() + TRIAL_DAYS);
+  return d;
+}
+
+/** Long, unambiguous date for checkout copy, e.g. "3 September 2026". */
+export function formatTrialDate(date: Date): string {
+  return date.toLocaleDateString("en-GB", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
+/** Convenience: the billing date string shown before the user confirms. */
+export function firstBillingDateLabel(from: Date = new Date()): string {
+  return formatTrialDate(trialEndDate(from));
+}
