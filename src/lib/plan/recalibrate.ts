@@ -393,6 +393,10 @@ export function moveTask(
   return {
     schedule: {
       ...schedule,
+      // Bump the version so a cross-device merge treats this edit as the newer
+      // structural base — otherwise the move (status stays "scheduled") is lost.
+      scheduleVersion: schedule.scheduleVersion + 1,
+      lastRecalibratedAt: new Date().toISOString(),
       tasks: schedule.tasks.map((t) =>
         t.id === taskId ? { ...t, date: toDate, movedFrom: t.movedFrom ?? t.date } : t,
       ),
