@@ -7,6 +7,8 @@ export interface SubscriptionState {
   hasAccess: boolean;
   isGrandfathered: boolean;
   isSubscriber: boolean;
+  isTrialing: boolean;
+  trialEnd: string | null;
   plan: "founding_monthly" | "pro_monthly" | "pro_six_month" | null;
   status: string | null;
   currentPeriodEnd: string | null;
@@ -18,6 +20,8 @@ const INITIAL: SubscriptionState = {
   hasAccess: false,
   isGrandfathered: false,
   isSubscriber: false,
+  isTrialing: false,
+  trialEnd: null,
   plan: null,
   status: null,
   currentPeriodEnd: null,
@@ -38,6 +42,8 @@ function computeFromRow(row: any): SubscriptionState {
     hasAccess: !!row?.grandfathered_pro || !!row?.is_pro || isSubscriber,
     isGrandfathered: !!row?.grandfathered_pro,
     isSubscriber,
+    isTrialing: status === "trialing",
+    trialEnd: (row?.trial_end as string | null) ?? null,
     plan: (row?.stripe_price_id as SubscriptionState["plan"]) ?? null,
     status,
     currentPeriodEnd: periodEnd,
@@ -57,7 +63,7 @@ export function useSubscription(): SubscriptionState & { refresh: () => Promise<
     const { data } = await supabase
       .from("profiles")
       .select(
-        "is_pro, grandfathered_pro, stripe_price_id, subscription_status, current_period_end, cancel_at_period_end",
+        "is_pro, grandfathered_pro, stripe_price_id, subscription_status, current_period_end, cancel_at_period_end, trial_end",
       )
       .eq("user_id", user.id)
       .maybeSingle();
@@ -105,7 +111,7 @@ export async function waitForAccess(timeoutMs = 30000): Promise<boolean> {
     if (!user) return false;
     const { data } = await supabase
       .from("profiles")
-      .select("is_pro, grandfathered_pro, subscription_status, current_period_end")
+      .select("is_pro, grandfathered_pro, subscription_status, current_period_end, trial_end")
       .eq("user_id", user.id)
       .maybeSingle();
     const s = computeFromRow(data);

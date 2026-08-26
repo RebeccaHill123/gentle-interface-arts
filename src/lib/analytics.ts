@@ -45,6 +45,13 @@ export type AnalyticsEvent =
   | "pricing_section_viewed"
   | "founding_cta_clicked"
   | "checkout_started"
+  // Trial lifecycle (ids only where secure — no card or payment detail)
+  | "trial_started"
+  | "trial_cancelled"
+  | "trial_converted"
+  | "first_payment_failed"
+  | "first_study_plan_created"
+  | "first_session_logged"
   | "checkout_completed"
   | "checkout_abandoned"
   | "account_access_completed"

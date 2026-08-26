@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { firstBillingDateLabel } from "@/lib/founding";
 import {
   createFileRoute,
   useNavigate,
@@ -294,8 +295,9 @@ function PlanRevealPage() {
     );
   }
 
+  const billingDate = firstBillingDateLabel();
   const priceLine = price
-    ? `${price.formatted} · cancel anytime`
+    ? `£0 today · then ${price.formatted} from ${billingDate}`
     : priceError
       ? "Secure Stripe checkout"
       : "Loading price…";

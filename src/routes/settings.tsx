@@ -162,6 +162,19 @@ function SettingsPage() {
         : sub.plan === "pro_six_month"
           ? "6 months — £72.99"
           : null;
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  const planAmount =
+    sub.plan === "pro_monthly"
+      ? "£16.99"
+      : sub.plan === "pro_six_month"
+        ? "£72.99"
+        : "£9.99";
+  const trialEndLabel = sub.trialEnd ? fmtDate(sub.trialEnd) : null;
   const renewalLabel = sub.currentPeriodEnd
     ? new Date(sub.currentPeriodEnd).toLocaleDateString(undefined, {
         month: "short",
@@ -210,14 +223,38 @@ function SettingsPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-foreground">
-                  {planLabel ?? "Tentra"}
+                  {sub.isTrialing ? "Free trial" : "Active"}
+                  <span className="ml-2 font-normal text-muted-foreground">
+                    {planLabel ?? "Tentra"}
+                  </span>
                 </div>
-                <div className="mt-0.5 text-xs text-muted-foreground">
-                  {sub.cancelAtPeriodEnd && renewalLabel
-                    ? `Cancels on ${renewalLabel}`
-                    : renewalLabel
-                      ? `Renews ${renewalLabel}`
-                      : "Active"}
+                <div className="mt-1 space-y-0.5 text-xs text-muted-foreground">
+                  {sub.isTrialing && trialEndLabel && (
+                    <div>Trial ends {trialEndLabel}</div>
+                  )}
+                  {sub.cancelAtPeriodEnd ? (
+                    <div>
+                      {sub.isTrialing && trialEndLabel
+                        ? `Cancelled — access continues until ${trialEndLabel}, and you will not be charged.`
+                        : renewalLabel
+                          ? `Cancelled — access continues until ${renewalLabel}.`
+                          : "Cancelled."}
+                    </div>
+                  ) : (
+                    <div>
+                      Next payment: {planAmount} on{" "}
+                      {sub.isTrialing
+                        ? (trialEndLabel ?? renewalLabel ?? "—")
+                        : (renewalLabel ?? "—")}
+                    </div>
+                  )}
+                  {!sub.cancelAtPeriodEnd && (
+                    <div>
+                      Cancel any time in the billing portal before your next
+                      payment date to avoid being charged. Access continues
+                      until the end of the paid period.
+                    </div>
+                  )}
                 </div>
               </div>
               <Button
@@ -231,7 +268,7 @@ function SettingsPage() {
                 ) : (
                   <ExternalLink className="mr-1.5 h-4 w-4" />
                 )}
-                Manage billing
+                Manage subscription
               </Button>
             </div>
           ) : (

@@ -44,6 +44,33 @@ async function upsertFromSubscription(subscription: any, env: StripeEnv) {
     console.error("[webhook] no user for subscription", subscription.id);
     return;
   }
+
+  // Duplicate-trial prevention. If this profile already consumed a trial on a
+  // DIFFERENT subscription, end the trial on this one immediately so Stripe
+  // bills the first period straight away.
+  const { data: existingProfile } = await admin
+    .from("profiles")
+    .select("has_used_trial, stripe_subscription_id, grandfathered_pro")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (
+    subscription.status === "trialing" &&
+    existingProfile?.has_used_trial &&
+    existingProfile.stripe_subscription_id &&
+    existingProfile.stripe_subscription_id !== subscription.id
+  ) {
+    try {
+      const { createStripeClient } = await import("@/lib/stripe.server");
+      const stripe = createStripeClient(env);
+      const updated = await stripe.subscriptions.update(subscription.id, {
+        trial_end: "now",
+      });
+      subscription = updated as any;
+      console.log("[webhook] duplicate trial blocked", subscription.id);
+    } catch (err) {
+      console.error("[webhook] could not end duplicate trial", err);
+    }
+  }
   const item = subscription.items?.data?.[0];
   const priceKey = resolvePriceLookupKey(item);
   const periodEnd = toIso(
@@ -62,6 +89,9 @@ async function upsertFromSubscription(subscription: any, env: StripeEnv) {
       ? subscription.customer
       : subscription.customer?.id;
 
+  const trialStart = toIso(subscription.trial_start);
+  const trialEnd = toIso(subscription.trial_end);
+
   await admin
     .from("profiles")
     .update({
@@ -71,8 +101,12 @@ async function upsertFromSubscription(subscription: any, env: StripeEnv) {
       subscription_status: status,
       current_period_end: periodEnd,
       cancel_at_period_end: !!subscription.cancel_at_period_end,
-      is_pro: activeOrGrace,
+      is_pro: activeOrGrace || !!existingProfile?.grandfathered_pro,
       pro_since: activeOrGrace ? new Date().toISOString() : null,
+      ...(trialStart ? { trial_start: trialStart } : {}),
+      ...(trialEnd ? { trial_end: trialEnd } : {}),
+      // Once a trial has been granted it is permanently consumed.
+      ...(trialStart || trialEnd ? { has_used_trial: true } : {}),
     })
     .eq("user_id", userId);
 }
@@ -277,6 +311,24 @@ async function claimPendingPlan({
     .neq("status", "claimed");
 }
 
+async function handleInvoicePaymentFailed(invoice: any, env: StripeEnv) {
+  const subId = invoice?.subscription;
+  if (!subId) return;
+  const { createStripeClient } = await import("@/lib/stripe.server");
+  const stripe = createStripeClient(env);
+  const sub = await stripe.subscriptions.retrieve(subId);
+  // Status is now past_due / incomplete / unpaid — upsert applies the
+  // existing payment-failure access rules (no is_pro unless grandfathered).
+  await upsertFromSubscription(sub as any, env);
+}
+
+async function handleTrialWillEnd(subscription: any, env: StripeEnv) {
+  // Stripe sends this ~3 days before the trial ends and emails the customer
+  // when "Send trial-ending reminders" is enabled in the Dashboard. We only
+  // keep our own copy of the trial-end timestamp in sync.
+  await upsertFromSubscription(subscription, env);
+}
+
 export const Route = createFileRoute("/api/public/payments/webhook")({
   server: {
     handlers: {
@@ -309,6 +361,12 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
               } else {
                 await upsertFromSubscription(event.data.object, env);
               }
+              break;
+            case "invoice.payment_failed":
+              await handleInvoicePaymentFailed(event.data.object, env);
+              break;
+            case "customer.subscription.trial_will_end":
+              await handleTrialWillEnd(event.data.object, env);
               break;
             case "customer.subscription.deleted":
               await handleSubscriptionDeleted(event.data.object);

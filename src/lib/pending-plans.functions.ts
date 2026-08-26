@@ -123,17 +123,24 @@ export const createPendingCheckoutSession = createServerFn({ method: "POST" })
       });
       if (!prices.data.length) return { error: "Price not available" };
 
+      const { trialSubscriptionData } = await import("@/lib/stripe.server");
+      const { TRIAL_DAYS } = await import("@/lib/founding");
+
       const session = await stripe.checkout.sessions.create({
         line_items: [{ price: prices.data[0].id, quantity: 1 }],
         mode: "subscription",
         ui_mode: "embedded_page",
         return_url: data.returnUrl,
         client_reference_id: data.token,
+        // Card details are mandatory even though £0 is due today.
+        payment_method_collection: "always",
         metadata: { pending_token: data.token, priceId: "founding_monthly" },
         subscription_data: {
+          ...trialSubscriptionData(TRIAL_DAYS),
           metadata: { pending_token: data.token, priceId: "founding_monthly" },
         },
       });
+
 
       return { clientSecret: session.client_secret ?? "" };
     } catch (error) {
@@ -193,6 +200,7 @@ export const getSubscribePriceDisplay = createServerFn({ method: "POST" })
       const { createStripeClient, getStripeErrorMessage } = await import(
         "@/lib/stripe.server"
       );
+      const { TRIAL_DAYS } = await import("@/lib/founding");
       const stripe = createStripeClient(data.environment);
       const prices = await stripe.prices.list({
         lookup_keys: ["founding_monthly"],
@@ -217,7 +225,7 @@ export const getSubscribePriceDisplay = createServerFn({ method: "POST" })
         currency,
         interval: price.recurring.interval,
         intervalCount: price.recurring.interval_count ?? 1,
-        trialDays: null,
+        trialDays: TRIAL_DAYS,
         formatted: `${symbol}${amount.toFixed(2)} / ${price.recurring.interval}`,
       };
     } catch (error) {
