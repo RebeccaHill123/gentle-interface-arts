@@ -123,17 +123,24 @@ export const createPendingCheckoutSession = createServerFn({ method: "POST" })
       });
       if (!prices.data.length) return { error: "Price not available" };
 
+      const { trialSubscriptionData } = await import("@/lib/stripe.server");
+      const { TRIAL_DAYS } = await import("@/lib/founding");
+
       const session = await stripe.checkout.sessions.create({
         line_items: [{ price: prices.data[0].id, quantity: 1 }],
         mode: "subscription",
         ui_mode: "embedded_page",
         return_url: data.returnUrl,
         client_reference_id: data.token,
+        // Card details are mandatory even though £0 is due today.
+        payment_method_collection: "always",
         metadata: { pending_token: data.token, priceId: "founding_monthly" },
         subscription_data: {
+          ...trialSubscriptionData(TRIAL_DAYS),
           metadata: { pending_token: data.token, priceId: "founding_monthly" },
         },
       });
+
 
       return { clientSecret: session.client_secret ?? "" };
     } catch (error) {
