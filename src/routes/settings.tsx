@@ -177,7 +177,9 @@ function SettingsPage() {
           ? "£9.99"
           : null;
 
+  const isEnded = sub.status === "canceled";
   const trialEndLabel = sub.trialEnd ? fmtDate(sub.trialEnd) : null;
+
   const renewalLabel = sub.currentPeriodEnd
     ? new Date(sub.currentPeriodEnd).toLocaleDateString(undefined, {
         month: "short",
