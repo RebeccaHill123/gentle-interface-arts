@@ -230,31 +230,44 @@ function SubscribePage() {
                         Founding Member
                       </div>
                       <h2 className="mt-6 font-display text-[2.15rem] font-light leading-none tracking-[-0.02em] text-foreground md:text-[2.4rem]">
-                        Start your 7-day free trial
+                        {noTrial
+                          ? "Reactivate your membership"
+                          : "Start your 7-day free trial"}
                       </h2>
                       <div className="mt-6 flex items-baseline justify-center gap-2">
                         <span className="text-[3rem] font-light leading-none tracking-[-0.03em] text-foreground md:text-[3.5rem]">
-                          £0
+                          {noTrial ? "£9.99" : "£0"}
                         </span>
                         <span className="text-[14px] font-normal text-muted-foreground">
-                          due today
+                          {noTrial ? "due today" : "due today"}
                         </span>
                       </div>
-                      <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
-                        Get full access to Tentra free for 7 days. Add your card
-                        today and you won't be charged until{" "}
-                        <span className="font-medium">{billingDate}</span>. After
-                        that, your subscription continues at £9.99/month unless
-                        cancelled.
-                      </p>
+                      {noTrial ? (
+                        <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
+                          You've already used your Tentra free trial, so your
+                          membership starts straight away:{" "}
+                          <span className="font-medium">£9.99 today</span>, then
+                          £9.99/month unless cancelled.
+                        </p>
+                      ) : (
+                        <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
+                          Get full access to Tentra free for 7 days. Add your card
+                          today and you won't be charged until{" "}
+                          <span className="font-medium">{billingDate}</span>. After
+                          that, your subscription continues at £9.99/month unless
+                          cancelled.
+                        </p>
+                      )}
                       <ul className="mx-auto mt-5 max-w-sm space-y-1.5 text-left text-[13px] leading-[1.5] text-muted-foreground">
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
-                          £0 due today
+                          {noTrial ? "£9.99 charged today" : "£0 due today"}
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
-                          7 days of full access
+                          {noTrial
+                            ? "Immediate full access"
+                            : "7 days of full access"}
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
@@ -262,10 +275,12 @@ function SubscribePage() {
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
-                          Cancel anytime before {billingDate} to avoid being
-                          charged
+                          {noTrial
+                            ? "Cancel any time in Settings"
+                            : `Cancel anytime before ${billingDate} to avoid being charged`}
                         </li>
                       </ul>
+
                     </div>
 
                     <div className="mt-8 flex flex-col items-center gap-3">
