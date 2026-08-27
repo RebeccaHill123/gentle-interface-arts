@@ -226,7 +226,11 @@ function SettingsPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <div className="text-sm font-semibold text-foreground">
-                  {sub.isTrialing ? "Free trial" : "Active"}
+                  {sub.isTrialing
+                    ? "Free trial"
+                    : isEnded
+                      ? "Cancelled"
+                      : "Active"}
                   <span className="ml-2 font-normal text-muted-foreground">
                     {planLabel ?? "Tentra"}
                   </span>
@@ -235,23 +239,24 @@ function SettingsPage() {
                   {sub.isTrialing && trialEndLabel && (
                     <div>Trial ends {trialEndLabel}</div>
                   )}
-                  {sub.cancelAtPeriodEnd ? (
+                  {isEnded || sub.cancelAtPeriodEnd ? (
                     <div>
                       {sub.isTrialing && trialEndLabel
                         ? `Cancelled — access continues until ${trialEndLabel}, and you will not be charged.`
                         : renewalLabel
-                          ? `Cancelled — access continues until ${renewalLabel}.`
-                          : "Cancelled."}
+                          ? `Cancelled — access continues until ${renewalLabel}. No further payments will be taken.`
+                          : "Cancelled. No further payments will be taken."}
                     </div>
                   ) : (
                     <div>
-                      Next payment: {planAmount} on{" "}
+                      Next payment
+                      {planAmount ? `: ${planAmount}` : ""} on{" "}
                       {sub.isTrialing
                         ? (trialEndLabel ?? renewalLabel ?? "—")
                         : (renewalLabel ?? "—")}
                     </div>
                   )}
-                  {!sub.cancelAtPeriodEnd && (
+                  {!isEnded && !sub.cancelAtPeriodEnd && (
                     <div>
                       Cancel any time in the billing portal before your next
                       payment date to avoid being charged. Access continues
@@ -260,6 +265,7 @@ function SettingsPage() {
                   )}
                 </div>
               </div>
+
               <Button
                 onClick={openBillingPortal}
                 disabled={openingPortal}
