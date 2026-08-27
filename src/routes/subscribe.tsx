@@ -15,7 +15,10 @@ import {
   FOUNDING_MEMBER_PRICE_ID,
   firstBillingDateLabel,
 } from "@/lib/founding";
+import { getStripeEnvironment } from "@/lib/stripe";
+import { getTrialEligibility } from "@/lib/pro.functions";
 import { trackEvent } from "@/lib/analytics";
+
 
 export const Route = createFileRoute("/subscribe")({
   validateSearch: (
