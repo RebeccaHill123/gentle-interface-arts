@@ -180,6 +180,8 @@ function SubscribePage() {
   }
 
   const billingDate = firstBillingDateLabel();
+  const noTrial = trialEligible === false;
+
 
   const includedFeatures = [
     "Adaptive daily study plan",
