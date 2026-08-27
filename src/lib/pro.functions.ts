@@ -100,7 +100,50 @@ export const createSubscriptionCheckoutSession = createServerFn({
     }
   });
 
+/**
+ * Whether the signed-in user would actually get the 7-day free trial if they
+ * checked out now. The checkout UI must match this — otherwise we promise
+ * "£0 today" and Stripe bills the first period immediately.
+ */
+export const getTrialEligibility = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { environment: StripeEnv }) => data)
+  .handler(async ({ data, context }): Promise<{ trialEligible: boolean }> => {
+    const { userId, claims, supabase } = context;
+    try {
+      const stripe = createStripeClient(data.environment);
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("has_used_trial, subscription_status")
+        .eq("user_id", userId)
+        .maybeSingle();
+      const alreadySubscribed =
+        profile?.subscription_status === "active" ||
+        profile?.subscription_status === "trialing" ||
+        profile?.subscription_status === "past_due";
+      if (alreadySubscribed || profile?.has_used_trial) {
+        return { trialEligible: false };
+      }
+      const email = (claims as { email?: string })?.email;
+      const found = await stripe.customers.search({
+        query: `metadata['userId']:'${userId}'`,
+        limit: 1,
+      });
+      let customerId: string | null = found.data[0]?.id ?? null;
+      if (!customerId && email) {
+        const existing = await stripe.customers.list({ email, limit: 1 });
+        customerId = existing.data[0]?.id ?? null;
+      }
+      const eligible = await isTrialEligible(stripe, customerId, false);
+      return { trialEligible: eligible };
+    } catch {
+      // Fail closed — same as the checkout path, so copy stays truthful.
+      return { trialEligible: false };
+    }
+  });
+
 type PortalResult = { url: string } | { error: string };
+
 
 export const createBillingPortalSession = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
