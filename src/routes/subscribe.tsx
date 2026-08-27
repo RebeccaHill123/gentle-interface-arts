@@ -54,6 +54,30 @@ function SubscribePage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(false);
   const isReturningFromCheckout = checkout === "success";
+  // null = still checking. Copy must match what the server will actually do.
+  const [trialEligible, setTrialEligible] = useState<boolean | null>(null);
+  const fetchTrialEligibility = useServerFn(getTrialEligibility);
+
+  useEffect(() => {
+    if (auth.loading || !auth.user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchTrialEligibility({
+          data: { environment: getStripeEnvironment() },
+        });
+        if (!cancelled) setTrialEligible(!!res?.trialEligible);
+      } catch {
+        if (!cancelled) setTrialEligible(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.loading, auth.user?.id]);
+
+
 
   // Track pricing section view once.
   useEffect(() => {
