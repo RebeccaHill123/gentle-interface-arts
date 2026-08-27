@@ -173,7 +173,10 @@ function SettingsPage() {
       ? "£16.99"
       : sub.plan === "pro_six_month"
         ? "£72.99"
-        : "£9.99";
+        : sub.plan === "founding_monthly"
+          ? "£9.99"
+          : null;
+
   const trialEndLabel = sub.trialEnd ? fmtDate(sub.trialEnd) : null;
   const renewalLabel = sub.currentPeriodEnd
     ? new Date(sub.currentPeriodEnd).toLocaleDateString(undefined, {
