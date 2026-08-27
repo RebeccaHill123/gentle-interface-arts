@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+
 import { Check, Loader2, LogOut, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/app-shell";
@@ -15,7 +17,10 @@ import {
   FOUNDING_MEMBER_PRICE_ID,
   firstBillingDateLabel,
 } from "@/lib/founding";
+import { getStripeEnvironment } from "@/lib/stripe";
+import { getTrialEligibility } from "@/lib/pro.functions";
 import { trackEvent } from "@/lib/analytics";
+
 
 export const Route = createFileRoute("/subscribe")({
   validateSearch: (
@@ -51,6 +56,30 @@ function SubscribePage() {
   const [showCheckout, setShowCheckout] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(false);
   const isReturningFromCheckout = checkout === "success";
+  // null = still checking. Copy must match what the server will actually do.
+  const [trialEligible, setTrialEligible] = useState<boolean | null>(null);
+  const fetchTrialEligibility = useServerFn(getTrialEligibility);
+
+  useEffect(() => {
+    if (auth.loading || !auth.user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetchTrialEligibility({
+          data: { environment: getStripeEnvironment() },
+        });
+        if (!cancelled) setTrialEligible(!!res?.trialEligible);
+      } catch {
+        if (!cancelled) setTrialEligible(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.loading, auth.user?.id]);
+
+
 
   // Track pricing section view once.
   useEffect(() => {
@@ -151,6 +180,8 @@ function SubscribePage() {
   }
 
   const billingDate = firstBillingDateLabel();
+  const noTrial = trialEligible === false;
+
 
   const includedFeatures = [
     "Adaptive daily study plan",
@@ -201,31 +232,44 @@ function SubscribePage() {
                         Founding Member
                       </div>
                       <h2 className="mt-6 font-display text-[2.15rem] font-light leading-none tracking-[-0.02em] text-foreground md:text-[2.4rem]">
-                        Start your 7-day free trial
+                        {noTrial
+                          ? "Reactivate your membership"
+                          : "Start your 7-day free trial"}
                       </h2>
                       <div className="mt-6 flex items-baseline justify-center gap-2">
                         <span className="text-[3rem] font-light leading-none tracking-[-0.03em] text-foreground md:text-[3.5rem]">
-                          £0
+                          {noTrial ? "£9.99" : "£0"}
                         </span>
                         <span className="text-[14px] font-normal text-muted-foreground">
-                          due today
+                          {noTrial ? "due today" : "due today"}
                         </span>
                       </div>
-                      <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
-                        Get full access to Tentra free for 7 days. Add your card
-                        today and you won't be charged until{" "}
-                        <span className="font-medium">{billingDate}</span>. After
-                        that, your subscription continues at £9.99/month unless
-                        cancelled.
-                      </p>
+                      {noTrial ? (
+                        <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
+                          You've already used your Tentra free trial, so your
+                          membership starts straight away:{" "}
+                          <span className="font-medium">£9.99 today</span>, then
+                          £9.99/month unless cancelled.
+                        </p>
+                      ) : (
+                        <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
+                          Get full access to Tentra free for 7 days. Add your card
+                          today and you won't be charged until{" "}
+                          <span className="font-medium">{billingDate}</span>. After
+                          that, your subscription continues at £9.99/month unless
+                          cancelled.
+                        </p>
+                      )}
                       <ul className="mx-auto mt-5 max-w-sm space-y-1.5 text-left text-[13px] leading-[1.5] text-muted-foreground">
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
-                          £0 due today
+                          {noTrial ? "£9.99 charged today" : "£0 due today"}
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
-                          7 days of full access
+                          {noTrial
+                            ? "Immediate full access"
+                            : "7 days of full access"}
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
@@ -233,10 +277,12 @@ function SubscribePage() {
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
-                          Cancel anytime before {billingDate} to avoid being
-                          charged
+                          {noTrial
+                            ? "Cancel any time in Settings"
+                            : `Cancel anytime before ${billingDate} to avoid being charged`}
                         </li>
                       </ul>
+
                     </div>
 
                     <div className="mt-8 flex flex-col items-center gap-3">
@@ -248,14 +294,19 @@ function SubscribePage() {
                       >
                         {checkingAuth ? (
                           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Checking…</>
+                        ) : noTrial ? (
+                          "Reactivate for £9.99/month"
                         ) : (
                           "Start my free trial"
                         )}
                       </Button>
                       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
                         <ShieldCheck className="h-3 w-3" />
-                        Card required · £0 today · £9.99/month from {billingDate} · Cancel anytime
+                        {noTrial
+                          ? "£9.99 charged today · then £9.99/month · Cancel anytime"
+                          : `Card required · £0 today · £9.99/month from ${billingDate} · Cancel anytime`}
                       </div>
+
                       {auth.user && (
                         <button
                           type="button"
