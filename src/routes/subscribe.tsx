@@ -294,14 +294,19 @@ function SubscribePage() {
                       >
                         {checkingAuth ? (
                           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Checking…</>
+                        ) : noTrial ? (
+                          "Reactivate for £9.99/month"
                         ) : (
                           "Start my free trial"
                         )}
                       </Button>
                       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
                         <ShieldCheck className="h-3 w-3" />
-                        Card required · £0 today · £9.99/month from {billingDate} · Cancel anytime
+                        {noTrial
+                          ? "£9.99 charged today · then £9.99/month · Cancel anytime"
+                          : `Card required · £0 today · £9.99/month from ${billingDate} · Cancel anytime`}
                       </div>
+
                       {auth.user && (
                         <button
                           type="button"
