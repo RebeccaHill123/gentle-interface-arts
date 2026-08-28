@@ -82,7 +82,7 @@ async function findUserIdForCustomer(
 
 async function upsertFromSubscription(subscription: any, env: StripeEnv) {
   const admin = await getAdmin();
-  const userId = await findUserIdForCustomer(admin, subscription);
+  const userId = await findUserIdForCustomer(admin, subscription, env);
   if (!userId) {
     console.error("[webhook] no user for subscription", subscription.id);
     return;
@@ -154,9 +154,9 @@ async function upsertFromSubscription(subscription: any, env: StripeEnv) {
     .eq("user_id", userId);
 }
 
-async function handleSubscriptionDeleted(subscription: any) {
+async function handleSubscriptionDeleted(subscription: any, env: StripeEnv) {
   const admin = await getAdmin();
-  const userId = await findUserIdForCustomer(admin, subscription);
+  const userId = await findUserIdForCustomer(admin, subscription, env);
   if (!userId) return;
   // Check grandfathered — never revoke lifetime access.
   const { data: profile } = await admin
@@ -412,7 +412,7 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
               await handleTrialWillEnd(event.data.object, env);
               break;
             case "customer.subscription.deleted":
-              await handleSubscriptionDeleted(event.data.object);
+              await handleSubscriptionDeleted(event.data.object, env);
               break;
             default:
               console.log("[webhook] unhandled", event.type);
