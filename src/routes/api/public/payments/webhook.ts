@@ -21,6 +21,7 @@ function toIso(unixSeconds: number | null | undefined): string | null {
 async function findUserIdForCustomer(
   admin: any,
   subscription: any,
+  env?: StripeEnv,
 ): Promise<string | null> {
   const metaUserId = subscription?.metadata?.userId as string | undefined;
   if (metaUserId) return metaUserId;
@@ -28,18 +29,60 @@ async function findUserIdForCustomer(
     typeof subscription?.customer === "string"
       ? subscription.customer
       : subscription?.customer?.id;
-  if (!customerId) return null;
-  const { data } = await admin
-    .from("profiles")
-    .select("user_id")
-    .eq("stripe_customer_id", customerId)
-    .maybeSingle();
-  return data?.user_id ?? null;
+  if (customerId) {
+    const { data } = await admin
+      .from("profiles")
+      .select("user_id")
+      .eq("stripe_customer_id", customerId)
+      .maybeSingle();
+    if (data?.user_id) return data.user_id;
+  }
+
+  // Fallback 1: a pending-plan row already claimed for this subscription or
+  // customer (subscription.created can arrive before/after checkout.session).
+  if (subscription?.id || customerId) {
+    const query = admin
+      .from("pending_plans")
+      .select("claimed_user_id, email")
+      .not("claimed_user_id", "is", null)
+      .order("updated_at", { ascending: false })
+      .limit(1);
+    const { data: pending } = subscription?.id
+      ? await query.eq("stripe_subscription_id", subscription.id).maybeSingle()
+      : await query.eq("stripe_customer_id", customerId).maybeSingle();
+    if (pending?.claimed_user_id) return pending.claimed_user_id;
+  }
+
+  // Fallback 2: resolve via the Stripe Customer record — metadata.userId is
+  // stamped by resolveOrCreateCustomer; otherwise match the email to a profile.
+  if (customerId && env) {
+    try {
+      const { createStripeClient } = await import("@/lib/stripe.server");
+      const stripe = createStripeClient(env);
+      const customer: any = await stripe.customers.retrieve(customerId);
+      const custUserId = customer?.metadata?.userId as string | undefined;
+      if (custUserId) return custUserId;
+      const email = customer?.email as string | undefined;
+      if (email) {
+        const { data: byEmail } = await admin
+          .from("profiles")
+          .select("user_id")
+          .eq("email", email)
+          .maybeSingle();
+        if (byEmail?.user_id) return byEmail.user_id;
+      }
+    } catch (err) {
+      console.error("[webhook] customer lookup failed", err);
+    }
+  }
+
+  return null;
 }
+
 
 async function upsertFromSubscription(subscription: any, env: StripeEnv) {
   const admin = await getAdmin();
-  const userId = await findUserIdForCustomer(admin, subscription);
+  const userId = await findUserIdForCustomer(admin, subscription, env);
   if (!userId) {
     console.error("[webhook] no user for subscription", subscription.id);
     return;
@@ -111,9 +154,9 @@ async function upsertFromSubscription(subscription: any, env: StripeEnv) {
     .eq("user_id", userId);
 }
 
-async function handleSubscriptionDeleted(subscription: any) {
+async function handleSubscriptionDeleted(subscription: any, env: StripeEnv) {
   const admin = await getAdmin();
-  const userId = await findUserIdForCustomer(admin, subscription);
+  const userId = await findUserIdForCustomer(admin, subscription, env);
   if (!userId) return;
   // Check grandfathered — never revoke lifetime access.
   const { data: profile } = await admin
@@ -369,7 +412,7 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
               await handleTrialWillEnd(event.data.object, env);
               break;
             case "customer.subscription.deleted":
-              await handleSubscriptionDeleted(event.data.object);
+              await handleSubscriptionDeleted(event.data.object, env);
               break;
             default:
               console.log("[webhook] unhandled", event.type);
