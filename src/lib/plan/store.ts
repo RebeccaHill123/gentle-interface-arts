@@ -16,6 +16,8 @@ import {
   type StoredPlan,
   type StrategyTask,
 } from "@/lib/plan-store";
+import type { PlanSyncState } from "@/lib/plan-sync";
+
 import type { AnalyticsBundle } from "@/lib/analytics-derive";
 import { buildPlanEvidence } from "./evidence";
 import {
