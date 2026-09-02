@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { SetPasswordCard } from "@/components/set-password-card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { submitManualSession } from "@/lib/manual-session";
 import {
   CheckCircle2,
   BookOpen,
@@ -1841,6 +1842,8 @@ function RecordSessionDialog({
   const [moduleName, setModuleName] = useState<string>(moduleNames[0] ?? "");
   const [note, setNote] = useState("");
   const [suggestedIdx, setSuggestedIdx] = useState<string>("__none");
+  // Immediate lock: two rapid submits must produce exactly one write.
+  const submitLockRef = useRef(false);
 
   const applySuggested = (value: string) => {
     setSuggestedIdx(value);
@@ -1852,29 +1855,43 @@ function RecordSessionDialog({
     setNote(task.title);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const m = parseInt(minutes, 10);
-    if (!m || m <= 0) {
-      toast.error("Add a number of minutes");
+    const outcome = await submitManualSession(
+      { minutes, moduleName, note },
+      {
+        lock: submitLockRef,
+        record: ({ minutes: m, moduleName: subject, note: text }: {
+          minutes: number;
+          moduleName: string;
+          note: string;
+        }) =>
+          recordStudyActivity({
+            idempotencyKey: makeIdempotencyKey("manual_log", Date.now(), m, subject),
+            activityType: "study",
+            source: "manual_log",
+            actualMinutes: m,
+            subject: subject || null,
+            note: text || null,
+          }),
+      },
+    );
+
+    if (outcome.status === "busy") return;
+    if (outcome.status === "invalid" || outcome.status === "error") {
+      // Nothing durable happened: keep the dialog and the entered data.
+      toast.error(outcome.message);
       return;
     }
-    void recordStudyActivity({
-      idempotencyKey: makeIdempotencyKey("manual_log", Date.now(), m, moduleName),
-      activityType: "study",
-      source: "manual_log",
-      actualMinutes: m,
-      subject: moduleName || null,
-      note: note.trim() || null,
-    });
 
-    toast.success(`Logged ${m} minutes${moduleName ? ` of ${moduleName}` : ""}`);
+    toast.success(outcome.message);
     setOpen(false);
     setMinutes("30");
     setNote("");
     setSuggestedIdx("__none");
     onSessionLogged();
   };
+
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

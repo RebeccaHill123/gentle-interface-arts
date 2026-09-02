@@ -2,6 +2,18 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { hasRecentAuthCallback, waitForAuthUser } from "@/lib/auth-session";
+import {
+  decidePlanPull,
+  flushPlanSync,
+  isPlanSyncDirty,
+  markPlanDirty,
+  PLAN_SYNC_KEY,
+
+  savePlanDurable,
+  type PlanSyncDeps,
+  type PlanSyncOutcome,
+} from "@/lib/plan-sync";
+
 
 export type ExamType = "SQE1" | "SQE2" | "UBE" | "MPRE";
 
@@ -225,17 +237,62 @@ export function loadPlan(): StoredPlan | null {
   }
 }
 
-export function savePlan(plan: StoredPlan) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(KEY, JSON.stringify(plan));
-  // Fire-and-forget cloud sync
-  void pushPlanToCloud(plan).catch((error) => console.warn("pushPlanToCloud failed", error));
+/** Durable local write, verified by read-back so "saved" is never assumed. */
+function writePlanLocal(plan: StoredPlan): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(plan));
+  } catch {
+    return false;
+  }
+  return localStorage.getItem(KEY) !== null;
+}
+
+/** Browser bindings for the injectable plan-sync engine. */
+export function planSyncDeps(): PlanSyncDeps {
+  return {
+    storage: typeof window === "undefined" ? null : window.localStorage,
+    writePlan: writePlanLocal,
+    readPlan: loadPlan,
+    pushPlan: pushPlanToCloud,
+  };
+}
+
+/** True while a local plan change has not been confirmed by the server. */
+export function isPlanSyncPending(): boolean {
+  return isPlanSyncDirty(planSyncDeps());
+}
+
+/** Retry the dirty latest plan (online / visibility / next load). */
+export function retryPlanSync(): Promise<PlanSyncOutcome> {
+  return flushPlanSync(planSyncDeps());
+}
+
+/**
+ * Persist locally (durable + dirty-marked) and flush to the cloud in the
+ * background. Returns an honest outcome: `failed` means nothing was stored.
+ */
+export function savePlan(plan: StoredPlan): PlanSyncOutcome {
+  const deps = planSyncDeps();
+  const marked = markPlanDirty(deps, plan);
+  if (!marked.ok) {
+    console.warn("savePlan could not persist locally");
+    return marked;
+  }
+  void flushPlanSync(deps).catch((error) => console.warn("plan flush failed", error));
+  return marked;
 }
 
 export async function savePlanAndSync(plan: StoredPlan): Promise<void> {
-  if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(plan));
-  await pushPlanToCloud(plan);
+  const outcome = await savePlanDurable(planSyncDeps(), plan);
+  if (outcome.state === "failed") {
+    throw new Error(outcome.error ?? "We couldn't save your plan on this device.");
+  }
+  if (outcome.state === "queued") {
+    throw new Error(outcome.error ?? "We couldn't save your plan to your account. We'll retry.");
+  }
 }
+
 
 export function loadOnboardingDraft(): OnboardingDraft | null {
   if (typeof window === "undefined") return null;
@@ -260,17 +317,25 @@ export function clearOnboardingDraft() {
 export function clearPlan() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(KEY);
+  // Nothing local left to sync — drop the dirty marker so we don't retry forever.
+  localStorage.removeItem(PLAN_SYNC_KEY);
 }
+
 
 export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) throw userError;
   const uid = userData.user?.id;
   if (!uid) throw new Error("Please sign in to save your plan.");
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("user_plans")
-    .upsert([{ user_id: uid, plan: plan as unknown as Json }], { onConflict: "user_id" });
+    .upsert([{ user_id: uid, plan: plan as unknown as Json }], { onConflict: "user_id" })
+    .select("user_id");
   if (error) throw error;
+  // A write is only accepted when the intended user's row actually came back.
+  if (!data || data.length === 0 || !data.some((row) => row.user_id === uid)) {
+    throw new Error("Your plan change was not accepted by the server. We'll retry.");
+  }
 }
 
 export type CloudPlanResult = {
@@ -281,31 +346,49 @@ export type CloudPlanResult = {
 
 /**
  * Read the cloud plan while distinguishing "this user genuinely has no plan"
- * from "we could not read it". A failed read must never erase a good local plan.
+ * from "we could not read it". A failed read must never erase a good local plan,
+ * and a dirty (unsynced) local plan is never overwritten by cloud data: we
+ * re-push first and only accept cloud once the exact local revision is
+ * confirmed persisted.
  */
 export async function pullPlanFromCloudResult(): Promise<CloudPlanResult> {
   try {
     const user = await waitForAuthUser();
     const uid = user?.id;
     if (!uid) return { ok: false, plan: null };
+
+    const deps = planSyncDeps();
+    if (isPlanSyncDirty(deps)) {
+      await flushPlanSync(deps).catch(() => undefined);
+      if (isPlanSyncDirty(deps)) {
+        // Still unsynced — local is authoritative until the server confirms it.
+        return { ok: false, plan: loadPlan() };
+      }
+    }
+
     const { data, error } = await supabase
       .from("user_plans")
       .select("plan")
       .eq("user_id", uid)
       .maybeSingle();
-    if (error) {
-      console.warn("pullPlanFromCloud failed", error);
-      return { ok: false, plan: null };
+
+    const decision = decidePlanPull({
+      dirty: isPlanSyncDirty(deps),
+      readOk: !error,
+      cloudHasPlan: Boolean(data),
+      recentAuthCallback: typeof window !== "undefined" && hasRecentAuthCallback(),
+    });
+
+    if (error) console.warn("pullPlanFromCloud failed", error);
+
+    if (decision.action === "keep-local") {
+      return { ok: !error && decision.reason !== "read-failed", plan: loadPlan() };
     }
-    if (!data) {
-      // No cloud plan for this user — clear stale local cache after normal sign-in,
-      // but preserve it immediately after verification while auth storage settles.
-      if (typeof window !== "undefined" && !hasRecentAuthCallback()) {
-        localStorage.removeItem(KEY);
-      }
+    if (decision.action === "clear-local") {
+      if (typeof window !== "undefined") localStorage.removeItem(KEY);
       return { ok: true, plan: null };
     }
-    const plan = data.plan as unknown as StoredPlan;
+    const plan = (data as { plan: unknown }).plan as StoredPlan;
     if (typeof window !== "undefined") {
       localStorage.setItem(KEY, JSON.stringify(plan));
       return { ok: true, plan: loadPlan() };
@@ -320,6 +403,7 @@ export async function pullPlanFromCloudResult(): Promise<CloudPlanResult> {
 export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
   return (await pullPlanFromCloudResult()).plan;
 }
+
 
 
 export function toggleTaskCompletion(index: number) {

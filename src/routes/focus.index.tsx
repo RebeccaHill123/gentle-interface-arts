@@ -6,6 +6,7 @@ import { FocusLauncher } from "@/components/focus-launcher";
 import { FocusInsights } from "@/components/focus-insights";
 import { ActivityInsights } from "@/components/activity-insights";
 import { RecentSessions } from "@/components/recent-sessions";
+import { PlanSyncStatus } from "@/components/plan-sync-status";
 import { loadPlan, pullPlanFromCloud, type StoredPlan } from "@/lib/plan-store";
 
 export const Route = createFileRoute("/focus/")({
@@ -47,6 +48,7 @@ function FocusLauncherPage() {
   return (
     <AppShell title="Focus" subtitle="The place where studying happens.">
       <div className="space-y-8">
+          <PlanSyncStatus />
           <section>
             <SectionHeader
               eyebrow="Start a session"

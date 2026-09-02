@@ -4,6 +4,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { CalendarClock, Compass, History } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { WeeklyReview } from "@/components/weekly-review";
+import { PlanSyncStatus } from "@/components/plan-sync-status";
 import { RescheduleSheet, SkipReasonSheet } from "@/components/plan-action-sheets";
 import { activityLabel, evidenceChip } from "@/lib/plan/task-presentation";
 import {
@@ -91,7 +92,11 @@ function PlanPage() {
     const id = skipTask?.id;
     setSkipTask(null);
     if (!id) return;
-    void skipScheduledTask(id, reason).then(() => {
+    void skipScheduledTask(id, reason).then((res) => {
+      if (!res.ok) {
+        toast.error(res.reason ?? "Couldn't skip that session.");
+        return;
+      }
       setTick((t) => t + 1);
       toast.success("Skipped — Tentra will factor that into your next update.");
     });
@@ -114,6 +119,8 @@ function PlanPage() {
   return (
     <AppShell title="Plan" subtitle={`Your ${examLabel} schedule and what changed.`}>
       <div className="space-y-6">
+        <PlanSyncStatus />
+
         {schedule ? (
           <>
             <WeeklyReview schedule={schedule} today={today} />
