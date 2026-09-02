@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { SetPasswordCard } from "@/components/set-password-card";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { submitManualSession } from "@/lib/manual-session";
 import {
   CheckCircle2,
   BookOpen,
@@ -1841,6 +1842,8 @@ function RecordSessionDialog({
   const [moduleName, setModuleName] = useState<string>(moduleNames[0] ?? "");
   const [note, setNote] = useState("");
   const [suggestedIdx, setSuggestedIdx] = useState<string>("__none");
+  // Immediate lock: two rapid submits must produce exactly one write.
+  const submitLockRef = useRef(false);
 
   const applySuggested = (value: string) => {
     setSuggestedIdx(value);
@@ -1858,7 +1861,11 @@ function RecordSessionDialog({
       { minutes, moduleName, note },
       {
         lock: submitLockRef,
-        record: ({ minutes: m, moduleName: subject, note: text }) =>
+        record: ({ minutes: m, moduleName: subject, note: text }: {
+          minutes: number;
+          moduleName: string;
+          note: string;
+        }) =>
           recordStudyActivity({
             idempotencyKey: makeIdempotencyKey("manual_log", Date.now(), m, subject),
             activityType: "study",
