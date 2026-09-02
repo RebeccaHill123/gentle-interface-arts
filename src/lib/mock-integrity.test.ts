@@ -15,6 +15,17 @@ import {
   resumeTimer,
   sectionScoreLabel,
   totalElapsedSeconds,
+  gradedDenominator,
+  countAnsweredMcq,
+  countWrittenSubmitted,
+  sectionProgressCount,
+  clearSyncSet,
+  markSynced,
+  markUnsynced,
+  unsyncedIds,
+  isFullySynced,
+  retryDelayMs,
+  type SyncSet,
 } from "./mock-integrity";
 
 const T0 = 1_700_000_000_000;
@@ -250,5 +261,70 @@ describe("completion + activity semantics", () => {
     expect(
       totalElapsedSeconds([{ elapsedSeconds: 120 }, { elapsedSeconds: null }, {}]),
     ).toBe(120);
+  });
+});
+
+describe("legacy-safe denominators and honest counts", () => {
+  it("uses the blueprint count for legacy sparse answer rows", () => {
+    // Legacy mock: only 4 rows stored, blueprint says 30 questions.
+    expect(gradedDenominator("mcq", 30, 4)).toBe(30);
+    // No blueprint info: fall back to stored rows.
+    expect(gradedDenominator("mcq", 0, 4)).toBe(4);
+    expect(gradedDenominator("mcq", null, 0)).toBe(0);
+    // Written sections are never graded.
+    expect(gradedDenominator("essay", 2, 2)).toBe(0);
+  });
+
+  it("does not inflate percentages for legacy sparse rows", () => {
+    const r = objectiveScore([{ kind: "mcq", graded: gradedDenominator("mcq", 10, 4), correct: 4 }]);
+    expect(r.graded).toBe(10);
+    expect(r.percent).toBe(40);
+  });
+
+  it("clamps corrupt/duplicated correct counts to graded", () => {
+    const r = objectiveScore([{ kind: "mcq", graded: 10, correct: 25 }]);
+    expect(r.correct).toBe(10);
+    expect(r.percent).toBe(100);
+  });
+
+  it("does not count blank bulk-created rows as answered or submitted", () => {
+    const rows = [
+      { answer_value: "1", essay_text: null },
+      { answer_value: "", essay_text: null },
+      { answer_value: null, essay_text: "   " },
+      { answer_value: null, essay_text: "My answer" },
+    ];
+    expect(countAnsweredMcq(rows)).toBe(1);
+    expect(countWrittenSubmitted(rows)).toBe(1);
+    expect(sectionProgressCount("mcq", rows)).toBe(1);
+    expect(sectionProgressCount("essay", rows)).toBe(1);
+  });
+});
+
+describe("per-question autosave sync tracking", () => {
+  it("keeps q1 unsynced when q2 succeeds, and syncs after q1 retry", () => {
+    let set: SyncSet = clearSyncSet();
+    set = markUnsynced(set, "q1");
+    set = markUnsynced(set, "q2");
+    // q2 save succeeds
+    set = markSynced(set, "q2");
+    expect(isFullySynced(set)).toBe(false);
+    expect(unsyncedIds(set)).toEqual(["q1"]);
+    // q1 retry succeeds
+    set = markSynced(set, "q1");
+    expect(isFullySynced(set)).toBe(true);
+    expect(unsyncedIds(set)).toEqual([]);
+  });
+
+  it("is idempotent and immutable", () => {
+    const a = markUnsynced(clearSyncSet(), "q1");
+    expect(markUnsynced(a, "q1")).toBe(a);
+    expect(markSynced(a, "q9")).toBe(a);
+  });
+
+  it("backs off within bounds", () => {
+    expect(retryDelayMs(0)).toBe(4000);
+    expect(retryDelayMs(1)).toBe(8000);
+    expect(retryDelayMs(50)).toBe(60_000);
   });
 });
