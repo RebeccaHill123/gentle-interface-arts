@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import {
   ArrowLeft,
   ArrowRight,
@@ -12,7 +12,6 @@ import {
   RefreshCw,
   Target,
   Brain,
-  Loader2,
   AlertTriangle,
   Flag,
   Bookmark,
@@ -26,15 +25,43 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { waitForAuthUser } from "@/lib/auth-session";
 import { loadPlan } from "@/lib/plan-store";
 import {
   recordStudyActivity,
   recordGradedAttempts,
   makeIdempotencyKey,
   flushStudyLogQueue,
-  type WriteResult,
 } from "@/lib/study-log";
+import {
+  PRACTICE_CONFIG_KEY,
+  configFingerprint,
+  resolvePracticeConfig,
+  type PracticeConfig,
+  type PracticeSearch,
+} from "@/lib/practice/config";
+import { validateQuizQuestions, type QuizQuestion } from "@/lib/practice/quiz-validate";
+import {
+  ACTIVE_SNAPSHOT_VERSION,
+  applyElapsed,
+  buildFinalSnapshot,
+  clearSnapshot,
+  completionAccepted,
+  computeDeadline,
+  decideRestore,
+  describeCompletion,
+  emptyCompletion,
+  formatRemaining,
+  isExpired,
+  markWriteThrew,
+  mergeWriteOutcome,
+  pendingParts,
+  persistSnapshot,
+  readSnapshotRaw,
+  remainingMs,
+  type ActiveSnapshot,
+  type CompletionStatus,
+  type FinalSnapshot,
+} from "@/lib/practice/session";
 
 function newSessionId(): string {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -49,13 +76,6 @@ function fingerprint(text: string): string {
   }
   return `q_${(h >>> 0).toString(36)}`;
 }
-
-type PracticeSearch = {
-  subject?: string;
-  subtopic?: string;
-  length?: number;
-  mode?: "revise" | "quiz";
-};
 
 export const Route = createFileRoute("/practice")({
   validateSearch: (raw: Record<string, unknown>): PracticeSearch => {
@@ -78,39 +98,13 @@ export const Route = createFileRoute("/practice")({
       {
         name: "description",
         content:
-          "Adaptive interactive SQE practice session — one question at a time, with timing, scoring and feedback.",
+          "Adaptive interactive practice for the SQE and the US bar (UBE) — one question at a time, with session timing, scoring and feedback.",
       },
     ],
   }),
 });
 
-type QuizQuestion = {
-  prompt: string;
-  options: string[];
-  correctIndex: number;
-  explanation: string;
-};
-
-type PracticeConfig = {
-  source: "ai-quiz" | "practice-launcher";
-  format?: string;
-  formatLabel: string;
-  module: string;
-  topic?: string;
-  questions: number;
-  duration: number; // minutes
-  difficulty: "Foundational" | "Standard" | "Stretch" | "Adaptive";
-  timed: boolean;
-  adaptive: boolean;
-  feedbackMode?: "immediate" | "end";
-  rationale: string;
-  reasonBits?: string[];
-  skillFocus?: string[];
-};
-
 type Phase = "loading" | "launch" | "quiz" | "results" | "error";
-
-const STORAGE_KEY = "practice:config";
 
 const THINKING = [
   "Reading your confidence map…",
@@ -129,121 +123,178 @@ function PracticeSessionPage() {
   const [error, setError] = useState<string | null>(null);
   const [thinkIdx, setThinkIdx] = useState(0);
 
-  // quiz state
+  // quiz state (refs mirror everything the finalisation path must read synchronously)
   const [feedbackMode, setFeedbackMode] = useState<"immediate" | "end">("immediate");
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [revealedSet, setRevealedSet] = useState<Set<number>>(new Set());
   const [perQuestionMs, setPerQuestionMs] = useState<number[]>([]);
-  const [questionStart, setQuestionStart] = useState<number>(0);
-  const [sessionStart, setSessionStart] = useState<number>(0);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [deadlineAt, setDeadlineAt] = useState<number | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now());
   const [confidenceBefore, setConfidenceBefore] = useState<number | null>(null);
   const [sessionId, setSessionId] = useState<string>(() => newSessionId());
   const [examPath, setExamPath] = useState<string | undefined>(undefined);
-  const [saveResult, setSaveResult] = useState<WriteResult | null>(null);
-  const finishedRef = useRef(false);
+  const [completion, setCompletion] = useState<CompletionStatus | null>(null);
+  const [finalSnapshot, setFinalSnapshot] = useState<FinalSnapshot | null>(null);
+  const [retrying, setRetrying] = useState(false);
 
-  // Load config + start generation
+  const questionsRef = useRef<QuizQuestion[]>([]);
+  const answersRef = useRef<(number | null)[]>([]);
+  const perRef = useRef<number[]>([]);
+  const currentRef = useRef(0);
+  const questionStartRef = useRef<number | null>(null);
+  const sessionIdRef = useRef(sessionId);
+  const fingerprintRef = useRef<string>("");
+  const finishingRef = useRef(false);
+  const configRef = useRef<PracticeConfig | null>(null);
+  const examPathRef = useRef<string | undefined>(undefined);
+  const completionRef = useRef<CompletionStatus | null>(null);
+  const finalRef = useRef<FinalSnapshot | null>(null);
+  const feedbackRef = useRef<"immediate" | "end">("immediate");
+  const revealedRef = useRef<Set<number>>(new Set());
+  const phaseRef = useRef<Phase>("loading");
+  const startedAtRef = useRef<number | null>(null);
+  const deadlineRef = useRef<number | null>(null);
+
+  const snapshotNow = useCallback((): ActiveSnapshot | null => {
+    const cfg = configRef.current;
+    if (!cfg || questionsRef.current.length === 0) return null;
+    const p = phaseRef.current;
+    if (p !== "launch" && p !== "quiz" && p !== "results") return null;
+    return {
+      version: ACTIVE_SNAPSHOT_VERSION,
+      sessionId: sessionIdRef.current,
+      fingerprint: fingerprintRef.current,
+      config: cfg,
+      questions: questionsRef.current,
+      answers: answersRef.current,
+      revealed: Array.from(revealedRef.current),
+      feedbackMode: feedbackRef.current,
+      current: currentRef.current,
+      perQuestionMs: perRef.current,
+      startedAt: startedAtRef.current,
+      deadlineAt: deadlineRef.current,
+      phase: p,
+      completion: completionRef.current,
+      finalSnapshot: finalRef.current,
+      updatedAt: Date.now(),
+    };
+  }, []);
+
+  const persist = useCallback(() => {
+    const snap = snapshotNow();
+    if (snap) persistSnapshot(snap);
+  }, [snapshotNow]);
+
+  function setPhaseTracked(p: Phase) {
+    phaseRef.current = p;
+    setPhase(p);
+  }
+
+  // ───────── load config, restore or generate exactly once
   useEffect(() => {
     let cancelled = false;
-    let raw: string | null = null;
+    let storedRaw: string | null = null;
     try {
-      raw = sessionStorage.getItem(STORAGE_KEY);
+      storedRaw = sessionStorage.getItem(PRACTICE_CONFIG_KEY);
     } catch {}
 
-    // Deep-link from Topic Map: synthesize a config from ?subject=&subtopic=
-    if (!raw && search.subject) {
-      const isRevise = search.mode === "revise";
-      const questions = search.length ?? (isRevise ? 5 : 10);
-      const label = search.subtopic
-        ? `${isRevise ? "Recall check" : "Targeted quiz"}: ${search.subtopic}`
-        : `${isRevise ? "Recall check" : "Targeted quiz"}: ${search.subject}`;
-      const synth: PracticeConfig = {
-        source: "practice-launcher",
-        format: isRevise ? "recall" : "targeted",
-        formatLabel: label,
-        module: search.subject,
-        topic: search.subtopic ?? search.subject,
-        questions,
-        duration: Math.max(10, questions * 2),
-        difficulty: "Adaptive",
-        timed: true,
-        adaptive: true,
-        rationale: search.subtopic
-          ? `Generated from the Topic Map — ${isRevise ? "short recall set" : "targeted practice"} on “${search.subtopic}”.`
-          : `Generated from the Topic Map — targeted on ${search.subject}.`,
-        reasonBits: [
-          search.subtopic ? `focused on ${search.subtopic}` : `focused on ${search.subject}`,
-        ],
-        skillFocus: isRevise
-          ? ["Recall", "Speed", "Rule accuracy"]
-          : ["Application", "Issue spotting", "Accuracy"],
-      };
+    const resolution = resolvePracticeConfig({ search, storedRaw });
+    if (resolution.kind !== "none" && resolution.consumeStored) {
+      // Consume the launcher config so a completed session can never be reused.
       try {
-        sessionStorage.setItem(STORAGE_KEY, JSON.stringify(synth));
+        sessionStorage.removeItem(PRACTICE_CONFIG_KEY);
       } catch {}
-      raw = JSON.stringify(synth);
     }
-
-    if (!raw) {
-      setPhase("error");
+    if (resolution.kind === "none") {
+      setPhaseTracked("error");
       setError("No practice session was queued. Start one from Mocks & Practice.");
       return;
     }
-    let parsed: PracticeConfig;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      setPhase("error");
-      setError("Could not read session configuration.");
-      return;
-    }
-    setConfig(parsed);
-    setFeedbackMode(parsed.feedbackMode ?? "immediate");
 
-    // Capture the module's current confidence so we can show a delta later
+    const cfg = resolution.config;
+    configRef.current = cfg;
+    setConfig(cfg);
+    const fp = configFingerprint(cfg);
+    fingerprintRef.current = fp;
+
     const plan = loadPlan();
-    const mod = plan?.input.modules.find((m) => m.name === parsed.module);
+    const mod = plan?.input.modules.find((m) => m.name === cfg.module);
     setConfidenceBefore(mod?.confidence ?? null);
-
     const examType = (plan?.input.examType ?? "SQE1") as "SQE1" | "SQE2" | "UBE" | "MPRE";
+    examPathRef.current = plan?.input.examType ?? undefined;
     setExamPath(plan?.input.examType ?? undefined);
 
-    // Animate the thinking lines
+    const decision = decideRestore({ raw: readSnapshotRaw(), fingerprint: fp, now: Date.now() });
+    if (decision.action === "restore") {
+      const s = decision.snapshot;
+      sessionIdRef.current = s.sessionId;
+      setSessionId(s.sessionId);
+      questionsRef.current = s.questions;
+      setQuestions(s.questions);
+      answersRef.current = s.answers;
+      setAnswers(s.answers);
+      perRef.current = s.perQuestionMs;
+      setPerQuestionMs(s.perQuestionMs);
+      revealedRef.current = new Set(s.revealed);
+      setRevealedSet(new Set(s.revealed));
+      feedbackRef.current = s.feedbackMode;
+      setFeedbackMode(s.feedbackMode);
+      currentRef.current = s.current;
+      setCurrent(s.current);
+      startedAtRef.current = s.startedAt;
+      setStartedAt(s.startedAt);
+      deadlineRef.current = s.deadlineAt;
+      setDeadlineAt(s.deadlineAt);
+      completionRef.current = s.completion;
+      setCompletion(s.completion);
+      finalRef.current = s.finalSnapshot;
+      setFinalSnapshot(s.finalSnapshot);
+      if (s.phase === "quiz") questionStartRef.current = Date.now();
+      if (s.phase === "results") finishingRef.current = true;
+      setPhaseTracked(s.phase);
+      // Restored: the provider is never called.
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    clearSnapshot();
+    setFeedbackMode(cfg.feedbackMode ?? "immediate");
+    feedbackRef.current = cfg.feedbackMode ?? "immediate";
+
     const tick = setInterval(() => {
       setThinkIdx((i) => Math.min(THINKING.length - 1, i + 1));
     }, 700);
 
     (async () => {
       try {
-        const { data, error: fnErr } = await supabase.functions.invoke(
-          "generate-quiz",
-          {
-            body: {
-              module: parsed.module,
-              topic: parsed.topic ?? parsed.formatLabel,
-              examType,
-              confidence: mod?.confidence ?? 3,
-            },
+        const { data, error: fnErr } = await supabase.functions.invoke("generate-quiz", {
+          body: {
+            module: cfg.module,
+            topic: cfg.topic ?? cfg.formatLabel,
+            examType,
+            confidence: mod?.confidence ?? 3,
           },
-        );
+        });
         if (cancelled) return;
         if (fnErr) throw fnErr;
         if (data?.error) throw new Error(data.error);
-        const all: QuizQuestion[] = (data?.questions ?? []).filter(
-          (q: QuizQuestion) =>
-            q && Array.isArray(q.options) && q.options.length === 4,
-        );
-        if (all.length === 0) throw new Error("No questions returned");
-        // Cap to requested count
-        const qs = all.slice(0, Math.max(4, parsed.questions));
+        const validated = validateQuizQuestions(data?.questions, cfg.questions);
+        if (!validated.ok) throw new Error(validated.error);
+        const qs = validated.questions;
+        questionsRef.current = qs;
         setQuestions(qs);
-        setAnswers(new Array(qs.length).fill(null));
-        setPerQuestionMs(new Array(qs.length).fill(0));
-        setPhase("launch");
+        answersRef.current = new Array(qs.length).fill(null);
+        setAnswers(answersRef.current);
+        perRef.current = new Array(qs.length).fill(0);
+        setPerQuestionMs(perRef.current);
+        setPhaseTracked("launch");
+        persist();
       } catch (e) {
         if (cancelled) return;
-        setPhase("error");
+        setPhaseTracked("error");
         setError(e instanceof Error ? e.message : "Could not generate session");
       } finally {
         clearInterval(tick);
@@ -257,110 +308,252 @@ function PracticeSessionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ───────── authoritative session clock
+  useEffect(() => {
+    if (phase !== "quiz") return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "quiz") return;
+    if (isExpired(deadlineAt, now) && !finishingRef.current) {
+      void finishSession();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now, phase, deadlineAt]);
+
+  // Bounded periodic timing persistence + persistence on unload.
+  useEffect(() => {
+    if (phase !== "quiz") return;
+    const id = setInterval(persist, 10_000);
+    const onHide = () => persist();
+    window.addEventListener("pagehide", onHide);
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      clearInterval(id);
+      window.removeEventListener("pagehide", onHide);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [phase, persist]);
+
   function beginSession() {
-    const now = Date.now();
-    setSessionStart(now);
-    setQuestionStart(now);
+    const start = Date.now();
+    const cfg = configRef.current;
+    startedAtRef.current = start;
+    setStartedAt(start);
+    const deadline = cfg ? computeDeadline(cfg, start) : null;
+    deadlineRef.current = deadline;
+    setDeadlineAt(deadline);
+    questionStartRef.current = start;
+    currentRef.current = 0;
     setCurrent(0);
+    revealedRef.current = new Set();
     setRevealedSet(new Set());
-    setPhase("quiz");
+    setNow(start);
+    setPhaseTracked("quiz");
+    persist();
   }
 
-  function recordTime() {
-    const elapsed = Date.now() - questionStart;
-    setPerQuestionMs((arr) => {
-      const next = [...arr];
-      next[current] = (next[current] ?? 0) + elapsed;
-      return next;
-    });
-    setQuestionStart(Date.now());
+  /** Folds the live question's elapsed interval in exactly once. */
+  function accumulateCurrent() {
+    const start = questionStartRef.current;
+    if (start == null) return;
+    const at = Date.now();
+    perRef.current = applyElapsed(perRef.current, currentRef.current, at - start);
+    questionStartRef.current = at;
+    setPerQuestionMs(perRef.current);
   }
 
   function selectAnswer(optIdx: number) {
-    if (feedbackMode === "immediate" && revealedSet.has(current)) return;
-    const next = [...answers];
-    next[current] = optIdx;
+    if (feedbackMode === "immediate" && revealedRef.current.has(currentRef.current)) return;
+    const next = [...answersRef.current];
+    next[currentRef.current] = optIdx;
+    answersRef.current = next;
     setAnswers(next);
     if (feedbackMode === "immediate") {
-      setRevealedSet((s) => new Set(s).add(current));
+      revealedRef.current = new Set(revealedRef.current).add(currentRef.current);
+      setRevealedSet(new Set(revealedRef.current));
     }
+    persist();
+  }
+
+  function goTo(index: number) {
+    accumulateCurrent();
+    currentRef.current = index;
+    setCurrent(index);
+    persist();
   }
 
   function nextQuestion() {
-    recordTime();
-    if (current < questions.length - 1) {
-      setCurrent(current + 1);
+    if (currentRef.current < questionsRef.current.length - 1) {
+      goTo(currentRef.current + 1);
     } else {
-      finishSession();
+      void finishSession();
     }
   }
 
   function prevQuestion() {
-    recordTime();
-    if (current > 0) setCurrent(current - 1);
+    if (currentRef.current > 0) goTo(currentRef.current - 1);
+  }
+
+  async function runWrites(
+    snap: FinalSnapshot,
+    parts: Array<"activity" | "attempts">,
+    startingStatus: CompletionStatus,
+  ): Promise<CompletionStatus> {
+    const cfg = configRef.current;
+    if (!cfg) return startingStatus;
+    let status = startingStatus;
+    const occurredAt = new Date(snap.occurredAtIso);
+    const minutes = Math.max(1, Math.round(snap.totalMs / 60_000));
+
+    const commit = (next: CompletionStatus) => {
+      status = next;
+      completionRef.current = next;
+      setCompletion(next);
+      persist();
+    };
+
+    if (parts.includes("activity")) {
+      try {
+        const result = await recordStudyActivity({
+          idempotencyKey: makeIdempotencyKey("practice", snap.sessionId),
+          activityType: "quiz",
+          source: "practice",
+          actualMinutes: minutes,
+          occurredAt,
+          subject: cfg.module,
+          subtopic: cfg.topic ?? undefined,
+          examPath: examPathRef.current ?? null,
+          gradedAccuracy: snap.accuracy,
+          note: `${cfg.formatLabel} · ${snap.correct}/${snap.total}`,
+        });
+        commit(mergeWriteOutcome(status, "activity", result));
+      } catch (e) {
+        console.warn("practice activity write threw", e);
+        commit(markWriteThrew(status, "activity", "We couldn't record this session yet."));
+      }
+    }
+
+    if (parts.includes("attempts")) {
+      try {
+        const attempts = questionsRef.current.map((q, i) => {
+          const selected = snap.answers[i] ?? null;
+          return {
+            idempotencyKey: makeIdempotencyKey("practice-attempt", snap.sessionId, i),
+            sourceType: "practice" as const,
+            sourceRef: snap.sessionId,
+            questionFingerprint: fingerprint(q.prompt ?? String(i)),
+            subject: cfg.module,
+            subtopic: cfg.topic ?? undefined,
+            occurredAt,
+            isCorrect: selected != null && selected === q.correctIndex,
+            selectedAnswer: selected != null ? String.fromCharCode(65 + selected) : null,
+            durationSeconds: Math.round((snap.perQuestionMs[i] ?? 0) / 1000),
+            examPath: examPathRef.current ?? null,
+          };
+        });
+        const result = await recordGradedAttempts(attempts);
+        commit(mergeWriteOutcome(status, "attempts", result));
+      } catch (e) {
+        console.warn("practice attempts write threw", e);
+        commit(markWriteThrew(status, "attempts", "We couldn't record your answers yet."));
+      }
+    }
+
+    if (completionAccepted(status) && !status.activityQueuedOnly && !status.attemptsQueuedOnly) {
+      clearSnapshot();
+    }
+    return status;
   }
 
   async function finishSession() {
-    if (!config) return;
-    if (finishedRef.current) {
-      setPhase("results");
+    const cfg = configRef.current;
+    if (!cfg) return;
+    if (finishingRef.current) {
+      setPhaseTracked("results");
       return;
     }
-    finishedRef.current = true;
+    finishingRef.current = true;
 
-    const totalMs = Date.now() - sessionStart;
-    const minutes = Math.max(1, Math.round(totalMs / 60_000));
-    const correct = answers.reduce<number>(
-      (acc, a, i) => (a === questions[i]?.correctIndex ? acc + 1 : acc),
-      0,
-    );
-    const accuracy = correct / questions.length;
+    const snap = buildFinalSnapshot({
+      sessionId: sessionIdRef.current,
+      questions: questionsRef.current,
+      answers: answersRef.current,
+      perQuestionMs: perRef.current,
+      current: currentRef.current,
+      questionStartedAt: questionStartRef.current,
+      now: Date.now(),
+    });
+    questionStartRef.current = null;
+    perRef.current = snap.perQuestionMs;
+    setPerQuestionMs(snap.perQuestionMs);
+    finalRef.current = snap;
+    setFinalSnapshot(snap);
+    const initial = emptyCompletion();
+    completionRef.current = initial;
+    setCompletion(initial);
+    setPhaseTracked("results");
+    persist();
 
-    const activityKey = makeIdempotencyKey("practice", sessionId);
-    try {
-      const activityResult = await recordStudyActivity({
-        idempotencyKey: activityKey,
-        activityType: "quiz",
-        source: "practice",
-        actualMinutes: minutes,
-        subject: config.module,
-        subtopic: config.topic ?? undefined,
-        examPath: examPath ?? null,
-        gradedAccuracy: accuracy,
-        note: `${config.formatLabel} · ${correct}/${questions.length}`,
-      });
-      setSaveResult(activityResult);
-
-      const attempts = questions.map((q, i) => {
-        const selected = answers[i];
-        return {
-          idempotencyKey: makeIdempotencyKey("practice-attempt", sessionId, i),
-          sourceType: "practice" as const,
-          sourceRef: sessionId,
-          questionFingerprint: fingerprint(q.prompt ?? String(i)),
-          subject: config.module,
-          subtopic: config.topic ?? undefined,
-          isCorrect: selected === q.correctIndex,
-          selectedAnswer: selected != null ? String.fromCharCode(65 + selected) : null,
-          durationSeconds: Math.round((perQuestionMs[i] ?? 0) / 1000),
-          examPath: examPath ?? null,
-        };
-      });
-      const attemptsResult = await recordGradedAttempts(attempts);
-      if (!attemptsResult.ok && activityResult.ok) {
-        setSaveResult(attemptsResult);
-      }
-    } catch (e) {
-      console.warn("session log failed", e);
-      setSaveResult({ ok: false, queued: true, error: "Could not save results" });
-    }
-    setPhase("results");
+    await runWrites(snap, ["activity", "attempts"], initial);
   }
 
-  // ───────── render
+  /** Re-runs only the components that were never accepted, with the original keys. */
+  async function retryCompletion() {
+    const snap = finalRef.current;
+    const status = completionRef.current;
+    if (!snap || !status || retrying) return;
+    setRetrying(true);
+    try {
+      const parts = pendingParts(status);
+      let next = status;
+      if (parts.length > 0) next = await runWrites(snap, parts, status);
+      if (completionAccepted(next) && (next.activityQueuedOnly || next.attemptsQueuedOnly)) {
+        const flush = await flushStudyLogQueue();
+        if (flush.remaining === 0) {
+          const cleared: CompletionStatus = {
+            ...next,
+            activityQueuedOnly: false,
+            attemptsQueuedOnly: false,
+          };
+          completionRef.current = cleared;
+          setCompletion(cleared);
+          clearSnapshot();
+        }
+      }
+    } finally {
+      setRetrying(false);
+    }
+  }
+
+  function restartSession() {
+    const id = newSessionId();
+    sessionIdRef.current = id;
+    setSessionId(id);
+    answersRef.current = new Array(questionsRef.current.length).fill(null);
+    setAnswers(answersRef.current);
+    perRef.current = new Array(questionsRef.current.length).fill(0);
+    setPerQuestionMs(perRef.current);
+    revealedRef.current = new Set();
+    setRevealedSet(new Set());
+    completionRef.current = null;
+    setCompletion(null);
+    finalRef.current = null;
+    setFinalSnapshot(null);
+    finishingRef.current = false;
+    clearSnapshot();
+    beginSession();
+  }
+
+  const remaining = phase === "quiz" ? remainingMs(deadlineAt, now) : null;
+  const subtitle =
+    config?.module ??
+    (examPath === "UBE" || examPath === "MPRE" ? "Adaptive US bar practice" : "Adaptive practice");
 
   return (
-    <AppShell title="Practice Session" subtitle={config?.module ?? "Adaptive SQE practice"}>
+    <AppShell title="Practice Session" subtitle={subtitle}>
       <div className="mb-4">
         <Button
           variant="ghost"
@@ -384,7 +577,11 @@ function PracticeSessionPage() {
           config={config}
           questionCount={questions.length}
           feedbackMode={feedbackMode}
-          onFeedbackChange={setFeedbackMode}
+          onFeedbackChange={(v) => {
+            feedbackRef.current = v;
+            setFeedbackMode(v);
+            persist();
+          }}
           onBegin={beginSession}
         />
       )}
@@ -396,34 +593,24 @@ function PracticeSessionPage() {
           answers={answers}
           revealed={feedbackMode === "immediate" && revealedSet.has(current)}
           feedbackMode={feedbackMode}
+          remainingLabel={remaining != null ? formatRemaining(remaining) : null}
+          lowTime={remaining != null && remaining <= 60_000}
           onSelect={selectAnswer}
           onNext={nextQuestion}
           onPrev={prevQuestion}
-          onFinish={finishSession}
+          onFinish={() => void finishSession()}
         />
       )}
-      {phase === "results" && config && (
+      {phase === "results" && config && finalSnapshot && (
         <ResultsScreen
           config={config}
           questions={questions}
-          answers={answers}
-          perQuestionMs={perQuestionMs}
+          final={finalSnapshot}
           confidenceBefore={confidenceBefore}
-          saveResult={saveResult}
-          onRetryFinish={() => {
-            flushStudyLogQueue().then((r) => {
-              setSaveResult(r.remaining === 0 ? { ok: true, queued: false } : { ok: false, queued: true });
-            });
-          }}
-          onRetry={() => {
-            setAnswers(new Array(questions.length).fill(null));
-            setRevealedSet(new Set());
-            setPerQuestionMs(new Array(questions.length).fill(0));
-            setSessionId(newSessionId());
-            setSaveResult(null);
-            finishedRef.current = false;
-            beginSession();
-          }}
+          completion={completion}
+          retrying={retrying}
+          onRetryWrites={() => void retryCompletion()}
+          onRetry={restartSession}
           onNewDrill={() => navigate({ to: "/mocks" })}
         />
       )}
