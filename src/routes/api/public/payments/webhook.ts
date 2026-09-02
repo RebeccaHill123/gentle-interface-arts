@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { type StripeEnv, verifyWebhook } from "@/lib/stripe.server";
-import { profileHasAccess, verifyClaim } from "@/lib/provisioning";
+import {
+  profileHasAccess,
+  verifyClaim,
+  decideClaimAction,
+} from "@/lib/provisioning";
 
 /**
  * Thrown when a paid checkout could not be fully provisioned. It must escape
@@ -121,9 +125,12 @@ async function upsertFromSubscription(
     .select("has_used_trial, stripe_subscription_id, grandfathered_pro")
     .eq("user_id", userId)
     .maybeSingle();
-  if (existingProfileErr && options.strict) {
+  // The user is known, so a failed read is a real billing-integrity failure:
+  // retry rather than write entitlement from incomplete information.
+  if (existingProfileErr) {
     throw new ProvisioningError("profile read failed", existingProfileErr);
   }
+
 
   if (
     subscription.status === "trialing" &&
@@ -182,18 +189,17 @@ async function upsertFromSubscription(
     })
     .eq("user_id", userId)
     .select("user_id");
+  // A resolved user with a failed (or no-op) entitlement write always retries,
+  // strict mode or not: silently returning success would strand a payer.
   if (updateErr) {
-    if (options.strict) {
-      throw new ProvisioningError("profile entitlement write failed", updateErr);
-    }
-    console.error("[webhook] profile entitlement write failed", updateErr);
-    return null;
+    throw new ProvisioningError("profile entitlement write failed", updateErr);
   }
-  if (options.strict && (!updatedRows || updatedRows.length === 0)) {
+  if (!updatedRows || updatedRows.length === 0) {
     throw new ProvisioningError(
       `profile entitlement update matched no profile for ${userId}`,
     );
   }
+
   return userId;
 }
 
@@ -201,22 +207,40 @@ async function upsertFromSubscription(
 async function handleSubscriptionDeleted(subscription: any, env: StripeEnv) {
   const admin = await getAdmin();
   const userId = await findUserIdForCustomer(admin, subscription, env);
-  if (!userId) return;
+  // Unmapped subscription: checkout.session.completed will map it later, so
+  // log and accept rather than retry forever.
+  if (!userId) {
+    console.log("[webhook] no user for deleted subscription", subscription?.id);
+    return;
+  }
   // Check grandfathered — never revoke lifetime access.
-  const { data: profile } = await admin
+  const { data: profile, error: profileErr } = await admin
     .from("profiles")
     .select("grandfathered_pro")
     .eq("user_id", userId)
     .maybeSingle();
-  await admin
+  if (profileErr) {
+    throw new ProvisioningError("profile read failed on delete", profileErr);
+  }
+  const { data: rows, error: updateErr } = await admin
     .from("profiles")
     .update({
       subscription_status: "canceled",
       cancel_at_period_end: false,
       is_pro: !!profile?.grandfathered_pro,
     })
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .select("user_id");
+  if (updateErr) {
+    throw new ProvisioningError("cancellation write failed", updateErr);
+  }
+  if (!rows || rows.length === 0) {
+    throw new ProvisioningError(
+      `cancellation update matched no profile for ${userId}`,
+    );
+  }
 }
+
 
 async function handleCheckoutCompleted(session: any, env: StripeEnv) {
   // Two possible flows:
@@ -356,7 +380,10 @@ async function claimPendingPlan({
       hasPlanRow: planRow,
       magicLinkHash: pending.magic_link_hash,
     });
-    if (verification.complete) return; // nothing to do, no mutation
+    // Duplicate delivery of a fully verified claim: exit without mutation or
+    // generating anything. Anything else is a repair (fresh magic link).
+    if (decideClaimAction(verification).action === "noop") return;
+
     console.warn(
       "[webhook] repairing partially claimed pending plan",
       token,
@@ -481,28 +508,29 @@ async function claimPendingPlan({
     );
   }
 
-  // 4. First-access magic link. Reuse an existing hash when repairing.
-  let magicHash: string | null = pending.magic_link_hash ?? null;
-  if (!magicHash) {
-    try {
-      const origin =
-        (session.return_url && new URL(session.return_url).origin) || undefined;
-      const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
-        type: "magiclink",
-        email,
-        options: origin ? { redirectTo: `${origin}/dashboard` } : undefined,
-      });
-      if (linkErr) throw linkErr;
-      magicHash =
-        (link?.properties as { hashed_token?: string } | undefined)
-          ?.hashed_token ?? null;
-    } catch (err) {
-      throw new ProvisioningError("magic link generation failed", err);
-    }
+  // 4. First-access magic link. We only get here for a first claim or a real
+  // repair, so always mint a FRESH link — a stored hash from a partial legacy
+  // claim may already be used or expired.
+  let magicHash: string | null = null;
+  try {
+    const origin =
+      (session.return_url && new URL(session.return_url).origin) || undefined;
+    const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: origin ? { redirectTo: `${origin}/dashboard` } : undefined,
+    });
+    if (linkErr) throw linkErr;
+    magicHash =
+      (link?.properties as { hashed_token?: string } | undefined)
+        ?.hashed_token ?? null;
+  } catch (err) {
+    throw new ProvisioningError("magic link generation failed", err);
   }
   if (!magicHash) {
     throw new ProvisioningError("no usable magic-link hash generated");
   }
+
 
   // 5. Final claim — then re-read to prove it landed for the right user.
   const { error: claimErr } = await admin

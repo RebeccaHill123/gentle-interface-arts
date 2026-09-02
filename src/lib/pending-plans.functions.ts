@@ -166,7 +166,9 @@ export const pollPendingClaim = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
     );
-    const { isFinalStoredClaim } = await import("@/lib/provisioning");
+    const { isFinalStoredClaim, resolvePolledClaimStatus } = await import(
+      "@/lib/provisioning"
+    );
     const { data: row, error } = await supabaseAdmin
       .from("pending_plans")
       .select("status, claimed_user_id, magic_link_email, magic_link_hash")
@@ -174,18 +176,52 @@ export const pollPendingClaim = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(`Could not read claim status: ${error.message}`);
     if (!row) return { status: "not_found" };
-    if (isFinalStoredClaim(row)) {
+
+    let profile = null as
+      | {
+          is_pro: boolean | null;
+          grandfathered_pro: boolean | null;
+          subscription_status: string | null;
+          current_period_end: string | null;
+        }
+      | null;
+    let hasPlanRow = false;
+    if (isFinalStoredClaim(row) && row.claimed_user_id) {
+      // Legacy rows can say "claimed" without real access or an attached plan.
+      // Verify both before telling the browser it may proceed; only booleans
+      // derived from these reads are exposed.
+      const { data: profileRow, error: profileErr } = await supabaseAdmin
+        .from("profiles")
+        .select("is_pro, grandfathered_pro, subscription_status, current_period_end")
+        .eq("user_id", row.claimed_user_id)
+        .maybeSingle();
+      if (profileErr) {
+        throw new Error(`Could not verify access: ${profileErr.message}`);
+      }
+      profile = profileRow;
+      const { data: planRow, error: planErr } = await supabaseAdmin
+        .from("user_plans")
+        .select("user_id")
+        .eq("user_id", row.claimed_user_id)
+        .maybeSingle();
+      if (planErr) {
+        throw new Error(`Could not verify plan: ${planErr.message}`);
+      }
+      hasPlanRow = !!planRow;
+    }
+
+    const status = resolvePolledClaimStatus({ row, profile, hasPlanRow });
+    if (status === "claimed") {
       return {
         status: "claimed",
         email: row.magic_link_email ?? "",
         magicLinkHash: row.magic_link_hash ?? null,
       };
     }
-    // A row that says "claimed" but is not final is still being provisioned —
-    // report it as paid so the return page keeps waiting honestly.
-    if (row.status === "claimed") return { status: "paid" };
-    return { status: row.status as "pending" | "paid" | "expired" };
+    return { status };
   });
+
+
 
 
 // Public price display. Reads Stripe live/sandbox — no auth required so the

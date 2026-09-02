@@ -3,6 +3,9 @@ import {
   profileHasAccess,
   verifyClaim,
   isFinalStoredClaim,
+  resolvePolledClaimStatus,
+  decideReturnStep,
+  decideClaimAction,
 } from "./provisioning";
 import { decidePlanLoad } from "./plan-recovery";
 
@@ -133,5 +136,120 @@ describe("decidePlanLoad", () => {
     expect(
       decidePlanLoad({ cloudOk: true, hasCloudPlan: false, hasLocalPlan: false }),
     ).toEqual({ kind: "recover", reason: "missing" });
+  });
+});
+
+describe("decideReturnStep", () => {
+  it("never completes on an existing session before the claim is verified", () => {
+    for (const pollStatus of ["pending", "paid", "expired"] as const) {
+      expect(
+        decideReturnStep({ pollStatus, hasSession: true, hasMagicLinkHash: true }),
+      ).toBe("wait");
+    }
+  });
+
+  it("lets an authenticated purchaser skip the magic link once claimed", () => {
+    expect(decideReturnStep({ pollStatus: "claimed", hasSession: true })).toBe(
+      "complete",
+    );
+  });
+
+  it("uses the magic link when claimed and not signed in", () => {
+    expect(
+      decideReturnStep({
+        pollStatus: "claimed",
+        hasSession: false,
+        hasMagicLinkHash: true,
+      }),
+    ).toBe("magic-link");
+    expect(
+      decideReturnStep({ pollStatus: "claimed", hasSession: false }),
+    ).toBe("email-fallback");
+  });
+
+  it("reports an unknown token", () => {
+    expect(
+      decideReturnStep({ pollStatus: "not_found", hasSession: true }),
+    ).toBe("not-found");
+  });
+});
+
+describe("resolvePolledClaimStatus", () => {
+  const finalRow = {
+    status: "claimed",
+    claimed_user_id: "u1",
+    magic_link_hash: "h",
+  };
+
+  it("reports claimed only with real access and an attached plan", () => {
+    expect(
+      resolvePolledClaimStatus({
+        row: finalRow,
+        profile: entitled,
+        hasPlanRow: true,
+      }),
+    ).toBe("claimed");
+  });
+
+  it("keeps a legacy claimed row without entitlement retriable", () => {
+    expect(
+      resolvePolledClaimStatus({
+        row: finalRow,
+        profile: { is_pro: false, subscription_status: null },
+        hasPlanRow: true,
+      }),
+    ).toBe("paid");
+  });
+
+  it("keeps a legacy claimed row without a plan retriable", () => {
+    expect(
+      resolvePolledClaimStatus({
+        row: finalRow,
+        profile: entitled,
+        hasPlanRow: false,
+      }),
+    ).toBe("paid");
+  });
+
+  it("keeps a claimed row with no hash retriable and passes other statuses through", () => {
+    expect(
+      resolvePolledClaimStatus({
+        row: { status: "claimed", claimed_user_id: "u1" },
+        profile: entitled,
+        hasPlanRow: true,
+      }),
+    ).toBe("paid");
+    expect(resolvePolledClaimStatus({ row: { status: "pending" } })).toBe(
+      "pending",
+    );
+  });
+});
+
+describe("decideClaimAction", () => {
+  const complete = {
+    status: "claimed",
+    claimedUserId: "u1",
+    expectedUserId: "u1",
+    profile: entitled,
+    profileExists: true,
+    hasPlanRow: true,
+    magicLinkHash: "hash",
+  };
+
+  it("makes a fully verified duplicate webhook a no-op", () => {
+    expect(decideClaimAction(verifyClaim(complete))).toEqual({ action: "noop" });
+  });
+
+  it("repairs a legacy claim and always requires a fresh magic link", () => {
+    const legacy = verifyClaim({ ...complete, hasPlanRow: false });
+    expect(decideClaimAction(legacy)).toEqual({
+      action: "provision",
+      freshMagicLink: true,
+    });
+    const staleHash = verifyClaim({ ...complete, profile: { is_pro: false } });
+    expect(decideClaimAction(staleHash)).toEqual({
+      action: "provision",
+      freshMagicLink: true,
+    });
   });
 });
