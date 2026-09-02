@@ -411,22 +411,24 @@ function SimulationPage() {
             s.id === updatedSection.id ? updatedSection : s,
           );
           setSections(nextSections);
-          setAnswers((prev) => {
-            const ids = new Set(sectionAnswers.map((a) => a.question_id));
-            const filtered = prev.filter(
+          const ids = new Set(sectionAnswers.map((a) => a.question_id));
+          const nextAnswers = [
+            ...answers.filter(
               (a) =>
                 !(a.section_id === updatedSection.id && ids.has(a.question_id)),
-            );
-            return [...filtered, ...sectionAnswers];
-          });
+            ),
+            ...sectionAnswers,
+          ];
+          setAnswers(nextAnswers);
           setActiveSectionId(null);
           setActiveTimer(null);
           setPhase("overview");
           if (isSimulationFullyComplete(nextSections)) {
             // Same canonical route as the "View results" button.
-            await finalizeSimulation(nextSections);
+            await finalizeSimulation(nextSections, nextAnswers);
           }
         }}
+
       />
     );
   }
