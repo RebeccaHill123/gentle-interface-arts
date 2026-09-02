@@ -261,6 +261,68 @@ export function applyElapsed(per: number[], index: number, elapsedMs: number): n
   return next;
 }
 
+/** End of the attributable window: bounded by the deadline for timed sessions. */
+export function timingBound(deadlineAt: number | null, now: number): number {
+  return deadlineAt == null ? now : Math.min(now, deadlineAt);
+}
+
+/**
+ * For timed sessions the authoritative session length is
+ * `min(now, deadlineAt) - startedAt`. Any interval not attributed to a
+ * question (e.g. time while the tab was closed) is folded ONCE into the
+ * current question so per-question durations and totalMs agree.
+ */
+export function reconcileTotals(input: {
+  perQuestionMs: number[];
+  current: number;
+  startedAt: number | null;
+  deadlineAt: number | null;
+  now: number;
+}): number[] {
+  const per = [...input.perQuestionMs];
+  if (input.startedAt == null || input.deadlineAt == null) return per;
+  const authoritative = Math.max(0, timingBound(input.deadlineAt, input.now) - input.startedAt);
+  const sum = per.reduce((a, b) => a + b, 0);
+  const gap = authoritative - sum;
+  if (gap <= 0) return per;
+  return applyElapsed(per, input.current, gap);
+}
+
+/**
+ * Recovers timing after a reload.
+ * - Timed: wall-clock keeps running while away, bounded by the deadline, and
+ *   totals are reconciled against startedAt→min(now, deadlineAt).
+ * - Untimed: only already-observed active time (up to the last persist) is
+ *   kept; closed-tab time is never invented. Timing resumes from `now`.
+ */
+export function restoreTiming(input: { snapshot: ActiveSnapshot; now: number }): {
+  perQuestionMs: number[];
+  questionStartedAt: number | null;
+} {
+  const s = input.snapshot;
+  if (s.phase !== "quiz") {
+    return { perQuestionMs: [...s.perQuestionMs], questionStartedAt: null };
+  }
+  const timed = s.deadlineAt != null;
+  const endBound = timed ? timingBound(s.deadlineAt, input.now) : s.updatedAt;
+  let per = [...s.perQuestionMs];
+  if (s.questionStartedAt != null) {
+    per = applyElapsed(per, s.current, endBound - s.questionStartedAt);
+  }
+  if (timed) {
+    per = reconcileTotals({
+      perQuestionMs: per,
+      current: s.current,
+      startedAt: s.startedAt,
+      deadlineAt: s.deadlineAt,
+      now: input.now,
+    });
+    // Expired while away: no further live interval may open.
+    if (isExpired(s.deadlineAt, input.now)) return { perQuestionMs: per, questionStartedAt: null };
+  }
+  return { perQuestionMs: per, questionStartedAt: input.now };
+}
+
 // ───────── scoring + final snapshot
 
 export function scoreAnswers(
