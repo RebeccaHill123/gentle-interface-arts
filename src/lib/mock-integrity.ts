@@ -250,7 +250,8 @@ export type SectionObjective = {
 /**
  * Objective percentage across graded MCQ questions, weighted by question count
  * so unequal sections do not count equally. Written sections are excluded
- * entirely rather than scored as 0.
+ * entirely rather than scored as 0. `correct` is clamped to `graded` so corrupt
+ * or duplicated rows can never display more than 100%.
  */
 export function objectiveScore(sections: SectionObjective[]): {
   graded: number;
@@ -266,15 +267,58 @@ export function objectiveScore(sections: SectionObjective[]): {
       excluded++;
       continue;
     }
-    graded += Math.max(0, s.graded);
-    correct += Math.max(0, s.correct);
+    const g = Math.max(0, Math.round(s.graded));
+    graded += g;
+    correct += Math.min(g, Math.max(0, Math.round(s.correct)));
   }
+  correct = Math.min(correct, graded);
   return {
     graded,
     correct,
     percent: graded > 0 ? Math.round((correct / graded) * 100) : null,
     excludedWrittenSections: excluded,
   };
+}
+
+export type AnswerRowLike = {
+  answer_value?: string | null;
+  essay_text?: string | null;
+  is_correct?: boolean | null;
+};
+
+/**
+ * The graded denominator for a section. The blueprint is authoritative: legacy
+ * mocks only stored rows for questions the candidate actually answered, so
+ * using the row count would inflate the percentage and contradict the rule
+ * that unanswered MCQs count as incorrect.
+ */
+export function gradedDenominator(
+  kind: SectionKind,
+  blueprintQuestions: number | null | undefined,
+  storedRowCount: number,
+): number {
+  if (kind !== "mcq") return 0;
+  const bp = Math.max(0, Math.round(blueprintQuestions ?? 0));
+  return bp > 0 ? bp : Math.max(0, storedRowCount);
+}
+
+/** MCQs with a real selection. Blank bulk-created rows are not "answered". */
+export function countAnsweredMcq(rows: AnswerRowLike[]): number {
+  return rows.filter((r) => r.answer_value != null && r.answer_value !== "")
+    .length;
+}
+
+/** Written tasks with real text. Blank bulk-created rows are not "submitted". */
+export function countWrittenSubmitted(rows: AnswerRowLike[]): number {
+  return rows.filter((r) => !!(r.essay_text && r.essay_text.trim())).length;
+}
+
+/** Progress count shown in breakdowns — honest for both modalities. */
+export function sectionProgressCount(
+  kind: SectionKind,
+  rows: AnswerRowLike[],
+): number {
+  return kind === "mcq" ? countAnsweredMcq(rows) : countWrittenSubmitted(rows);
 }
 
 export function sectionScoreLabel(
@@ -295,8 +339,13 @@ export function mcqSectionScore(input: {
   correct: number;
 }): number | null {
   if (input.totalQuestions <= 0) return null;
-  return Math.round((Math.max(0, input.correct) / input.totalQuestions) * 100);
+  const correct = Math.min(
+    input.totalQuestions,
+    Math.max(0, input.correct),
+  );
+  return Math.round((correct / input.totalQuestions) * 100);
 }
+
 
 // ---------------------------------------------------------------------------
 // 4. Completion + activity record
@@ -320,4 +369,43 @@ export function totalElapsedSeconds(
     (sum, s) => sum + Math.max(0, Math.round(s.elapsedSeconds ?? 0)),
     0,
   );
+}
+
+// ---------------------------------------------------------------------------
+// 5. Autosave sync tracking
+//
+// A single last-write-wins flag is dishonest: a later successful save for one
+// question must not clear an earlier question's failure. We therefore track the
+// set of question ids whose latest change is not yet confirmed remotely.
+
+export type SyncSet = Record<string, true>;
+
+export function markUnsynced(set: SyncSet, questionId: string): SyncSet {
+  if (set[questionId]) return set;
+  return { ...set, [questionId]: true };
+}
+
+export function markSynced(set: SyncSet, questionId: string): SyncSet {
+  if (!set[questionId]) return set;
+  const next = { ...set };
+  delete next[questionId];
+  return next;
+}
+
+export function unsyncedIds(set: SyncSet): string[] {
+  return Object.keys(set);
+}
+
+export function isFullySynced(set: SyncSet): boolean {
+  return Object.keys(set).length === 0;
+}
+
+export function clearSyncSet(): SyncSet {
+  return {};
+}
+
+/** Bounded exponential backoff for the in-section autosave retry loop. */
+export function retryDelayMs(attempt: number, baseMs = 4000, maxMs = 60_000): number {
+  const n = Math.max(0, Math.floor(attempt));
+  return Math.min(maxMs, baseMs * 2 ** Math.min(n, 10));
 }

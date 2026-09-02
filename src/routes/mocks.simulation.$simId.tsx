@@ -66,10 +66,16 @@ import {
   type DbSimulation,
 } from "@/lib/full-mock-store";
 import {
+  clearSyncSet,
+  countAnsweredMcq,
+
   elapsedSecondsFrom,
   finalAnswerSnapshot,
+  gradedDenominator,
+  isFullySynced,
   isSimulationFullyComplete,
-  makeTimerState,
+  markSynced,
+  markUnsynced,
   mcqSectionScore,
   mergeAnswerState,
   mockActivityKeyParts,
@@ -78,15 +84,19 @@ import {
   remainingSecondsFrom,
   resolveTimerState,
   resumeTimer,
+  retryDelayMs,
+  sectionProgressCount,
   sectionScoreLabel,
   totalElapsedSeconds,
+  unsyncedIds,
   type LocalAnswer,
   type LocalAnswerState,
+  type SyncSet,
   type TimerState,
 } from "@/lib/mock-integrity";
-import { adjustModuleConfidence } from "@/lib/plan-store";
 import { recordStudyActivity, makeIdempotencyKey, flushStudyLogQueue, type WriteResult } from "@/lib/study-log";
 import { cn } from "@/lib/utils";
+
 
 
 export const Route = createFileRoute("/mocks/simulation/$simId")({
@@ -152,6 +162,65 @@ function clearCachedTimer(simId: string, sectionId: string) {
   } catch {}
 }
 
+// Durable per-section "not yet confirmed remotely" set. Persisted so leaving or
+// reloading cannot silently turn local-only drafts into "saved to your account".
+const syncKey = (simId: string, sectionId: string) =>
+  `${LS_PREFIX}unsynced.${simId}.${sectionId}`;
+
+function loadSyncSet(simId: string, sectionId: string): SyncSet {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(syncKey(simId, sectionId));
+    const parsed = raw ? (JSON.parse(raw) as unknown) : null;
+    if (!parsed || typeof parsed !== "object") return {};
+    const out: SyncSet = {};
+    for (const k of Object.keys(parsed as Record<string, unknown>)) out[k] = true;
+    return out;
+  } catch {
+    return {};
+  }
+}
+function saveSyncSet(simId: string, sectionId: string, set: SyncSet) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(syncKey(simId, sectionId), JSON.stringify(set));
+  } catch {}
+}
+function clearStoredSyncSet(simId: string, sectionId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(syncKey(simId, sectionId));
+  } catch {}
+}
+
+/** Any section of this simulation still holding local-only drafts? */
+function hasLocalOnlyDrafts(simId: string, sectionIds: string[]): boolean {
+  return sectionIds.some((id) => !isFullySynced(loadSyncSet(simId, id)));
+}
+
+/**
+ * Objective score built from the *blueprint* question counts. Legacy mocks only
+ * stored rows for answered questions, so the row count would inflate the
+ * percentage and contradict "unanswered MCQs count as incorrect".
+ */
+function computeObjective(
+  sim: DbSimulation,
+  sections: DbSection[],
+  rows: DbAnswer[],
+) {
+  return objectiveScore(
+    sections.map((s) => {
+      const bp = getSection(sim.pathway, s.section_type);
+      const kind = bp?.kind ?? "mcq";
+      const sectionAnswers = rows.filter((a) => a.section_id === s.id);
+      return {
+        kind,
+        graded: gradedDenominator(kind, bp?.questions, sectionAnswers.length),
+        correct: sectionAnswers.filter((a) => a.is_correct === true).length,
+      };
+    }),
+  );
+}
 
 
 function formatTime(seconds: number): string {
@@ -186,6 +255,48 @@ function SimulationPage() {
   // Immediate lock: state updates do not flush fast enough to stop a double click.
   const finalizeLock = useRef(false);
   const finalizedRef = useRef(false);
+  // Guards the completed-load recovery so it runs at most once per mount and
+  // cannot form an effect loop.
+  const activityRecoveryRef = useRef(false);
+
+  /**
+   * The one place the canonical mock activity is written. The idempotency key is
+   * derived from the simulation id, so the study log suppresses duplicates and
+   * this is safe to call on every completed load.
+   */
+  const recordMockActivity = useCallback(
+    async (
+      simulation: DbSimulation,
+      allSections: DbSection[],
+      rows: DbAnswer[],
+    ): Promise<WriteResult> => {
+      const bp = getBlueprint(simulation.pathway);
+      const objective = computeObjective(simulation, allSections, rows);
+      const derived = totalElapsedSeconds(
+        allSections.map((s) => ({ elapsedSeconds: sectionElapsedSeconds(s) })),
+      );
+      const totalSeconds = Math.max(
+        0,
+        Math.round(simulation.total_time_seconds || derived),
+      );
+      return recordStudyActivity({
+        idempotencyKey: makeIdempotencyKey(...mockActivityKeyParts(simulation.id)),
+        activityType: "mock",
+        source: "mock",
+        actualMinutes: Math.round(totalSeconds / 60),
+        examPath: bp.examType,
+        subject: bp.examType,
+        note: `${bp.examType} — full simulation completed`,
+        metadata: {
+          pathway: simulation.pathway,
+          overallScore: simulation.overall_score ?? objective.percent,
+          gradedQuestions: objective.graded,
+          ungradedWrittenSections: objective.excludedWrittenSections,
+        },
+      });
+    },
+    [],
+  );
 
   const reload = useCallback(async () => {
     setLoadError(null);
@@ -209,8 +320,26 @@ function SimulationPage() {
       if (data.simulation.status === "completed") {
         finalizedRef.current = true;
         setPhase("results");
+        // Crash-window recovery: the simulation may have been marked completed
+        // before the activity record landed, which would leave a finished mock
+        // permanently absent from study_events.
+        if (!activityRecoveryRef.current) {
+          activityRecoveryRef.current = true;
+          try {
+            const result = await recordMockActivity(
+              data.simulation,
+              data.sections,
+              data.answers,
+            );
+            setMockSaveResult(result);
+          } catch (err) {
+            console.error("[mock] activity recovery failed", err);
+            setMockSaveResult({ ok: false, queued: false });
+          }
+        }
       }
     } catch (err) {
+
       console.error("[mock] load failed", err);
       setLoadError(
         err instanceof Error
@@ -220,7 +349,7 @@ function SimulationPage() {
     } finally {
       setLoading(false);
     }
-  }, [simId, navigate]);
+  }, [simId, navigate, recordMockActivity]);
 
   useEffect(() => {
     void reload();
@@ -272,49 +401,30 @@ function SimulationPage() {
         const totalSeconds = totalElapsedSeconds(
           allSections.map((s) => ({ elapsedSeconds: sectionElapsedSeconds(s) })),
         );
-        const objective = objectiveScore(
-          allSections.map((s) => {
-            const bp = getSection(sim.pathway, s.section_type);
-            const sectionAnswers = rows.filter((a) => a.section_id === s.id);
-            return {
-              kind: bp?.kind ?? "mcq",
-              // Every MCQ is graded: unanswered ones count as incorrect.
-              graded: sectionAnswers.length,
-              correct: sectionAnswers.filter((a) => a.is_correct === true).length,
-            };
-          }),
+        // Blueprint question counts are the graded denominator, so legacy mocks
+        // with sparse rows are not flattered.
+        const objective = computeObjective(sim, allSections, rows);
+
+        const { completedAt } = await completeSimulation(
+          sim.id,
+          objective.percent,
+          totalSeconds,
         );
-
-
-        if (!finalizedRef.current || sim.status !== "completed") {
-          await completeSimulation(sim.id, objective.percent, totalSeconds);
-        }
         finalizedRef.current = true;
-        setSim({
+        const completedSim: DbSimulation = {
           ...sim,
           status: "completed",
           overall_score: objective.percent,
           total_time_seconds: totalSeconds,
-          completed_at: sim.completed_at ?? new Date().toISOString(),
-        });
+          completed_at: completedAt,
+        };
+        setSim(completedSim);
         // One canonical activity record, keyed by the simulation, so refreshes
         // and retries cannot double-count it.
-        const result = await recordStudyActivity({
-          idempotencyKey: makeIdempotencyKey(...mockActivityKeyParts(sim.id)),
-          activityType: "mock",
-          source: "mock",
-          actualMinutes: Math.round(totalSeconds / 60),
-          examPath: blueprint.examType,
-          subject: blueprint.examType,
-          note: `${blueprint.examType} — full simulation completed`,
-          metadata: {
-            pathway: sim.pathway,
-            overallScore: objective.percent,
-            gradedQuestions: objective.graded,
-            ungradedWrittenSections: objective.excludedWrittenSections,
-          },
-        });
+        activityRecoveryRef.current = true;
+        const result = await recordMockActivity(completedSim, allSections, rows);
         setMockSaveResult(result);
+
         if (!result.ok && result.queued) {
           toast.warning(
             "Saved on this device — we'll sync your results when you're back online.",
@@ -334,7 +444,7 @@ function SimulationPage() {
         finalizeLock.current = false;
       }
     },
-    [sim, blueprint, answers],
+    [sim, blueprint, answers, recordMockActivity],
   );
 
 
@@ -434,7 +544,13 @@ function SimulationPage() {
 
 
   // OVERVIEW
+  // Known local-only drafts must not be described as synced to the account.
+  const localOnlyDrafts = hasLocalOnlyDrafts(
+    simId,
+    sections.map((s) => s.id),
+  );
   return (
+
     <>
       <AppShell
         title={blueprint.examType}
@@ -450,7 +566,9 @@ function SimulationPage() {
               Your sections
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Complete each section in order. Answers autosave to your account.
+              {localOnlyDrafts
+                ? "Complete each section in order. Some answers are saved on this device and still waiting to sync."
+                : "Complete each section in order. Answers autosave to your account."}
             </p>
           </div>
         </section>
@@ -459,9 +577,8 @@ function SimulationPage() {
           {sections.map((s, idx) => {
             const bp = getSection(sim.pathway, s.section_type)!;
             const sectionAnswers = answers.filter((a) => a.section_id === s.id);
-            const answered = sectionAnswers.filter(
-              (a) => a.answer_value || a.essay_text,
-            ).length;
+            const answered = sectionProgressCount(bp.kind, sectionAnswers);
+
             const done = s.status === "completed";
             const canStart =
               idx === 0 || sections[idx - 1].status === "completed";
@@ -590,9 +707,11 @@ function SimulationPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Exit simulation?</AlertDialogTitle>
             <AlertDialogDescription>
-              Your answers are saved. You can resume this simulation later from
-              the mocks page.
+              {localOnlyDrafts
+                ? "Some answers are still saved only on this device and have not been confirmed to your account yet. Resume on this device to finish syncing them."
+                : "Your answers are saved to your account. You can resume this simulation later from the mocks page."}
             </AlertDialogDescription>
+
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep going</AlertDialogCancel>
@@ -654,14 +773,41 @@ function SectionRunner({
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<"synced" | "local">("synced");
+  // Per-question dirty set: a successful save for one question must never clear
+  // another question's failure. Persisted so leaving/reloading keeps the truth.
+  const [unsynced, setUnsynced] = useState<SyncSet>(() =>
+    loadSyncSet(sim.id, dbSection.id),
+  );
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [retrying, setRetrying] = useState(false);
+  const [timerSyncFailed, setTimerSyncFailed] = useState(false);
   const submitLock = useRef(false);
   const [idx, setIdx] = useState(0);
   const questionEnteredAt = useRef(Date.now());
 
+  const unsyncedRef = useRef(unsynced);
+  unsyncedRef.current = unsynced;
+  const localRef = useRef(local);
+  localRef.current = local;
+  const retryingRef = useRef(false);
+  const allSynced = isFullySynced(unsynced);
+
+  const applyUnsynced = useCallback(
+    (fn: (prev: SyncSet) => SyncSet) => {
+      setUnsynced((prev) => {
+        const next = fn(prev);
+        if (next !== prev) saveSyncSet(sim.id, dbSection.id, next);
+        unsyncedRef.current = next;
+        return next;
+      });
+    },
+    [sim.id, dbSection.id],
+  );
+
   const secondsLeft = remainingSecondsFrom(timer, bpSection.durationSeconds, nowMs);
   const paused = timer.pausedAtMs != null;
   const elapsed = elapsedSecondsFrom(timer, nowMs);
+
 
   // Wall-clock refresh: recompute rather than decrement.
   useEffect(() => {
@@ -677,10 +823,12 @@ function SectionRunner({
         dbSection.id,
         next,
         elapsedSecondsFrom(next, atMs),
-      ).catch((err) => {
-        console.error("[mock] timer save failed", err);
-        setSaveState("local");
-      });
+      )
+        .then(() => setTimerSyncFailed(false))
+        .catch((err) => {
+          console.error("[mock] timer save failed", err);
+          setTimerSyncFailed(true);
+        });
     },
     [sim.id, dbSection.id],
   );
@@ -692,9 +840,9 @@ function SectionRunner({
     const t = setInterval(() => {
       const at = Date.now();
       saveCachedTimer(sim.id, dbSection.id, timer);
-      void saveSectionTiming(dbSection.id, timer, elapsedSecondsFrom(timer, at)).catch(
-        () => setSaveState("local"),
-      );
+      void saveSectionTiming(dbSection.id, timer, elapsedSecondsFrom(timer, at))
+        .then(() => setTimerSyncFailed(false))
+        .catch(() => setTimerSyncFailed(true));
     }, 60_000);
     return () => clearInterval(t);
   }, [paused, timer, sim.id, dbSection.id]);
@@ -728,24 +876,69 @@ function SectionRunner({
     };
   };
 
-  /** Autosave on navigation. Local drafts are always kept; failures surface. */
+  /** One remote write for a single question. Throws so the caller can keep it dirty. */
+  const saveOne = async (questionId: string, la: LocalAnswer) => {
+    const q = items.find((i) => i.id === questionId);
+    if (!q) return;
+    await upsertAnswer({
+      simulationId: sim.id,
+      sectionId: dbSection.id,
+      ...answerInputFor(q, la),
+    });
+  };
+
+  /**
+   * Bounded-backoff retry for every still-unconfirmed answer in this section.
+   * Also exposed as an explicit "Retry sync" action.
+   */
+  const retryDirty = async () => {
+    const ids = unsyncedIds(unsyncedRef.current);
+    if (!ids.length || retryingRef.current) return;
+    retryingRef.current = true;
+    setRetrying(true);
+    let anyFailed = false;
+    for (const qid of ids) {
+      try {
+        await saveOne(qid, localRef.current[qid] ?? {});
+        applyUnsynced((prev) => markSynced(prev, qid));
+      } catch (err) {
+        console.error("[mock] retry sync failed", qid, err);
+        anyFailed = true;
+      }
+    }
+    retryingRef.current = false;
+    setRetrying(false);
+    setRetryAttempt((a) => (anyFailed ? a + 1 : 0));
+  };
+
+  const retryRef = useRef<() => Promise<void>>(async () => {});
+  retryRef.current = retryDirty;
+
+  useEffect(() => {
+    if (isFullySynced(unsynced)) return;
+    const t = setTimeout(() => {
+      void retryRef.current();
+    }, retryDelayMs(retryAttempt));
+    return () => clearTimeout(t);
+  }, [unsynced, retryAttempt]);
+
+  /** Autosave on navigation. Local drafts are always kept; failures stay dirty. */
   const persistCurrent = (extraSeconds: number) => {
     const la: LocalAnswer = {
       ...currentLocal,
       timeSpentSeconds: (currentLocal.timeSpentSeconds ?? 0) + extraSeconds,
     };
     updateLocal(currentId, { timeSpentSeconds: la.timeSpentSeconds });
-    void upsertAnswer({
-      simulationId: sim.id,
-      sectionId: dbSection.id,
-      ...answerInputFor(current, la),
-    })
-      .then(() => setSaveState("synced"))
+    const qid = currentId;
+    // Dirty until this exact question is confirmed remotely.
+    applyUnsynced((prev) => markUnsynced(prev, qid));
+    void saveOne(qid, la)
+      .then(() => applyUnsynced((prev) => markSynced(prev, qid)))
       .catch((err) => {
         console.error("[mock] autosave failed", err);
-        setSaveState("local");
       });
   };
+
 
   const consumeQuestionTime = () => {
     const now = Date.now();
@@ -812,14 +1005,19 @@ function SectionRunner({
           ? err.message
           : "We couldn't submit this section. Your answers are saved on this device.",
       );
-      setSaveState("local");
+      // The bulk write did not land: the current answer stays dirty and the
+      // background retry keeps working on it.
+      applyUnsynced((prev) => markUnsynced(prev, currentId));
       setSubmitting(false);
       submitLock.current = false;
       return;
     }
 
-    setSaveState("synced");
+    // Only now is every changed answer in this section durably remote.
+    applyUnsynced(() => clearSyncSet());
+    clearStoredSyncSet(sim.id, dbSection.id);
     clearCachedTimer(sim.id, dbSection.id);
+
     toast.success("Section submitted.");
 
     const dbAnswers: DbAnswer[] = answerInputs.map((a) => ({
@@ -857,11 +1055,23 @@ function SectionRunner({
           <Progress value={((idx + 1) / items.length) * 100} className="mt-2 h-1.5 w-48" />
         </div>
         <div className="flex items-center gap-2">
-          {saveState === "local" && (
-            <span className="hidden text-xs text-muted-foreground sm:inline">
-              Saved locally — retrying
+          {(!allSynced || timerSyncFailed) && (
+            <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:inline-flex">
+              {retrying
+                ? "Retrying sync…"
+                : `Saved on this device · ${unsyncedIds(unsynced).length || 1} waiting to sync`}
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void retryDirty()}
+                disabled={retrying}
+                className="h-6 rounded-full px-2 text-xs"
+              >
+                Retry sync
+              </Button>
             </span>
           )}
+
           <Badge variant="outline" className="rounded-full">
             <Clock className="mr-1 h-3 w-3" /> {formatTime(secondsLeft)}
           </Badge>
@@ -951,11 +1161,14 @@ function SectionRunner({
             </Button>
             <div className="text-xs text-muted-foreground">
               {currentLocal.answerIndex != null || currentLocal.essayText
-                ? saveState === "synced"
-                  ? "Saved to your account"
-                  : "Saved on this device — retrying"
+                ? unsynced[currentId]
+                  ? "Saved on this device — retrying"
+                  : allSynced
+                    ? "Saved to your account"
+                    : "Saved to your account · other answers still syncing"
                 : "Not answered"}
             </div>
+
 
             {idx < items.length - 1 ? (
               <Button
@@ -1276,26 +1489,17 @@ function ResultsView({
   onRetake: () => void;
 }) {
   const navigate = useNavigate();
-  const [weakApplied, setWeakApplied] = useState(false);
   const blueprint = getBlueprint(sim.pathway);
 
   const mcqAnswers = answers.filter(
     (a) => getSection(sim.pathway, sections.find((s) => s.id === a.section_id)?.section_type ?? "")?.kind === "mcq",
   );
-  const answeredCount = mcqAnswers.filter((a) => a.answer_value !== null).length;
-  // Weighted by question count; written sections excluded rather than scored 0.
-  const objective = objectiveScore(
-    sections.map((s) => {
-      const bp = getSection(sim.pathway, s.section_type);
-      const sectionAnswers = answers.filter((a) => a.section_id === s.id);
-      return {
-        kind: bp?.kind ?? "mcq",
-        graded: sectionAnswers.length,
-        correct: sectionAnswers.filter((a) => a.is_correct === true).length,
-      };
-    }),
-  );
+  // Blank rows are not answers.
+  const answeredCount = countAnsweredMcq(mcqAnswers);
+  // Weighted by blueprint question count; written sections excluded, never 0.
+  const objective = computeObjective(sim, sections, answers);
   const accuracy = objective.percent;
+
   const flaggedCount = answers.filter((a) => a.is_flagged).length;
 
   // Topic breakdown (MCQ only — fall back to section title)
@@ -1346,7 +1550,8 @@ function ResultsView({
           {sections.map((s) => {
             const bp = getSection(sim.pathway, s.section_type)!;
             const sectionAnswers = answers.filter((a) => a.section_id === s.id);
-            const ans = sectionAnswers.length;
+            // Blank bulk-created rows are neither answered nor submitted.
+            const ans = sectionProgressCount(bp.kind, sectionAnswers);
             return (
               <div key={s.id} className="rounded-xl border border-border bg-background/60 p-4">
                 <div className="flex items-center justify-between">
@@ -1380,25 +1585,30 @@ function ResultsView({
               </li>
             ))}
           </ul>
-          <Button
-            className="mt-4 rounded-full"
-            variant="outline"
-            disabled={weakApplied}
-            onClick={() => {
-              // Explicit, one-time action: never re-applied on refresh or retry.
-              for (const w of weak) {
-                try {
-                  adjustModuleConfidence(w.name, -0.1);
-                } catch {}
-              }
-              setWeakApplied(true);
-              toast.success("Added weak areas to your study plan");
-            }}
-          >
-            {weakApplied ? "Added to your study plan" : "Add weak areas to my study plan"}
-          </Button>
+          {/* Your recorded mock answers already feed analytics and planning, so
+              there is no separate confidence adjustment to apply here. */}
+          <p className="mt-3 text-xs text-muted-foreground">
+            These results are already recorded in your analytics and feed your plan.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() => navigate({ to: "/analytics" })}
+            >
+              View analytics
+            </Button>
+            <Button
+              variant="outline"
+              className="rounded-full"
+              onClick={() => navigate({ to: "/practice" })}
+            >
+              Practise weak areas
+            </Button>
+          </div>
         </section>
       )}
+
 
 
       {saveResult && !saveResult.ok && saveResult.queued && (
