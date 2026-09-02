@@ -13,7 +13,7 @@
 // Timezone policy: `occurred_at` is UTC; `local_date` is derived from the
 // user's current IANA timezone and is the only key used for streaks/weeks.
 import { supabase } from "@/integrations/supabase/client";
-import { waitForAuthUser } from "@/lib/auth-session";
+import { getCachedAuthOwnerId, waitForAuthUser } from "@/lib/auth-session";
 import {
   addLegacySession,
   removeStudySession,
@@ -190,16 +190,35 @@ export function localDateFor(date: Date = new Date(), timeZone?: string | null):
 const QUEUE_KEY = "tentra.studylog.queue.v1";
 const LEDGER_KEY = "tentra.studylog.ledger.v1";
 
-type QueueItem =
+type QueueItem = (
   | { kind: "event"; payload: Record<string, unknown> }
   | { kind: "attempts"; payload: Record<string, unknown>[] }
   | { kind: "event_update"; idempotencyKey: string; payload: Record<string, unknown> }
-  | { kind: "void"; idempotencyKey: string };
+  | { kind: "void"; idempotencyKey: string }
+) & {
+  /**
+   * Account this queued write belongs to, captured in the originating session.
+   * Legacy items have none: they are retained but never uploaded, because
+   * "whoever signs in next" is not an owner.
+   */
+  ownerUserId?: string | null;
+};
 
 interface LedgerEntry {
   loggedAt: string;
   module?: string;
   previousConfidence?: number;
+  /** Owner of the local mirror mapping. Legacy entries have none. */
+  ownerUserId?: string | null;
+}
+
+/** Synchronous owner for offline-durable local writes. */
+export function currentLocalOwnerId(): string | null {
+  return getCachedAuthOwnerId();
+}
+
+function ownedBy(item: { ownerUserId?: string | null }, owner: string): boolean {
+  return !!item.ownerUserId && item.ownerUserId === owner;
 }
 
 function readJson<T>(key: string, fallback: T): T {
@@ -237,14 +256,35 @@ function writeJson(key: string, value: unknown): boolean {
   }
 }
 
-function ledger(): Record<string, LedgerEntry> {
+function allLedger(): Record<string, LedgerEntry> {
   return readJson<Record<string, LedgerEntry>>(LEDGER_KEY, {});
 }
 
-function setLedger(key: string, entry: LedgerEntry | null): boolean {
-  const all = ledger();
+/**
+ * Owner-scoped ledger view. Entries belonging to another account — or legacy
+ * ownerless entries — are invisible here, so one user's local mapping can never
+ * be used to resolve or mutate another user's canonical rows.
+ */
+function ledger(owner: string | null = currentLocalOwnerId()): Record<string, LedgerEntry> {
+  if (!owner) return {};
+  const out: Record<string, LedgerEntry> = {};
+  for (const [k, v] of Object.entries(allLedger())) {
+    if (v && ownedBy(v, owner)) out[k] = v;
+  }
+  return out;
+}
+
+function setLedger(
+  key: string,
+  entry: LedgerEntry | null,
+  owner: string | null = currentLocalOwnerId(),
+): boolean {
+  if (!owner) return false;
+  const all = allLedger();
+  const existing = all[key];
+  if (existing && !ownedBy(existing, owner)) return false; // never touch another owner's mapping
   if (entry === null) delete all[key];
-  else all[key] = entry;
+  else all[key] = { ...entry, ownerUserId: owner };
   return writeJson(LEDGER_KEY, all);
 }
 
@@ -253,12 +293,19 @@ function setLedger(key: string, entry: LedgerEntry | null): boolean {
  * there. Repeated retries coalesce by idempotency key, so the queue cannot grow
  * without bound.
  */
-function enqueueWrite(item: CanonicalWriteItem): boolean {
+function enqueueWrite(item: CanonicalWriteItem, owner: string | null): boolean {
   if (typeof window === "undefined") return false;
-  const before = readJson<AnyQueueItem[]>(QUEUE_KEY, []);
-  const next = coalesceWriteQueue(before, item).slice(-200);
-  if (!writeJson(QUEUE_KEY, next)) return false;
-  return queueContainsWrite(readJson<AnyQueueItem[]>(QUEUE_KEY, []), item);
+  // No owner means we cannot say whose work this is: fail closed rather than
+  // create an ambiguous item that could land in the wrong account.
+  if (!owner) return false;
+  const all = readJson<QueueItem[]>(QUEUE_KEY, []);
+  const others = all.filter((i) => !ownedBy(i, owner));
+  const mine = all.filter((i) => ownedBy(i, owner));
+  const owned = { ...item, ownerUserId: owner } as CanonicalWriteItem;
+  const next = coalesceWriteQueue(mine as AnyQueueItem[], owned).slice(-200);
+  if (!writeJson(QUEUE_KEY, [...others, ...next])) return false;
+  const after = readJson<QueueItem[]>(QUEUE_KEY, []).filter((i) => ownedBy(i, owner));
+  return queueContainsWrite(after as AnyQueueItem[], item);
 }
 
 
@@ -268,12 +315,16 @@ function enqueueWrite(item: CanonicalWriteItem): boolean {
  */
 function enqueueMutation(
   item: { kind: "event_update"; idempotencyKey: string; payload: Record<string, unknown> } | { kind: "void"; idempotencyKey: string },
+  owner: string | null = currentLocalOwnerId(),
 ): boolean {
   if (typeof window === "undefined") return false;
-  const before = readJson<AnyQueueItem[]>(QUEUE_KEY, []);
-  const next = coalesceQueue(before, item);
-  writeJson(QUEUE_KEY, next.slice(-200));
-  const after = readJson<AnyQueueItem[]>(QUEUE_KEY, []);
+  if (!owner) return false;
+  const all = readJson<QueueItem[]>(QUEUE_KEY, []);
+  const others = all.filter((i) => !ownedBy(i, owner));
+  const mine = all.filter((i) => ownedBy(i, owner));
+  const next = coalesceQueue(mine as AnyQueueItem[], { ...item, ownerUserId: owner } as never);
+  writeJson(QUEUE_KEY, [...others, ...next.slice(-200)]);
+  const after = readJson<QueueItem[]>(QUEUE_KEY, []).filter((i) => ownedBy(i, owner));
   if (item.kind === "void") {
     return after.some((i) => i.kind === "void" && i.idempotencyKey === item.idempotencyKey);
   }
@@ -301,9 +352,12 @@ export async function flushStudyLogQueue(): Promise<{ flushed: number; remaining
   const user = await waitForAuthUser();
   if (!user) return { flushed: 0, remaining: q.length };
 
-  const remaining: QueueItem[] = [];
+  // Items belonging to other accounts (or legacy ownerless items) are retained
+  // untouched: their user_id must never be rewritten to the current user.
+  const remaining: QueueItem[] = q.filter((item) => !ownedBy(item, user.id));
+  const mine = q.filter((item) => ownedBy(item, user.id));
   let flushed = 0;
-  for (const item of q) {
+  for (const item of mine) {
     try {
       if (item.kind === "event") {
         const { error } = await supabase
