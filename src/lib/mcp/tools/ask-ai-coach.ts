@@ -3,8 +3,7 @@ import { z } from "zod";
 import {
   buildSnapshot,
   callGateway,
-  loadPlan,
-  loadProfile,
+  loadAiContext,
   requireAccess,
 } from "../shared";
 
@@ -45,8 +44,11 @@ export default defineTool({
   handler: async ({ question }, ctx) => {
     const auth = await requireAccess(ctx);
     if (auth) return auth;
-    const [{ plan }, { profile }] = await Promise.all([loadPlan(ctx), loadProfile(ctx)]);
-    const { text: snapshot } = buildSnapshot(plan, profile);
+    // A plan/profile read error must stop us before the provider is called —
+    // answering from an accidentally blank context is not acceptable here.
+    const context = await loadAiContext(ctx);
+    if (!context.ok) return context.error;
+    const { text: snapshot } = buildSnapshot(context.plan, context.profile);
     const { text, error } = await callGateway({
       systemPrompt: SYSTEM_PROMPT + snapshot,
       userPrompt: question,
