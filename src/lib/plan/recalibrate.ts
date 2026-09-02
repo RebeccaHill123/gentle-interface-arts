@@ -11,6 +11,7 @@ import type { OnboardingInput } from "@/lib/plan-store";
 import { addDaysKey } from "./dates";
 import { evidenceSignature, prioritiseSubjects } from "./priority";
 import { dedupeTasksById } from "./repair";
+import { localDateFor } from "@/lib/study-log";
 import { buildSchedule, DEFAULT_HORIZON_DAYS, MAX_DAY_MINUTES } from "./schedule";
 
 import type {
