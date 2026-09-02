@@ -186,6 +186,93 @@ describe("merge safety", () => {
     expect(new Set(ids(merged)).size).toBe(merged.tasks.length);
     expect(merged.tasks.filter((t) => t.id === base.tasks[0].id)).toHaveLength(1);
   });
+
+  it("keeps the active future moved copy when the remote copy is still dirty", () => {
+    const original = base.tasks[0];
+    const futureCopy: ScheduledTask = {
+      ...original,
+      date: "2026-03-11",
+      status: "scheduled",
+      movedFrom: original.date,
+    };
+    const dirtyRemote: PlanSchedule = {
+      ...base,
+      scheduleVersion: base.scheduleVersion + 3,
+      tasks: [
+        { ...original, status: "skipped" },
+        { ...original, status: "skipped" },
+        ...base.tasks.slice(1),
+        futureCopy,
+      ],
+    };
+    const cleanLocal: PlanSchedule = {
+      ...base,
+      tasks: [...base.tasks.slice(1), futureCopy],
+    };
+    const merged = mergeSchedules(dirtyRemote, cleanLocal, LATER);
+    const kept = merged.tasks.filter((t) => t.id === original.id);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].status).toBe("scheduled");
+    expect(kept[0].date).toBe("2026-03-11");
+    expect(kept[0].movedFrom).toBe(original.date);
+    expect(new Set(ids(merged)).size).toBe(merged.tasks.length);
+  });
+
+  it("prefers a completed copy over an active future moved duplicate", () => {
+    const original = base.tasks[0];
+    const futureCopy: ScheduledTask = {
+      ...original,
+      date: "2026-03-11",
+      status: "scheduled",
+      movedFrom: original.date,
+    };
+    const remote: PlanSchedule = {
+      ...base,
+      scheduleVersion: base.scheduleVersion + 1,
+      tasks: [...base.tasks.slice(1), futureCopy],
+    };
+    const local = setTaskStatus(base, original.id, "completed", { actualMinutes: 40 });
+    const merged = mergeSchedules(remote, local, LATER);
+    const kept = merged.tasks.filter((t) => t.id === original.id);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].status).toBe("completed");
+    expect(kept[0].actualMinutes).toBe(40);
+  });
+
+  it("keeps a genuine skip over a stale ordinary scheduled copy", () => {
+    const original = base.tasks[0];
+    const remote: PlanSchedule = {
+      ...base,
+      scheduleVersion: base.scheduleVersion + 1,
+      tasks: base.tasks,
+    };
+    const local = setTaskStatus(base, original.id, "skipped", { skipReason: "no-time" });
+    const merged = mergeSchedules(remote, local, TODAY);
+    const kept = merged.tasks.filter((t) => t.id === original.id);
+    expect(kept).toHaveLength(1);
+    expect(kept[0].status).toBe("skipped");
+  });
+
+  it("merge then repair again is a no-op", () => {
+    const original = base.tasks[0];
+    const futureCopy: ScheduledTask = {
+      ...original,
+      date: "2026-03-11",
+      status: "scheduled",
+      movedFrom: original.date,
+    };
+    const dirtyRemote: PlanSchedule = {
+      ...base,
+      scheduleVersion: base.scheduleVersion + 2,
+      tasks: [{ ...original, status: "skipped" }, ...base.tasks.slice(1), futureCopy],
+    };
+    const merged = mergeSchedules(dirtyRemote, base, LATER);
+    const again = repairSchedule(merged, LATER);
+    expect(again.changed).toBe(false);
+    expect(JSON.stringify(mergeSchedules(merged, merged, LATER).tasks)).toBe(
+      JSON.stringify(merged.tasks),
+    );
+  });
 });
 
 describe("weekly review", () => {
