@@ -7,6 +7,8 @@ import {
   flushPlanSync,
   isPlanSyncDirty,
   markPlanDirty,
+  PLAN_SYNC_KEY,
+
   savePlanDurable,
   type PlanSyncDeps,
   type PlanSyncOutcome,
