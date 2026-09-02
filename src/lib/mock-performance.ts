@@ -26,6 +26,12 @@ const EMPTY: MockPerformance = {
   perTopic: [],
 };
 
+/** Read bounds: keep these queries fast as a user's mock history grows. */
+const MAX_SIMULATIONS = 40;
+const MAX_SECTIONS = 400;
+const MAX_ANSWERS = 5000;
+
+
 /**
  * Loads every graded MCQ answer the current user has for their pathway
  * and buckets them by question topic (as defined in the bank).
