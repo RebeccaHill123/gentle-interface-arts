@@ -601,20 +601,20 @@ function SectionRunner({
   sim,
   dbSection,
   bpSection,
+  initialTimer,
   local,
   updateLocal,
   onExit,
   onSubmitted,
-  onFullyComplete,
 }: {
   sim: DbSimulation;
   dbSection: DbSection;
   bpSection: SectionBlueprint;
+  initialTimer: TimerState | null;
   local: LocalState;
   updateLocal: (questionId: string, patch: Partial<LocalAnswer>) => void;
   onExit: () => void;
   onSubmitted: (updatedSection: DbSection, answers: DbAnswer[]) => Promise<void>;
-  onFullyComplete: (totalSeconds: number, overallScore: number | null) => Promise<void>;
 }) {
   const questions = useMemo(
     () => generateQuestionsForSection(sim.pathway, bpSection),
@@ -626,35 +626,76 @@ function SectionRunner({
     return questions.mpt ?? [];
   }, [bpSection.kind, questions]);
 
-  const [idx, setIdx] = useState(0);
-  const [secondsLeft, setSecondsLeft] = useState(bpSection.durationSeconds);
-  const [paused, setPaused] = useState(false);
+  const isExam = sim.mode === "exam";
+
+  // Authoritative timer: derived from persisted timestamps, so backgrounding
+  // the tab or reloading the page can never hand back time.
+  const [timer, setTimer] = useState<TimerState>(() =>
+    resolveTimerState({
+      mode: sim.mode,
+      stored: initialTimer ?? sectionTimer(dbSection),
+      cached: loadCachedTimer(sim.id, dbSection.id),
+      startedAtIso: dbSection.started_at,
+      nowMs: Date.now(),
+    }),
+  );
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [submitting, setSubmitting] = useState(false);
-  const startedAt = useRef(Date.now());
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<"synced" | "local">("synced");
+  const submitLock = useRef(false);
+  const [idx, setIdx] = useState(0);
   const questionEnteredAt = useRef(Date.now());
 
-  // Initial timer
-  useEffect(() => {
-    setSecondsLeft(bpSection.durationSeconds);
-  }, [bpSection.durationSeconds]);
+  const secondsLeft = remainingSecondsFrom(timer, bpSection.durationSeconds, nowMs);
+  const paused = timer.pausedAtMs != null;
+  const elapsed = elapsedSecondsFrom(timer, nowMs);
 
-  // Tick
+  // Wall-clock refresh: recompute rather than decrement.
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const persistTimer = useCallback(
+    (next: TimerState, atMs: number) => {
+      setTimer(next);
+      saveCachedTimer(sim.id, dbSection.id, next);
+      void saveSectionTiming(
+        dbSection.id,
+        next,
+        elapsedSecondsFrom(next, atMs),
+      ).catch((err) => {
+        console.error("[mock] timer save failed", err);
+        setSaveState("local");
+      });
+    },
+    [sim.id, dbSection.id],
+  );
+
+  // Keep the persisted running elapsed roughly current so a crash mid-section
+  // does not report the planned duration later.
   useEffect(() => {
     if (paused) return;
     const t = setInterval(() => {
-      setSecondsLeft((s: number) => (s > 0 ? s - 1 : 0));
-    }, 1000);
+      const at = Date.now();
+      saveCachedTimer(sim.id, dbSection.id, timer);
+      void saveSectionTiming(dbSection.id, timer, elapsedSecondsFrom(timer, at)).catch(
+        () => setSaveState("local"),
+      );
+    }, 60_000);
     return () => clearInterval(t);
-  }, [paused]);
+  }, [paused, timer, sim.id, dbSection.id]);
 
-  // Auto-submit when timer runs out
+  // Auto-submit when the clock runs out — the same finalisation path as the button.
   useEffect(() => {
-    if (secondsLeft === 0 && !submitting) {
+    if (secondsLeft === 0 && !submitLock.current) {
       toast.message("Time's up — auto-submitting your section.");
-      submit();
+      void submit();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secondsLeft]);
+
 
   const isExam = sim.mode === "exam";
   const current = items[idx];
