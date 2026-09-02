@@ -146,6 +146,13 @@ function saveCachedTimer(simId: string, sectionId: string, timer: TimerState) {
     localStorage.setItem(timerKey(simId, sectionId), JSON.stringify(timer));
   } catch {}
 }
+function clearCachedTimer(simId: string, sectionId: string) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(timerKey(simId, sectionId));
+  } catch {}
+}
+
 
 
 function formatTime(seconds: number): string {
