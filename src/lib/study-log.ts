@@ -421,7 +421,7 @@ export async function voidStudyActivity(idempotencyKey: string): Promise<WriteRe
     if (error) throw error;
     return { ok: true, queued: false };
   } catch (e) {
-    enqueue({ kind: "void", idempotencyKey });
+    enqueueMutation({ kind: "void", idempotencyKey });
     return {
       ok: false,
       queued: true,
