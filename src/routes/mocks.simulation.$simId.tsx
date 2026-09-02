@@ -1719,14 +1719,19 @@ function ResultsView({
 
 
 
-      {saveResult && !saveResult.ok && saveResult.queued && (
+      {saveResult && !saveResult.ok && (
         <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-200">
-          <span>Saved on this device — we'll sync your results when you're back online.</span>
+          <span>
+            {saveResult.queued
+              ? "Saved on this device — we'll sync your results when you're back online."
+              : "This mock isn't recorded in your study history yet. Retry to record it."}
+          </span>
           <Button size="sm" variant="outline" onClick={onRetrySave} className="rounded-full">
             Retry
           </Button>
         </section>
       )}
+
 
       <div className="mt-6 flex flex-wrap gap-3">
         <Button onClick={onRetake} className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow">
