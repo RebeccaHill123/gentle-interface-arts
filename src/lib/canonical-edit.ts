@@ -177,6 +177,15 @@ export function coalesceQueue(queue: AnyQueueItem[], item: QueuedMutation): AnyQ
 
 // ───────── orchestration
 
+/** Adapters throw an error with this name when an owner-scoped write matched no row. */
+export const NO_MATCH = "NoMatchError";
+
+export function noMatchError(message: string): Error {
+  const err = new Error(message);
+  err.name = NO_MATCH;
+  return err;
+}
+
 async function commit(
   port: CanonicalPort,
   loggedAt: string,
@@ -198,6 +207,11 @@ async function commit(
     return { status: "confirmed" };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Could not reach your account";
+    // A verified "no row matched" is not a transport failure: queueing it would
+    // only replay a write that can never match. Report it honestly instead.
+    if (e instanceof Error && e.name === NO_MATCH) {
+      return { status: "failed", reason: "unmapped", error: message };
+    }
     if (queue(res.idempotencyKey, res.event)) {
       // Durably queued, so the mirror may move now — it will be reconciled.
       mirror();
