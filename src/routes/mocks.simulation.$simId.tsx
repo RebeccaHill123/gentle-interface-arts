@@ -1147,7 +1147,8 @@ function SectionRunner({
             <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:inline-flex">
               {retrying
                 ? "Retrying sync…"
-                : `Saved on this device · ${unsyncedIds(unsynced).length || 1} waiting to sync`}
+                : pendingSyncLabel(unsyncedIds(unsynced).length, timerSyncFailed)}
+
               <Button
                 size="sm"
                 variant="ghost"
