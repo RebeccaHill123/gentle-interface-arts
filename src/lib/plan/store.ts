@@ -25,6 +25,8 @@ import {
   recalibrate,
   setTaskStatus,
 } from "./recalibrate";
+import { repairSchedule } from "./repair";
+
 import type {
   PlanRevisionRecord,
   PlanSchedule,
@@ -113,7 +115,14 @@ export async function ensureSchedule(
 ): Promise<EnsureScheduleResult> {
   const today = options.today ?? localDateFor();
   const evidence = buildPlanEvidence(stored.input, analytics, today);
-  const existing = getSchedule(stored);
+  // Self-heal first: a schedule corrupted by the historical duplicate-task bug
+  // is repaired deterministically before any recalibration decision is made.
+  const raw = getSchedule(stored);
+  const repair = raw ? repairSchedule(raw, today) : null;
+  const existing = repair?.schedule ?? null;
+  if (repair?.changed) {
+    console.warn(`plan repair: removed ${repair.removed} duplicate task record(s)`);
+  }
   const idle = evidence.daysSinceLastActivity;
   const effectiveTrigger: RecalibrationTrigger =
     !existing
@@ -130,7 +139,15 @@ export async function ensureSchedule(
   });
 
   if (!result.changed && existing) {
-    return { stored, schedule: existing, revision: null };
+    // Persist the repair itself exactly once — repeated loads find it clean and
+    // save nothing, so no render/save loop is possible.
+    if (!repair?.changed) return { stored, schedule: existing, revision: null };
+    const repaired = applySchedule(stored, existing, today);
+    if (options.persist !== false) {
+      savePlan(repaired);
+      void persistSchedule(repaired).catch((e) => console.warn("persistSchedule failed", e));
+    }
+    return { stored: repaired, schedule: existing, revision: null };
   }
 
   const next = applySchedule(stored, result.schedule, today);
@@ -142,6 +159,7 @@ export async function ensureSchedule(
     }
   }
   return { stored: next, schedule: result.schedule, revision: result.revision };
+
 }
 
 /** Best-effort audit trail of every accepted recalibration. Never blocks the UI. */
