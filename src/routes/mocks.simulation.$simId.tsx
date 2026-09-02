@@ -67,7 +67,9 @@ import {
 } from "@/lib/full-mock-store";
 import {
   clearSyncSet,
+  clearSyncSet,
   countAnsweredMcq,
+
   elapsedSecondsFrom,
   finalAnswerSnapshot,
   gradedDenominator,
