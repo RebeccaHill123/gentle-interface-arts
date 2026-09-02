@@ -91,6 +91,60 @@ export async function loadProfile(
   return { profile: (data as Record<string, unknown> | null) ?? null };
 }
 
+export const CONTEXT_UNAVAILABLE_TEXT =
+  "Tentra couldn't load this user's study data right now. Ask them to try again in a moment.";
+
+/**
+ * Pure classification of plan/profile read outcomes.
+ *
+ * A database error is NOT "no plan": it must stop the tool before any provider
+ * call, because answering from an accidentally blank context is worse than
+ * saying we're temporarily unavailable.
+ */
+export function classifyContextLoad(input: {
+  planError?: string | undefined;
+  profileError?: string | undefined;
+}): { ok: true } | { ok: false; text: string } {
+  if (input.planError || input.profileError) {
+    return { ok: false, text: CONTEXT_UNAVAILABLE_TEXT };
+  }
+  return { ok: true };
+}
+
+/**
+ * Loads plan + profile for an AI tool and fails closed on any read error.
+ * Returns `{ error }` as a ToolResult the caller must return immediately.
+ */
+export async function loadAiContext(ctx: ToolContext): Promise<
+  | { ok: true; plan: StoredPlan | null; profile: Record<string, unknown> | null }
+  | { ok: false; error: ToolResult }
+> {
+  let planResult: Awaited<ReturnType<typeof loadPlan>>;
+  let profileResult: Awaited<ReturnType<typeof loadProfile>>;
+  try {
+    [planResult, profileResult] = await Promise.all([loadPlan(ctx), loadProfile(ctx)]);
+  } catch (e) {
+    console.error("mcp context read threw", e);
+    return {
+      ok: false,
+      error: { content: [{ type: "text", text: CONTEXT_UNAVAILABLE_TEXT }], isError: true },
+    };
+  }
+  const decision = classifyContextLoad({
+    planError: planResult.error,
+    profileError: profileResult.error,
+  });
+  if (!decision.ok) {
+    console.error("mcp context read failed", planResult.error ?? profileResult.error);
+    return {
+      ok: false,
+      error: { content: [{ type: "text", text: decision.text }], isError: true },
+    };
+  }
+  return { ok: true, plan: planResult.plan, profile: profileResult.profile };
+}
+
+
 export function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
 }

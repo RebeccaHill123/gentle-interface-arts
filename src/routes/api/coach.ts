@@ -145,13 +145,19 @@ export const Route = createFileRoute("/api/coach")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const jsonError = (status: number, error: string) =>
+          new Response(JSON.stringify({ error }), {
+            status,
+            headers: { "Content-Type": "application/json" },
+          });
         try {
           const SUPABASE_URL = process.env.SUPABASE_URL;
           const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
           const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
 
           if (!LOVABLE_API_KEY) {
-            return new Response(JSON.stringify({ error: "AI not configured" }), { status: 500 });
+            console.error("coach: LOVABLE_API_KEY not configured");
+            return jsonError(500, "The Coach is temporarily unavailable. Please try again shortly.");
           }
 
           const token = bearerToken(request.headers.get("authorization"));
@@ -165,8 +171,10 @@ export const Route = createFileRoute("/api/coach")({
           }
 
           if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-            return new Response(JSON.stringify({ error: "Auth not configured" }), { status: 500 });
+            console.error("coach: Supabase env missing");
+            return jsonError(500, "The Coach is temporarily unavailable. Please try again shortly.");
           }
+
           const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
             global: { headers: { Authorization: `Bearer ${token}` } },
             auth: { persistSession: false, autoRefreshToken: false },
@@ -194,11 +202,9 @@ export const Route = createFileRoute("/api/coach")({
           const rawBody = await request.json().catch(() => null);
           const parsed = validateChatMessages(rawBody);
           if (!parsed.ok) {
-            return new Response(JSON.stringify({ error: parsed.error }), {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            });
+            return jsonError(400, parsed.error);
           }
+
           const messages = parsed.value;
 
           const { data: nameRow, error: nameError } = await supabase
@@ -245,24 +251,30 @@ export const Route = createFileRoute("/api/coach")({
 
           if (!aiRes.ok) {
             if (aiRes.status === 429) {
-              return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again shortly." }), { status: 429 });
+              return jsonError(429, "The Coach is busy right now. Please try again in a moment.");
             }
             if (aiRes.status === 402) {
-              return new Response(JSON.stringify({ error: "AI credits exhausted. Add funds in Workspace settings." }), { status: 402 });
+              // Operator-facing detail (credits/billing) stays in server logs only.
+              console.error("Coach AI gateway 402 — workspace AI credits unavailable");
+              return jsonError(
+                402,
+                "The Coach is temporarily unavailable. Please try again later.",
+              );
             }
             const t = await aiRes.text();
             console.error("Coach AI gateway error", aiRes.status, t.slice(0, 400));
-            return new Response(JSON.stringify({ error: "AI gateway error" }), { status: 502 });
-
+            return jsonError(502, "The Coach is temporarily unavailable. Please try again shortly.");
           }
 
           return new Response(aiRes.body, {
             headers: { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" },
           });
         } catch (e) {
+          // Log the internal detail; never return provider/database/config text.
           console.error("coach error", e);
-          return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown" }), { status: 500 });
+          return jsonError(500, "Something went wrong. Please try again.");
         }
+
       },
     },
   },

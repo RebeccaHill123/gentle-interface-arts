@@ -1,29 +1,50 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { buildSnapshot, loadPlan, loadProfile, requireAccess } from "../shared";
-
-type Question = {
-  prompt: string;
-  options: string[];
-  correctIndex: number;
-  explanation: string;
-};
+import { buildSnapshot, loadAiContext, requireAccess } from "../shared";
+import {
+  MAX_SUBJECT_CHARS,
+  MAX_TOPIC_CHARS,
+  validateMiniTestInput,
+  validateMiniTestQuestions,
+} from "../mini-test-validate";
 
 export default defineTool({
   name: "generate_mini_test",
   title: "Generate a mini test",
   description:
-    "Read-only. Generates a short single-best-answer mini test (default 5 questions) for the signed-in user. If no subject is provided, targets the user's weakest area. Uses their exam type (SQE1 / SQE2 / UBE / MPRE) automatically. Returns questions with 4 options each, the correct index, and a brief explanation.",
+    "Read-only. Generates a short single-best-answer mini test (default 5 questions) for the signed-in user. If no subject is provided, targets the user's weakest area. Uses their exam type (SQE1 / SQE2 / UBE / MPRE) automatically. Returns questions with 4 options each, the correct index, and a brief explanation. Requires active Tentra access (subscription or trial).",
   inputSchema: {
-    subject: z.string().trim().min(1).optional().describe("Module/subject to test. Omit to auto-pick the user's weakest area."),
-    topic: z.string().trim().min(1).optional().describe("Optional narrower topic within the subject."),
+    subject: z
+      .string()
+      .trim()
+      .min(1)
+      .max(MAX_SUBJECT_CHARS)
+      .optional()
+      .describe("Module/subject to test. Omit to auto-pick the user's weakest area."),
+    topic: z
+      .string()
+      .trim()
+      .min(1)
+      .max(MAX_TOPIC_CHARS)
+      .optional()
+      .describe("Optional narrower topic within the subject."),
     questionCount: z.number().int().min(3).max(10).optional().describe("Number of questions (default 5)."),
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: false },
   handler: async ({ subject, topic, questionCount }, ctx) => {
     const auth = await requireAccess(ctx);
     if (auth) return auth;
-    const [{ plan }, { profile }] = await Promise.all([loadPlan(ctx), loadProfile(ctx)]);
+    const bounded = validateMiniTestInput({ subject, topic, questionCount });
+    if (!bounded.ok) {
+      return { content: [{ type: "text", text: bounded.error }], isError: true };
+    }
+    subject = bounded.value.subject;
+    topic = bounded.value.topic;
+
+    // A plan/profile read error is not "no plan" — stop before the provider.
+    const context = await loadAiContext(ctx);
+    if (!context.ok) return context.error;
+    const { plan, profile } = context;
     if (!plan) {
       return {
         content: [
@@ -47,7 +68,7 @@ export default defineTool({
     }
     const confidence =
       plan.input.modules.find((m) => m.name === targetModule)?.confidence ?? 3;
-    const count = questionCount ?? 5;
+    const count = bounded.value.questionCount;
 
     const key = process.env.LOVABLE_API_KEY;
     if (!key) {
@@ -116,19 +137,23 @@ export default defineTool({
       choices?: { message?: { tool_calls?: { function?: { arguments?: string } }[] } }[];
     };
     const args = data.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
-    let questions: Question[] = [];
+    let rawQuestions: unknown = null;
     try {
       const parsed = args ? JSON.parse(args) : null;
-      if (parsed && Array.isArray(parsed.questions)) questions = parsed.questions;
+      if (parsed && typeof parsed === "object") rawQuestions = (parsed as Record<string, unknown>)["questions"];
     } catch {
-      // fallthrough
+      // fallthrough — treated as malformed below
     }
-    if (questions.length === 0) {
+    // Never return raw provider tool arguments: validate shape before use.
+    const validated = validateMiniTestQuestions(rawQuestions, count);
+    if (!validated.ok) {
+      console.error("mini test validation failed", validated.error);
       return {
         content: [{ type: "text", text: "Could not generate the mini test — please try again." }],
         isError: true,
       };
     }
+    const questions = validated.value;
     const payload = { subject: targetModule, topic: topic ?? null, examType, questions };
     return {
       content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
