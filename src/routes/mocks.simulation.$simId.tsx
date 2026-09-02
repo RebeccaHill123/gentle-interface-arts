@@ -970,6 +970,16 @@ function SectionRunner({
               </Button>
             )}
           </div>
+
+          {submitError && (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
+              <span>{submitError}</span>
+              <Button size="sm" variant="outline" onClick={() => void submit()} className="rounded-full">
+                Retry submit
+              </Button>
+            </div>
+          )}
+
         </div>
 
         <aside className="hidden md:block">
