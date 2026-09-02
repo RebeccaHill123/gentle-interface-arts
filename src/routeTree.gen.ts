@@ -34,6 +34,7 @@ import { Route as CommunityRouteImport } from './routes/community'
 import { Route as CoachRouteImport } from './routes/coach'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AnalyticsRouteImport } from './routes/analytics'
+import { Route as AccessUnavailableRouteImport } from './routes/access-unavailable'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FocusIndexRouteImport } from './routes/focus.index'
 import { Route as FocusSummaryRouteImport } from './routes/focus.summary'
@@ -176,6 +177,11 @@ const AnalyticsRoute = AnalyticsRouteImport.update({
   path: '/analytics',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AccessUnavailableRoute = AccessUnavailableRouteImport.update({
+  id: '/access-unavailable',
+  path: '/access-unavailable',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -264,6 +270,7 @@ const ApiPublicPaymentsWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/access-unavailable': typeof AccessUnavailableRoute
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
@@ -307,6 +314,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/access-unavailable': typeof AccessUnavailableRoute
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
@@ -350,6 +358,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/access-unavailable': typeof AccessUnavailableRoute
   '/analytics': typeof AnalyticsRoute
   '/auth': typeof AuthRoute
   '/coach': typeof CoachRoute
@@ -395,6 +404,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/access-unavailable'
     | '/analytics'
     | '/auth'
     | '/coach'
@@ -438,6 +448,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/access-unavailable'
     | '/analytics'
     | '/auth'
     | '/coach'
@@ -480,6 +491,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/access-unavailable'
     | '/analytics'
     | '/auth'
     | '/coach'
@@ -524,6 +536,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccessUnavailableRoute: typeof AccessUnavailableRoute
   AnalyticsRoute: typeof AnalyticsRoute
   AuthRoute: typeof AuthRoute
   CoachRoute: typeof CoachRoute
@@ -739,6 +752,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalyticsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/access-unavailable': {
+      id: '/access-unavailable'
+      path: '/access-unavailable'
+      fullPath: '/access-unavailable'
+      preLoaderRoute: typeof AccessUnavailableRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -880,6 +900,7 @@ const MocksRouteWithChildren = MocksRoute._addFileChildren(MocksRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccessUnavailableRoute: AccessUnavailableRoute,
   AnalyticsRoute: AnalyticsRoute,
   AuthRoute: AuthRoute,
   CoachRoute: CoachRoute,
