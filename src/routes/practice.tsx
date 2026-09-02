@@ -1151,7 +1151,7 @@ function ResultsScreen({
         <Insight title="Timing analysis" icon={Timer}>
           <p className="text-sm text-muted-foreground">{pacingNote}</p>
           {positiveMs.length === 0 ? (
-            <p className="mt-3 text-[11px] text-muted-foreground">No timing data — —</p>
+            <p className="mt-3 text-[11px] text-muted-foreground">— No timing data for this session yet.</p>
           ) : (
             <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
               <div>
