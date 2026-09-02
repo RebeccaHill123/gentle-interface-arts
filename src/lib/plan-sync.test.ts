@@ -4,6 +4,8 @@ import {
   confirmPlanSynced,
   decidePlanPull,
   flushPlanSync,
+  hasForeignDirtyPlan,
+  listQuarantinedPlans,
   isPlanSyncDirty,
   markPlanDirty,
   readPlanSyncMarker,
@@ -35,19 +37,23 @@ function plan(tag: string): StoredPlan {
 
 function makeDeps(
   storage: PlanSyncStorage,
-  push: (p: StoredPlan) => Promise<void>,
-  opts: { failLocalWrite?: boolean } = {},
+  push: (p: StoredPlan, owner: string) => Promise<void>,
+  opts: { failLocalWrite?: boolean; owner?: string | null } = {},
 ): PlanSyncDeps & { local: { plan: StoredPlan | null } } {
   const local: { plan: StoredPlan | null } = { plan: null };
   return {
     local,
     storage,
+    ownerUserId: opts.owner === undefined ? "user-a" : opts.owner,
     writePlan: (p) => {
       if (opts.failLocalWrite) return false;
       local.plan = p;
       return true;
     },
     readPlan: () => local.plan,
+    clearPlan: () => {
+      local.plan = null;
+    },
     pushPlan: push,
   };
 }
@@ -202,7 +208,7 @@ describe("confirmPlanSynced", () => {
   it("cannot mark a revision that does not exist yet", () => {
     const deps = makeDeps(fakeStorage(), async () => {});
     markPlanDirty(deps, plan("a"));
-    confirmPlanSynced(deps, 99);
+    confirmPlanSynced(deps, 99, "user-a");
     expect(readPlanSyncMarker(deps)).toMatchObject({ revision: 1, syncedRevision: 1 });
   });
 
@@ -210,8 +216,8 @@ describe("confirmPlanSynced", () => {
     const deps = makeDeps(fakeStorage(), async () => {});
     markPlanDirty(deps, plan("a"));
     markPlanDirty(deps, plan("b"));
-    confirmPlanSynced(deps, 2);
-    confirmPlanSynced(deps, 1);
+    confirmPlanSynced(deps, 2, "user-a");
+    confirmPlanSynced(deps, 1, "user-a");
     expect(readPlanSyncMarker(deps).syncedRevision).toBe(2);
   });
 });
@@ -219,7 +225,10 @@ describe("confirmPlanSynced", () => {
 describe("readPlanSyncMarker", () => {
   it("ignores unknown/corrupt marker versions", () => {
     const storage = fakeStorage();
-    storage.setItem(PLAN_SYNC_KEY, JSON.stringify({ version: 99, revision: 7, syncedRevision: 0 }));
+    storage.setItem(
+      PLAN_SYNC_KEY,
+      JSON.stringify({ version: 99, revision: 7, syncedRevision: 0, ownerUserId: "user-a" }),
+    );
     const deps = makeDeps(storage, async () => {});
     expect(readPlanSyncMarker(deps)).toMatchObject({ revision: 0, syncedRevision: 0 });
     storage.setItem(PLAN_SYNC_KEY, "{not json");
