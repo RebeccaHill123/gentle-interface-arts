@@ -329,12 +329,39 @@ function SimulationPage() {
 
 
   // Render
-  if (loading || !sim || !blueprint) {
+  if (loading) {
     return (
       <AppShell title="Loading simulation…">
         <div className="grid place-items-center py-24">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
+      </AppShell>
+    );
+  }
+
+  if (loadError || !sim || !blueprint) {
+    return (
+      <AppShell title="Simulation">
+        <section className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
+          <h2 className="text-lg font-semibold">We couldn't load this simulation</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {loadError ?? "Your work is safe on this device."}
+          </p>
+          <div className="mt-4 flex gap-3">
+            <Button
+              onClick={() => {
+                setLoading(true);
+                void reload();
+              }}
+              className="rounded-full"
+            >
+              Try again
+            </Button>
+            <Button variant="ghost" onClick={() => navigate({ to: "/mocks" })} className="rounded-full">
+              Back to mocks
+            </Button>
+          </div>
+        </section>
       </AppShell>
     );
   }
@@ -364,13 +391,15 @@ function SimulationPage() {
         sim={sim}
         dbSection={dbSection}
         bpSection={bpSection}
+        initialTimer={activeTimer}
         local={local}
         updateLocal={updateLocal}
         onExit={() => setExitConfirm(true)}
         onSubmitted={async (updatedSection, sectionAnswers) => {
-          setSections((prev) =>
-            prev.map((s) => (s.id === updatedSection.id ? updatedSection : s)),
+          const nextSections = sections.map((s) =>
+            s.id === updatedSection.id ? updatedSection : s,
           );
+          setSections(nextSections);
           setAnswers((prev) => {
             const ids = new Set(sectionAnswers.map((a) => a.question_id));
             const filtered = prev.filter(
@@ -380,44 +409,17 @@ function SimulationPage() {
             return [...filtered, ...sectionAnswers];
           });
           setActiveSectionId(null);
+          setActiveTimer(null);
           setPhase("overview");
-        }}
-        onFullyComplete={async (totalSeconds, overallScore) => {
-          await completeSimulation(sim.id, overallScore, totalSeconds);
-          setSim({
-            ...sim,
-            status: "completed",
-            total_time_seconds: totalSeconds,
-            overall_score: overallScore,
-            completed_at: new Date().toISOString(),
-          });
-          // overallScore is a 0-100 percentage (see sectionScore/overall calc above);
-          // convert to 0..1 for gradedAccuracy. Per-topic confidence is already
-          // applied per-section via adjustModuleConfidence above, so we deliberately
-          // do NOT pass gradedAccuracy here to avoid double-applying the same
-          // performance signal to module confidence twice.
-          const result = await recordStudyActivity({
-            idempotencyKey: makeIdempotencyKey("mock", sim.id),
-            activityType: "mock",
-            source: "mock",
-            actualMinutes: Math.round(totalSeconds / 60),
-            examPath: blueprint.examType,
-            subject: blueprint.examType,
-            note: `${blueprint.examType} — full simulation completed`,
-            metadata: {
-              pathway: sim.pathway,
-              overallScore: overallScore ?? null,
-            },
-          });
-          setMockSaveResult(result);
-          if (!result.ok && result.queued) {
-            toast.warning("Saved on this device — we'll sync your results when you're back online.");
+          if (isSimulationFullyComplete(nextSections)) {
+            // Same canonical route as the "View results" button.
+            await finalizeSimulation(nextSections);
           }
-          setPhase("results");
         }}
       />
     );
   }
+
 
   // OVERVIEW
   return (
