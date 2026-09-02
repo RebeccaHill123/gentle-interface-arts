@@ -119,6 +119,8 @@ function PlanPage() {
   return (
     <AppShell title="Plan" subtitle={`Your ${examLabel} schedule and what changed.`}>
       <div className="space-y-6">
+        <PlanSyncStatus />
+
         {schedule ? (
           <>
             <WeeklyReview schedule={schedule} today={today} />
