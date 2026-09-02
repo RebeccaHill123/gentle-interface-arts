@@ -66,6 +66,7 @@ function snapshot(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     feedbackMode: "immediate",
     current: 1,
     perQuestionMs: [4000, 0, 0],
+    questionStartedAt: 1_000_400,
     startedAt: 1_000_000,
     deadlineAt: 1_000_000 + 20 * 60_000,
     phase: "quiz",
