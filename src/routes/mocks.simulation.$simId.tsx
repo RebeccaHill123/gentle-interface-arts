@@ -503,9 +503,28 @@ function SimulationPage() {
                     size="sm"
                     disabled={!canStart || done}
                     onClick={async () => {
-                      await startSection(s.id);
-                      setActiveSectionId(s.id);
-                      setPhase("section");
+                      try {
+                        const now = Date.now();
+                        const { timer } = await startSection(s.id, { nowMs: now });
+                        const resolved = resolveTimerState({
+                          mode: sim.mode,
+                          stored: timer,
+                          cached: loadCachedTimer(simId, s.id),
+                          startedAtIso: s.started_at,
+                          nowMs: now,
+                        });
+                        saveCachedTimer(simId, s.id, resolved);
+                        setActiveTimer(resolved);
+                        setActiveSectionId(s.id);
+                        setPhase("section");
+                      } catch (err) {
+                        console.error("[mock] start section failed", err);
+                        toast.error(
+                          err instanceof Error
+                            ? err.message
+                            : "Could not open this section. Please try again.",
+                        );
+                      }
                     }}
                     className="rounded-full"
                   >
@@ -517,39 +536,41 @@ function SimulationPage() {
           })}
         </section>
 
+        {finalizeError && (
+          <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 p-4 text-sm">
+            <span>{finalizeError} Your work is saved.</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void finalizeSimulation(sections)}
+              className="rounded-full"
+            >
+              Retry
+            </Button>
+          </section>
+        )}
+
         <div className="mt-6 flex justify-between gap-3">
           <Button variant="ghost" onClick={() => navigate({ to: "/mocks" })}>
             Back to mocks
           </Button>
-          {sections.every((s) => s.status === "completed") && (
+          {isSimulationFullyComplete(sections) && (
             <Button
-              onClick={async () => {
-                const totalSeconds = sections.reduce(
-                  (sum, s) => sum + s.duration_seconds,
-                  0,
-                );
-                const mcqScores = sections
-                  .map((s) => Number(s.score))
-                  .filter((n) => !Number.isNaN(n));
-                const overall = mcqScores.length
-                  ? mcqScores.reduce((a, b) => a + b, 0) / mcqScores.length
-                  : null;
-                await completeSimulation(sim.id, overall, totalSeconds);
-                setSim({
-                  ...sim,
-                  status: "completed",
-                  overall_score: overall,
-                  total_time_seconds: totalSeconds,
-                  completed_at: new Date().toISOString(),
-                });
-                setPhase("results");
-              }}
+              disabled={finalizing}
+              onClick={() => void finalizeSimulation(sections)}
               className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
             >
-              View results
+              {finalizing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finalising
+                </>
+              ) : (
+                <>View results</>
+              )}
             </Button>
           )}
         </div>
+
       </AppShell>
 
       <AlertDialog open={exitConfirm} onOpenChange={setExitConfirm}>
