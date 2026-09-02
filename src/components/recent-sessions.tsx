@@ -126,6 +126,25 @@ export function RecentSessions({
 }) {
   const [editing, setEditing] = useState<StudySession | null>(null);
   const [deleting, setDeleting] = useState<StudySession | null>(null);
+  const [deleteRes, setDeleteRes] = useState<Resolution | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+
+  // Resolve the canonical event behind the displayed row so the confirmation
+  // can describe exactly what will (and will not) be removed.
+  useEffect(() => {
+    if (!deleting) {
+      setDeleteRes(null);
+      return;
+    }
+    let live = true;
+    setDeleteRes(null);
+    void resolveCanonicalEventForSession(deleting.loggedAt).then((r) => {
+      if (live) setDeleteRes(r);
+    });
+    return () => {
+      live = false;
+    };
+  }, [deleting]);
 
   const items = useMemo(() => {
     return (sessions ?? [])
@@ -134,9 +153,21 @@ export function RecentSessions({
       .slice(0, limit);
   }, [sessions, limit]);
 
-  const handleDelete = (s: StudySession) => {
-    removeStudySession(s.loggedAt);
-    toast.success("Session deleted");
+  /**
+   * Canonical void by event identity + compatibility-mirror removal. A canonical
+   * failure that was not queued leaves the visible session intact.
+   */
+  const handleDelete = async (s: StudySession) => {
+    if (deleteBusy) return;
+    setDeleteBusy(true);
+    const outcome = await deleteSessionCanonically(s.loggedAt);
+    setDeleteBusy(false);
+    if (outcome.status === "failed") {
+      toast.error(outcomeMessage(outcome, "delete"));
+      return;
+    }
+    if (outcome.status === "queued") toast.info(outcomeMessage(outcome, "delete"));
+    else toast.success(outcomeMessage(outcome, "delete"));
     setDeleting(null);
     onChange?.();
   };
@@ -277,22 +308,25 @@ export function RecentSessions({
         }}
       />
 
-      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+      <AlertDialog open={!!deleting} onOpenChange={(o) => !o && !deleteBusy && setDeleting(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this session?</AlertDialogTitle>
             <AlertDialogDescription>
-              This removes the entry from your activity feed. Streaks and totals
-              will update accordingly. This can't be undone.
+              {deleteConfirmCopy(isGradedEvent(deleteRes?.status === "mapped" ? deleteRes.event : null))}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteBusy}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => deleting && handleDelete(deleting)}
+              disabled={deleteBusy || !deleteRes}
+              onClick={(e) => {
+                e.preventDefault();
+                if (deleting) void handleDelete(deleting);
+              }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleteBusy ? "Deleting…" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
