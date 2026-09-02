@@ -279,11 +279,13 @@ function SimulationPage() {
             const sectionAnswers = rows.filter((a) => a.section_id === s.id);
             return {
               kind: bp?.kind ?? "mcq",
-              graded: sectionAnswers.filter((a) => a.is_correct != null).length,
+              // Every MCQ is graded: unanswered ones count as incorrect.
+              graded: sectionAnswers.length,
               correct: sectionAnswers.filter((a) => a.is_correct === true).length,
             };
           }),
         );
+
 
         if (!finalizedRef.current || sim.status !== "completed") {
           await completeSimulation(sim.id, objective.percent, totalSeconds);
