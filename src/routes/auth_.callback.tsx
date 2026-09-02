@@ -135,22 +135,13 @@ function AuthCallbackPage() {
         }
 
         // Paid model: new sign-ups must complete payment after building/saving a plan.
+        const { profileHasAccess } = await import("@/lib/provisioning");
         const { data: profile } = await supabase
           .from("profiles")
           .select("is_pro, grandfathered_pro, subscription_status, current_period_end")
           .eq("user_id", session.user.id)
           .maybeSingle();
-        const status = profile?.subscription_status;
-        const graceActive =
-          status === "canceled" &&
-          !!profile?.current_period_end &&
-          new Date(profile.current_period_end).getTime() > Date.now();
-        const hasAccess =
-          !!profile?.grandfathered_pro ||
-          !!profile?.is_pro ||
-          status === "active" ||
-          status === "trialing" ||
-          graceActive;
+        const hasAccess = profileHasAccess(profile);
 
         if (!hasAccess) {
           navigate({ to: "/subscribe", replace: true, search: { next: savedPreviewPlan ? "/dashboard" : undefined } });
@@ -163,12 +154,12 @@ function AuthCallbackPage() {
           navigate({ to: "/dashboard", replace: true });
           return;
         }
-        const cloud = await pullPlanFromCloud();
-        if (cloud) {
-          navigate({ to: "/dashboard", replace: true });
-          return;
-        }
-        navigate({ to: "/onboarding", replace: true });
+        // Entitled user, no local plan: send them to the dashboard either way.
+        // It owns the recovery state (retry vs rebuild) so a paying customer is
+        // never silently dropped into onboarding.
+        await pullPlanFromCloud();
+        navigate({ to: "/dashboard", replace: true });
+
       } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "Verification failed");
