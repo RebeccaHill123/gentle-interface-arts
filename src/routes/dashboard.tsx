@@ -318,8 +318,9 @@ function DashboardPage() {
     };
   }, [examLabel]);
 
-  if (!hydrating && recovery) {
+  if (!hydrating && recovery && recovery.kind === "recover") {
     const readError = recovery.reason === "read-error";
+
     return (
       <div className="flex min-h-screen items-center justify-center bg-background px-5">
         <div className="w-full max-w-md text-center">
