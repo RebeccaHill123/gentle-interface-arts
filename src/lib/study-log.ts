@@ -441,7 +441,9 @@ export async function flushStudyLogQueue(): Promise<{ flushed: number; remaining
  * mirror. Callers must NOT also call `addStudySession` for the same action.
  */
 export async function recordStudyActivity(input: RecordActivityInput): Promise<WriteResult> {
-  const known = ledger()[input.idempotencyKey];
+  // Owner is bound in the originating session, before any cloud attempt.
+  let owner = currentLocalOwnerId();
+  const known = ledger(owner)[input.idempotencyKey];
   // An action must never move in time merely because it was retried: when the
   // ledger already holds this key, its original loggedAt is the canonical basis.
   const occurredAt = canonicalOccurredAt(known?.loggedAt, input.occurredAt ?? null);
@@ -475,7 +477,7 @@ export async function recordStudyActivity(input: RecordActivityInput): Promise<W
       }
       adjustModuleConfidence(input.subject, input.gradedAccuracy);
     }
-    setLedger(input.idempotencyKey, entry);
+    setLedger(input.idempotencyKey, entry, owner);
   }
 
   // 2. Canonical write.
@@ -501,6 +503,7 @@ export async function recordStudyActivity(input: RecordActivityInput): Promise<W
   try {
     const user = await waitForAuthUser();
     if (!user) throw new Error("not signed in");
+    owner = user.id;
     const { error } = await supabase
       .from("study_events")
       .upsert([{ ...payload, user_id: user.id }] as never, {
@@ -511,7 +514,7 @@ export async function recordStudyActivity(input: RecordActivityInput): Promise<W
     return { ok: true, queued: false };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Could not save to your account yet";
-    if (enqueueWrite({ kind: "event", payload })) {
+    if (enqueueWrite({ kind: "event", payload }, owner)) {
       return { ok: false, queued: true, error: message };
     }
     // Nothing durable anywhere: roll the mirror back so the UI does not show a
@@ -519,7 +522,7 @@ export async function recordStudyActivity(input: RecordActivityInput): Promise<W
     if (createdMirror) {
       removeStudySession(loggedAt);
       if (restoreConfidence) setModuleConfidence(restoreConfidence.module, restoreConfidence.value);
-      setLedger(input.idempotencyKey, null);
+      setLedger(input.idempotencyKey, null, owner);
     }
     return {
       ok: false,
@@ -531,7 +534,8 @@ export async function recordStudyActivity(input: RecordActivityInput): Promise<W
 
 /** Reverses a previously recorded action: voids the canonical row and undoes the legacy mirror. */
 export async function voidStudyActivity(idempotencyKey: string): Promise<WriteResult> {
-  const entry = ledger()[idempotencyKey];
+  let owner = currentLocalOwnerId();
+  const entry = ledger(owner)[idempotencyKey];
   // The mirror is only unwound once the canonical void was accepted, so a
   // failed undo can never hide a session that still exists server-side.
   const unwindMirror = () => {
@@ -540,12 +544,13 @@ export async function voidStudyActivity(idempotencyKey: string): Promise<WriteRe
     if (entry.module && typeof entry.previousConfidence === "number") {
       setModuleConfidence(entry.module, entry.previousConfidence);
     }
-    setLedger(idempotencyKey, null);
+    setLedger(idempotencyKey, null, owner);
   };
 
   try {
     const user = await waitForAuthUser();
     if (!user) throw new Error("not signed in");
+    owner = user.id;
     const { error } = await supabase
       .from("study_events")
       .update({ voided_at: new Date().toISOString() })
@@ -556,7 +561,7 @@ export async function voidStudyActivity(idempotencyKey: string): Promise<WriteRe
     return { ok: true, queued: false };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Undo not synced yet";
-    if (enqueueMutation({ kind: "void", idempotencyKey })) {
+    if (enqueueMutation({ kind: "void", idempotencyKey }, owner)) {
       unwindMirror();
       return { ok: false, queued: true, error: message };
     }
@@ -573,6 +578,7 @@ export async function recordGradedAttempts(
   attempts: GradedAttemptInput[],
 ): Promise<WriteResult> {
   if (attempts.length === 0) return { ok: true, queued: false };
+  let owner = currentLocalOwnerId();
   const rows = attempts.map((a) => {
     const occurredAt = a.occurredAt ?? new Date();
     const tz = currentTimezone();
@@ -597,6 +603,7 @@ export async function recordGradedAttempts(
   try {
     const user = await waitForAuthUser();
     if (!user) throw new Error("not signed in");
+    owner = user.id;
     const { error } = await supabase
       .from("graded_attempts")
       .upsert(rows.map((r) => ({ ...r, user_id: user.id })) as never, {
@@ -607,7 +614,7 @@ export async function recordGradedAttempts(
     return { ok: true, queued: false };
   } catch (e) {
     const message = e instanceof Error ? e.message : "Results saved on this device only so far";
-    if (enqueueWrite({ kind: "attempts", payload: rows })) {
+    if (enqueueWrite({ kind: "attempts", payload: rows }, owner)) {
       return { ok: false, queued: true, error: message };
     }
     return {
@@ -707,17 +714,19 @@ async function voidEventRow(idempotencyKey: string) {
 }
 
 function portFor(loggedAt: string, mirrorPatch: Partial<StudySession>): CanonicalPort {
+  const owner = currentLocalOwnerId();
   return {
     resolve: resolveCanonicalEventForSession,
     update: updateEventRow,
     voidEvent: voidEventRow,
-    queueUpdate: (key, payload) => enqueueMutation({ kind: "event_update", idempotencyKey: key, payload }),
-    queueVoid: (key) => enqueueMutation({ kind: "void", idempotencyKey: key }),
+    queueUpdate: (key, payload) =>
+      enqueueMutation({ kind: "event_update", idempotencyKey: key, payload }, owner),
+    queueVoid: (key) => enqueueMutation({ kind: "void", idempotencyKey: key }, owner),
     mirrorUpdate: () => updateStudySession(loggedAt, mirrorPatch),
     mirrorRemove: () => {
-      const key = resolveFromLedger(ledger(), loggedAt);
+      const key = resolveFromLedger(ledger(owner), loggedAt);
       removeStudySession(loggedAt);
-      if (key) setLedger(key, null);
+      if (key) setLedger(key, null, owner);
     },
   };
 }
