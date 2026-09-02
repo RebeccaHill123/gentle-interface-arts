@@ -210,26 +210,42 @@ function PracticeSessionPage() {
         sessionStorage.removeItem(PRACTICE_CONFIG_KEY);
       } catch {}
     }
-    if (resolution.kind === "none") {
+
+    // A reload of a launcher-started session has no search params and the
+    // stored config was already consumed — recover the config from the durable
+    // snapshot rather than discarding in-progress work.
+    let cfg: PracticeConfig | null = resolution.kind === "none" ? null : resolution.config;
+    let fp: string | null = cfg ? configFingerprint(cfg) : null;
+    const snapshotRaw = readSnapshotRaw();
+    if (!cfg) {
+      const snap = validateSnapshot(snapshotRaw);
+      const fresh = snap && Date.now() - snap.updatedAt <= ACTIVE_MAX_AGE_MS;
+      const settled = !!snap?.completion && completionAccepted(snap.completion);
+      if (snap && fresh && !settled) {
+        cfg = snap.config;
+        fp = snap.fingerprint;
+      }
+    }
+
+    if (!cfg || !fp) {
       setPhaseTracked("error");
       setError("No practice session was queued. Start one from Mocks & Practice.");
       return;
     }
 
-    const cfg = resolution.config;
     configRef.current = cfg;
     setConfig(cfg);
-    const fp = configFingerprint(cfg);
     fingerprintRef.current = fp;
 
     const plan = loadPlan();
-    const mod = plan?.input.modules.find((m) => m.name === cfg.module);
+    const mod = plan?.input.modules.find((m) => m.name === cfg!.module);
     setConfidenceBefore(mod?.confidence ?? null);
     const examType = (plan?.input.examType ?? "SQE1") as "SQE1" | "SQE2" | "UBE" | "MPRE";
     examPathRef.current = plan?.input.examType ?? undefined;
     setExamPath(plan?.input.examType ?? undefined);
 
-    const decision = decideRestore({ raw: readSnapshotRaw(), fingerprint: fp, now: Date.now() });
+    const decision = decideRestore({ raw: snapshotRaw, fingerprint: fp, now: Date.now() });
+
     if (decision.action === "restore") {
       const s = decision.snapshot;
       sessionIdRef.current = s.sessionId;
