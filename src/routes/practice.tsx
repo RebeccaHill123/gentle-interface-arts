@@ -1101,8 +1101,10 @@ function ResultsScreen({
           <Stat icon={Timer} label="Pacing" value={`${avgSec}s`} />
           <Stat
             icon={Sparkles}
-            label="Confidence"
-            value={`${delta >= 0 ? "+" : ""}${delta.toFixed(2)} / 5`}
+            label={confidenceApplied ? "Confidence" : "Confidence (pending)"}
+            value={
+              confidenceApplied ? `${delta >= 0 ? "+" : ""}${delta.toFixed(2)} / 5` : "not yet applied"
+            }
           />
         </div>
       </section>
