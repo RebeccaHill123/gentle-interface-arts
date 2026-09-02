@@ -66,7 +66,15 @@ import {
   type DbSimulation,
 } from "@/lib/full-mock-store";
 import {
+  bumpRevision,
   clearSyncSet,
+
+  markSyncedIfCurrent,
+  pendingSyncLabel,
+  revisionOf,
+  TYPING_SAVE_DEBOUNCE_MS,
+  type RevisionMap,
+
   countAnsweredMcq,
 
   elapsedSecondsFrom,
@@ -493,11 +501,29 @@ function SimulationPage() {
         sections={sections}
         answers={answers}
         saveResult={mockSaveResult}
-        onRetrySave={() => {
-          flushStudyLogQueue().then((r) => {
-            setMockSaveResult(r.remaining === 0 ? { ok: true, queued: false } : { ok: false, queued: true });
-          });
+        onRetrySave={async () => {
+          // Re-run the same idempotent canonical write (stable key, so retries
+          // cannot double-count). Never infer success from an empty queue.
+          try {
+            const result = await recordMockActivity(sim, sections, answers);
+            if (result.ok) {
+              setMockSaveResult(result);
+              return;
+            }
+            if (result.queued) {
+              const flushed = await flushStudyLogQueue();
+              setMockSaveResult(
+                flushed.flushed > 0 ? { ok: true, queued: false } : result,
+              );
+              return;
+            }
+            setMockSaveResult(result);
+          } catch (err) {
+            console.error("[mock] activity retry failed", err);
+            setMockSaveResult({ ok: false, queued: false });
+          }
         }}
+
         onRetake={() => navigate({ to: "/mocks" })}
       />
     );
@@ -791,6 +817,15 @@ function SectionRunner({
   localRef.current = local;
   const retryingRef = useRef(false);
   const allSynced = isFullySynced(unsynced);
+  // Per-question revisions: a save only clears dirty state for the revision it
+  // actually persisted.
+  const revisionsRef = useRef<RevisionMap>({});
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef(timer);
+  timerRef.current = timer;
+  const timerSyncFailedRef = useRef(timerSyncFailed);
+  timerSyncFailedRef.current = timerSyncFailed;
+
 
   const applyUnsynced = useCallback(
     (fn: (prev: SyncSet) => SyncSet) => {
@@ -888,24 +923,84 @@ function SectionRunner({
   };
 
   /**
-   * Bounded-backoff retry for every still-unconfirmed answer in this section.
-   * Also exposed as an explicit "Retry sync" action.
+   * Save one question and clear dirty state only if this write carried the
+   * newest revision — an edit made while the request was in flight stays dirty.
+   */
+  const saveQuestion = async (questionId: string, la: LocalAnswer) => {
+    const revision = revisionOf(revisionsRef.current, questionId);
+    try {
+      await saveOne(questionId, la);
+      applyUnsynced((prev) =>
+        markSyncedIfCurrent(prev, revisionsRef.current, questionId, revision),
+      );
+      return true;
+    } catch (err) {
+      console.error("[mock] autosave failed", questionId, err);
+      return false;
+    }
+  };
+
+  /**
+   * Every answer/text/flag mutation goes through here: the question is marked
+   * dirty synchronously, before any remote write, so exiting immediately after
+   * typing can never claim the work reached the account.
+   */
+  const changeCurrent = (
+    patch: Partial<LocalAnswer>,
+    mode: "immediate" | "debounced" = "immediate",
+  ) => {
+    const qid = currentId;
+    const la: LocalAnswer = { ...(localRef.current[qid] ?? {}), ...patch };
+    revisionsRef.current = bumpRevision(revisionsRef.current, qid);
+    applyUnsynced((prev) => markUnsynced(prev, qid));
+    updateLocal(qid, patch);
+    if (mode === "debounced") {
+      // Typing: bounded debounce instead of a request per keystroke.
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        typingTimerRef.current = null;
+        void saveQuestion(qid, la);
+      }, TYPING_SAVE_DEBOUNCE_MS);
+      return;
+    }
+    void saveQuestion(qid, la);
+  };
+
+  /** Retry the authoritative timer write; only clear the flag once confirmed. */
+  const retryTimer = async () => {
+    const at = Date.now();
+    try {
+      await saveSectionTiming(
+        dbSection.id,
+        timerRef.current,
+        elapsedSecondsFrom(timerRef.current, at),
+      );
+      setTimerSyncFailed(false);
+      return true;
+    } catch (err) {
+      console.error("[mock] timer retry failed", err);
+      setTimerSyncFailed(true);
+      return false;
+    }
+  };
+
+  /**
+   * Combined backoff worker and explicit "Retry sync" action: dirty answers and
+   * a failed timer write are both retried, so the button always retries what the
+   * label claims.
    */
   const retryDirty = async () => {
     const ids = unsyncedIds(unsyncedRef.current);
-    if (!ids.length || retryingRef.current) return;
+    const timerPending = timerSyncFailedRef.current;
+    if ((!ids.length && !timerPending) || retryingRef.current) return;
     retryingRef.current = true;
     setRetrying(true);
     let anyFailed = false;
     for (const qid of ids) {
-      try {
-        await saveOne(qid, localRef.current[qid] ?? {});
-        applyUnsynced((prev) => markSynced(prev, qid));
-      } catch (err) {
-        console.error("[mock] retry sync failed", qid, err);
-        anyFailed = true;
-      }
+      const ok = await saveQuestion(qid, localRef.current[qid] ?? {});
+      if (!ok) anyFailed = true;
     }
+    if (timerPending && !(await retryTimer())) anyFailed = true;
     retryingRef.current = false;
     setRetrying(false);
     setRetryAttempt((a) => (anyFailed ? a + 1 : 0));
@@ -915,29 +1010,40 @@ function SectionRunner({
   retryRef.current = retryDirty;
 
   useEffect(() => {
-    if (isFullySynced(unsynced)) return;
+    if (isFullySynced(unsynced) && !timerSyncFailed) return;
     const t = setTimeout(() => {
       void retryRef.current();
     }, retryDelayMs(retryAttempt));
     return () => clearTimeout(t);
-  }, [unsynced, retryAttempt]);
+  }, [unsynced, timerSyncFailed, retryAttempt]);
 
-  /** Autosave on navigation. Local drafts are always kept; failures stay dirty. */
+  // Flush a pending debounced typing save when leaving the section.
+  useEffect(
+    () => () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    },
+    [],
+  );
+
+  /**
+   * Navigation-time write. Time tracking still rides along here, but content is
+   * already dirty from the moment it changed — this is never the first point.
+   */
   const persistCurrent = (extraSeconds: number) => {
     const la: LocalAnswer = {
       ...currentLocal,
       timeSpentSeconds: (currentLocal.timeSpentSeconds ?? 0) + extraSeconds,
     };
-    updateLocal(currentId, { timeSpentSeconds: la.timeSpentSeconds });
     const qid = currentId;
-    // Dirty until this exact question is confirmed remotely.
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    updateLocal(qid, { timeSpentSeconds: la.timeSpentSeconds });
     applyUnsynced((prev) => markUnsynced(prev, qid));
-    void saveOne(qid, la)
-      .then(() => applyUnsynced((prev) => markSynced(prev, qid)))
-      .catch((err) => {
-        console.error("[mock] autosave failed", err);
-      });
+    void saveQuestion(qid, la);
   };
+
 
 
   const consumeQuestionTime = () => {
@@ -1059,7 +1165,8 @@ function SectionRunner({
             <span className="hidden items-center gap-2 text-xs text-muted-foreground sm:inline-flex">
               {retrying
                 ? "Retrying sync…"
-                : `Saved on this device · ${unsyncedIds(unsynced).length || 1} waiting to sync`}
+                : pendingSyncLabel(unsyncedIds(unsynced).length, timerSyncFailed)}
+
               <Button
                 size="sm"
                 variant="ghost"
@@ -1121,9 +1228,9 @@ function SectionRunner({
               optionsCount={bpSection.optionsCount}
               selectedIndex={currentLocal.answerIndex}
               isFlagged={currentLocal.isFlagged ?? false}
-              onSelect={(i) => updateLocal(currentId, { answerIndex: i })}
+              onSelect={(i) => changeCurrent({ answerIndex: i })}
               onFlag={() =>
-                updateLocal(currentId, { isFlagged: !currentLocal.isFlagged })
+                changeCurrent({ isFlagged: !currentLocal.isFlagged })
               }
             />
           )}
@@ -1132,9 +1239,9 @@ function SectionRunner({
               q={current as EssayQuestion}
               text={currentLocal.essayText ?? ""}
               isFlagged={currentLocal.isFlagged ?? false}
-              onText={(t) => updateLocal(currentId, { essayText: t })}
+              onText={(t) => changeCurrent({ essayText: t }, "debounced")}
               onFlag={() =>
-                updateLocal(currentId, { isFlagged: !currentLocal.isFlagged })
+                changeCurrent({ isFlagged: !currentLocal.isFlagged })
               }
             />
           )}
@@ -1143,12 +1250,13 @@ function SectionRunner({
               q={current as MPTQuestion}
               text={currentLocal.essayText ?? ""}
               isFlagged={currentLocal.isFlagged ?? false}
-              onText={(t) => updateLocal(currentId, { essayText: t })}
+              onText={(t) => changeCurrent({ essayText: t }, "debounced")}
               onFlag={() =>
-                updateLocal(currentId, { isFlagged: !currentLocal.isFlagged })
+                changeCurrent({ isFlagged: !currentLocal.isFlagged })
               }
             />
           )}
+
 
           <div className="mt-6 flex items-center justify-between gap-3">
             <Button
@@ -1611,14 +1719,19 @@ function ResultsView({
 
 
 
-      {saveResult && !saveResult.ok && saveResult.queued && (
+      {saveResult && !saveResult.ok && (
         <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-200">
-          <span>Saved on this device — we'll sync your results when you're back online.</span>
+          <span>
+            {saveResult.queued
+              ? "Saved on this device — we'll sync your results when you're back online."
+              : "This mock isn't recorded in your study history yet. Retry to record it."}
+          </span>
           <Button size="sm" variant="outline" onClick={onRetrySave} className="rounded-full">
             Retry
           </Button>
         </section>
       )}
+
 
       <div className="mt-6 flex flex-wrap gap-3">
         <Button onClick={onRetake} className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow">
