@@ -28,9 +28,10 @@ export function validateChatMessages(
   const list = body?.messages;
   if (!Array.isArray(list)) return { ok: false, error: "messages must be an array" };
   if (list.length === 0) return { ok: false, error: "messages must not be empty" };
-  if (list.length > 200) return { ok: false, error: "too many messages" };
+  if (list.length > MAX_MESSAGES) return { ok: false, error: "too many messages" };
 
-  const recent = list.slice(-MAX_MESSAGES);
+  const recent = list;
+
   const out: ChatMessage[] = [];
   let total = 0;
   for (const item of recent) {
