@@ -20,10 +20,11 @@ import {
 import {
   deleteConfirmCopy,
   gradedEditNotice,
-  isGradedEvent,
+  gradedSafety,
   outcomeMessage,
   type Resolution,
 } from "@/lib/canonical-edit";
+
 
 import { ActivityInsights } from "@/components/activity-insights";
 import { Button } from "@/components/ui/button";
@@ -313,8 +314,14 @@ export function RecentSessions({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete this session?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteConfirmCopy(isGradedEvent(deleteRes?.status === "mapped" ? deleteRes.event : null))}
+              {deleteConfirmCopy(
+                gradedSafety({
+                  displayedType: deleting ? inferType(deleting) : null,
+                  resolution: deleteRes,
+                }).graded,
+              )}
             </AlertDialogDescription>
+
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleteBusy}>Cancel</AlertDialogCancel>
@@ -380,9 +387,13 @@ function EditSessionDialog({
 
   if (!session) return null;
 
-  const graded = isGradedEvent(resolution?.status === "mapped" ? resolution.event : null);
+  // Conservative: the displayed type alone can mark a row graded, and an
+  // unreadable canonical snapshot locks metadata-backed fields either way.
+  const safety = gradedSafety({ displayedType: inferType(session), resolution });
+  const graded = safety.graded;
   const legacyOnly = resolution?.status === "unmapped" || resolution?.status === "ambiguous";
-  const gradedNotice = gradedEditNotice(graded);
+  const gradedNotice = gradedEditNotice(graded, safety.snapshotAvailable);
+
 
   /**
    * Canonical-first save: `study_events` is updated (or durably queued) and the
@@ -399,17 +410,21 @@ function EditSessionDialog({
       {
         actualMinutes: mins,
         subject: module || null,
-        // Graded rows keep their canonical type/notes so accuracy cannot desync.
-        ...(graded ? {} : { activityType: type, note: trimmedNote ?? null }),
+        // Graded rows — and rows whose canonical snapshot we couldn't read —
+        // keep their type/notes so accuracy and metadata cannot be clobbered.
+        ...(safety.canEditType ? { activityType: type } : {}),
+        ...(safety.canEditNote ? { note: trimmedNote ?? null } : {}),
         selfMood: (mood as number | undefined) ?? null,
       },
       {
         minutes: mins,
         module: module || undefined,
-        ...(graded ? {} : { sessionType: type, note: trimmedNote }),
+        ...(safety.canEditType ? { sessionType: type } : {}),
+        ...(safety.canEditNote ? { note: trimmedNote } : {}),
         mood: mood as StudySession["mood"],
       },
     );
+
     setSaving(false);
     if (outcome.status === "failed") {
       // Keep the dialog open: nothing canonical changed, so don't claim success.
@@ -459,7 +474,7 @@ function EditSessionDialog({
             </div>
             <div className="space-y-1.5">
               <Label>Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as SessionType)} disabled={graded || saving}>
+              <Select value={type} onValueChange={(v) => setType(v as SessionType)} disabled={!safety.canEditType || saving}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -525,7 +540,7 @@ function EditSessionDialog({
             <Textarea
               id="edit-note"
               value={note}
-              disabled={graded || saving}
+              disabled={!safety.canEditNote || saving}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
               placeholder="What did you focus on?"

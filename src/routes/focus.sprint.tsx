@@ -121,33 +121,42 @@ function FocusPage() {
     setSaving(true);
 
     // Canonical write FIRST, keyed by the stable sessionId so a retry after a
-    // crash is idempotent rather than a double count.
-    const write = await recordStudyActivity({
-      idempotencyKey: session.sessionId,
-      activityType: "study",
-      source: session.planned ? "dashboard_task" : "focus_sprint",
-      actualMinutes: result.actualMinutes,
-      plannedMinutes: Math.round(session.plannedMs / 60000),
-      plannedTaskId: session.planned?.taskId ?? null,
-      subject: session.module ?? null,
-      subtopic: session.subtopic ?? null,
-      examPath: session.examPath ?? null,
-      selfFocus: result.selfFocus,
-      note: `${session.title} · ${result.actualMinutes}m`,
-      metadata: {
-        producedOutput: result.producedOutput,
-        activityType: session.activityType ?? "custom",
-        origin: session.origin,
-      },
-    });
+    // crash is idempotent rather than a double count. An unexpected throw is
+    // treated as a non-acceptance, never as a silent lost session.
+    let write: { ok: boolean; queued: boolean; error?: string };
+    try {
+      write = await recordStudyActivity({
+        idempotencyKey: session.sessionId,
+        activityType: "study",
+        source: session.planned ? "dashboard_task" : "focus_sprint",
+        actualMinutes: result.actualMinutes,
+        plannedMinutes: Math.round(session.plannedMs / 60000),
+        plannedTaskId: session.planned?.taskId ?? null,
+        subject: session.module ?? null,
+        subtopic: session.subtopic ?? null,
+        examPath: session.examPath ?? null,
+        selfFocus: result.selfFocus,
+        note: `${session.title} · ${result.actualMinutes}m`,
+        metadata: {
+          producedOutput: result.producedOutput,
+          activityType: session.activityType ?? "custom",
+          origin: session.origin,
+        },
+      });
+    } catch (e) {
+      console.warn("focus canonical write threw", e);
+      write = { ok: false, queued: false };
+    }
 
     if (!shouldMarkLogged(write)) {
-      // Neither saved nor queued: keep the sheet open and stay retryable.
+      // Neither saved nor queued: release the lock, keep the sheet and the
+      // session (same sessionId) open, and stay retryable.
       loggingRef.current = false;
       setSaving(false);
       toast.error(focusLogMessage(write, result.actualMinutes));
       return;
     }
+
 
     const accepted = markLogAccepted(session) ?? session;
     setSession(accepted);
