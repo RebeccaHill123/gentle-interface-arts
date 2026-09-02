@@ -66,7 +66,13 @@ import {
   type DbSimulation,
 } from "@/lib/full-mock-store";
 import {
-  clearSyncSet,
+  bumpRevision,
+  markSyncedIfCurrent,
+  pendingSyncLabel,
+  revisionOf,
+  TYPING_SAVE_DEBOUNCE_MS,
+  type RevisionMap,
+
   countAnsweredMcq,
 
   elapsedSecondsFrom,
