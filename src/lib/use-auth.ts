@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { clearOnboardingDraft, clearPlan } from "@/lib/plan-store";
+import { forgetAuthOwner, getCachedAuthOwnerId } from "@/lib/auth-session";
+import { clearLocalUserData } from "@/lib/local-data-boundary";
+import { clearOnboardingDraft } from "@/lib/plan-store";
 
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
@@ -34,7 +36,14 @@ export function useAuth() {
 }
 
 export async function signOut() {
-  await supabase.auth.signOut();
-  clearPlan();
+  // Capture the departing owner while the session is still known.
+  const owner = getCachedAuthOwnerId();
+  const { error } = await supabase.auth.signOut();
+  // A failed sign-out leaves the user signed in: touch nothing.
+  if (error) throw error;
+  // Best-effort, allowlisted cleanup so the next account on this browser never
+  // sees — or re-uploads — the previous user's study state.
+  clearLocalUserData(owner, typeof window === "undefined" ? null : window.localStorage);
+  forgetAuthOwner();
   clearOnboardingDraft();
 }

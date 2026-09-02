@@ -30,6 +30,7 @@ export const OWNED_KEYS = [
   "tentra.focus.active.v1",
   "tentra.focus.lastSummary.v1",
   "tentra.preview.v1",
+  "tentra:analytics:events:v1",
   "tentra.auth.owner.v1",
 ] as const;
 
@@ -46,7 +47,7 @@ export const OWNED_PREFIXES = [
 export const PRESERVED_KEYS = [
   "tentra.theme",
   "tentra.focus.prefs.v1",
-  "tentra.rememberMe.v1",
+  "tentra.rememberMe",
 ] as const;
 
 /**
