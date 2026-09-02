@@ -68,7 +68,6 @@ import {
 import {
   elapsedSecondsFrom,
   finalAnswerSnapshot,
-  hasContent,
   isSimulationFullyComplete,
   makeTimerState,
   mcqSectionScore,
