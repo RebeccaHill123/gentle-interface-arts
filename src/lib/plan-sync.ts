@@ -93,7 +93,7 @@ export function readPlanSyncMarker(deps: PlanSyncDeps): PlanSyncMarker {
   try {
     const raw = storage.getItem(PLAN_SYNC_KEY);
     if (!raw) return EMPTY_MARKER;
-    const value = JSON.parse(raw) as Partial<PlanSyncMarker>;
+    const value = JSON.parse(raw) as Partial<Omit<PlanSyncMarker, "version">> & { version?: number };
     // v1 markers carried no owner: keep the revisions (so local work is not
     // silently declared clean) but treat ownership as unknown.
     const legacy = value.version === 1;
