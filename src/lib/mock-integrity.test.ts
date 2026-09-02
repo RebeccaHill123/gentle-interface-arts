@@ -26,6 +26,13 @@ import {
   isFullySynced,
   retryDelayMs,
   type SyncSet,
+  bumpRevision,
+  revisionOf,
+  markSyncedIfCurrent,
+  answerSnapshot,
+  pendingSyncLabel,
+  TYPING_SAVE_DEBOUNCE_MS,
+  type RevisionMap,
 } from "./mock-integrity";
 
 const T0 = 1_700_000_000_000;
@@ -326,5 +333,59 @@ describe("per-question autosave sync tracking", () => {
     expect(retryDelayMs(0)).toBe(4000);
     expect(retryDelayMs(1)).toBe(8000);
     expect(retryDelayMs(50)).toBe(60_000);
+  });
+});
+
+describe("revision-aware sync clearing", () => {
+  it("keeps the newer revision dirty when an in-flight save resolves late", () => {
+    let revs: RevisionMap = {};
+    let set: SyncSet = clearSyncSet();
+    // Answer q1 -> dirty at revision 1, request starts.
+    revs = bumpRevision(revs, "q1");
+    set = markUnsynced(set, "q1");
+    const inFlight = revisionOf(revs, "q1");
+    expect(inFlight).toBe(1);
+    // The candidate edits q1 again while the request is in flight.
+    revs = bumpRevision(revs, "q1");
+    set = markUnsynced(set, "q1");
+    // The old request succeeds: it must NOT clear the newer dirty state.
+    set = markSyncedIfCurrent(set, revs, "q1", inFlight);
+    expect(isFullySynced(set)).toBe(false);
+    // The newer save succeeds: now it clears.
+    set = markSyncedIfCurrent(set, revs, "q1", revisionOf(revs, "q1"));
+    expect(isFullySynced(set)).toBe(true);
+  });
+
+  it("marks a change dirty before any write, so immediate exit is local-only", () => {
+    // Simulates change -> exit with no navigation and no completed request.
+    let set: SyncSet = clearSyncSet();
+    const revs = bumpRevision({}, "q7");
+    set = markUnsynced(set, "q7");
+    expect(revisionOf(revs, "q7")).toBe(1);
+    expect(isFullySynced(set)).toBe(false);
+    expect(unsyncedIds(set)).toEqual(["q7"]);
+  });
+
+  it("treats content changes, not time tracking, as new content", () => {
+    const base = { answerIndex: 1, essayText: "", isFlagged: false };
+    expect(answerSnapshot(base)).toBe(answerSnapshot({ ...base }));
+    expect(answerSnapshot({ ...base, answerIndex: 2 })).not.toBe(answerSnapshot(base));
+    expect(answerSnapshot({ ...base, isFlagged: true })).not.toBe(answerSnapshot(base));
+    expect(answerSnapshot({ ...base, essayText: "hi" })).not.toBe(answerSnapshot(base));
+  });
+});
+
+describe("pending sync label", () => {
+  it("never calls the timer an answer, and stays silent when clean", () => {
+    expect(pendingSyncLabel(0, false)).toBeNull();
+    expect(pendingSyncLabel(0, true)).toBe("Saved on this device · timer waiting to sync");
+    expect(pendingSyncLabel(1, false)).toBe("Saved on this device · 1 answer waiting to sync");
+    expect(pendingSyncLabel(3, true)).toBe(
+      "Saved on this device · 3 answers + timer waiting to sync",
+    );
+  });
+
+  it("debounces typing rather than writing per keystroke", () => {
+    expect(TYPING_SAVE_DEBOUNCE_MS).toBeGreaterThan(500);
   });
 });
