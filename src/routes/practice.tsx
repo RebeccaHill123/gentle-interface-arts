@@ -174,6 +174,7 @@ function PracticeSessionPage() {
       feedbackMode: feedbackRef.current,
       current: currentRef.current,
       perQuestionMs: perRef.current,
+      questionStartedAt: p === "quiz" ? questionStartRef.current : null,
       startedAt: startedAtRef.current,
       deadlineAt: deadlineRef.current,
       phase: p,
