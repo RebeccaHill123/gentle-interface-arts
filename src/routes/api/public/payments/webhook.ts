@@ -376,7 +376,10 @@ async function claimPendingPlan({
       hasPlanRow: planRow,
       magicLinkHash: pending.magic_link_hash,
     });
-    if (verification.complete) return; // nothing to do, no mutation
+    // Duplicate delivery of a fully verified claim: exit without mutation or
+    // generating anything. Anything else is a repair (fresh magic link).
+    if (decideClaimAction(verification).action === "noop") return;
+
     console.warn(
       "[webhook] repairing partially claimed pending plan",
       token,
