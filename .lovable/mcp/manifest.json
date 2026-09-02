@@ -128,7 +128,7 @@
       {
         "name": "ask_ai_coach",
         "title": "Ask the AI Coach",
-        "description": "Read-only. Ask the Tentra AI Coach a planning or accountability question. The Coach answers using the signed-in user's real Tentra study data (plan, weak areas, weekly hours, recent sessions, days to exam). Best for prompts like 'what should I study today?', 'I missed yesterday, fix my week', 'how am I doing this week?', 'give me a 45-minute session'. Requires the user to be signed in. Does not write to the plan.",
+        "description": "Read-only. Ask the Tentra AI Coach a planning or accountability question. The Coach answers using the signed-in user's real Tentra study data (plan, weak areas, weekly hours, recent sessions, days to exam). Best for prompts like 'what should I study today?', 'I missed yesterday, fix my week', 'how am I doing this week?', 'give me a 45-minute session'. Requires active Tentra access (subscription or trial). Does not write to the plan.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": false,
@@ -154,7 +154,7 @@
       {
         "name": "ask_ai_tutor",
         "title": "Ask the AI Tutor",
-        "description": "Read-only. Ask the Tentra AI Tutor a subject-learning or testing question. Uses the signed-in user's exam type and weak areas to personalise explanations, generate quick MCQs, review mistakes, or drill a topic. Best for 'explain this topic', 'quiz me on my weakest area', 'why did I get this wrong?', 'give me practice questions on X'. Requires the user to be signed in. Does not write to the plan.",
+        "description": "Read-only. Ask the Tentra AI Tutor a subject-learning or testing question. Uses the signed-in user's exam type and weak areas to personalise explanations, generate quick MCQs, review mistakes, or drill a topic. Best for 'explain this topic', 'quiz me on my weakest area', 'why did I get this wrong?', 'give me practice questions on X'. Requires active Tentra access (subscription or trial). Does not write to the plan.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": false,
