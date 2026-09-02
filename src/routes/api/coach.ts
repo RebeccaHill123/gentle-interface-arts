@@ -202,11 +202,9 @@ export const Route = createFileRoute("/api/coach")({
           const rawBody = await request.json().catch(() => null);
           const parsed = validateChatMessages(rawBody);
           if (!parsed.ok) {
-            return new Response(JSON.stringify({ error: parsed.error }), {
-              status: 400,
-              headers: { "Content-Type": "application/json" },
-            });
+            return jsonError(400, parsed.error);
           }
+
           const messages = parsed.value;
 
           const { data: nameRow, error: nameError } = await supabase
