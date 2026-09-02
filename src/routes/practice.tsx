@@ -1182,12 +1182,30 @@ function ResultsScreen({
         </ul>
       </section>
 
-      {saveResult && !saveResult.ok && saveResult.queued && (
-        <section className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-200">
-          <span>Saved on this device — we'll sync your results when you're back online.</span>
-          <Button size="sm" variant="outline" onClick={onRetryFinish} className="rounded-full">
-            Retry
-          </Button>
+      {saveLabel && (
+        <section
+          className={`mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-4 text-sm ${
+            saveLabel.tone === "ok"
+              ? "border-emerald-400/40 bg-emerald-400/10 text-emerald-200"
+              : saveLabel.tone === "queued"
+                ? "border-amber-400/40 bg-amber-400/10 text-amber-200"
+                : "border-rose-400/40 bg-rose-400/10 text-rose-200"
+          }`}
+        >
+          <span className="min-w-0">
+            <span className="font-medium">{saveLabel.title}</span> — {saveLabel.detail}
+          </span>
+          {saveLabel.tone !== "ok" && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={retrying}
+              onClick={onRetryWrites}
+              className="rounded-full"
+            >
+              {retrying ? "Retrying…" : "Retry"}
+            </Button>
+          )}
         </section>
       )}
 
