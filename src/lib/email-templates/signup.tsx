@@ -9,7 +9,6 @@ import {
   Html,
   Link,
   Preview,
-  Section,
   Text,
 } from '@react-email/components'
 
@@ -18,7 +17,6 @@ interface SignupEmailProps {
   siteUrl: string
   recipient: string
   confirmationUrl: string
-  token?: string
 }
 
 export const SignupEmail = ({
@@ -26,44 +24,34 @@ export const SignupEmail = ({
   siteUrl,
   recipient,
   confirmationUrl,
-  token,
 }: SignupEmailProps) => (
   <Html lang="en" dir="ltr">
-    <Head />
-    <Preview>
-      {token ? `Your ${siteName} verification code: ${token}` : `Confirm your email for ${siteName}`}
-    </Preview>
+    <Head>
+      <style>{darkModeCss}</style>
+    </Head>
+    <Preview>Confirm your email for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Your verification code</Heading>
+        <Heading style={h1}>Confirm your email</Heading>
         <Text style={text}>
-          Enter this code in the {siteName} sign-up tab to finish setting up your account for{' '}
+          Thanks for signing up for{' '}
+          <Link href={siteUrl} style={link}>
+            <strong>{siteName}</strong>
+          </Link>
+          !
+        </Text>
+        <Text style={text}>
+          Please confirm your email address (
           <Link href={`mailto:${recipient}`} style={link}>
             {recipient}
           </Link>
-          .
+          ) by clicking the button below:
         </Text>
-        {token && (
-          <Section style={codeWrap}>
-            <Text style={code}>{token}</Text>
-          </Section>
-        )}
-        <Text style={smallMuted}>This code expires in 1 hour. If you request a new code, older codes stop working.</Text>
-        <Section style={fallbackWrap}>
-          <Text style={fallbackLabel}>Can't see the code clearly?</Text>
-          <Button href={confirmationUrl} style={fallbackButton}>
-            Verify instantly
-          </Button>
-          <Text style={fallbackHelp}>
-            Opens {siteName} in a new tab and signs you in — no code needed.
-          </Text>
-        </Section>
+        <Button className="dm-btn" style={button} href={confirmationUrl}>
+          Verify Email
+        </Button>
         <Text style={footer}>
-          Didn't sign up for{' '}
-          <Link href={siteUrl} style={link}>
-            {siteName}
-          </Link>
-          ? You can safely ignore this email.
+          If you didn't create an account, you can safely ignore this email.
         </Text>
       </Container>
     </Body>
@@ -84,55 +72,24 @@ const text = {
   fontSize: '14px',
   color: '#55575d',
   lineHeight: '1.5',
-  margin: '0 0 20px',
-}
-const codeWrap = {
-  textAlign: 'center' as const,
-  margin: '24px 0',
-}
-const code = {
-  display: 'inline-block',
-  fontSize: '32px',
-  fontWeight: 'bold' as const,
-  letterSpacing: '8px',
-  color: '#000000',
-  backgroundColor: '#f4f4f5',
-  padding: '14px 24px',
-  borderRadius: '10px',
-  fontFamily: 'Menlo, Consolas, monospace',
-  margin: 0,
-}
-const smallMuted = {
-  fontSize: '12px',
-  color: '#888888',
-  textAlign: 'center' as const,
-  margin: '0 0 30px',
-}
-const fallbackWrap = {
-  borderTop: '1px solid #eeeeee',
-  paddingTop: '20px',
   margin: '0 0 25px',
-  textAlign: 'center' as const,
 }
-const fallbackLabel = {
-  fontSize: '13px',
-  color: '#55575d',
-  margin: '0 0 12px',
-}
-const fallbackButton = {
-  display: 'inline-block',
+const link = { color: 'inherit', textDecoration: 'underline' }
+const button = {
   backgroundColor: '#000000',
   color: '#ffffff',
   fontSize: '14px',
-  fontWeight: 'bold' as const,
-  padding: '12px 24px',
+  border: '1px solid #000000',
   borderRadius: '8px',
+  padding: '12px 20px',
   textDecoration: 'none',
 }
-const fallbackHelp = {
-  fontSize: '12px',
-  color: '#888888',
-  margin: '12px 0 0',
-}
-const link = { color: '#000000', textDecoration: 'underline' }
 const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+// Rendered as a text child, which React may HTML-escape: keep this CSS free of >, &, and quotes.
+const darkModeCss = `
+  @media (prefers-color-scheme: dark) {
+    .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  }
+  [data-ogsc] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+  [data-ogsb] .dm-btn { background-color: #ffffff !important; color: #000000 !important; }
+`
