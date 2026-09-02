@@ -24,7 +24,9 @@ import {
   markWriteThrew,
   mergeWriteOutcome,
   pendingParts,
+  reconcileTotals,
   remainingMs,
+  restoreTiming,
   scoreAnswers,
   validateSnapshot,
   type ActiveSnapshot,
@@ -414,5 +416,111 @@ describe("snapshot persistence", () => {
     clearSnapshot();
     expect(readSnapshotRaw()).toBeNull();
     vi.unstubAllGlobals();
+  });
+});
+
+/* ── timing recovery across reload (follow-up pass) ── */
+
+describe("timing recovery", () => {
+  const START = 1_000_000;
+  const DEADLINE = START + 20 * 60_000;
+
+  it("credits the whole live interval after a mid-question timed reload", () => {
+    const s = snapshot({
+      perQuestionMs: [4000, 0, 0],
+      current: 1,
+      questionStartedAt: START + 4000,
+      updatedAt: START + 10_000,
+      startedAt: START,
+      deadlineAt: DEADLINE,
+    });
+    const now = START + 60_000; // 50s away while on question 2
+    const t = restoreTiming({ snapshot: s, now });
+    expect(t.questionStartedAt).toBe(now);
+    // Authoritative total equals now - startedAt.
+    expect(t.perQuestionMs.reduce((a, b) => a + b, 0)).toBe(60_000);
+    expect(t.perQuestionMs[1]).toBe(56_000);
+  });
+
+  it("bounds recovery at the deadline when the tab was closed past expiry", () => {
+    const s = snapshot({
+      perQuestionMs: [4000, 0, 0],
+      current: 1,
+      questionStartedAt: START + 4000,
+      updatedAt: START + 10_000,
+    });
+    const now = DEADLINE + 5 * 60_000;
+    const t = restoreTiming({ snapshot: s, now });
+    expect(t.questionStartedAt).toBeNull(); // no new live interval after expiry
+    expect(t.perQuestionMs.reduce((a, b) => a + b, 0)).toBe(DEADLINE - START);
+  });
+
+  it("does not invent closed-tab time for untimed sessions", () => {
+    const s = snapshot({
+      deadlineAt: null,
+      startedAt: START,
+      perQuestionMs: [4000, 0, 0],
+      current: 1,
+      questionStartedAt: START + 4000,
+      updatedAt: START + 9000,
+    });
+    const t = restoreTiming({ snapshot: s, now: START + 3_600_000 });
+    expect(t.perQuestionMs[1]).toBe(5000); // only observed active time
+    expect(t.questionStartedAt).toBe(START + 3_600_000);
+  });
+
+  it("never double-counts: restore then immediate finish equals the wall clock", () => {
+    const s = snapshot({
+      perQuestionMs: [4000, 0, 0],
+      current: 1,
+      questionStartedAt: START + 4000,
+      updatedAt: START + 10_000,
+    });
+    const now = START + 60_000;
+    const t = restoreTiming({ snapshot: s, now });
+    const final = buildFinalSnapshot({
+      sessionId: "sess-1",
+      questions,
+      answers: s.answers,
+      perQuestionMs: t.perQuestionMs,
+      current: s.current,
+      questionStartedAt: t.questionStartedAt,
+      startedAt: s.startedAt,
+      deadlineAt: s.deadlineAt,
+      now,
+    });
+    expect(final.totalMs).toBe(60_000);
+    expect(final.perQuestionMs.reduce((a, b) => a + b, 0)).toBe(final.totalMs);
+  });
+
+  it("reconciles unattributed gaps once into the current question", () => {
+    const per = reconcileTotals({
+      perQuestionMs: [1000, 1000, 0],
+      current: 2,
+      startedAt: START,
+      deadlineAt: DEADLINE,
+      now: START + 10_000,
+    });
+    expect(per).toEqual([1000, 1000, 8000]);
+    // Idempotent: a second pass adds nothing.
+    expect(
+      reconcileTotals({
+        perQuestionMs: per,
+        current: 2,
+        startedAt: START,
+        deadlineAt: DEADLINE,
+        now: START + 10_000,
+      }),
+    ).toEqual(per);
+  });
+
+  it("migrates a v1 snapshot without a live interval", () => {
+    const s = snapshot();
+    const raw = JSON.parse(JSON.stringify({ ...s, version: 1 }));
+    delete raw.questionStartedAt;
+    const v = validateSnapshot(raw);
+    expect(v).not.toBeNull();
+    expect(v!.version).toBe(ACTIVE_SNAPSHOT_VERSION);
+    expect(v!.questionStartedAt).toBeNull();
   });
 });
