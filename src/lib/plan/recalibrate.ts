@@ -449,10 +449,15 @@ export function moveTask(
  * Merge a remote schedule with local edits. Used for cross-device safety: the
  * higher version wins as the structural base, and task outcomes are unioned so
  * completed/skipped work is never lost.
+ *
+ * `today` matters when one side is still dirty with the historical duplicate
+ * bug shape (past skipped copies + an active future carried copy of the same
+ * id): a stale skip must never overwrite the live carried session.
  */
 export function mergeSchedules(
   remote: PlanSchedule,
   local: PlanSchedule,
+  today: string = localDateFor(),
 ): PlanSchedule {
   if (remote.planId !== local.planId) {
     return remote.scheduleVersion >= local.scheduleVersion ? remote : local;
@@ -463,18 +468,37 @@ export function mergeSchedules(
   for (const t of other.tasks) if (t.status !== "scheduled") outcomes.set(t.id, t);
   for (const t of base.tasks) if (t.status !== "scheduled") outcomes.set(t.id, t);
 
+  /** An in-flight carried/moved session that has not happened yet. */
+  const isActiveCarried = (t: ScheduledTask) =>
+    t.status === "scheduled" && !!t.movedFrom && t.date >= today;
+
+  const resolved = base.tasks.map((t) => {
+    const outcome = outcomes.get(t.id);
+    if (!outcome) return t;
+    // Genuine completed work always wins, even over a carried copy.
+    if (outcome.status === "completed") return outcome;
+    // A live carried session is not superseded by a stale skip/past record.
+    if (isActiveCarried(t)) return t;
+    return outcome;
+  });
+
   const seen = new Set(base.tasks.map((t) => t.id));
-  const extraHistory = [...outcomes.values()].filter((t) => !seen.has(t.id));
+  const extras = [
+    ...[...outcomes.values()].filter((t) => !seen.has(t.id)),
+    // Carried sessions only present on the other side must survive too.
+    ...other.tasks.filter((t) => isActiveCarried(t) && !seen.has(t.id)),
+  ];
 
   return {
     ...base,
     // Unique task identity is an invariant of the merge result: a stale copy
     // from either side can never reintroduce a duplicate id.
-    tasks: dedupeTasksById([...base.tasks.map((t) => outcomes.get(t.id) ?? t), ...extraHistory]),
+    tasks: dedupeTasksById([...resolved, ...extras], today),
     revisions: dedupeRevisions([...base.revisions, ...other.revisions]),
   };
 
 }
+
 
 function dedupeRevisions(list: PlanRevisionRecord[]): PlanRevisionRecord[] {
   const map = new Map<number, PlanRevisionRecord>();
