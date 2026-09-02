@@ -998,45 +998,48 @@ function QuizScreen({
 function ResultsScreen({
   config,
   questions,
-  answers,
-  perQuestionMs,
+  final,
   confidenceBefore,
-  saveResult,
-  onRetryFinish,
+  completion,
+  retrying,
+  onRetryWrites,
   onRetry,
   onNewDrill,
 }: {
   config: PracticeConfig;
   questions: QuizQuestion[];
-  answers: (number | null)[];
-  perQuestionMs: number[];
+  final: FinalSnapshot;
   confidenceBefore: number | null;
-  saveResult: WriteResult | null;
-  onRetryFinish: () => void;
+  completion: CompletionStatus | null;
+  retrying: boolean;
+  onRetryWrites: () => void;
   onRetry: () => void;
   onNewDrill: () => void;
 }) {
-  const total = questions.length;
-  const correct = answers.reduce<number>(
-    (acc, a, i) => (a === questions[i]?.correctIndex ? acc + 1 : acc),
-    0,
-  );
-  const accuracy = correct / total;
+  // Every displayed number comes from the one stable final snapshot.
+  const answers = final.answers;
+  const perQuestionMs = final.perQuestionMs;
+  const total = final.total;
+  const correct = final.correct;
+  const accuracy = final.accuracy;
   const accuracyPct = Math.round(accuracy * 100);
-  const totalSec = Math.round(perQuestionMs.reduce((a, b) => a + b, 0) / 1000);
+  const totalSec = Math.round(final.totalMs / 1000);
   const avgSec = Math.round(totalSec / Math.max(1, total));
+  const saveLabel = describeCompletion(completion);
+  const recorded = completion ? completionAccepted(completion) : false;
 
-  // Confidence delta (estimate) — adjustModuleConfidence has already been applied
+  // Confidence delta (estimate) — only claimed once the activity was accepted.
   const targetConf = Math.max(1, Math.min(5, accuracy * 5));
   const delta =
     confidenceBefore != null
       ? +(0.4 * (targetConf > confidenceBefore ? 1 : -1) *
           Math.min(1, Math.abs(targetConf - confidenceBefore))).toFixed(2)
       : 0;
+  const confidenceApplied = completion?.activity === "accepted";
 
   const wrong = questions
     .map((q, i) => ({ q, i, a: answers[i] }))
-    .filter((x) => x.a !== x.q.correctIndex);
+    .filter((x) => x.a == null || x.a !== x.q.correctIndex);
   const right = total - wrong.length;
 
   const pacingNote =
@@ -1056,17 +1059,18 @@ function ResultsScreen({
     const cfg: PracticeConfig = {
       ...config,
       formatLabel: "Follow-up drill",
-      questions: Math.min(10, Math.max(5, wrong.length || 6)),
+      questions: Math.min(PROVIDER_MAX_QUESTIONS, Math.max(5, wrong.length || 6)),
       duration: Math.max(10, Math.round((wrong.length || 6) * 1.7)),
       difficulty: "Adaptive",
       rationale: `Targeted drill on the ${wrong.length} concepts you missed in your last ${config.formatLabel}.`,
       reasonBits: ["Recently missed items", config.module],
     };
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
+      sessionStorage.setItem(PRACTICE_CONFIG_KEY, JSON.stringify(cfg));
     } catch {}
-    // Force a fresh mount via navigation
-    window.location.reload();
+    clearSnapshot();
+    // Fresh mount with no search target so the queued follow-up config is used.
+    window.location.href = "/practice";
   }
 
   return (
