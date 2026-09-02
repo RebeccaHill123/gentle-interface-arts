@@ -34,6 +34,7 @@ import {
 } from "@/lib/study-log";
 import {
   PRACTICE_CONFIG_KEY,
+  PROVIDER_MAX_QUESTIONS,
   configFingerprint,
   resolvePracticeConfig,
   type PracticeConfig,
