@@ -142,7 +142,7 @@ function validateFinal(v: unknown, total: number): FinalSnapshot | null {
 export function validateSnapshot(raw: unknown): ActiveSnapshot | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  if (r.version !== ACTIVE_SNAPSHOT_VERSION) return null;
+  if (typeof r.version !== "number" || !SUPPORTED_SNAPSHOT_VERSIONS.includes(r.version)) return null;
   if (typeof r.sessionId !== "string" || !r.sessionId) return null;
   if (typeof r.fingerprint !== "string" || !r.fingerprint) return null;
   const config = normaliseConfig(r.config);
