@@ -262,8 +262,12 @@ export async function upsertAnswers(input: {
 }
 
 /**
- * Idempotent section start. Returns the authoritative timer state: the original
- * started_at is preserved, so resuming or refreshing never grants extra time.
+ * Idempotent, concurrency-safe section start.
+ *
+ * The first-start write is conditional on `started_at IS NULL`, so two rapid
+ * clicks cannot move the start forward: the loser matches zero rows. We then
+ * re-read the row and return the *persisted* start and timer, never a
+ * speculative local value.
  */
 export async function startSection(
   sectionId: string,
@@ -282,29 +286,69 @@ export async function startSection(
   if (readErr) throw new MockStoreError("Could not open this section", readErr);
   if (!existing) throw new MockStoreError("Section not found");
 
-  const startedAt = resolveSectionStartedAt(existing.started_at, nowIso);
-  const storedMeta = (existing.metadata ?? {}) as SectionMetadata;
-  const storedTimer = isTimerState(storedMeta.timer) ? storedMeta.timer : null;
-  const timer: TimerState = storedTimer ?? {
-    startedAtMs: Date.parse(startedAt),
-    pausedAccumulatedMs: 0,
-    pausedAtMs: null,
-  };
+  if (!existing.started_at) {
+    const storedMeta = (existing.metadata ?? {}) as SectionMetadata;
+    // Compare-and-set: only the first writer sees started_at IS NULL.
+    const { error: firstErr } = await supabase
+      .from("mock_sections")
+      .update({
+        status: "in_progress",
+        started_at: nowIso,
+        metadata: {
+          ...storedMeta,
+          timer: {
+            startedAtMs: nowMs,
+            pausedAccumulatedMs: 0,
+            pausedAtMs: null,
+          } satisfies TimerState,
+        },
+      })
+      .eq("id", sectionId)
+      .eq("user_id", user.id)
+      .is("started_at", null);
+    if (firstErr) {
+      throw new MockStoreError("Could not open this section", firstErr);
+    }
+  }
 
-  const { data: rows, error } = await supabase
+  // Authoritative re-read: whatever is stored now is the truth.
+  const { data: final, error: finalErr } = await supabase
     .from("mock_sections")
-    .update({
-      status: existing.status === "completed" ? existing.status : "in_progress",
-      started_at: startedAt,
-      metadata: { ...storedMeta, timer },
-    })
+    .select("started_at, status, metadata")
     .eq("id", sectionId)
     .eq("user_id", user.id)
-    .select("id");
-  if (error) throw new MockStoreError("Could not open this section", error);
-  if (!rows || rows.length === 0) {
-    throw new MockStoreError("Could not open this section");
+    .maybeSingle();
+  if (finalErr) throw new MockStoreError("Could not open this section", finalErr);
+  if (!final) throw new MockStoreError("Section not found");
+
+  const startedAt = resolveSectionStartedAt(final.started_at, nowIso);
+  const storedMeta = (final.metadata ?? {}) as SectionMetadata;
+  const storedTimer = isTimerState(storedMeta.timer) ? storedMeta.timer : null;
+  const timer: TimerState =
+    storedTimer ?? {
+      startedAtMs: Date.parse(startedAt),
+      pausedAccumulatedMs: 0,
+      pausedAtMs: null,
+    };
+
+  // Legacy rows may have a start but no timer metadata, and resuming a started
+  // section must flip it back to in_progress — neither touches started_at.
+  if (!storedTimer || (final.status !== "in_progress" && final.status !== "completed")) {
+    const { data: rows, error } = await supabase
+      .from("mock_sections")
+      .update({
+        status: final.status === "completed" ? final.status : "in_progress",
+        metadata: { ...storedMeta, timer },
+      })
+      .eq("id", sectionId)
+      .eq("user_id", user.id)
+      .select("id");
+    if (error) throw new MockStoreError("Could not open this section", error);
+    if (!rows || rows.length === 0) {
+      throw new MockStoreError("Could not open this section");
+    }
   }
+
   return { startedAt, timer };
 }
 
@@ -322,8 +366,9 @@ export async function saveSectionTiming(
     .eq("user_id", user.id)
     .maybeSingle();
   if (readErr) throw new MockStoreError("Could not save your timer", readErr);
-  const meta = (existing?.metadata ?? {}) as SectionMetadata;
-  const { error } = await supabase
+  if (!existing) throw new MockStoreError("Could not save your timer");
+  const meta = (existing.metadata ?? {}) as SectionMetadata;
+  const { data: rows, error } = await supabase
     .from("mock_sections")
     .update({
       metadata: {
@@ -333,8 +378,12 @@ export async function saveSectionTiming(
       },
     })
     .eq("id", sectionId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id");
   if (error) throw new MockStoreError("Could not save your timer", error);
+  if (!rows || rows.length === 0) {
+    throw new MockStoreError("Could not save your timer");
+  }
 }
 
 export async function completeSection(
@@ -346,18 +395,20 @@ export async function completeSection(
   const user = await requireUser();
   const { data: existing, error: readErr } = await supabase
     .from("mock_sections")
-    .select("metadata")
+    .select("metadata, completed_at")
     .eq("id", sectionId)
     .eq("user_id", user.id)
     .maybeSingle();
   if (readErr) throw new MockStoreError("Could not submit this section", readErr);
-  const meta = (existing?.metadata ?? {}) as SectionMetadata;
+  if (!existing) throw new MockStoreError("Could not submit this section");
+  const meta = (existing.metadata ?? {}) as SectionMetadata;
 
   const { data: rows, error } = await supabase
     .from("mock_sections")
     .update({
       status: "completed",
-      completed_at: new Date().toISOString(),
+      // Preserve the original completion timestamp on retry.
+      completed_at: existing.completed_at ?? new Date().toISOString(),
       score,
       metadata: {
         ...meta,
@@ -374,17 +425,35 @@ export async function completeSection(
   }
 }
 
+/**
+ * Idempotent simulation completion. A retry must not move `completed_at`
+ * forward; the first recorded completion timestamp is the real one.
+ */
 export async function completeSimulation(
   simId: string,
   overallScore: number | null,
   totalTimeSeconds: number,
-): Promise<void> {
+): Promise<{ completedAt: string }> {
   const user = await requireUser();
+  const { data: existing, error: readErr } = await supabase
+    .from("mock_simulations")
+    .select("completed_at")
+    .eq("id", simId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (readErr) {
+    throw new MockStoreError("Could not finalise this simulation", readErr);
+  }
+  if (!existing) {
+    throw new MockStoreError("Could not finalise this simulation");
+  }
+  const completedAt = existing.completed_at ?? new Date().toISOString();
+
   const { data: rows, error } = await supabase
     .from("mock_simulations")
     .update({
       status: "completed",
-      completed_at: new Date().toISOString(),
+      completed_at: completedAt,
       overall_score: overallScore,
       total_time_seconds: Math.max(0, Math.round(totalTimeSeconds)),
     })
@@ -395,4 +464,6 @@ export async function completeSimulation(
   if (!rows || rows.length === 0) {
     throw new MockStoreError("Could not finalise this simulation");
   }
+  return { completedAt };
 }
+
