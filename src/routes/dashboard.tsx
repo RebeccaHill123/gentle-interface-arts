@@ -41,10 +41,13 @@ import {
   loadPlan,
   clearPlan,
   pullPlanFromCloud,
+  pullPlanFromCloudResult,
   toggleTaskCompletion,
   computeStreak,
   type StoredPlan,
 } from "@/lib/plan-store";
+import { decidePlanLoad, type PlanLoadDecision } from "@/lib/plan-recovery";
+
 import {
   recordStudyActivity,
   recordGradedAttempts,
