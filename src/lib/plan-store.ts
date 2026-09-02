@@ -2,6 +2,16 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
 import { hasRecentAuthCallback, waitForAuthUser } from "@/lib/auth-session";
+import {
+  decidePlanPull,
+  flushPlanSync,
+  isPlanSyncDirty,
+  markPlanDirty,
+  savePlanDurable,
+  type PlanSyncDeps,
+  type PlanSyncOutcome,
+} from "@/lib/plan-sync";
+
 
 export type ExamType = "SQE1" | "SQE2" | "UBE" | "MPRE";
 
