@@ -9,6 +9,8 @@ import { ArrowRight, CalendarCheck2 } from "lucide-react";
 import { SKIP_REASONS } from "@/lib/plan/task-presentation";
 import type { PlanSchedule, ScheduledTask } from "@/lib/plan/types";
 import { addDaysKey } from "@/lib/plan/dates";
+import { dedupeTasksById } from "@/lib/plan/repair";
+
 
 export interface WeeklyReviewStats {
   plannedMinutes: number;
