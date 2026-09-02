@@ -217,31 +217,35 @@ function PracticeSessionPage() {
     // A reload of a launcher-started session has no search params and the
     // stored config was already consumed — recover the config from the durable
     // snapshot rather than discarding in-progress work.
-    let cfg: PracticeConfig | null = resolution.kind === "none" ? null : resolution.config;
-    let fp: string | null = cfg ? configFingerprint(cfg) : null;
+    let cfgCandidate: PracticeConfig | null =
+      resolution.kind === "none" ? null : resolution.config;
+    let fpCandidate: string | null = cfgCandidate ? configFingerprint(cfgCandidate) : null;
     const snapshotRaw = readSnapshotRaw();
-    if (!cfg) {
+    if (!cfgCandidate) {
       const snap = validateSnapshot(snapshotRaw);
-      const fresh = snap && Date.now() - snap.updatedAt <= ACTIVE_MAX_AGE_MS;
+      const fresh = !!snap && Date.now() - snap.updatedAt <= ACTIVE_MAX_AGE_MS;
       const settled = !!snap?.completion && completionAccepted(snap.completion);
       if (snap && fresh && !settled) {
-        cfg = snap.config;
-        fp = snap.fingerprint;
+        cfgCandidate = snap.config;
+        fpCandidate = snap.fingerprint;
       }
     }
 
-    if (!cfg || !fp) {
+    if (!cfgCandidate || !fpCandidate) {
       setPhaseTracked("error");
       setError("No practice session was queued. Start one from Mocks & Practice.");
       return;
     }
 
+    const cfg: PracticeConfig = cfgCandidate;
+    const fp: string = fpCandidate;
     configRef.current = cfg;
     setConfig(cfg);
     fingerprintRef.current = fp;
 
     const plan = loadPlan();
-    const mod = plan?.input.modules.find((m) => m.name === cfg!.module);
+    const mod = plan?.input.modules.find((m) => m.name === cfg.module);
+
     setConfidenceBefore(mod?.confidence ?? null);
     const examType = (plan?.input.examType ?? "SQE1") as "SQE1" | "SQE2" | "UBE" | "MPRE";
     examPathRef.current = plan?.input.examType ?? undefined;
