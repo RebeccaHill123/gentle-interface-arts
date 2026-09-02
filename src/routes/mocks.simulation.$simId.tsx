@@ -888,24 +888,84 @@ function SectionRunner({
   };
 
   /**
-   * Bounded-backoff retry for every still-unconfirmed answer in this section.
-   * Also exposed as an explicit "Retry sync" action.
+   * Save one question and clear dirty state only if this write carried the
+   * newest revision — an edit made while the request was in flight stays dirty.
+   */
+  const saveQuestion = async (questionId: string, la: LocalAnswer) => {
+    const revision = revisionOf(revisionsRef.current, questionId);
+    try {
+      await saveOne(questionId, la);
+      applyUnsynced((prev) =>
+        markSyncedIfCurrent(prev, revisionsRef.current, questionId, revision),
+      );
+      return true;
+    } catch (err) {
+      console.error("[mock] autosave failed", questionId, err);
+      return false;
+    }
+  };
+
+  /**
+   * Every answer/text/flag mutation goes through here: the question is marked
+   * dirty synchronously, before any remote write, so exiting immediately after
+   * typing can never claim the work reached the account.
+   */
+  const changeCurrent = (
+    patch: Partial<LocalAnswer>,
+    mode: "immediate" | "debounced" = "immediate",
+  ) => {
+    const qid = currentId;
+    const la: LocalAnswer = { ...(localRef.current[qid] ?? {}), ...patch };
+    revisionsRef.current = bumpRevision(revisionsRef.current, qid);
+    applyUnsynced((prev) => markUnsynced(prev, qid));
+    updateLocal(qid, patch);
+    if (mode === "debounced") {
+      // Typing: bounded debounce instead of a request per keystroke.
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = setTimeout(() => {
+        typingTimerRef.current = null;
+        void saveQuestion(qid, la);
+      }, TYPING_SAVE_DEBOUNCE_MS);
+      return;
+    }
+    void saveQuestion(qid, la);
+  };
+
+  /** Retry the authoritative timer write; only clear the flag once confirmed. */
+  const retryTimer = async () => {
+    const at = Date.now();
+    try {
+      await saveSectionTiming(
+        dbSection.id,
+        timerRef.current,
+        elapsedSecondsFrom(timerRef.current, at),
+      );
+      setTimerSyncFailed(false);
+      return true;
+    } catch (err) {
+      console.error("[mock] timer retry failed", err);
+      setTimerSyncFailed(true);
+      return false;
+    }
+  };
+
+  /**
+   * Combined backoff worker and explicit "Retry sync" action: dirty answers and
+   * a failed timer write are both retried, so the button always retries what the
+   * label claims.
    */
   const retryDirty = async () => {
     const ids = unsyncedIds(unsyncedRef.current);
-    if (!ids.length || retryingRef.current) return;
+    const timerPending = timerSyncFailedRef.current;
+    if ((!ids.length && !timerPending) || retryingRef.current) return;
     retryingRef.current = true;
     setRetrying(true);
     let anyFailed = false;
     for (const qid of ids) {
-      try {
-        await saveOne(qid, localRef.current[qid] ?? {});
-        applyUnsynced((prev) => markSynced(prev, qid));
-      } catch (err) {
-        console.error("[mock] retry sync failed", qid, err);
-        anyFailed = true;
-      }
+      const ok = await saveQuestion(qid, localRef.current[qid] ?? {});
+      if (!ok) anyFailed = true;
     }
+    if (timerPending && !(await retryTimer())) anyFailed = true;
     retryingRef.current = false;
     setRetrying(false);
     setRetryAttempt((a) => (anyFailed ? a + 1 : 0));
@@ -915,29 +975,40 @@ function SectionRunner({
   retryRef.current = retryDirty;
 
   useEffect(() => {
-    if (isFullySynced(unsynced)) return;
+    if (isFullySynced(unsynced) && !timerSyncFailed) return;
     const t = setTimeout(() => {
       void retryRef.current();
     }, retryDelayMs(retryAttempt));
     return () => clearTimeout(t);
-  }, [unsynced, retryAttempt]);
+  }, [unsynced, timerSyncFailed, retryAttempt]);
 
-  /** Autosave on navigation. Local drafts are always kept; failures stay dirty. */
+  // Flush a pending debounced typing save when leaving the section.
+  useEffect(
+    () => () => {
+      if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    },
+    [],
+  );
+
+  /**
+   * Navigation-time write. Time tracking still rides along here, but content is
+   * already dirty from the moment it changed — this is never the first point.
+   */
   const persistCurrent = (extraSeconds: number) => {
     const la: LocalAnswer = {
       ...currentLocal,
       timeSpentSeconds: (currentLocal.timeSpentSeconds ?? 0) + extraSeconds,
     };
-    updateLocal(currentId, { timeSpentSeconds: la.timeSpentSeconds });
     const qid = currentId;
-    // Dirty until this exact question is confirmed remotely.
+    if (typingTimerRef.current) {
+      clearTimeout(typingTimerRef.current);
+      typingTimerRef.current = null;
+    }
+    updateLocal(qid, { timeSpentSeconds: la.timeSpentSeconds });
     applyUnsynced((prev) => markUnsynced(prev, qid));
-    void saveOne(qid, la)
-      .then(() => applyUnsynced((prev) => markSynced(prev, qid)))
-      .catch((err) => {
-        console.error("[mock] autosave failed", err);
-      });
+    void saveQuestion(qid, la);
   };
+
 
 
   const consumeQuestionTime = () => {
