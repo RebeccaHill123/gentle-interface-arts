@@ -273,11 +273,21 @@ export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
   if (error) throw error;
 }
 
-export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
+export type CloudPlanResult = {
+  /** false when the read itself failed (network/permissions) — not "no plan". */
+  ok: boolean;
+  plan: StoredPlan | null;
+};
+
+/**
+ * Read the cloud plan while distinguishing "this user genuinely has no plan"
+ * from "we could not read it". A failed read must never erase a good local plan.
+ */
+export async function pullPlanFromCloudResult(): Promise<CloudPlanResult> {
   try {
     const user = await waitForAuthUser();
     const uid = user?.id;
-    if (!uid) return null;
+    if (!uid) return { ok: false, plan: null };
     const { data, error } = await supabase
       .from("user_plans")
       .select("plan")
@@ -285,7 +295,7 @@ export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
       .maybeSingle();
     if (error) {
       console.warn("pullPlanFromCloud failed", error);
-      return null;
+      return { ok: false, plan: null };
     }
     if (!data) {
       // No cloud plan for this user — clear stale local cache after normal sign-in,
@@ -293,19 +303,24 @@ export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
       if (typeof window !== "undefined" && !hasRecentAuthCallback()) {
         localStorage.removeItem(KEY);
       }
-      return null;
+      return { ok: true, plan: null };
     }
     const plan = data.plan as unknown as StoredPlan;
     if (typeof window !== "undefined") {
       localStorage.setItem(KEY, JSON.stringify(plan));
-      return loadPlan();
+      return { ok: true, plan: loadPlan() };
     }
-    return plan;
+    return { ok: true, plan };
   } catch (e) {
     console.warn("pullPlanFromCloud failed", e);
-    return null;
+    return { ok: false, plan: null };
   }
 }
+
+export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
+  return (await pullPlanFromCloudResult()).plan;
+}
+
 
 export function toggleTaskCompletion(index: number) {
   const stored = loadPlan();

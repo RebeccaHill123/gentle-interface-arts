@@ -41,10 +41,13 @@ import {
   loadPlan,
   clearPlan,
   pullPlanFromCloud,
+  pullPlanFromCloudResult,
   toggleTaskCompletion,
   computeStreak,
   type StoredPlan,
 } from "@/lib/plan-store";
+import { decidePlanLoad, type PlanLoadDecision } from "@/lib/plan-recovery";
+
 import {
   recordStudyActivity,
   recordGradedAttempts,
@@ -123,6 +126,8 @@ function DashboardPage() {
   const navigate = useNavigate();
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [hydrating, setHydrating] = useState(true);
+  const [recovery, setRecovery] = useState<PlanLoadDecision | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [tick, setTick] = useState(0);
   const [tab, setTab] = useState<DashboardTab>("week");
   const [quizTask, setQuizTask] = useState<{
@@ -134,27 +139,34 @@ function DashboardPage() {
     minutes: number;
   } | null>(null);
 
-  // Hydrate plan from cloud on mount; redirect to onboarding if user has none.
+  // Hydrate the plan from cloud on mount. An entitled user with no readable
+  // plan gets an explicit recovery state — never a silent bounce to onboarding.
   useEffect(() => {
     let active = true;
+    setHydrating(true);
     (async () => {
-      const cloud = await pullPlanFromCloud();
+      const cloud = await pullPlanFromCloudResult();
       if (!active) return;
-      const rawPlan = cloud ?? loadPlan();
-      const fallback = rawPlan ? normalizeStoredPlanTasks(rawPlan) : null;
-      if (fallback) {
-        setStored(fallback);
-        setHydrating(false);
+      const local = loadPlan();
+      const decision = decidePlanLoad({
+        cloudOk: cloud.ok,
+        hasCloudPlan: !!cloud.plan,
+        hasLocalPlan: !!local,
+      });
+      if (decision.kind === "ready") {
+        const rawPlan = cloud.plan ?? local;
+        setStored(rawPlan ? normalizeStoredPlanTasks(rawPlan) : null);
+        setRecovery(null);
       } else {
-        // No plan saved for this account — send them through onboarding.
-        navigate({ to: "/onboarding", replace: true });
-        return;
+        setRecovery(decision);
       }
+      setHydrating(false);
     })();
     return () => {
       active = false;
     };
-  }, [navigate]);
+  }, [reloadKey]);
+
 
   // Re-read local cache when tick changes (e.g. after task toggle)
   useEffect(() => {
@@ -306,6 +318,45 @@ function DashboardPage() {
     };
   }, [examLabel]);
 
+  if (!hydrating && recovery && recovery.kind === "recover") {
+    const readError = recovery.reason === "read-error";
+
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background px-5">
+        <div className="w-full max-w-md text-center">
+          <p className="text-[13px] uppercase tracking-[0.14em] text-muted-foreground">
+            Your membership is active
+          </p>
+          <h1 className="mt-3 text-2xl font-light text-foreground">
+            {readError
+              ? "We couldn't load your study plan"
+              : "No study plan on this account yet"}
+          </h1>
+          <p className="mt-3 text-sm text-muted-foreground">
+            {readError
+              ? "Your access is fine — this looks like a temporary connection problem. Try loading it again."
+              : "Your access is fine. Build your plan and it will be saved to your account."}
+          </p>
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <Button
+              className="rounded-full"
+              onClick={() => setReloadKey((k) => k + 1)}
+            >
+              Retry loading my plan
+            </Button>
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/onboarding" })}
+              className="text-[13px] text-muted-foreground hover:text-foreground"
+            >
+              Rebuild my plan from scratch
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (hydrating || !stored || !analytics) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -313,6 +364,7 @@ function DashboardPage() {
       </div>
     );
   }
+
 
   const { input, plan, completedTaskIds, sessions } = stored;
   // Compute live so it stays in sync with the AI coach (stored value is a snapshot from onboarding).

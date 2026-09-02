@@ -1,10 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { type StripeEnv, verifyWebhook } from "@/lib/stripe.server";
+import { profileHasAccess, verifyClaim } from "@/lib/provisioning";
+
+/**
+ * Thrown when a paid checkout could not be fully provisioned. It must escape
+ * the handler so Stripe receives a non-2xx response and retries.
+ */
+class ProvisioningError extends Error {
+  constructor(message: string, cause?: unknown) {
+    super(message);
+    this.name = "ProvisioningError";
+    if (cause) console.error(`[webhook] ${message}`, cause);
+  }
+}
 
 async function getAdmin() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   return supabaseAdmin;
 }
+
 
 function resolvePriceLookupKey(item: any): string | null {
   return (
@@ -80,22 +94,37 @@ async function findUserIdForCustomer(
 }
 
 
-async function upsertFromSubscription(subscription: any, env: StripeEnv) {
+async function upsertFromSubscription(
+  subscription: any,
+  env: StripeEnv,
+  options: { strict?: boolean; userId?: string } = {},
+): Promise<string | null> {
   const admin = await getAdmin();
-  const userId = await findUserIdForCustomer(admin, subscription, env);
+  const userId =
+    options.userId ?? (await findUserIdForCustomer(admin, subscription, env));
   if (!userId) {
+    if (options.strict) {
+      throw new ProvisioningError(
+        `no user for subscription ${subscription?.id}`,
+      );
+    }
     console.error("[webhook] no user for subscription", subscription.id);
-    return;
+    return null;
   }
+
 
   // Duplicate-trial prevention. If this profile already consumed a trial on a
   // DIFFERENT subscription, end the trial on this one immediately so Stripe
   // bills the first period straight away.
-  const { data: existingProfile } = await admin
+  const { data: existingProfile, error: existingProfileErr } = await admin
     .from("profiles")
     .select("has_used_trial, stripe_subscription_id, grandfathered_pro")
     .eq("user_id", userId)
     .maybeSingle();
+  if (existingProfileErr && options.strict) {
+    throw new ProvisioningError("profile read failed", existingProfileErr);
+  }
+
   if (
     subscription.status === "trialing" &&
     existingProfile?.has_used_trial &&
@@ -135,7 +164,7 @@ async function upsertFromSubscription(subscription: any, env: StripeEnv) {
   const trialStart = toIso(subscription.trial_start);
   const trialEnd = toIso(subscription.trial_end);
 
-  await admin
+  const { data: updatedRows, error: updateErr } = await admin
     .from("profiles")
     .update({
       stripe_customer_id: customerId,
@@ -151,8 +180,23 @@ async function upsertFromSubscription(subscription: any, env: StripeEnv) {
       // Once a trial has been granted it is permanently consumed.
       ...(trialStart || trialEnd ? { has_used_trial: true } : {}),
     })
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .select("user_id");
+  if (updateErr) {
+    if (options.strict) {
+      throw new ProvisioningError("profile entitlement write failed", updateErr);
+    }
+    console.error("[webhook] profile entitlement write failed", updateErr);
+    return null;
+  }
+  if (options.strict && (!updatedRows || updatedRows.length === 0)) {
+    throw new ProvisioningError(
+      `profile entitlement update matched no profile for ${userId}`,
+    );
+  }
+  return userId;
 }
+
 
 async function handleSubscriptionDeleted(subscription: any, env: StripeEnv) {
   const admin = await getAdmin();
@@ -205,13 +249,63 @@ async function handleCheckoutCompleted(session: any, env: StripeEnv) {
 
   const userId = session.metadata?.userId as string | undefined;
   if (userId && customerId) {
-    await admin
+    const { data: rows, error } = await admin
       .from("profiles")
       .update({ stripe_customer_id: customerId })
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .select("user_id");
+    if (error) {
+      throw new ProvisioningError("customer stamping failed", error);
+    }
+    if (!rows || rows.length === 0) {
+      throw new ProvisioningError(
+        `customer stamping matched no profile for ${userId}`,
+      );
+    }
   }
 }
 
+type ProfileSnapshot = {
+  user_id: string;
+  is_pro: boolean | null;
+  grandfathered_pro: boolean | null;
+  subscription_status: string | null;
+  current_period_end: string | null;
+};
+
+async function readProfile(
+  admin: any,
+  userId: string,
+): Promise<ProfileSnapshot | null> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select(
+      "user_id, is_pro, grandfathered_pro, subscription_status, current_period_end",
+    )
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new ProvisioningError("profile read failed", error);
+  return (data as ProfileSnapshot | null) ?? null;
+}
+
+async function hasPlanRow(admin: any, userId: string): Promise<boolean> {
+  const { data, error } = await admin
+    .from("user_plans")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw new ProvisioningError("user_plans read failed", error);
+  return !!data;
+}
+
+/**
+ * Provision a paid pending plan into a real, entitled account.
+ *
+ * Every step is verified. If any step cannot be confirmed the function throws
+ * a ProvisioningError, the row stays at `paid` (retriable), and Stripe retries
+ * the delivery. Safe to run repeatedly: user creation, plan attachment,
+ * entitlement stamping and the final claim are all idempotent.
+ */
 async function claimPendingPlan({
   admin,
   token,
@@ -225,124 +319,193 @@ async function claimPendingPlan({
   customerId: string | null;
   env: StripeEnv;
 }) {
-  // Load the pending row. Idempotent: bail early if already claimed.
   const { data: pending, error: pendingErr } = await admin
     .from("pending_plans")
-    .select("id, status, plan_data, claimed_user_id")
+    .select(
+      "id, status, plan_data, claimed_user_id, email, magic_link_email, magic_link_hash",
+    )
     .eq("token", token)
     .maybeSingle();
-  if (pendingErr || !pending) {
-    console.error("[webhook] pending not found for token", token, pendingErr);
+  if (pendingErr) {
+    throw new ProvisioningError("pending_plans read failed", pendingErr);
+  }
+  if (!pending) {
+    // Unknown token — nothing we can ever provision. Do not ask Stripe to
+    // retry forever.
+    console.error("[webhook] pending not found for token", token);
     return;
   }
-  if (pending.status === "claimed") return;
 
-  const email =
+  const email: string | null =
     (session.customer_details?.email as string | undefined) ??
     (session.customer_email as string | undefined) ??
+    (pending.magic_link_email as string | undefined) ??
+    (pending.email as string | undefined) ??
     null;
+
+  // A previously "claimed" row is not trusted: re-verify plan + entitlement,
+  // and replay provisioning if it was only partially completed.
+  if (pending.status === "claimed" && pending.claimed_user_id) {
+    const profile = await readProfile(admin, pending.claimed_user_id);
+    const planRow = await hasPlanRow(admin, pending.claimed_user_id);
+    const verification = verifyClaim({
+      status: pending.status,
+      claimedUserId: pending.claimed_user_id,
+      profile,
+      profileExists: !!profile,
+      hasPlanRow: planRow,
+      magicLinkHash: pending.magic_link_hash,
+    });
+    if (verification.complete) return; // nothing to do, no mutation
+    console.warn(
+      "[webhook] repairing partially claimed pending plan",
+      token,
+      verification.missing,
+    );
+  }
+
   if (!email) {
-    console.error("[webhook] no email on completed session", session.id);
-    return;
+    throw new ProvisioningError(
+      `no email available for completed session ${session.id}`,
+    );
   }
 
-  // Mark 'paid' first so poll-endpoint can show progress.
-  await admin
+  // Record the paid facts first so the return page can honestly say the
+  // payment is confirmed while setup continues. Never downgrade a claimed row.
+  const paidPatch: Record<string, unknown> = {
+    email,
+    stripe_session_id: session.id,
+    stripe_customer_id: customerId,
+    stripe_subscription_id: session.subscription ?? null,
+  };
+  if (pending.status !== "claimed") paidPatch.status = "paid";
+  const { error: paidErr } = await admin
     .from("pending_plans")
-    .update({
-      status: "paid",
-      email,
-      stripe_session_id: session.id,
-      stripe_customer_id: customerId,
-      stripe_subscription_id: session.subscription ?? null,
-    })
-    .eq("id", pending.id)
-    .neq("status", "claimed");
-
-  // Find or create the auth user by email.
-  let userId: string | null = null;
-  const { data: existing } = await admin
-    .from("profiles")
-    .select("user_id")
-    .eq("email", email)
-    .maybeSingle();
-  if (existing?.user_id) {
-    userId = existing.user_id;
-  } else {
-    const { data: created, error: createErr } =
-      await admin.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: { source: "checkout", password_set: false },
-      });
-    if (createErr || !created?.user) {
-      console.error("[webhook] createUser failed", createErr);
-      return;
-    }
-    userId = created.user.id;
+    .update(paidPatch)
+    .eq("id", pending.id);
+  if (paidErr) {
+    throw new ProvisioningError("could not record paid state", paidErr);
   }
-  if (!userId) return;
 
-  // Attach the plan to user_plans (upsert; do not clobber existing plan
-  // if it exists — treat existing plan as source of truth).
-  const { data: existingPlan } = await admin
-    .from("user_plans")
-    .select("user_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (!existingPlan) {
-    await admin
+  // 1. Auth user + profile row.
+  let userId: string | null = pending.claimed_user_id ?? null;
+  if (!userId) {
+    const { data: existing, error: existingErr } = await admin
+      .from("profiles")
+      .select("user_id")
+      .eq("email", email)
+      .maybeSingle();
+    if (existingErr) {
+      throw new ProvisioningError("profile lookup by email failed", existingErr);
+    }
+    if (existing?.user_id) {
+      userId = existing.user_id;
+    } else {
+      const { data: created, error: createErr } =
+        await admin.auth.admin.createUser({
+          email,
+          email_confirm: true,
+          user_metadata: { source: "checkout", password_set: false },
+        });
+      if (createErr || !created?.user) {
+        // A concurrent delivery may have created the user already.
+        const { data: retry } = await admin
+          .from("profiles")
+          .select("user_id")
+          .eq("email", email)
+          .maybeSingle();
+        if (retry?.user_id) userId = retry.user_id;
+        else throw new ProvisioningError("createUser failed", createErr);
+      } else {
+        userId = created.user.id;
+      }
+    }
+  }
+  if (!userId) throw new ProvisioningError("could not resolve a user id");
+
+  let profile = await readProfile(admin, userId);
+  if (!profile) {
+    // The auth trigger normally creates this; make sure it exists.
+    const { error: insertProfileErr } = await admin
+      .from("profiles")
+      .upsert({ user_id: userId, email }, { onConflict: "user_id" });
+    if (insertProfileErr) {
+      throw new ProvisioningError("profile creation failed", insertProfileErr);
+    }
+    profile = await readProfile(admin, userId);
+    if (!profile) {
+      throw new ProvisioningError(`profile still missing for ${userId}`);
+    }
+  }
+
+  // 2. Plan attachment — never overwrite an existing user's plan.
+  if (!(await hasPlanRow(admin, userId))) {
+    const { error: planErr } = await admin
       .from("user_plans")
       .insert({ user_id: userId, plan: pending.plan_data });
+    // A concurrent delivery may have inserted it first (unique user_id).
+    if (planErr && !(await hasPlanRow(admin, userId))) {
+      throw new ProvisioningError("plan attachment failed", planErr);
+    }
+  }
+  if (!(await hasPlanRow(admin, userId))) {
+    throw new ProvisioningError(`plan row missing for ${userId}`);
   }
 
-  // Stamp Stripe fields on the profile via the shared upserter. We need
-  // the full subscription for that, so fetch it.
+  // 3. Entitlement from the real Stripe subscription.
   if (session.subscription) {
     const { createStripeClient } = await import("@/lib/stripe.server");
     const stripe = createStripeClient(env);
+    let sub: any;
     try {
-      const sub = await stripe.subscriptions.retrieve(session.subscription);
-      // Ensure metadata.userId is set for later portal lookups.
+      sub = await stripe.subscriptions.retrieve(session.subscription);
       if (!sub.metadata?.userId) {
         await stripe.subscriptions.update(sub.id, {
           metadata: { ...(sub.metadata ?? {}), userId, pending_token: token },
         });
       }
       if (customerId) {
-        await stripe.customers.update(customerId, {
-          metadata: { userId },
-        });
+        await stripe.customers.update(customerId, { metadata: { userId } });
       }
-      // Patch userId onto the local object so upsertFromSubscription resolves it.
-      (sub as any).metadata = { ...(sub.metadata ?? {}), userId };
-      await upsertFromSubscription(sub as any, env);
     } catch (err) {
-      console.error("[webhook] subscription retrieve failed", err);
+      throw new ProvisioningError("subscription retrieve failed", err);
+    }
+    sub.metadata = { ...(sub.metadata ?? {}), userId };
+    await upsertFromSubscription(sub, env, { strict: true, userId });
+    profile = await readProfile(admin, userId);
+  }
+
+  if (!profileHasAccess(profile)) {
+    throw new ProvisioningError(
+      `entitlement not active for ${userId} after provisioning`,
+    );
+  }
+
+  // 4. First-access magic link. Reuse an existing hash when repairing.
+  let magicHash: string | null = pending.magic_link_hash ?? null;
+  if (!magicHash) {
+    try {
+      const origin =
+        (session.return_url && new URL(session.return_url).origin) || undefined;
+      const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        options: origin ? { redirectTo: `${origin}/dashboard` } : undefined,
+      });
+      if (linkErr) throw linkErr;
+      magicHash =
+        (link?.properties as { hashed_token?: string } | undefined)
+          ?.hashed_token ?? null;
+    } catch (err) {
+      throw new ProvisioningError("magic link generation failed", err);
     }
   }
-
-  // Generate a magic-link hashed_token so the return page can sign the
-  // user in without leaving the tab. Also triggers the Supabase email hook
-  // (managed) so a link is emailed as a fallback for cross-device.
-  let magicHash: string | null = null;
-  try {
-    const origin =
-      (session.return_url && new URL(session.return_url).origin) || undefined;
-    const { data: link, error: linkErr } = await admin.auth.admin.generateLink({
-      type: "magiclink",
-      email,
-      options: origin ? { redirectTo: `${origin}/dashboard` } : undefined,
-    });
-    if (linkErr) console.error("[webhook] generateLink failed", linkErr);
-    magicHash =
-      (link?.properties as { hashed_token?: string } | undefined)
-        ?.hashed_token ?? null;
-  } catch (err) {
-    console.error("[webhook] generateLink threw", err);
+  if (!magicHash) {
+    throw new ProvisioningError("no usable magic-link hash generated");
   }
 
-  await admin
+  // 5. Final claim — then re-read to prove it landed for the right user.
+  const { error: claimErr } = await admin
     .from("pending_plans")
     .update({
       status: "claimed",
@@ -350,9 +513,35 @@ async function claimPendingPlan({
       magic_link_email: email,
       magic_link_hash: magicHash,
     })
+    .eq("id", pending.id);
+  if (claimErr) {
+    throw new ProvisioningError("claim update failed", claimErr);
+  }
+
+  const { data: finalRow, error: finalErr } = await admin
+    .from("pending_plans")
+    .select("status, claimed_user_id, magic_link_hash")
     .eq("id", pending.id)
-    .neq("status", "claimed");
+    .maybeSingle();
+  if (finalErr) {
+    throw new ProvisioningError("claim verification read failed", finalErr);
+  }
+  const finalCheck = verifyClaim({
+    status: finalRow?.status,
+    claimedUserId: finalRow?.claimed_user_id,
+    expectedUserId: userId,
+    profile,
+    profileExists: true,
+    hasPlanRow: true,
+    magicLinkHash: finalRow?.magic_link_hash,
+  });
+  if (!finalCheck.complete) {
+    throw new ProvisioningError(
+      `claim could not be verified: ${finalCheck.missing.join(", ")}`,
+    );
+  }
 }
+
 
 async function handleInvoicePaymentFailed(invoice: any, env: StripeEnv) {
   const subId = invoice?.subscription;
@@ -420,7 +609,15 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
           return Response.json({ received: true });
         } catch (e) {
           console.error("[webhook] error", e);
+          // ProvisioningError means payment succeeded but access is not yet
+          // fully provisioned: answer non-2xx so Stripe retries the delivery.
+          if (e instanceof ProvisioningError) {
+            return new Response("Provisioning incomplete — retry", {
+              status: 500,
+            });
+          }
           return new Response("Webhook error", { status: 400 });
+
         }
       },
     },
