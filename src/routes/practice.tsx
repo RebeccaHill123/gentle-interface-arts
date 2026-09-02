@@ -237,8 +237,6 @@ function PracticeSessionPage() {
       setQuestions(s.questions);
       answersRef.current = s.answers;
       setAnswers(s.answers);
-      perRef.current = s.perQuestionMs;
-      setPerQuestionMs(s.perQuestionMs);
       revealedRef.current = new Set(s.revealed);
       setRevealedSet(new Set(s.revealed));
       feedbackRef.current = s.feedbackMode;
@@ -253,7 +251,12 @@ function PracticeSessionPage() {
       setCompletion(s.completion);
       finalRef.current = s.finalSnapshot;
       setFinalSnapshot(s.finalSnapshot);
-      if (s.phase === "quiz") questionStartRef.current = Date.now();
+      // Recover the live interval exactly once (bounded by the deadline).
+      const timing = restoreTiming({ snapshot: s, now: Date.now() });
+      perRef.current = timing.perQuestionMs;
+      setPerQuestionMs(timing.perQuestionMs);
+      questionStartRef.current = timing.questionStartedAt;
+      setNow(Date.now());
       if (s.phase === "results") finishingRef.current = true;
       setPhaseTracked(s.phase);
       // Restored: the provider is never called.
