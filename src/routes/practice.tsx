@@ -820,6 +820,8 @@ function QuizScreen({
   answers,
   revealed,
   feedbackMode,
+  remainingLabel,
+  lowTime,
   onSelect,
   onNext,
   onPrev,
@@ -831,6 +833,9 @@ function QuizScreen({
   answers: (number | null)[];
   revealed: boolean;
   feedbackMode: "immediate" | "end";
+  /** Total time left in the session (authoritative wall clock), or null when untimed. */
+  remainingLabel: string | null;
+  lowTime: boolean;
   onSelect: (i: number) => void;
   onNext: () => void;
   onPrev: () => void;
@@ -840,36 +845,6 @@ function QuizScreen({
   const total = questions.length;
   const answered = answers[current];
   const progress = ((current + (revealed || answered != null ? 1 : 0)) / total) * 100;
-
-  // Per-question countdown (timed mode)
-  const perQuestionSec = config.timed
-    ? Math.max(45, Math.round(((config.duration ?? 20) * 60) / Math.max(1, total)))
-    : null;
-  const [timeLeft, setTimeLeft] = useState<number | null>(perQuestionSec);
-  const advancedRef = useRef(false);
-
-  useEffect(() => {
-    advancedRef.current = false;
-    if (perQuestionSec == null) return;
-    setTimeLeft(perQuestionSec);
-    const id = setInterval(() => {
-      setTimeLeft((t) => {
-        if (t == null) return t;
-        if (t <= 1) {
-          clearInterval(id);
-          if (!advancedRef.current) {
-            advancedRef.current = true;
-            // Auto-advance when time is up
-            setTimeout(() => onNext(), 50);
-          }
-          return 0;
-        }
-        return t - 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current]);
 
   const isLast = current === total - 1;
   const canAdvance =
@@ -887,16 +862,17 @@ function QuizScreen({
             <span className="rounded-full border border-border bg-background/60 px-2 py-0.5">
               {config.module}
             </span>
-            {timeLeft != null && (
+            {remainingLabel != null && (
               <span
                 className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${
-                  timeLeft <= 10
+                  lowTime
                     ? "border-amber-400/50 bg-amber-400/10 text-amber-300"
                     : "border-border bg-background/60"
                 }`}
+                title="Time left in this session"
               >
                 <Timer className="h-3 w-3" />
-                {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
+                {remainingLabel} left
               </span>
             )}
           </div>
