@@ -376,14 +376,27 @@ export async function pullPlanFromCloudResult(): Promise<CloudPlanResult> {
     const uid = user?.id;
     if (!uid) return { ok: false, plan: null };
 
-    const deps = planSyncDeps();
-    if (isPlanSyncDirty(deps)) {
+    const deps = planSyncDeps(uid);
+    if (hasForeignDirtyPlan(deps)) {
+      // Unsynced work left by another (or an unknown legacy) account: retain it
+      // under the recovery key and never upload it into this account.
+      const quarantined = quarantineForeignPlan(deps);
+      if (!quarantined) {
+        console.warn("could not quarantine a foreign unsynced plan");
+        return { ok: false, plan: null };
+      }
+      if (typeof window !== "undefined") {
+        localStorage.removeItem(KEY);
+        localStorage.removeItem(PLAN_SYNC_KEY);
+      }
+    } else if (isPlanSyncDirty(deps)) {
       await flushPlanSync(deps).catch(() => undefined);
       if (isPlanSyncDirty(deps)) {
         // Still unsynced — local is authoritative until the server confirms it.
         return { ok: false, plan: loadPlan() };
       }
     }
+
 
     const { data, error } = await supabase
       .from("user_plans")
