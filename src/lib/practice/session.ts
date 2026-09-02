@@ -18,7 +18,12 @@ import { normaliseQuestion } from "./quiz-validate";
 import { normaliseConfig } from "./config";
 
 export const ACTIVE_SNAPSHOT_KEY = "practice:active:v1";
-export const ACTIVE_SNAPSHOT_VERSION = 1;
+/**
+ * v2 adds `questionStartedAt` so the live question interval survives reload.
+ * v1 snapshots are migrated (they simply have no recoverable live interval).
+ */
+export const ACTIVE_SNAPSHOT_VERSION = 2;
+const SUPPORTED_SNAPSHOT_VERSIONS = [1, 2];
 /** An abandoned session stops being restorable after this long. */
 export const ACTIVE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_SNAPSHOT_CHARS = 400_000;
