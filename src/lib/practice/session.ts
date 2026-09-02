@@ -63,6 +63,8 @@ export type ActiveSnapshot = {
   feedbackMode: "immediate" | "end";
   current: number;
   perQuestionMs: number[];
+  /** Wall-clock start of the currently open question interval (quiz phase only). */
+  questionStartedAt: number | null;
   startedAt: number | null;
   deadlineAt: number | null;
   phase: "launch" | "quiz" | "results";
