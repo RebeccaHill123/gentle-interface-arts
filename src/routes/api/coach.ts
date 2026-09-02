@@ -145,13 +145,19 @@ export const Route = createFileRoute("/api/coach")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const jsonError = (status: number, error: string) =>
+          new Response(JSON.stringify({ error }), {
+            status,
+            headers: { "Content-Type": "application/json" },
+          });
         try {
           const SUPABASE_URL = process.env.SUPABASE_URL;
           const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
           const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
 
           if (!LOVABLE_API_KEY) {
-            return new Response(JSON.stringify({ error: "AI not configured" }), { status: 500 });
+            console.error("coach: LOVABLE_API_KEY not configured");
+            return jsonError(500, "The Coach is temporarily unavailable. Please try again shortly.");
           }
 
           const token = bearerToken(request.headers.get("authorization"));
@@ -165,8 +171,10 @@ export const Route = createFileRoute("/api/coach")({
           }
 
           if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-            return new Response(JSON.stringify({ error: "Auth not configured" }), { status: 500 });
+            console.error("coach: Supabase env missing");
+            return jsonError(500, "The Coach is temporarily unavailable. Please try again shortly.");
           }
+
           const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
             global: { headers: { Authorization: `Bearer ${token}` } },
             auth: { persistSession: false, autoRefreshToken: false },
