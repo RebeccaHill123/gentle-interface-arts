@@ -163,6 +163,7 @@ function SimulationPage() {
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [sim, setSim] = useState<DbSimulation | null>(null);
   const [sections, setSections] = useState<DbSection[]>([]);
   const [answers, setAnswers] = useState<DbAnswer[]>([]);
@@ -170,12 +171,19 @@ function SimulationPage() {
     "overview",
   );
   const [activeSectionId, setActiveSectionId] = useState<string | null>(null);
+  const [activeTimer, setActiveTimer] = useState<TimerState | null>(null);
   const [local, setLocal] = useState<LocalState>({});
   const [exitConfirm, setExitConfirm] = useState(false);
   const [mockSaveResult, setMockSaveResult] = useState<WriteResult | null>(null);
+  const [finalizing, setFinalizing] = useState(false);
+  const [finalizeError, setFinalizeError] = useState<string | null>(null);
+  // Immediate lock: state updates do not flush fast enough to stop a double click.
+  const finalizeLock = useRef(false);
+  const finalizedRef = useRef(false);
 
-  useEffect(() => {
-    (async () => {
+  const reload = useCallback(async () => {
+    setLoadError(null);
+    try {
       const data = await loadSimulation(simId);
       if (!data) {
         toast.error("Simulation not found.");
@@ -185,11 +193,32 @@ function SimulationPage() {
       setSim(data.simulation);
       setSections(data.sections);
       setAnswers(data.answers);
-      setLocal(loadLocal(simId));
-      if (data.simulation.status === "completed") setPhase("results");
+      // Recover answers persisted from any device; a newer local draft wins.
+      const merged = mergeAnswerState({
+        db: data.answers,
+        local: loadLocal(simId),
+      });
+      setLocal(merged);
+      saveLocal(simId, merged);
+      if (data.simulation.status === "completed") {
+        finalizedRef.current = true;
+        setPhase("results");
+      }
+    } catch (err) {
+      console.error("[mock] load failed", err);
+      setLoadError(
+        err instanceof Error
+          ? err.message
+          : "We couldn't load this simulation. Please try again.",
+      );
+    } finally {
       setLoading(false);
-    })();
+    }
   }, [simId, navigate]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
 
   // Browser-close guard while a section is in progress
   useEffect(() => {
@@ -214,6 +243,90 @@ function SimulationPage() {
     },
     [simId],
   );
+
+  /**
+   * The one canonical finalisation route. Both "last section submitted" and
+   * "View results" go through here, so the completion record cannot be
+   * bypassed and cannot be written twice.
+   */
+  const finalizeSimulation = useCallback(
+    async (allSections: DbSection[]) => {
+      if (!sim || !blueprint) return;
+      if (finalizeLock.current) return;
+      finalizeLock.current = true;
+      setFinalizing(true);
+      setFinalizeError(null);
+      try {
+        if (!isSimulationFullyComplete(allSections)) {
+          // Partial exams stay in progress: never recorded as a completed mock.
+          setPhase("overview");
+          return;
+        }
+        const totalSeconds = totalElapsedSeconds(
+          allSections.map((s) => ({ elapsedSeconds: sectionElapsedSeconds(s) })),
+        );
+        const objective = objectiveScore(
+          allSections.map((s) => {
+            const bp = getSection(sim.pathway, s.section_type);
+            const sectionAnswers = answers.filter((a) => a.section_id === s.id);
+            return {
+              kind: bp?.kind ?? "mcq",
+              graded: sectionAnswers.filter((a) => a.is_correct != null).length,
+              correct: sectionAnswers.filter((a) => a.is_correct === true).length,
+            };
+          }),
+        );
+        if (!finalizedRef.current || sim.status !== "completed") {
+          await completeSimulation(sim.id, objective.percent, totalSeconds);
+        }
+        finalizedRef.current = true;
+        setSim({
+          ...sim,
+          status: "completed",
+          overall_score: objective.percent,
+          total_time_seconds: totalSeconds,
+          completed_at: sim.completed_at ?? new Date().toISOString(),
+        });
+        // One canonical activity record, keyed by the simulation, so refreshes
+        // and retries cannot double-count it.
+        const result = await recordStudyActivity({
+          idempotencyKey: makeIdempotencyKey(...mockActivityKeyParts(sim.id)),
+          activityType: "mock",
+          source: "mock",
+          actualMinutes: Math.round(totalSeconds / 60),
+          examPath: blueprint.examType,
+          subject: blueprint.examType,
+          note: `${blueprint.examType} — full simulation completed`,
+          metadata: {
+            pathway: sim.pathway,
+            overallScore: objective.percent,
+            gradedQuestions: objective.graded,
+            ungradedWrittenSections: objective.excludedWrittenSections,
+          },
+        });
+        setMockSaveResult(result);
+        if (!result.ok && result.queued) {
+          toast.warning(
+            "Saved on this device — we'll sync your results when you're back online.",
+          );
+        }
+        setPhase("results");
+      } catch (err) {
+        console.error("[mock] finalise failed", err);
+        setFinalizeError(
+          err instanceof Error
+            ? err.message
+            : "We couldn't finalise your results. Please try again.",
+        );
+        setPhase("overview");
+      } finally {
+        setFinalizing(false);
+        finalizeLock.current = false;
+      }
+    },
+    [sim, blueprint, answers],
+  );
+
 
   // Render
   if (loading || !sim || !blueprint) {
