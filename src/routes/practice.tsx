@@ -1087,7 +1087,13 @@ function ResultsScreen({
             </h2>
             <p className="mt-1 text-sm text-muted-foreground">
               {correct} of {total} correct on {config.module}
+              {final.answeredCount < total
+                ? ` · ${final.answeredCount} answered, ${total - final.answeredCount} left blank (scored incorrect)`
+                : ""}
             </p>
+            {!recorded && (
+              <p className="mt-1 text-xs text-amber-300">Not fully recorded yet.</p>
+            )}
           </div>
           <div className="text-right text-xs text-muted-foreground">
             <div>{Math.round(totalSec / 60)} min total</div>
