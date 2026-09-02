@@ -1356,7 +1356,7 @@ function ResultsView({
                     </div>
                   </div>
                   <Badge variant="outline" className="rounded-full">
-                    {s.score != null ? `${Math.round(Number(s.score))}%` : bp.kind === "mcq" ? "—" : "Submitted"}
+                    {sectionScoreLabel(bp.kind, s.score, s.status)}
                   </Badge>
                 </div>
               </div>
@@ -1381,19 +1381,23 @@ function ResultsView({
           <Button
             className="mt-4 rounded-full"
             variant="outline"
+            disabled={weakApplied}
             onClick={() => {
+              // Explicit, one-time action: never re-applied on refresh or retry.
               for (const w of weak) {
                 try {
                   adjustModuleConfidence(w.name, -0.1);
                 } catch {}
               }
+              setWeakApplied(true);
               toast.success("Added weak areas to your study plan");
             }}
           >
-            Add weak areas to my study plan
+            {weakApplied ? "Added to your study plan" : "Add weak areas to my study plan"}
           </Button>
         </section>
       )}
+
 
       {saveResult && !saveResult.ok && saveResult.queued && (
         <section className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/10 p-4 text-sm text-amber-200">
