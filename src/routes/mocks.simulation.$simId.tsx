@@ -945,8 +945,13 @@ function SectionRunner({
               <ArrowLeft className="mr-1 h-4 w-4" /> Previous
             </Button>
             <div className="text-xs text-muted-foreground">
-              {currentLocal.answerIndex != null || currentLocal.essayText ? "Saved" : "Not answered"}
+              {currentLocal.answerIndex != null || currentLocal.essayText
+                ? saveState === "synced"
+                  ? "Saved to your account"
+                  : "Saved on this device — retrying"
+                : "Not answered"}
             </div>
+
             {idx < items.length - 1 ? (
               <Button
                 onClick={() => trackTimeAndAdvance(1)}
