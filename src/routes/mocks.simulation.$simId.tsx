@@ -791,6 +791,15 @@ function SectionRunner({
   localRef.current = local;
   const retryingRef = useRef(false);
   const allSynced = isFullySynced(unsynced);
+  // Per-question revisions: a save only clears dirty state for the revision it
+  // actually persisted.
+  const revisionsRef = useRef<RevisionMap>({});
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef(timer);
+  timerRef.current = timer;
+  const timerSyncFailedRef = useRef(timerSyncFailed);
+  timerSyncFailedRef.current = timerSyncFailed;
+
 
   const applyUnsynced = useCallback(
     (fn: (prev: SyncSet) => SyncSet) => {
