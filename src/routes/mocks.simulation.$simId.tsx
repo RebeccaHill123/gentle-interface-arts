@@ -55,15 +55,40 @@ import {
   completeSection,
   completeSimulation,
   loadSimulation,
+  saveSectionTiming,
+  sectionElapsedSeconds,
+  sectionTimer,
   startSection,
   upsertAnswer,
+  upsertAnswers,
   type DbAnswer,
   type DbSection,
   type DbSimulation,
 } from "@/lib/full-mock-store";
+import {
+  elapsedSecondsFrom,
+  finalAnswerSnapshot,
+  hasContent,
+  isSimulationFullyComplete,
+  makeTimerState,
+  mcqSectionScore,
+  mergeAnswerState,
+  mockActivityKeyParts,
+  objectiveScore,
+  pauseTimer,
+  remainingSecondsFrom,
+  resolveTimerState,
+  resumeTimer,
+  sectionScoreLabel,
+  totalElapsedSeconds,
+  type LocalAnswer,
+  type LocalAnswerState,
+  type TimerState,
+} from "@/lib/mock-integrity";
 import { adjustModuleConfidence } from "@/lib/plan-store";
 import { recordStudyActivity, makeIdempotencyKey, flushStudyLogQueue, type WriteResult } from "@/lib/study-log";
 import { cn } from "@/lib/utils";
+
 
 export const Route = createFileRoute("/mocks/simulation/$simId")({
   beforeLoad: async () => {
