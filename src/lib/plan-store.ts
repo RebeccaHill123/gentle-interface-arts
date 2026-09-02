@@ -315,7 +315,10 @@ export function clearOnboardingDraft() {
 export function clearPlan() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(KEY);
+  // Nothing local left to sync — drop the dirty marker so we don't retry forever.
+  localStorage.removeItem(PLAN_SYNC_KEY);
 }
+
 
 export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
