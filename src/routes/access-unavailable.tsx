@@ -46,7 +46,7 @@ function AccessUnavailablePage() {
   };
 
   return (
-    <AppShell>
+    <AppShell title="Access">
       <div className="mx-auto flex max-w-lg flex-col items-center px-5 py-16 text-center">
         <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-full border border-border/60 bg-card">
           <AlertTriangle className="h-5 w-5 text-foreground/70" aria-hidden />
