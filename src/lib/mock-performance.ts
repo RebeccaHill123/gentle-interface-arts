@@ -26,6 +26,12 @@ const EMPTY: MockPerformance = {
   perTopic: [],
 };
 
+/** Read bounds: keep these queries fast as a user's mock history grows. */
+const MAX_SIMULATIONS = 40;
+const MAX_SECTIONS = 400;
+const MAX_ANSWERS = 5000;
+
+
 /**
  * Loads every graded MCQ answer the current user has for their pathway
  * and buckets them by question topic (as defined in the bank).
@@ -35,10 +41,14 @@ export async function loadMockPerformance(pathway?: Pathway): Promise<MockPerfor
   const user = await waitForAuthUser();
   if (!user) return EMPTY;
 
+  // Bounded reads: only the most recent simulations are analysed, which keeps
+  // the IN lists small as a user's history grows.
   const { data: sims } = await supabase
     .from("mock_simulations")
     .select("id,pathway")
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(MAX_SIMULATIONS);
   if (!sims || sims.length === 0) return EMPTY;
 
   const relevant = pathway ? sims.filter((s) => s.pathway === pathway) : sims;
@@ -51,14 +61,19 @@ export async function loadMockPerformance(pathway?: Pathway): Promise<MockPerfor
   const { data: sections } = await supabase
     .from("mock_sections")
     .select("id,simulation_id,section_type")
-    .in("simulation_id", simIds);
+    .eq("user_id", user.id)
+    .in("simulation_id", simIds)
+    .limit(MAX_SECTIONS);
   if (!sections || sections.length === 0) return EMPTY;
 
   const { data: answers } = await supabase
     .from("mock_answers")
     .select("section_id,question_id,is_correct")
+    .eq("user_id", user.id)
     .in("simulation_id", simIds)
-    .not("is_correct", "is", null);
+    .not("is_correct", "is", null)
+    .limit(MAX_ANSWERS);
+
   if (!answers || answers.length === 0) return EMPTY;
 
   // Build id -> topic map by regenerating each involved section's questions.

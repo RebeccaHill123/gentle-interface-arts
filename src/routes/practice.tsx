@@ -40,8 +40,11 @@ import {
 } from "@/lib/practice/config";
 import { validateQuizQuestions, type QuizQuestion } from "@/lib/practice/quiz-validate";
 import {
+  ACTIVE_MAX_AGE_MS,
   ACTIVE_SNAPSHOT_VERSION,
   applyElapsed,
+  validateSnapshot,
+
   buildFinalSnapshot,
   clearSnapshot,
   completionAccepted,
@@ -210,26 +213,46 @@ function PracticeSessionPage() {
         sessionStorage.removeItem(PRACTICE_CONFIG_KEY);
       } catch {}
     }
-    if (resolution.kind === "none") {
+
+    // A reload of a launcher-started session has no search params and the
+    // stored config was already consumed — recover the config from the durable
+    // snapshot rather than discarding in-progress work.
+    let cfgCandidate: PracticeConfig | null =
+      resolution.kind === "none" ? null : resolution.config;
+    let fpCandidate: string | null = cfgCandidate ? configFingerprint(cfgCandidate) : null;
+    const snapshotRaw = readSnapshotRaw();
+    if (!cfgCandidate) {
+      const snap = validateSnapshot(snapshotRaw);
+      const fresh = !!snap && Date.now() - snap.updatedAt <= ACTIVE_MAX_AGE_MS;
+      const settled = !!snap?.completion && completionAccepted(snap.completion);
+      if (snap && fresh && !settled) {
+        cfgCandidate = snap.config;
+        fpCandidate = snap.fingerprint;
+      }
+    }
+
+    if (!cfgCandidate || !fpCandidate) {
       setPhaseTracked("error");
       setError("No practice session was queued. Start one from Mocks & Practice.");
       return;
     }
 
-    const cfg = resolution.config;
+    const cfg: PracticeConfig = cfgCandidate;
+    const fp: string = fpCandidate;
     configRef.current = cfg;
     setConfig(cfg);
-    const fp = configFingerprint(cfg);
     fingerprintRef.current = fp;
 
     const plan = loadPlan();
     const mod = plan?.input.modules.find((m) => m.name === cfg.module);
+
     setConfidenceBefore(mod?.confidence ?? null);
     const examType = (plan?.input.examType ?? "SQE1") as "SQE1" | "SQE2" | "UBE" | "MPRE";
     examPathRef.current = plan?.input.examType ?? undefined;
     setExamPath(plan?.input.examType ?? undefined);
 
-    const decision = decideRestore({ raw: readSnapshotRaw(), fingerprint: fp, now: Date.now() });
+    const decision = decideRestore({ raw: snapshotRaw, fingerprint: fp, now: Date.now() });
+
     if (decision.action === "restore") {
       const s = decision.snapshot;
       sessionIdRef.current = s.sessionId;
@@ -290,8 +313,17 @@ function PracticeSessionPage() {
         const validated = validateQuizQuestions(data?.questions, cfg.questions);
         if (!validated.ok) throw new Error(validated.error);
         const qs = validated.questions;
+        if (qs.length !== cfg.questions) {
+          // Run honestly with what the generator actually delivered. The
+          // fingerprint stays bound to the original request so a reload still
+          // restores this session instead of regenerating.
+          const adjusted: PracticeConfig = { ...cfg, questions: qs.length };
+          configRef.current = adjusted;
+          setConfig(adjusted);
+        }
         questionsRef.current = qs;
         setQuestions(qs);
+
         answersRef.current = new Array(qs.length).fill(null);
         setAnswers(answersRef.current);
         perRef.current = new Array(qs.length).fill(0);

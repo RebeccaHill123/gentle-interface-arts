@@ -750,6 +750,18 @@ export function deleteSessionCanonically(loggedAt: string): Promise<MutationOutc
 
 // ───────── canonical reads
 
+/**
+ * History reads are bounded (recent window + row cap, newest-first then
+ * re-ordered ascending) so they stay fast — and cannot hit a statement
+ * timeout — as a user's history grows.
+ */
+export const HISTORY_WINDOW_DAYS = 400;
+export const HISTORY_ROW_LIMIT = 5000;
+
+function historyWindowStartIso(now = Date.now()): string {
+  return new Date(now - HISTORY_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+}
+
 export async function loadStudyEvents(): Promise<StudyEventRow[]> {
   const user = await waitForAuthUser();
   if (!user) return [];
@@ -760,12 +772,14 @@ export async function loadStudyEvents(): Promise<StudyEventRow[]> {
     )
     .eq("user_id", user.id)
     .is("voided_at", null)
-    .order("occurred_at", { ascending: true });
+    .gte("occurred_at", historyWindowStartIso())
+    .order("occurred_at", { ascending: false })
+    .limit(HISTORY_ROW_LIMIT);
   if (error) {
     console.warn("loadStudyEvents failed", error.message);
     return [];
   }
-  return (data ?? []) as StudyEventRow[];
+  return ((data ?? []) as StudyEventRow[]).slice().reverse();
 }
 
 export async function loadGradedAttempts(): Promise<GradedAttemptRow[]> {
@@ -778,13 +792,16 @@ export async function loadGradedAttempts(): Promise<GradedAttemptRow[]> {
     )
     .eq("user_id", user.id)
     .is("voided_at", null)
-    .order("occurred_at", { ascending: true });
+    .gte("occurred_at", historyWindowStartIso())
+    .order("occurred_at", { ascending: false })
+    .limit(HISTORY_ROW_LIMIT);
   if (error) {
     console.warn("loadGradedAttempts failed", error.message);
     return [];
   }
-  return (data ?? []) as GradedAttemptRow[];
+  return ((data ?? []) as GradedAttemptRow[]).slice().reverse();
 }
+
 
 /**
  * Read-only diagnostic: how many legacy plan-blob sessions exist that a later

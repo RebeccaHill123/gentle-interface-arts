@@ -8,8 +8,9 @@ import {
   synthesizeSearchConfig,
   type PracticeConfig,
 } from "./config";
-import { normaliseQuestion, validateQuizQuestions } from "./quiz-validate";
+import { MIN_USABLE_QUESTIONS, normaliseQuestion, validateQuizQuestions } from "./quiz-validate";
 import {
+  ACTIVE_MAX_AGE_MS,
   ACTIVE_SNAPSHOT_VERSION,
   applyElapsed,
   buildFinalSnapshot,
@@ -522,5 +523,71 @@ describe("timing recovery", () => {
     expect(v).not.toBeNull();
     expect(v!.version).toBe(ACTIVE_SNAPSHOT_VERSION);
     expect(v!.questionStartedAt).toBeNull();
+  });
+});
+
+describe("reload recovery without a launcher config", () => {
+  it("recovers the config and fingerprint from a fresh snapshot", () => {
+    const s = snapshot({ phase: "quiz" });
+    // No search params and the stored launcher config was already consumed.
+    expect(resolvePracticeConfig({ search: {}, storedRaw: null })).toEqual({ kind: "none" });
+    const recovered = validateSnapshot(JSON.parse(JSON.stringify(s)));
+    expect(recovered).not.toBeNull();
+    expect(recovered!.config.module).toBe(s.config.module);
+    const decision = decideRestore({
+      raw: JSON.parse(JSON.stringify(s)),
+      fingerprint: recovered!.fingerprint,
+      now: s.updatedAt + 1000,
+    });
+    expect(decision.action).toBe("restore");
+  });
+
+  it("does not resurrect a settled or stale snapshot", () => {
+    const settled = snapshot({
+      phase: "results",
+      completion: { activity: "accepted", attempts: "accepted" },
+    });
+    expect(
+      decideRestore({
+        raw: JSON.parse(JSON.stringify(settled)),
+        fingerprint: settled.fingerprint,
+        now: settled.updatedAt + 1000,
+      }).action,
+    ).toBe("generate");
+    const stale = snapshot({ phase: "quiz" });
+    expect(
+      decideRestore({
+        raw: JSON.parse(JSON.stringify(stale)),
+        fingerprint: stale.fingerprint,
+        now: stale.updatedAt + ACTIVE_MAX_AGE_MS + 1,
+      }).action,
+    ).toBe("generate");
+  });
+});
+
+describe("short but usable quiz sets", () => {
+  const good = (i: number) => ({
+    prompt: `Question ${i}`,
+    options: ["a", "b", "c", "d"],
+    correctIndex: 0,
+    explanation: `Because ${i}`,
+  });
+
+  it("accepts fewer questions than requested when above the minimum", () => {
+    const res = validateQuizQuestions([good(1), good(2), good(3), good(4), good(5), null], 10);
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.questions).toHaveLength(5);
+  });
+
+  it("rejects a set below the minimum usable count", () => {
+    const res = validateQuizQuestions([good(1), good(2), {}], 10);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.error).toContain(`at least ${MIN_USABLE_QUESTIONS}`);
+  });
+
+  it("never returns more than requested", () => {
+    const res = validateQuizQuestions([good(1), good(2), good(3), good(4), good(5)], 4);
+    expect(res.ok).toBe(true);
+    if (res.ok) expect(res.questions).toHaveLength(4);
   });
 });
