@@ -313,8 +313,17 @@ function PracticeSessionPage() {
         const validated = validateQuizQuestions(data?.questions, cfg.questions);
         if (!validated.ok) throw new Error(validated.error);
         const qs = validated.questions;
+        if (qs.length !== cfg.questions) {
+          // Run honestly with what the generator actually delivered. The
+          // fingerprint stays bound to the original request so a reload still
+          // restores this session instead of regenerating.
+          const adjusted: PracticeConfig = { ...cfg, questions: qs.length };
+          configRef.current = adjusted;
+          setConfig(adjusted);
+        }
         questionsRef.current = qs;
         setQuestions(qs);
+
         answersRef.current = new Array(qs.length).fill(null);
         setAnswers(answersRef.current);
         perRef.current = new Array(qs.length).fill(0);
