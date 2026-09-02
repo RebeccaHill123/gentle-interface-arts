@@ -1276,7 +1276,9 @@ function ResultsView({
   onRetake: () => void;
 }) {
   const navigate = useNavigate();
+  const [weakApplied, setWeakApplied] = useState(false);
   const blueprint = getBlueprint(sim.pathway);
+
   const mcqAnswers = answers.filter(
     (a) => getSection(sim.pathway, sections.find((s) => s.id === a.section_id)?.section_type ?? "")?.kind === "mcq",
   );
