@@ -301,7 +301,7 @@ function enqueueWrite(item: CanonicalWriteItem, owner: string | null): boolean {
   const all = readJson<QueueItem[]>(QUEUE_KEY, []);
   const others = all.filter((i) => !ownedBy(i, owner));
   const mine = all.filter((i) => ownedBy(i, owner));
-  const owned = { ...(item as object), ownerUserId: owner } as CanonicalWriteItem;
+  const owned = { ...item, ownerUserId: owner } as unknown as CanonicalWriteItem;
   const next = coalesceWriteQueue(mine as AnyQueueItem[], owned).slice(-200);
   if (!writeJson(QUEUE_KEY, [...others, ...next])) return false;
   const after = readJson<QueueItem[]>(QUEUE_KEY, []).filter((i) => ownedBy(i, owner));
