@@ -1,5 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
+import {
+  DENIAL_MESSAGES,
+  bearerToken,
+  denialResponse,
+  resolveEntitlementForUser,
+  type EntitlementClient,
+} from "@/lib/entitlement";
+import { validateChatMessages } from "@/lib/ai-request-validation";
+
 
 const SYSTEM_PROMPT = `You are Tentra Coach — a premium AI SQE tutor and performance strategist.
 
@@ -145,11 +154,15 @@ export const Route = createFileRoute("/api/coach")({
             return new Response(JSON.stringify({ error: "AI not configured" }), { status: 500 });
           }
 
-          const authHeader = request.headers.get("authorization") || "";
-          if (!authHeader.startsWith("Bearer ")) {
-            return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+          const token = bearerToken(request.headers.get("authorization"));
+          if (!token) {
+            return denialResponse({
+              ok: false,
+              status: 401,
+              code: "unauthenticated",
+              message: DENIAL_MESSAGES.unauthenticated,
+            });
           }
-          const token = authHeader.replace("Bearer ", "");
 
           if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
             return new Response(JSON.stringify({ error: "Auth not configured" }), { status: 500 });
@@ -159,25 +172,59 @@ export const Route = createFileRoute("/api/coach")({
             auth: { persistSession: false, autoRefreshToken: false },
           });
           const { data: claims, error: claimsError } = await supabase.auth.getClaims(token);
-          if (claimsError || !claims?.claims?.sub) {
-            return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401 });
+          const userId = (claims?.claims?.sub as string | undefined) ?? null;
+          if (claimsError || !userId) {
+            return denialResponse({
+              ok: false,
+              status: 401,
+              code: "unauthenticated",
+              message: DENIAL_MESSAGES.unauthenticated,
+            });
           }
-          const userId = claims.claims.sub as string;
-          const { data: profile } = await supabase
+
+          // Entitlement is enforced BEFORE any context load or provider call.
+          const entitlement = await resolveEntitlementForUser(
+            supabase as unknown as EntitlementClient,
+            userId,
+          );
+          if (!entitlement.ok) return denialResponse(entitlement);
+
+          // Validate the body before doing any work — never let client-supplied
+          // system/tool roles or oversized payloads reach the provider.
+          const rawBody = await request.json().catch(() => null);
+          const parsed = validateChatMessages(rawBody);
+          if (!parsed.ok) {
+            return new Response(JSON.stringify({ error: parsed.error }), {
+              status: 400,
+              headers: { "Content-Type": "application/json" },
+            });
+          }
+          const messages = parsed.value;
+
+          const { data: nameRow, error: nameError } = await supabase
             .from("profiles")
-            .select("first_name, display_name, is_pro")
+            .select("first_name, display_name")
             .eq("user_id", userId)
             .maybeSingle();
-          const { data: planRow } = await supabase
+          const { data: planRow, error: planError } = await supabase
             .from("user_plans")
             .select("plan")
             .eq("user_id", userId)
             .maybeSingle();
-          const name = profile?.first_name || profile?.display_name || "there";
+          if (nameError || planError) {
+            // A premium personalised Coach must not silently answer with a blank
+            // context because the database was unavailable.
+            console.error("coach context read failed", nameError ?? planError);
+            return denialResponse({
+              ok: false,
+              status: 503,
+              code: "unavailable",
+              message:
+                "We couldn't load your study data right now. Please try again in a moment.",
+            });
+          }
+          const name = nameRow?.first_name || nameRow?.display_name || "there";
           const userContext = buildInsights(planRow?.plan as Record<string, unknown> | null, name);
-
-          const body = await request.json().catch(() => ({}));
-          const messages = Array.isArray(body?.messages) ? body.messages.slice(-20) : [];
 
           const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
@@ -194,6 +241,7 @@ export const Route = createFileRoute("/api/coach")({
               ],
             }),
           });
+
 
           if (!aiRes.ok) {
             if (aiRes.status === 429) {
