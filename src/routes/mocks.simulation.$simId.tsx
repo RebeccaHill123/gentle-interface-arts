@@ -1210,9 +1210,9 @@ function SectionRunner({
               optionsCount={bpSection.optionsCount}
               selectedIndex={currentLocal.answerIndex}
               isFlagged={currentLocal.isFlagged ?? false}
-              onSelect={(i) => updateLocal(currentId, { answerIndex: i })}
+              onSelect={(i) => changeCurrent({ answerIndex: i })}
               onFlag={() =>
-                updateLocal(currentId, { isFlagged: !currentLocal.isFlagged })
+                changeCurrent({ isFlagged: !currentLocal.isFlagged })
               }
             />
           )}
@@ -1221,9 +1221,9 @@ function SectionRunner({
               q={current as EssayQuestion}
               text={currentLocal.essayText ?? ""}
               isFlagged={currentLocal.isFlagged ?? false}
-              onText={(t) => updateLocal(currentId, { essayText: t })}
+              onText={(t) => changeCurrent({ essayText: t }, "debounced")}
               onFlag={() =>
-                updateLocal(currentId, { isFlagged: !currentLocal.isFlagged })
+                changeCurrent({ isFlagged: !currentLocal.isFlagged })
               }
             />
           )}
@@ -1232,12 +1232,13 @@ function SectionRunner({
               q={current as MPTQuestion}
               text={currentLocal.essayText ?? ""}
               isFlagged={currentLocal.isFlagged ?? false}
-              onText={(t) => updateLocal(currentId, { essayText: t })}
+              onText={(t) => changeCurrent({ essayText: t }, "debounced")}
               onFlag={() =>
-                updateLocal(currentId, { isFlagged: !currentLocal.isFlagged })
+                changeCurrent({ isFlagged: !currentLocal.isFlagged })
               }
             />
           )}
+
 
           <div className="mt-6 flex items-center justify-between gap-3">
             <Button
