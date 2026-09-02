@@ -852,6 +852,11 @@ function SectionRunner({
           <Progress value={((idx + 1) / items.length) * 100} className="mt-2 h-1.5 w-48" />
         </div>
         <div className="flex items-center gap-2">
+          {saveState === "local" && (
+            <span className="hidden text-xs text-muted-foreground sm:inline">
+              Saved locally — retrying
+            </span>
+          )}
           <Badge variant="outline" className="rounded-full">
             <Clock className="mr-1 h-3 w-3" /> {formatTime(secondsLeft)}
           </Badge>
@@ -859,12 +864,19 @@ function SectionRunner({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setPaused((p) => !p)}
+              onClick={() => {
+                const at = Date.now();
+                persistTimer(
+                  paused ? resumeTimer(timer, at) : pauseTimer(timer, at),
+                  at,
+                );
+              }}
               className="rounded-full"
             >
               {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
             </Button>
           )}
+
           <Drawer>
             <DrawerTrigger asChild>
               <Button variant="ghost" size="sm" className="rounded-full md:hidden">
