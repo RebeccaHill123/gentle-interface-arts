@@ -108,17 +108,12 @@ export const Route = createFileRoute("/mocks/simulation/$simId")({
   }),
 });
 
-type LocalAnswer = {
-  answerIndex?: number;
-  essayText?: string;
-  isFlagged?: boolean;
-  timeSpentSeconds?: number;
-};
-
-type LocalState = Record<string, LocalAnswer>; // keyed by question_id
+type LocalState = LocalAnswerState; // keyed by question_id
 
 const LS_PREFIX = "tentra.fullmock.";
 const lsKey = (simId: string) => `${LS_PREFIX}${simId}`;
+const timerKey = (simId: string, sectionId: string) =>
+  `${LS_PREFIX}timer.${simId}.${sectionId}`;
 
 function loadLocal(simId: string): LocalState {
   if (typeof window === "undefined") return {};
@@ -135,6 +130,23 @@ function saveLocal(simId: string, state: LocalState) {
     localStorage.setItem(lsKey(simId), JSON.stringify(state));
   } catch {}
 }
+
+function loadCachedTimer(simId: string, sectionId: string): TimerState | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(timerKey(simId, sectionId));
+    return raw ? (JSON.parse(raw) as TimerState) : null;
+  } catch {
+    return null;
+  }
+}
+function saveCachedTimer(simId: string, sectionId: string, timer: TimerState) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(timerKey(simId, sectionId), JSON.stringify(timer));
+  } catch {}
+}
+
 
 function formatTime(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
