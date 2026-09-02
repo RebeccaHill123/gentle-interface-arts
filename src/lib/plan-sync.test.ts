@@ -10,7 +10,6 @@ import {
   markPlanDirty,
   readPlanSyncMarker,
   quarantineForeignPlan,
-  readPlanSyncMarker,
   resetPlanSyncLock,
   savePlanDurable,
   type PlanSyncDeps,
