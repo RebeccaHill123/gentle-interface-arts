@@ -123,6 +123,8 @@ function DashboardPage() {
   const navigate = useNavigate();
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [hydrating, setHydrating] = useState(true);
+  const [recovery, setRecovery] = useState<PlanLoadDecision | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
   const [tick, setTick] = useState(0);
   const [tab, setTab] = useState<DashboardTab>("week");
   const [quizTask, setQuizTask] = useState<{
@@ -134,27 +136,34 @@ function DashboardPage() {
     minutes: number;
   } | null>(null);
 
-  // Hydrate plan from cloud on mount; redirect to onboarding if user has none.
+  // Hydrate the plan from cloud on mount. An entitled user with no readable
+  // plan gets an explicit recovery state — never a silent bounce to onboarding.
   useEffect(() => {
     let active = true;
+    setHydrating(true);
     (async () => {
-      const cloud = await pullPlanFromCloud();
+      const cloud = await pullPlanFromCloudResult();
       if (!active) return;
-      const rawPlan = cloud ?? loadPlan();
-      const fallback = rawPlan ? normalizeStoredPlanTasks(rawPlan) : null;
-      if (fallback) {
-        setStored(fallback);
-        setHydrating(false);
+      const local = loadPlan();
+      const decision = decidePlanLoad({
+        cloudOk: cloud.ok,
+        hasCloudPlan: !!cloud.plan,
+        hasLocalPlan: !!local,
+      });
+      if (decision.kind === "ready") {
+        const rawPlan = cloud.plan ?? local;
+        setStored(rawPlan ? normalizeStoredPlanTasks(rawPlan) : null);
+        setRecovery(null);
       } else {
-        // No plan saved for this account — send them through onboarding.
-        navigate({ to: "/onboarding", replace: true });
-        return;
+        setRecovery(decision);
       }
+      setHydrating(false);
     })();
     return () => {
       active = false;
     };
-  }, [navigate]);
+  }, [reloadKey]);
+
 
   // Re-read local cache when tick changes (e.g. after task toggle)
   useEffect(() => {

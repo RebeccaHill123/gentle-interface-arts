@@ -37,6 +37,28 @@ type UiState =
   | { kind: "error"; message: string }
   | { kind: "signed-in" };
 
+/**
+ * Funnel events must fire only once provisioning has genuinely succeeded, and
+ * only once per pending token (retries/reloads must not inflate the funnel).
+ */
+function trackOnce(
+  token: string,
+  event: Parameters<typeof trackEvent>[0],
+  payload?: Parameters<typeof trackEvent>[1],
+) {
+
+
+  if (typeof window === "undefined") return;
+  const key = `tentra.funnel.${event}.${token}`;
+  try {
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
+  } catch {
+    // Storage unavailable — fall through and track once per page load.
+  }
+  trackEvent(event, payload);
+}
+
 function CheckoutReturnPage() {
   const navigate = useNavigate();
   const { token } = useSearch({ from: "/checkout/return" });
@@ -55,9 +77,8 @@ function CheckoutReturnPage() {
       return;
     }
 
-    trackEvent("checkout_completed", {});
-    trackEvent("trial_started", {});
     let cancelled = false;
+
     const MAX_MS = 60_000;
 
     async function tick() {
@@ -70,12 +91,14 @@ function CheckoutReturnPage() {
       const { data: session } = await supabase.auth.getSession();
       if (session.session?.user) {
         setState({ kind: "signed-in" });
+        trackOnce(token!, "checkout_completed");
         trackEvent("account_access_completed", { path: "already-signed-in" });
         await pullPlanFromCloud().catch(() => null);
         trackEvent("dashboard_reached", {});
         navigate({ to: "/dashboard", replace: true });
         return;
       }
+
 
       let result;
       try {
@@ -114,12 +137,16 @@ function CheckoutReturnPage() {
           });
           if (!otpError) {
             setState({ kind: "signed-in" });
+            // Provisioning is verified complete at this point — only now is
+            // the purchase a real, deduplicated funnel conversion.
+            trackOnce(token!, "checkout_completed");
             trackEvent("account_access_completed", { path: "magic-link" });
             await pullPlanFromCloud().catch(() => null);
             trackEvent("dashboard_reached", {});
             navigate({ to: "/dashboard", replace: true });
             return;
           }
+
           console.error("[checkout-return] verifyOtp failed", otpError);
         }
         setState({

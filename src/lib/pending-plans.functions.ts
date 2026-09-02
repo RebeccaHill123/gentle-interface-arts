@@ -166,21 +166,27 @@ export const pollPendingClaim = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import(
       "@/integrations/supabase/client.server"
     );
-    const { data: row } = await supabaseAdmin
+    const { isFinalStoredClaim } = await import("@/lib/provisioning");
+    const { data: row, error } = await supabaseAdmin
       .from("pending_plans")
-      .select("status, magic_link_email, magic_link_hash")
+      .select("status, claimed_user_id, magic_link_email, magic_link_hash")
       .eq("token", data.token)
       .maybeSingle();
+    if (error) throw new Error(`Could not read claim status: ${error.message}`);
     if (!row) return { status: "not_found" };
-    if (row.status === "claimed") {
+    if (isFinalStoredClaim(row)) {
       return {
         status: "claimed",
         email: row.magic_link_email ?? "",
         magicLinkHash: row.magic_link_hash ?? null,
       };
     }
+    // A row that says "claimed" but is not final is still being provisioned —
+    // report it as paid so the return page keeps waiting honestly.
+    if (row.status === "claimed") return { status: "paid" };
     return { status: row.status as "pending" | "paid" | "expired" };
   });
+
 
 // Public price display. Reads Stripe live/sandbox — no auth required so the
 // reveal page can show it before the user signs up.
