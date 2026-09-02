@@ -67,6 +67,8 @@ import {
 } from "@/lib/full-mock-store";
 import {
   bumpRevision,
+  clearSyncSet,
+
   markSyncedIfCurrent,
   pendingSyncLabel,
   revisionOf,
