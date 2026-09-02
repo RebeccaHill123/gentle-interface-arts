@@ -180,7 +180,7 @@
       {
         "name": "generate_mini_test",
         "title": "Generate a mini test",
-        "description": "Read-only. Generates a short single-best-answer mini test (default 5 questions) for the signed-in user. If no subject is provided, targets the user's weakest area. Uses their exam type (SQE1 / SQE2 / UBE / MPRE) automatically. Returns questions with 4 options each, the correct index, and a brief explanation.",
+        "description": "Read-only. Generates a short single-best-answer mini test (default 5 questions) for the signed-in user. If no subject is provided, targets the user's weakest area. Uses their exam type (SQE1 / SQE2 / UBE / MPRE) automatically. Returns questions with 4 options each, the correct index, and a brief explanation. Requires active Tentra access (subscription or trial).",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": false,
@@ -193,12 +193,14 @@
             "subject": {
               "description": "Module/subject to test. Omit to auto-pick the user's weakest area.",
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "maxLength": 80
             },
             "topic": {
               "description": "Optional narrower topic within the subject.",
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "maxLength": 200
             },
             "questionCount": {
               "description": "Number of questions (default 5).",
