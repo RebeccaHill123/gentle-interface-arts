@@ -1,4 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
+import {
+  PROVIDER_MAX_QUESTIONS,
+  PROVIDER_MIN_QUESTIONS,
+  clampQuestionCount,
+} from "@/lib/practice/config";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Dialog,
@@ -75,7 +80,7 @@ export function AIQuizBuilderDialog({
   const [subject, setSubject] = useState<string>("auto");
   const [difficulty, setDifficulty] = useState<Difficulty>("Adaptive");
   const [duration, setDuration] = useState<number>(20);
-  const [questions, setQuestions] = useState<number>(12);
+  const [questions, setQuestions] = useState<number>(PROVIDER_MAX_QUESTIONS);
   const [timed, setTimed] = useState(true);
   const [includeMissed, setIncludeMissed] = useState(true);
   const [highYieldOnly, setHighYieldOnly] = useState(false);
@@ -306,10 +311,10 @@ export function AIQuizBuilderDialog({
               <Field label={`Questions · ${questions}`}>
                 <Slider
                   value={[questions]}
-                  min={4}
-                  max={40}
+                  min={PROVIDER_MIN_QUESTIONS}
+                  max={PROVIDER_MAX_QUESTIONS}
                   step={1}
-                  onValueChange={(v) => setQuestions(v[0])}
+                  onValueChange={(v) => setQuestions(clampQuestionCount(v[0]))}
                 />
               </Field>
 

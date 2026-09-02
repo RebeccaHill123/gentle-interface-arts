@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { clampQuestionCount } from "@/lib/practice/config";
 import { useNavigate } from "@tanstack/react-router";
 import {
   Dialog,
@@ -190,9 +191,9 @@ export function PracticeLauncherDialog({
         : subject;
   const targetStat = subjects.find((s) => s.module === targetSubject);
 
-  // Question count scales with duration ratio
-  const questionCount = Math.max(
-    4,
+  // Question count scales with duration ratio, clamped to what the generator
+  // can actually deliver so the UI never promises more items than it hands over.
+  const questionCount = clampQuestionCount(
     Math.round((meta.defaultQuestions * duration) / meta.defaultMinutes),
   );
 
