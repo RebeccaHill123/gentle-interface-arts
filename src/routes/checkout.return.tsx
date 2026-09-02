@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { pollPendingClaim } from "@/lib/pending-plans.functions";
+import { decideReturnStep } from "@/lib/provisioning";
+
 import { pullPlanFromCloud } from "@/lib/plan-store";
 import { trackEvent } from "@/lib/analytics";
 
@@ -85,21 +87,9 @@ function CheckoutReturnPage() {
       if (cancelled) return;
       const elapsed = Date.now() - startedAt.current;
 
-      // If the user is already authenticated (returning-user path where
-      // the webhook attached to their existing account), skip magic-link
-      // sign-in and go to dashboard.
-      const { data: session } = await supabase.auth.getSession();
-      if (session.session?.user) {
-        setState({ kind: "signed-in" });
-        trackOnce(token!, "checkout_completed");
-        trackEvent("account_access_completed", { path: "already-signed-in" });
-        await pullPlanFromCloud().catch(() => null);
-        trackEvent("dashboard_reached", {});
-        navigate({ to: "/dashboard", replace: true });
-        return;
-      }
-
-
+      // Always verify the pending claim FIRST. An existing browser session is
+      // not evidence that this purchase has been provisioned — proceeding on it
+      // alone would push the payer to a dashboard that bounces them.
       let result;
       try {
         result = await pollPendingClaim({ data: { token: token! } });
@@ -127,10 +117,26 @@ function CheckoutReturnPage() {
       }
 
       if (result.status === "claimed") {
-        // Try to sign the user in immediately via the hashed magic-link
-        // token captured server-side. If that fails or is missing, tell
-        // them to check their email.
-        if (result.magicLinkHash) {
+        // Verified claim. An already-authenticated purchaser can go straight
+        // through; everyone else is signed in with the server-issued hash.
+        const { data: session } = await supabase.auth.getSession();
+        const step = decideReturnStep({
+          pollStatus: result.status,
+          hasSession: !!session.session?.user,
+          hasMagicLinkHash: !!result.magicLinkHash,
+        });
+        if (step === "complete") {
+          setState({ kind: "signed-in" });
+          trackOnce(token!, "checkout_completed");
+          trackEvent("account_access_completed", { path: "already-signed-in" });
+          await pullPlanFromCloud().catch(() => null);
+          trackEvent("dashboard_reached", {});
+          navigate({ to: "/dashboard", replace: true });
+          return;
+        }
+
+        if (step === "magic-link" && result.magicLinkHash) {
+
           const { error: otpError } = await supabase.auth.verifyOtp({
             type: "magiclink",
             token_hash: result.magicLinkHash,
@@ -149,6 +155,7 @@ function CheckoutReturnPage() {
 
           console.error("[checkout-return] verifyOtp failed", otpError);
         }
+
         setState({
           kind: "email-fallback",
           email: result.email || "",
