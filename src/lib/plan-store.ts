@@ -1,12 +1,18 @@
 // Plan store: localStorage cache + Supabase cloud sync (per-user).
 import { supabase } from "@/integrations/supabase/client";
 import type { Json } from "@/integrations/supabase/types";
-import { hasRecentAuthCallback, waitForAuthUser } from "@/lib/auth-session";
+import {
+  getCachedAuthOwnerId,
+  hasRecentAuthCallback,
+  waitForAuthUser,
+} from "@/lib/auth-session";
 import {
   decidePlanPull,
   flushPlanSync,
+  hasForeignDirtyPlan,
   isPlanSyncDirty,
   markPlanDirty,
+  quarantineForeignPlan,
   PLAN_SYNC_KEY,
 
   savePlanDurable,
@@ -248,12 +254,20 @@ function writePlanLocal(plan: StoredPlan): boolean {
   return localStorage.getItem(KEY) !== null;
 }
 
-/** Browser bindings for the injectable plan-sync engine. */
-export function planSyncDeps(): PlanSyncDeps {
+/**
+ * Browser bindings for the injectable plan-sync engine. The owner is captured
+ * from the current session so local plan work can never be attributed to
+ * whichever account signs in next on a shared browser.
+ */
+export function planSyncDeps(ownerUserId: string | null = getCachedAuthOwnerId()): PlanSyncDeps {
   return {
     storage: typeof window === "undefined" ? null : window.localStorage,
+    ownerUserId,
     writePlan: writePlanLocal,
     readPlan: loadPlan,
+    clearPlan: () => {
+      if (typeof window !== "undefined") localStorage.removeItem(KEY);
+    },
     pushPlan: pushPlanToCloud,
   };
 }
@@ -322,11 +336,16 @@ export function clearPlan() {
 }
 
 
-export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
+export async function pushPlanToCloud(plan: StoredPlan, expectedOwner?: string): Promise<void> {
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError) throw userError;
   const uid = userData.user?.id;
   if (!uid) throw new Error("Please sign in to save your plan.");
+  // Fail closed on a session change between capture and write: a plan captured
+  // for one account must never be written into another account's row.
+  if (expectedOwner && expectedOwner !== uid) {
+    throw new Error("This plan change belongs to a different account, so it was not uploaded.");
+  }
   const { data, error } = await supabase
     .from("user_plans")
     .upsert([{ user_id: uid, plan: plan as unknown as Json }], { onConflict: "user_id" })
