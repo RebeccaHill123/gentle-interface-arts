@@ -697,148 +697,142 @@ function SectionRunner({
   }, [secondsLeft]);
 
 
-  const isExam = sim.mode === "exam";
   const current = items[idx];
   const currentId = current.id;
   const currentLocal = local[currentId] ?? {};
 
-  const trackTimeAndAdvance = (delta: number) => {
-    const now = Date.now();
-    const elapsed = Math.round((now - questionEnteredAt.current) / 1000);
-    questionEnteredAt.current = now;
-    updateLocal(currentId, {
-      timeSpentSeconds: (currentLocal.timeSpentSeconds ?? 0) + elapsed,
-    });
-    // Persist to DB (best effort)
-    upsertAnswer({
+  const answerInputFor = (q: { id: string }, la: LocalAnswer) => {
+    const isMcq = bpSection.kind === "mcq";
+    return {
+      questionId: q.id,
+      answerValue: isMcq && la.answerIndex != null ? String(la.answerIndex) : null,
+      essayText: !isMcq ? la.essayText ?? null : null,
+      isFlagged: la.isFlagged ?? false,
+      timeSpentSeconds: la.timeSpentSeconds ?? 0,
+      isCorrect:
+        isMcq && la.answerIndex != null
+          ? la.answerIndex === (q as MCQQuestion).correctIndex
+          : null,
+    };
+  };
+
+  /** Autosave on navigation. Local drafts are always kept; failures surface. */
+  const persistCurrent = (extraSeconds: number) => {
+    const la: LocalAnswer = {
+      ...currentLocal,
+      timeSpentSeconds: (currentLocal.timeSpentSeconds ?? 0) + extraSeconds,
+    };
+    updateLocal(currentId, { timeSpentSeconds: la.timeSpentSeconds });
+    void upsertAnswer({
       simulationId: sim.id,
       sectionId: dbSection.id,
-      questionId: currentId,
-      answerValue:
-        bpSection.kind === "mcq" && currentLocal.answerIndex != null
-          ? String(currentLocal.answerIndex)
-          : null,
-      essayText: bpSection.kind !== "mcq" ? currentLocal.essayText ?? null : null,
-      isFlagged: currentLocal.isFlagged ?? false,
-      timeSpentSeconds: (currentLocal.timeSpentSeconds ?? 0) + elapsed,
-      isCorrect:
-        bpSection.kind === "mcq" && currentLocal.answerIndex != null
-          ? currentLocal.answerIndex === (current as MCQQuestion).correctIndex
-          : null,
-    }).catch(() => {});
+      ...answerInputFor(current, la),
+    })
+      .then(() => setSaveState("synced"))
+      .catch((err) => {
+        console.error("[mock] autosave failed", err);
+        setSaveState("local");
+      });
+  };
+
+  const consumeQuestionTime = () => {
+    const now = Date.now();
+    const spent = Math.round((now - questionEnteredAt.current) / 1000);
+    questionEnteredAt.current = now;
+    return Math.max(0, spent);
+  };
+
+  const trackTimeAndAdvance = (delta: number) => {
+    persistCurrent(consumeQuestionTime());
     setIdx((i) => Math.max(0, Math.min(items.length - 1, i + delta)));
   };
 
   const jumpTo = (n: number) => {
-    const now = Date.now();
-    const elapsed = Math.round((now - questionEnteredAt.current) / 1000);
-    questionEnteredAt.current = now;
-    updateLocal(currentId, {
-      timeSpentSeconds: (currentLocal.timeSpentSeconds ?? 0) + elapsed,
-    });
-    upsertAnswer({
-      simulationId: sim.id,
-      sectionId: dbSection.id,
-      questionId: currentId,
-      answerValue:
-        bpSection.kind === "mcq" && currentLocal.answerIndex != null
-          ? String(currentLocal.answerIndex)
-          : null,
-      essayText: bpSection.kind !== "mcq" ? currentLocal.essayText ?? null : null,
-      isFlagged: currentLocal.isFlagged ?? false,
-      timeSpentSeconds: (currentLocal.timeSpentSeconds ?? 0) + elapsed,
-      isCorrect:
-        bpSection.kind === "mcq" && currentLocal.answerIndex != null
-          ? currentLocal.answerIndex === (current as MCQQuestion).correctIndex
-          : null,
-    }).catch(() => {});
+    persistCurrent(consumeQuestionTime());
     setIdx(n);
   };
 
   async function submit() {
-    if (submitting) return;
+    // Immediate lock: state updates do not flush fast enough to stop a double click.
+    if (submitLock.current) return;
+    submitLock.current = true;
     setSubmitting(true);
-    // Persist final state for current question
-    const now = Date.now();
-    const elapsed = Math.round((now - questionEnteredAt.current) / 1000);
-    updateLocal(currentId, {
-      timeSpentSeconds: (currentLocal.timeSpentSeconds ?? 0) + elapsed,
+    setSubmitError(null);
+
+    const nowAt = Date.now();
+    const extra = consumeQuestionTime();
+    // Include the live current answer even if React state has not flushed.
+    const snapshot = finalAnswerSnapshot({
+      local,
+      currentQuestionId: currentId,
+      currentAnswer: currentLocal,
+      extraSecondsOnCurrent: extra,
     });
 
-    // Persist every question's answer
-    const dbAnswers: DbAnswer[] = [];
+    const isMcq = bpSection.kind === "mcq";
     let correctCount = 0;
-    let mcqCount = 0;
-    for (const q of items) {
-      const la = local[q.id] ?? (q.id === currentId
-        ? { ...currentLocal, timeSpentSeconds: (currentLocal.timeSpentSeconds ?? 0) + elapsed }
-        : {});
-      const isMcq = bpSection.kind === "mcq";
-      const answerIndex = (la as LocalAnswer).answerIndex;
-      const isCorrect =
-        isMcq && answerIndex != null
-          ? answerIndex === (q as MCQQuestion).correctIndex
-          : null;
-      if (isMcq) {
-        mcqCount++;
-        if (isCorrect) correctCount++;
-      }
-      await upsertAnswer({
+    const answerInputs = items.map((q) => {
+      const la = snapshot[q.id] ?? {};
+      const input = answerInputFor(q, la);
+      if (isMcq && input.isCorrect) correctCount++;
+      return input;
+    });
+
+    const elapsedSeconds = elapsedSecondsFrom(timer, nowAt);
+    // Unanswered MCQs count as incorrect: denominator is every question.
+    const sectionScore = isMcq
+      ? mcqSectionScore({ totalQuestions: items.length, correct: correctCount })
+      : null;
+
+    try {
+      // Durable answers first, completion only after they land.
+      await upsertAnswers({
         simulationId: sim.id,
         sectionId: dbSection.id,
-        questionId: q.id,
-        answerValue: isMcq && answerIndex != null ? String(answerIndex) : null,
-        essayText: !isMcq ? (la as LocalAnswer).essayText ?? null : null,
-        isFlagged: (la as LocalAnswer).isFlagged ?? false,
-        timeSpentSeconds: (la as LocalAnswer).timeSpentSeconds ?? 0,
-        isCorrect,
+        answers: answerInputs,
       });
-      dbAnswers.push({
-        id: `${dbSection.id}-${q.id}`,
-        simulation_id: sim.id,
-        section_id: dbSection.id,
-        question_id: q.id,
-        answer_value: isMcq && answerIndex != null ? String(answerIndex) : null,
-        essay_text: !isMcq ? (la as LocalAnswer).essayText ?? null : null,
-        is_flagged: (la as LocalAnswer).isFlagged ?? false,
-        time_spent_seconds: (la as LocalAnswer).timeSpentSeconds ?? 0,
-        is_correct: isCorrect,
-      });
-
+      await completeSection(dbSection.id, sectionScore, elapsedSeconds, timer);
+    } catch (err) {
+      console.error("[mock] section submit failed", err);
+      // Stay in the section, keep every local draft, allow a retry.
+      setSubmitError(
+        err instanceof Error
+          ? err.message
+          : "We couldn't submit this section. Your answers are saved on this device.",
+      );
+      setSaveState("local");
+      setSubmitting(false);
+      submitLock.current = false;
+      return;
     }
 
-    // Aggregate per-topic accuracy and feed module confidence
-    const perTopic = new Map<string, { right: number; total: number }>();
-    for (const q of items) {
-      if (bpSection.kind !== "mcq") break;
-      const mcq = q as MCQQuestion;
-      const la = local[q.id] ?? (q.id === currentId ? currentLocal : {});
-      const ai = (la as LocalAnswer).answerIndex;
-      if (ai == null) continue;
-      const cur = perTopic.get(mcq.topic) ?? { right: 0, total: 0 };
-      cur.total++;
-      if (ai === mcq.correctIndex) cur.right++;
-      perTopic.set(mcq.topic, cur);
-    }
-    for (const [topic, s] of perTopic) {
-      try {
-        adjustModuleConfidence(topic, s.right / Math.max(1, s.total));
-      } catch {}
-    }
-
-
-    const sectionScore = mcqCount > 0 ? Math.round((correctCount / mcqCount) * 100) : null;
-    await completeSection(dbSection.id, sectionScore);
+    setSaveState("synced");
+    clearCachedTimer(sim.id, dbSection.id);
     toast.success("Section submitted.");
+
+    const dbAnswers: DbAnswer[] = answerInputs.map((a) => ({
+      id: `${dbSection.id}-${a.questionId}`,
+      simulation_id: sim.id,
+      section_id: dbSection.id,
+      question_id: a.questionId,
+      answer_value: a.answerValue,
+      essay_text: a.essayText,
+      is_flagged: a.isFlagged,
+      time_spent_seconds: a.timeSpentSeconds,
+      is_correct: a.isCorrect,
+      metadata: {},
+    }));
 
     const updated: DbSection = {
       ...dbSection,
       status: "completed",
       completed_at: new Date().toISOString(),
       score: sectionScore,
+      metadata: { ...(dbSection.metadata ?? {}), timer, elapsedSeconds },
     };
     await onSubmitted(updated, dbAnswers);
   }
+
 
   return (
     <AppShell title={bpSection.title} subtitle={`Section · ${bpSection.kind === "mcq" ? "Multiple choice" : bpSection.kind === "essay" ? "Essay" : "Performance test"}`}>
