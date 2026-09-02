@@ -25,19 +25,26 @@ import {
 } from "@/lib/plan-store";
 
 import {
+  canonicalOccurredAt,
+  classifyUpdateReplay,
+  classifyVoidReplay,
   coalesceQueue,
+  coalesceWriteQueue,
   commitSessionDelete,
   commitSessionEdit,
   noMatchError,
   pickExactEventMatch,
+  queueContainsWrite,
   resolveFromLedger,
   type AnyQueueItem,
   type CanonicalEventSnapshot,
   type CanonicalPort,
+  type CanonicalWriteItem,
   type EventPatch,
   type MutationOutcome,
   type Resolution,
 } from "@/lib/canonical-edit";
+
 
 export type StudySource =
   | "dashboard_task"
@@ -205,12 +212,28 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-function writeJson(key: string, value: unknown) {
-  if (typeof window === "undefined") return;
+/**
+ * Writes and verifies by re-reading. Returns false when storage rejected the
+ * write (quota exceeded, private mode, storage disabled), so no caller may
+ * claim something was "queued" when nothing was persisted.
+ */
+function writeJson(key: string, value: unknown): boolean {
+  if (typeof window === "undefined") return false;
+  let raw: string;
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    raw = JSON.stringify(value);
   } catch {
-    /* storage full / private mode — canonical row is still the server's job */
+    return false;
+  }
+  try {
+    localStorage.setItem(key, raw);
+  } catch {
+    return false;
+  }
+  try {
+    return localStorage.getItem(key) === raw;
+  } catch {
+    return false;
   }
 }
 
@@ -218,18 +241,26 @@ function ledger(): Record<string, LedgerEntry> {
   return readJson<Record<string, LedgerEntry>>(LEDGER_KEY, {});
 }
 
-function setLedger(key: string, entry: LedgerEntry | null) {
+function setLedger(key: string, entry: LedgerEntry | null): boolean {
   const all = ledger();
   if (entry === null) delete all[key];
   else all[key] = entry;
-  writeJson(LEDGER_KEY, all);
+  return writeJson(LEDGER_KEY, all);
 }
 
-function enqueue(item: QueueItem) {
-  const q = readJson<QueueItem[]>(QUEUE_KEY, []);
-  q.push(item);
-  writeJson(QUEUE_KEY, q.slice(-200));
+/**
+ * Persists a canonical write to the offline queue and VERIFIES it is really
+ * there. Repeated retries coalesce by idempotency key, so the queue cannot grow
+ * without bound.
+ */
+function enqueueWrite(item: CanonicalWriteItem): boolean {
+  if (typeof window === "undefined") return false;
+  const before = readJson<AnyQueueItem[]>(QUEUE_KEY, []);
+  const next = coalesceWriteQueue(before, item).slice(-200);
+  if (!writeJson(QUEUE_KEY, next)) return false;
+  return queueContainsWrite(readJson<AnyQueueItem[]>(QUEUE_KEY, []), item);
 }
+
 
 /**
  * Enqueue a canonical mutation with coalescing, and verify it is really there
@@ -292,22 +323,50 @@ export async function flushStudyLogQueue(): Promise<{ flushed: number; remaining
           });
         if (error) throw error;
       } else if (item.kind === "event_update") {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("study_events")
           .update(item.payload as never)
           .eq("user_id", user.id)
           .eq("idempotency_key", item.idempotencyKey)
           .is("voided_at", null)
           .select("id");
-        // A vanished/voided event is not a retryable failure — drop the item.
-        if (error) throw error;
+        // Zero matches is NOT success: a preceding queued insert may not have
+        // landed yet, so keep the item rather than diverge from the mirror.
+        if (classifyUpdateReplay({ error: error ?? undefined, matched: data?.length ?? 0 }) === "retain") {
+          remaining.push(item);
+          continue;
+        }
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("study_events")
           .update({ voided_at: new Date().toISOString() })
           .eq("user_id", user.id)
-          .eq("idempotency_key", item.idempotencyKey);
-        if (error) throw error;
+          .eq("idempotency_key", item.idempotencyKey)
+          .is("voided_at", null)
+          .select("id");
+        let existing: { error?: unknown; total: number; voided: number } | undefined;
+        if (!error && (data?.length ?? 0) === 0) {
+          // Already voided by an earlier replay? That is idempotent success.
+          const probe = await supabase
+            .from("study_events")
+            .select("id,voided_at")
+            .eq("user_id", user.id)
+            .eq("idempotency_key", item.idempotencyKey)
+            .limit(2);
+          const rows = (probe.data ?? []) as { voided_at: string | null }[];
+          existing = {
+            error: probe.error ?? undefined,
+            total: rows.length,
+            voided: rows.filter((r) => !!r.voided_at).length,
+          };
+        }
+        if (
+          classifyVoidReplay({ error: error ?? undefined, matched: data?.length ?? 0 }, existing) ===
+          "retain"
+        ) {
+          remaining.push(item);
+          continue;
+        }
       }
       flushed += 1;
     } catch {
@@ -318,6 +377,7 @@ export async function flushStudyLogQueue(): Promise<{ flushed: number; remaining
   return { flushed, remaining: remaining.length };
 }
 
+
 // ───────── canonical writes
 
 /**
@@ -327,14 +387,18 @@ export async function flushStudyLogQueue(): Promise<{ flushed: number; remaining
  * mirror. Callers must NOT also call `addStudySession` for the same action.
  */
 export async function recordStudyActivity(input: RecordActivityInput): Promise<WriteResult> {
-  const occurredAt = input.occurredAt ?? new Date();
+  const known = ledger()[input.idempotencyKey];
+  // An action must never move in time merely because it was retried: when the
+  // ledger already holds this key, its original loggedAt is the canonical basis.
+  const occurredAt = canonicalOccurredAt(known?.loggedAt, input.occurredAt ?? null);
   const tz = currentTimezone();
   const localDate = localDateFor(occurredAt, tz);
-  const known = ledger()[input.idempotencyKey];
 
   // 1. Legacy mirror (local, synchronous, idempotent on loggedAt).
   const loggedAt = known?.loggedAt ?? occurredAt.toISOString();
-  if (!known) {
+  const createdMirror = !known;
+  let restoreConfidence: { module: string; value: number } | null = null;
+  if (createdMirror) {
     const legacy: StudySession = {
       date: localDate,
       minutes: Math.max(0, Math.round(input.actualMinutes)),
@@ -353,6 +417,7 @@ export async function recordStudyActivity(input: RecordActivityInput): Promise<W
       if (typeof before === "number") {
         entry.module = input.subject;
         entry.previousConfidence = before;
+        restoreConfidence = { module: input.subject, value: before };
       }
       adjustModuleConfidence(input.subject, input.gradedAccuracy);
     }
@@ -391,11 +456,21 @@ export async function recordStudyActivity(input: RecordActivityInput): Promise<W
     if (error) throw error;
     return { ok: true, queued: false };
   } catch (e) {
-    enqueue({ kind: "event", payload });
+    const message = e instanceof Error ? e.message : "Could not save to your account yet";
+    if (enqueueWrite({ kind: "event", payload })) {
+      return { ok: false, queued: true, error: message };
+    }
+    // Nothing durable anywhere: roll the mirror back so the UI does not show a
+    // session that no store will ever hold, and stay honestly retryable.
+    if (createdMirror) {
+      removeStudySession(loggedAt);
+      if (restoreConfidence) setModuleConfidence(restoreConfidence.module, restoreConfidence.value);
+      setLedger(input.idempotencyKey, null);
+    }
     return {
       ok: false,
-      queued: true,
-      error: e instanceof Error ? e.message : "Could not save to your account yet",
+      queued: false,
+      error: "We couldn't save this to your account or to this device. Try again.",
     };
   }
 }
@@ -403,13 +478,17 @@ export async function recordStudyActivity(input: RecordActivityInput): Promise<W
 /** Reverses a previously recorded action: voids the canonical row and undoes the legacy mirror. */
 export async function voidStudyActivity(idempotencyKey: string): Promise<WriteResult> {
   const entry = ledger()[idempotencyKey];
-  if (entry) {
+  // The mirror is only unwound once the canonical void was accepted, so a
+  // failed undo can never hide a session that still exists server-side.
+  const unwindMirror = () => {
+    if (!entry) return;
     removeStudySession(entry.loggedAt);
     if (entry.module && typeof entry.previousConfidence === "number") {
       setModuleConfidence(entry.module, entry.previousConfidence);
     }
     setLedger(idempotencyKey, null);
-  }
+  };
+
   try {
     const user = await waitForAuthUser();
     if (!user) throw new Error("not signed in");
@@ -419,13 +498,18 @@ export async function voidStudyActivity(idempotencyKey: string): Promise<WriteRe
       .eq("user_id", user.id)
       .eq("idempotency_key", idempotencyKey);
     if (error) throw error;
+    unwindMirror();
     return { ok: true, queued: false };
   } catch (e) {
-    enqueueMutation({ kind: "void", idempotencyKey });
+    const message = e instanceof Error ? e.message : "Undo not synced yet";
+    if (enqueueMutation({ kind: "void", idempotencyKey })) {
+      unwindMirror();
+      return { ok: false, queued: true, error: message };
+    }
     return {
       ok: false,
-      queued: true,
-      error: e instanceof Error ? e.message : "Undo not synced yet",
+      queued: false,
+      error: "We couldn't record this undo yet, so nothing was changed.",
     };
   }
 }
@@ -468,14 +552,18 @@ export async function recordGradedAttempts(
     if (error) throw error;
     return { ok: true, queued: false };
   } catch (e) {
-    enqueue({ kind: "attempts", payload: rows });
+    const message = e instanceof Error ? e.message : "Results saved on this device only so far";
+    if (enqueueWrite({ kind: "attempts", payload: rows })) {
+      return { ok: false, queued: true, error: message };
+    }
     return {
       ok: false,
-      queued: true,
-      error: e instanceof Error ? e.message : "Results saved on this device only so far",
+      queued: false,
+      error: "We couldn't save these results to your account or this device. Try again.",
     };
   }
 }
+
 
 
 // ───────── canonical edit / delete of a displayed legacy session

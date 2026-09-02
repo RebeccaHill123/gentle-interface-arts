@@ -87,6 +87,8 @@ export function pickExactEventMatch(rows: CanonicalEventSnapshot[]): Resolution 
 
 const GRADED_ACTIVITY = ["quiz", "mock"];
 const GRADED_SOURCE = ["practice", "mock"];
+/** Displayed (mirror-inferred) session types whose correctness lives elsewhere. */
+const GRADED_DISPLAY_TYPES = ["quiz", "mock"];
 
 /**
  * True when the event's correctness lives in `graded_attempts`/`mock_answers`.
@@ -99,10 +101,51 @@ export function isGradedEvent(
   return GRADED_ACTIVITY.includes(e.activity_type) || GRADED_SOURCE.includes(e.source);
 }
 
-export function gradedEditNotice(graded: boolean): string | null {
-  return graded
-    ? "Scored answers for this session are stored separately, so accuracy, type and result notes can't be edited here."
-    : null;
+/** The canonical snapshot, when the resolution actually carried one. */
+export function snapshotOf(res?: Resolution | null): CanonicalEventSnapshot | undefined {
+  return res && res.status === "mapped" ? res.event : undefined;
+}
+
+export interface GradedSafety {
+  /** Conservative: true if EITHER the displayed type or the snapshot says graded. */
+  graded: boolean;
+  /** False when we could not read the canonical row (offline / transient). */
+  snapshotAvailable: boolean;
+  /** Metadata-note edits require the snapshot (we must not replace metadata blind). */
+  canEditNote: boolean;
+  /** Type edits would desync graded rows, and are unsafe without the snapshot. */
+  canEditType: boolean;
+}
+
+/**
+ * Derives edit safety from BOTH the displayed session's inferred type and the
+ * canonical snapshot when available. Unknown/offline must never unlock a field.
+ */
+export function gradedSafety(input: {
+  displayedType?: string | null;
+  resolution?: Resolution | null;
+  event?: CanonicalEventSnapshot | null;
+}): GradedSafety {
+  const event = input.event ?? snapshotOf(input.resolution);
+  const snapshotAvailable = !!event;
+  const displayedGraded = !!input.displayedType && GRADED_DISPLAY_TYPES.includes(input.displayedType);
+  const graded = displayedGraded || isGradedEvent(event);
+  return {
+    graded,
+    snapshotAvailable,
+    canEditNote: snapshotAvailable && !graded,
+    canEditType: snapshotAvailable && !graded,
+  };
+}
+
+export function gradedEditNotice(graded: boolean, snapshotAvailable = true): string | null {
+  if (graded) {
+    return "Scored answers for this session are stored separately, so accuracy, type and result notes can't be edited here.";
+  }
+  if (!snapshotAvailable) {
+    return "We can't read the linked study record right now, so type and notes are locked. Duration, module and mood can still be changed.";
+  }
+  return null;
 }
 
 export function deleteConfirmCopy(graded: boolean): string {
@@ -114,7 +157,11 @@ export function deleteConfirmCopy(graded: boolean): string {
 // ───────── payload building
 
 /** Columns that are safe to edit. Occurrence time is never changed here, so
- * `local_date`/`timezone` stay correct by construction. */
+ * `local_date`/`timezone` stay correct by construction.
+ *
+ * Backstop: a metadata-note patch is IGNORED when no canonical snapshot was
+ * read, because writing `metadata` without the existing object would replace
+ * (and so destroy) whatever the event already carried. */
 export function buildEventUpdatePayload(
   patch: EventPatch,
   event?: CanonicalEventSnapshot | null,
@@ -128,12 +175,13 @@ export function buildEventUpdatePayload(
   if (patch.selfMood !== undefined) {
     out.self_mood = typeof patch.selfMood === "number" ? patch.selfMood : null;
   }
-  if (patch.note !== undefined) {
-    const base = (event?.metadata ?? {}) as Record<string, unknown>;
+  if (patch.note !== undefined && event) {
+    const base = (event.metadata ?? {}) as Record<string, unknown>;
     out.metadata = { ...base, note: patch.note ? String(patch.note).slice(0, 120) : null };
   }
   return out;
 }
+
 
 // ───────── offline queue coalescing (pure)
 
@@ -288,4 +336,138 @@ export function focusLogMessage(result: AcceptanceInput, minutes: number): strin
   if (result.ok) return `Logged ${minutes} min to your account.`;
   if (result.queued) return `Saved ${minutes} min on this device — will sync.`;
   return "We couldn't save this session yet. Try again.";
+}
+
+// ───────── durable write queue (pure)
+
+export type CanonicalWriteItem =
+  | { kind: "event"; payload: Record<string, unknown> }
+  | { kind: "attempts"; payload: Record<string, unknown>[] };
+
+function eventKeyOf(i: AnyQueueItem): string | null {
+  if (i.kind !== "event") return null;
+  const p = (i as { payload?: Record<string, unknown> }).payload;
+  const k = p?.["idempotency_key"];
+  return typeof k === "string" ? k : null;
+}
+
+function attemptKeysOf(i: AnyQueueItem): string[] {
+  if (i.kind !== "attempts") return [];
+  const rows = (i as { payload?: Record<string, unknown>[] }).payload ?? [];
+  return rows
+    .map((r) => r["idempotency_key"])
+    .filter((k): k is string => typeof k === "string");
+}
+
+function sameSet(a: string[], b: string[]): boolean {
+  if (a.length !== b.length || a.length === 0) return false;
+  const sa = [...a].sort().join("\u0000");
+  const sb = [...b].sort().join("\u0000");
+  return sa === sb;
+}
+
+/**
+ * Coalesces canonical write items so retries can never grow the queue:
+ *  - an `event` item is replaced by a later one with the same idempotency key;
+ *  - an `attempts` item is replaced when it carries exactly the same key set.
+ */
+export function coalesceWriteQueue(
+  queue: AnyQueueItem[],
+  item: CanonicalWriteItem,
+): AnyQueueItem[] {
+  if (item.kind === "event") {
+    const key = eventKeyOf(item);
+    if (!key) return [...queue, item];
+    let replaced = false;
+    const next = queue.map((i) => {
+      if (!replaced && eventKeyOf(i) === key) {
+        replaced = true;
+        return item as AnyQueueItem;
+      }
+      return i;
+    });
+    return replaced ? next : [...queue, item];
+  }
+  const keys = attemptKeysOf(item);
+  if (keys.length === 0) return [...queue, item];
+  let replaced = false;
+  const next = queue.map((i) => {
+    if (!replaced && sameSet(attemptKeysOf(i), keys)) {
+      replaced = true;
+      return item as AnyQueueItem;
+    }
+    return i;
+  });
+  return replaced ? next : [...queue, item];
+}
+
+/** True only when the exact write we asked to persist is present in the queue. */
+export function queueContainsWrite(queue: AnyQueueItem[], item: CanonicalWriteItem): boolean {
+  if (item.kind === "event") {
+    const key = eventKeyOf(item);
+    return !!key && queue.some((i) => eventKeyOf(i) === key);
+  }
+  const keys = attemptKeysOf(item);
+  if (keys.length === 0) return false;
+  const present = new Set(queue.flatMap((i) => attemptKeysOf(i)));
+  return keys.every((k) => present.has(k));
+}
+
+// ───────── queue replay classification (pure)
+
+export type ReplayVerdict = "flushed" | "retain";
+
+export interface MatchResult {
+  /** Any transport/permission error. */
+  error?: unknown;
+  /** Number of owner-scoped rows the write actually matched. */
+  matched: number;
+}
+
+/**
+ * An `event_update` replay only counts as flushed when it matched EXACTLY one
+ * owner-scoped canonical row. Zero matches usually means a preceding queued
+ * `event` insert has not landed yet, so the item must be retained rather than
+ * silently diverging from the already-updated mirror.
+ */
+export function classifyUpdateReplay(r: MatchResult): ReplayVerdict {
+  if (r.error) return "retain";
+  return r.matched === 1 ? "flushed" : "retain";
+}
+
+/**
+ * Void replay is idempotent: an event that is already voided is a success, not
+ * a failure. Zero or multiple candidate rows are always retained.
+ */
+export function classifyVoidReplay(
+  update: MatchResult,
+  /** Lookup of rows for the exact owner/key, regardless of void state. */
+  existing?: { error?: unknown; total: number; voided: number },
+): ReplayVerdict {
+  if (update.error) return "retain";
+  if (update.matched === 1) return "flushed";
+  if (update.matched > 1) return "retain";
+  if (!existing || existing.error) return "retain";
+  if (existing.total === 1 && existing.voided === 1) return "flushed";
+  return "retain";
+}
+
+// ───────── occurrence time stability (pure)
+
+/**
+ * The occurrence time of an action must never move because it was retried.
+ * When the local ledger already holds this idempotency key, its original
+ * `loggedAt` is the canonical basis; only a brand-new action may use "now".
+ */
+export function canonicalOccurredAt(
+  ledgerLoggedAt: string | undefined | null,
+  supplied?: Date | null,
+  now: Date = new Date(),
+): Date {
+  if (ledgerLoggedAt) {
+    const d = new Date(ledgerLoggedAt);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  if (supplied && !Number.isNaN(supplied.getTime())) return supplied;
+  return now;
 }

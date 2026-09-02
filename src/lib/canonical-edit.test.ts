@@ -1,18 +1,26 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildEventUpdatePayload,
+  canonicalOccurredAt,
+  classifyUpdateReplay,
+  classifyVoidReplay,
   coalesceQueue,
+  coalesceWriteQueue,
   commitSessionDelete,
   commitSessionEdit,
   deleteConfirmCopy,
   focusLogMessage,
+  gradedEditNotice,
+  gradedSafety,
   isGradedEvent,
   noMatchError,
   outcomeMessage,
   pickExactEventMatch,
+  queueContainsWrite,
   resolveFromLedger,
   shouldMarkLogged,
   type CanonicalEventSnapshot,
+  type AnyQueueItem,
   type CanonicalPort,
   type QueuedMutation,
   type Resolution,
@@ -257,5 +265,155 @@ describe("focus completion acceptance", () => {
     expect(shouldMarkLogged(second)).toBe(true);
     expect(seen).toEqual([sessionId, sessionId]);
     void first;
+  });
+});
+
+// ───────── follow-up integrity: durable queue, replay, graded safety, timing
+
+describe("coalesceWriteQueue / queueContainsWrite", () => {
+  const ev = (key: string, minutes = 10) => ({
+    kind: "event" as const,
+    payload: { idempotency_key: key, actual_minutes: minutes },
+  });
+  const at = (keys: string[]) => ({
+    kind: "attempts" as const,
+    payload: keys.map((k) => ({ idempotency_key: k })),
+  });
+
+  it("replaces an event item with the same idempotency key instead of growing", () => {
+    let q: AnyQueueItem[] = [];
+    q = coalesceWriteQueue(q, ev("a", 10));
+    q = coalesceWriteQueue(q, ev("a", 25));
+    expect(q).toHaveLength(1);
+    expect((q[0] as unknown as { payload: { actual_minutes: number } }).payload.actual_minutes).toBe(25);
+  });
+
+  it("keeps distinct events separate", () => {
+    let q: AnyQueueItem[] = [];
+    q = coalesceWriteQueue(q, ev("a"));
+    q = coalesceWriteQueue(q, ev("b"));
+    expect(q).toHaveLength(2);
+    expect(queueContainsWrite(q, ev("b"))).toBe(true);
+    expect(queueContainsWrite(q, ev("c"))).toBe(false);
+  });
+
+  it("replaces an attempts batch only when the key set matches exactly", () => {
+    let q: AnyQueueItem[] = [];
+    q = coalesceWriteQueue(q, at(["q1", "q2"]));
+    q = coalesceWriteQueue(q, at(["q2", "q1"]));
+    expect(q).toHaveLength(1);
+    q = coalesceWriteQueue(q, at(["q1", "q3"]));
+    expect(q).toHaveLength(2);
+    expect(queueContainsWrite(q, at(["q1", "q2", "q3"]))).toBe(true);
+    expect(queueContainsWrite(q, at(["q9"]))).toBe(false);
+  });
+});
+
+describe("replay classification", () => {
+  it("only counts an update as flushed on exactly one owner-scoped match", () => {
+    expect(classifyUpdateReplay({ matched: 1 })).toBe("flushed");
+    expect(classifyUpdateReplay({ matched: 0 })).toBe("retain");
+    expect(classifyUpdateReplay({ matched: 2 })).toBe("retain");
+    expect(classifyUpdateReplay({ matched: 1, error: new Error("nope") })).toBe("retain");
+  });
+
+  it("treats an already-voided exact event as idempotent success", () => {
+    expect(classifyVoidReplay({ matched: 1 })).toBe("flushed");
+    expect(classifyVoidReplay({ matched: 0 }, { total: 1, voided: 1 })).toBe("flushed");
+  });
+
+  it("retains a void replay on zero, multiple or unreadable candidates", () => {
+    expect(classifyVoidReplay({ matched: 0 }, { total: 0, voided: 0 })).toBe("retain");
+    expect(classifyVoidReplay({ matched: 0 }, { total: 2, voided: 2 })).toBe("retain");
+    expect(classifyVoidReplay({ matched: 0 }, { total: 1, voided: 1, error: new Error("x") })).toBe("retain");
+    expect(classifyVoidReplay({ matched: 0 })).toBe("retain");
+    expect(classifyVoidReplay({ matched: 3 })).toBe("retain");
+  });
+});
+
+describe("gradedSafety", () => {
+  const quizEvent: CanonicalEventSnapshot = { ...EVENT, activity_type: "quiz", source: "practice" };
+
+  it("treats a displayed quiz/mock as graded even with no snapshot", () => {
+    const s = gradedSafety({ displayedType: "quiz", resolution: { status: "mapped", idempotencyKey: "k", via: "ledger" } });
+    expect(s.graded).toBe(true);
+    expect(s.snapshotAvailable).toBe(false);
+    expect(s.canEditNote).toBe(false);
+    expect(s.canEditType).toBe(false);
+    expect(deleteConfirmCopy(s.graded)).toContain("scored answers");
+  });
+
+  it("locks note/type for a non-graded row when the snapshot is unavailable", () => {
+    const s = gradedSafety({ displayedType: "study", resolution: { status: "mapped", idempotencyKey: "k", via: "ledger" } });
+    expect(s.graded).toBe(false);
+    expect(s.canEditNote).toBe(false);
+    expect(s.canEditType).toBe(false);
+    expect(gradedEditNotice(s.graded, s.snapshotAvailable)).toContain("locked");
+  });
+
+  it("unlocks note/type only for a non-graded row with a snapshot", () => {
+    const s = gradedSafety({ displayedType: "study", resolution: { status: "mapped", idempotencyKey: "k", via: "ledger", event: EVENT } });
+    expect(s).toMatchObject({ graded: false, snapshotAvailable: true, canEditNote: true, canEditType: true });
+    expect(gradedEditNotice(s.graded, s.snapshotAvailable)).toBeNull();
+  });
+
+  it("still detects graded from the snapshot when the displayed type looks plain", () => {
+    const s = gradedSafety({ displayedType: "study", resolution: { status: "mapped", idempotencyKey: "k", via: "ledger", event: quizEvent } });
+    expect(s.graded).toBe(true);
+    expect(s.canEditNote).toBe(false);
+  });
+});
+
+describe("buildEventUpdatePayload metadata backstop", () => {
+  it("never replaces metadata when no snapshot was read", () => {
+    const out = buildEventUpdatePayload({ note: "hello", actualMinutes: 30 }, undefined);
+    expect(out.metadata).toBeUndefined();
+    expect(out.actual_minutes).toBe(30);
+  });
+
+  it("merges onto the existing metadata when the snapshot is present", () => {
+    const out = buildEventUpdatePayload({ note: "hello" }, EVENT);
+    expect(out.metadata).toEqual({ origin: "focus", note: "hello" });
+  });
+
+  it("keeps top-level fields editable without a snapshot", () => {
+    const out = buildEventUpdatePayload({ subject: "Contract", selfMood: 4 }, null);
+    expect(out).toEqual({ subject: "Contract", self_mood: 4 });
+  });
+});
+
+describe("canonicalOccurredAt", () => {
+  it("uses the ledger's original time so a retry cannot move the action", () => {
+    const original = "2026-09-01T23:45:00.000Z";
+    const later = new Date("2026-09-02T00:10:00.000Z");
+    expect(canonicalOccurredAt(original, null, later).toISOString()).toBe(original);
+  });
+
+  it("does not cross a day boundary on retry", () => {
+    const original = "2026-09-01T23:59:00.000Z";
+    const retryNow = new Date("2026-09-02T00:01:00.000Z");
+    const got = canonicalOccurredAt(original, null, retryNow);
+    expect(got.toISOString().slice(0, 10)).toBe("2026-09-01");
+  });
+
+  it("falls back to the supplied time, then now, for a brand-new action", () => {
+    const supplied = new Date("2026-08-30T09:00:00.000Z");
+    expect(canonicalOccurredAt(undefined, supplied, new Date()).toISOString()).toBe(
+      supplied.toISOString(),
+    );
+    const now = new Date("2026-08-31T09:00:00.000Z");
+    expect(canonicalOccurredAt(undefined, null, now)).toBe(now);
+    expect(canonicalOccurredAt("not-a-date", null, now)).toBe(now);
+  });
+});
+
+describe("focus acceptance", () => {
+  it("keeps a session retryable when the write was neither saved nor queued", () => {
+    expect(shouldMarkLogged({ ok: false, queued: false })).toBe(false);
+    expect(focusLogMessage({ ok: false, queued: false }, 25)).toContain("Try again");
+  });
+
+  it("accepts a verified queued write", () => {
+    expect(shouldMarkLogged({ ok: false, queued: true })).toBe(true);
   });
 });
