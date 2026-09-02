@@ -1,6 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { type StripeEnv, verifyWebhook } from "@/lib/stripe.server";
-import { profileHasAccess, verifyClaim } from "@/lib/provisioning";
+import {
+  profileHasAccess,
+  verifyClaim,
+  decideClaimAction,
+} from "@/lib/provisioning";
 
 /**
  * Thrown when a paid checkout could not be fully provisioned. It must escape
