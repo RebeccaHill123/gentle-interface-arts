@@ -183,11 +183,13 @@ export function resumeSession(s: ActiveSession, now = Date.now()): ActiveSession
 }
 
 /**
- * Claim the single logging slot for this session's focus phase. Returns false
- * when it has already been claimed, which makes double-logging impossible even
- * if both the timer completion and a manual "Finish" fire.
+ * Mark the focus phase logged — ONLY once the canonical write was confirmed or
+ * durably queued. Durably claiming the slot before acceptance would let a crash
+ * in between leave a session permanently "logged" with no canonical record, so
+ * double-click protection is an in-memory lock at the call site instead.
+ * Returns null when the slot was already taken (never logs twice).
  */
-export function claimLogSlot(s: ActiveSession, now = Date.now()): ActiveSession | null {
+export function markLogAccepted(s: ActiveSession, now = Date.now()): ActiveSession | null {
   if (s.loggedAt) return null;
   const next = { ...s, loggedAt: now };
   saveSession(next);

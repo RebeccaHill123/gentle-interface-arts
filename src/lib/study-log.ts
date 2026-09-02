@@ -17,11 +17,27 @@ import { waitForAuthUser } from "@/lib/auth-session";
 import {
   addLegacySession,
   removeStudySession,
+  updateStudySession,
   setModuleConfidence,
   adjustModuleConfidence,
   loadPlan,
   type StudySession,
 } from "@/lib/plan-store";
+
+import {
+  coalesceQueue,
+  commitSessionDelete,
+  commitSessionEdit,
+  noMatchError,
+  pickExactEventMatch,
+  resolveFromLedger,
+  type AnyQueueItem,
+  type CanonicalEventSnapshot,
+  type CanonicalPort,
+  type EventPatch,
+  type MutationOutcome,
+  type Resolution,
+} from "@/lib/canonical-edit";
 
 export type StudySource =
   | "dashboard_task"
@@ -170,6 +186,7 @@ const LEDGER_KEY = "tentra.studylog.ledger.v1";
 type QueueItem =
   | { kind: "event"; payload: Record<string, unknown> }
   | { kind: "attempts"; payload: Record<string, unknown>[] }
+  | { kind: "event_update"; idempotencyKey: string; payload: Record<string, unknown> }
   | { kind: "void"; idempotencyKey: string };
 
 interface LedgerEntry {
@@ -214,6 +231,30 @@ function enqueue(item: QueueItem) {
   writeJson(QUEUE_KEY, q.slice(-200));
 }
 
+/**
+ * Enqueue a canonical mutation with coalescing, and verify it is really there
+ * before any caller is allowed to move the compatibility mirror.
+ */
+function enqueueMutation(
+  item: { kind: "event_update"; idempotencyKey: string; payload: Record<string, unknown> } | { kind: "void"; idempotencyKey: string },
+): boolean {
+  if (typeof window === "undefined") return false;
+  const before = readJson<AnyQueueItem[]>(QUEUE_KEY, []);
+  const next = coalesceQueue(before, item);
+  writeJson(QUEUE_KEY, next.slice(-200));
+  const after = readJson<AnyQueueItem[]>(QUEUE_KEY, []);
+  if (item.kind === "void") {
+    return after.some((i) => i.kind === "void" && i.idempotencyKey === item.idempotencyKey);
+  }
+  // An edit dropped because a delete is already queued counts as accepted:
+  // the event is going away, so nothing is lost.
+  return after.some(
+    (i) =>
+      (i.kind === "event_update" || i.kind === "void") &&
+      i.idempotencyKey === item.idempotencyKey,
+  );
+}
+
 /** Number of canonical writes still waiting to reach the server. */
 export function pendingWriteCount(): number {
   return readJson<QueueItem[]>(QUEUE_KEY, []).length;
@@ -249,6 +290,16 @@ export async function flushStudyLogQueue(): Promise<{ flushed: number; remaining
             onConflict: "user_id,idempotency_key",
             ignoreDuplicates: true,
           });
+        if (error) throw error;
+      } else if (item.kind === "event_update") {
+        const { error } = await supabase
+          .from("study_events")
+          .update(item.payload as never)
+          .eq("user_id", user.id)
+          .eq("idempotency_key", item.idempotencyKey)
+          .is("voided_at", null)
+          .select("id");
+        // A vanished/voided event is not a retryable failure — drop the item.
         if (error) throw error;
       } else {
         const { error } = await supabase
@@ -370,7 +421,7 @@ export async function voidStudyActivity(idempotencyKey: string): Promise<WriteRe
     if (error) throw error;
     return { ok: true, queued: false };
   } catch (e) {
-    enqueue({ kind: "void", idempotencyKey });
+    enqueueMutation({ kind: "void", idempotencyKey });
     return {
       ok: false,
       queued: true,
@@ -424,6 +475,123 @@ export async function recordGradedAttempts(
       error: e instanceof Error ? e.message : "Results saved on this device only so far",
     };
   }
+}
+
+
+// ───────── canonical edit / delete of a displayed legacy session
+
+const EVENT_SNAPSHOT_COLUMNS = "id,idempotency_key,occurred_at,activity_type,source,metadata";
+
+/**
+ * Maps a displayed `StudySession.loggedAt` back to its canonical event.
+ * Ledger first (exact); otherwise a strictly unambiguous owner-scoped lookup.
+ */
+export async function resolveCanonicalEventForSession(loggedAt: string): Promise<Resolution> {
+  const key = resolveFromLedger(ledger(), loggedAt);
+  let user: Awaited<ReturnType<typeof waitForAuthUser>> = null;
+  try {
+    user = await waitForAuthUser();
+  } catch {
+    user = null;
+  }
+
+  if (key) {
+    if (!user) return { status: "mapped", idempotencyKey: key, via: "ledger" };
+    const { data, error } = await supabase
+      .from("study_events")
+      .select(EVENT_SNAPSHOT_COLUMNS)
+      .eq("user_id", user.id)
+      .eq("idempotency_key", key)
+      .is("voided_at", null)
+      .limit(2);
+    // Offline / transient read failure: the mapping itself is still trustworthy.
+    if (error) return { status: "mapped", idempotencyKey: key, via: "ledger" };
+    const rows = (data ?? []) as CanonicalEventSnapshot[];
+    return {
+      status: "mapped",
+      idempotencyKey: key,
+      via: "ledger",
+      event: rows.length === 1 ? rows[0] : undefined,
+    };
+  }
+
+  if (!user) {
+    return {
+      status: "error",
+      error: "You need to be signed in and online to change this entry.",
+    };
+  }
+  const { data, error } = await supabase
+    .from("study_events")
+    .select(EVENT_SNAPSHOT_COLUMNS)
+    .eq("user_id", user.id)
+    .eq("occurred_at", loggedAt)
+    .is("voided_at", null)
+    .limit(3);
+  if (error) return { status: "error", error: error.message };
+  return pickExactEventMatch((data ?? []) as CanonicalEventSnapshot[]);
+}
+
+async function updateEventRow(idempotencyKey: string, payload: Record<string, unknown>) {
+  const user = await waitForAuthUser();
+  if (!user) throw new Error("not signed in");
+  const { data, error } = await supabase
+    .from("study_events")
+    .update(payload as never)
+    .eq("user_id", user.id)
+    .eq("idempotency_key", idempotencyKey)
+    .is("voided_at", null)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length !== 1) {
+    throw noMatchError("No single matching study record was found, so nothing was changed.");
+  }
+}
+
+async function voidEventRow(idempotencyKey: string) {
+  const user = await waitForAuthUser();
+  if (!user) throw new Error("not signed in");
+  const { data, error } = await supabase
+    .from("study_events")
+    .update({ voided_at: new Date().toISOString() })
+    .eq("user_id", user.id)
+    .eq("idempotency_key", idempotencyKey)
+    .is("voided_at", null)
+    .select("id");
+  if (error) throw error;
+  if (!data || data.length !== 1) {
+    throw noMatchError("No single matching study record was found, so nothing was removed.");
+  }
+}
+
+function portFor(loggedAt: string, mirrorPatch: Partial<StudySession>): CanonicalPort {
+  return {
+    resolve: resolveCanonicalEventForSession,
+    update: updateEventRow,
+    voidEvent: voidEventRow,
+    queueUpdate: (key, payload) => enqueueMutation({ kind: "event_update", idempotencyKey: key, payload }),
+    queueVoid: (key) => enqueueMutation({ kind: "void", idempotencyKey: key }),
+    mirrorUpdate: () => updateStudySession(loggedAt, mirrorPatch),
+    mirrorRemove: () => {
+      const key = resolveFromLedger(ledger(), loggedAt);
+      removeStudySession(loggedAt);
+      if (key) setLedger(key, null);
+    },
+  };
+}
+
+/** Canonical edit of one displayed session. The mirror moves only with it. */
+export function updateSessionCanonically(
+  loggedAt: string,
+  patch: EventPatch,
+  mirrorPatch: Partial<StudySession>,
+): Promise<MutationOutcome> {
+  return commitSessionEdit(portFor(loggedAt, mirrorPatch), loggedAt, patch);
+}
+
+/** Canonical void of one displayed session. Graded answers are left intact. */
+export function deleteSessionCanonically(loggedAt: string): Promise<MutationOutcome> {
+  return commitSessionDelete(portFor(loggedAt, {}), loggedAt);
 }
 
 // ───────── canonical reads

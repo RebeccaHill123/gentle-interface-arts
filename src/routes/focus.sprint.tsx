@@ -4,12 +4,12 @@ import { ArrowLeft, Check, Pause, Play, SkipForward } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { waitForAuthUser } from "@/lib/auth-session";
 import {
-  claimLogSlot,
   clearSession,
   creditableMinutes,
   elapsedMs,
   isStale,
   loadSession,
+  markLogAccepted,
   pauseSession,
   progress as sessionProgress,
   remainingMs,
@@ -24,6 +24,7 @@ import {
 } from "@/components/session-complete-sheet";
 import { completeScheduledTask } from "@/lib/plan/store";
 import { recordStudyActivity } from "@/lib/study-log";
+import { focusLogMessage, shouldMarkLogged } from "@/lib/canonical-edit";
 import { MOTIVATIONAL_LINES } from "@/lib/focus-store";
 import { Confetti } from "@/components/confetti";
 import { toast } from "sonner";
@@ -61,6 +62,8 @@ function FocusPage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const autoFiredRef = useRef(false);
+  /** In-memory lock: stops double clicks without durably claiming the log slot. */
+  const loggingRef = useRef(false);
 
   // Wall-clock ticking: the timer is always derived from stamps, so a
   // backgrounded tab or a locked phone can never desynchronise it.
@@ -112,60 +115,84 @@ function FocusPage() {
   };
 
   const handleFinish = async (result: SessionCompletionResult) => {
+    // Already logged (auto-finish path) or a second click while in flight.
+    if (session.loggedAt || loggingRef.current) return;
+    loggingRef.current = true;
     setSaving(true);
-    // Claim the single log slot for this session — the auto-finish path and a
-    // manual finish can never both write.
-    const claimed = claimLogSlot(session);
-    if (claimed) {
+
+    // Canonical write FIRST, keyed by the stable sessionId so a retry after a
+    // crash is idempotent rather than a double count.
+    const write = await recordStudyActivity({
+      idempotencyKey: session.sessionId,
+      activityType: "study",
+      source: session.planned ? "dashboard_task" : "focus_sprint",
+      actualMinutes: result.actualMinutes,
+      plannedMinutes: Math.round(session.plannedMs / 60000),
+      plannedTaskId: session.planned?.taskId ?? null,
+      subject: session.module ?? null,
+      subtopic: session.subtopic ?? null,
+      examPath: session.examPath ?? null,
+      selfFocus: result.selfFocus,
+      note: `${session.title} · ${result.actualMinutes}m`,
+      metadata: {
+        producedOutput: result.producedOutput,
+        activityType: session.activityType ?? "custom",
+        origin: session.origin,
+      },
+    });
+
+    if (!shouldMarkLogged(write)) {
+      // Neither saved nor queued: keep the sheet open and stay retryable.
+      loggingRef.current = false;
+      setSaving(false);
+      toast.error(focusLogMessage(write, result.actualMinutes));
+      return;
+    }
+
+    const accepted = markLogAccepted(session) ?? session;
+    setSession(accepted);
+
+    if (session.planned) {
       try {
-        await recordStudyActivity({
-          idempotencyKey: claimed.sessionId,
-          activityType: "study",
-          source: claimed.planned ? "dashboard_task" : "focus_sprint",
+        await completeScheduledTask(session.planned.taskId, {
           actualMinutes: result.actualMinutes,
-          plannedMinutes: Math.round(claimed.plannedMs / 60000),
-          plannedTaskId: claimed.planned?.taskId ?? null,
-          subject: claimed.module ?? null,
-          subtopic: claimed.subtopic ?? null,
-          examPath: claimed.examPath ?? null,
-          selfFocus: result.selfFocus,
-          note: `${claimed.title} · ${result.actualMinutes}m`,
-          metadata: {
-            producedOutput: result.producedOutput,
-            activityType: claimed.activityType ?? "custom",
-            origin: claimed.origin,
-          },
+          sessionId: session.sessionId,
         });
-        if (claimed.planned) {
-          await completeScheduledTask(claimed.planned.taskId, {
-            actualMinutes: result.actualMinutes,
-            sessionId: claimed.sessionId,
-          });
-        }
       } catch (e) {
-        console.warn("session log failed", e);
+        console.warn("planned task completion failed", e);
+        toast.error("Time logged, but we couldn't tick off the planned task. Try again from Today.");
       }
     }
+
     setSaving(false);
     setSheetOpen(false);
+    loggingRef.current = false;
 
-    const hasBreak = session.breakMs > 0 && session.phase === "focus";
-    if (result.wantsQuickCheck) {
+    const hasBreak = accepted.breakMs > 0 && accepted.phase === "focus";
+    if (result.wantsQuickCheck && accepted.module) {
       clearSession();
       setSession(null);
-      navigate({ to: "/practice" });
+      navigate({
+        to: "/practice",
+        search: {
+          subject: accepted.module,
+          ...(accepted.subtopic ? { subtopic: accepted.subtopic } : {}),
+          mode: "revise" as const,
+          length: 5,
+        },
+      });
       return;
     }
     if (hasBreak) {
-      const next = startBreak({ ...session, loggedAt: Date.now() });
+      const next = startBreak(accepted);
       autoFiredRef.current = false;
       setSession(next);
-      toast.success(`Logged ${result.actualMinutes} min. Break time.`);
+      toast.success(`${focusLogMessage(write, result.actualMinutes)} Break time.`);
       return;
     }
     clearSession();
     setSession(null);
-    toast.success(`Logged ${result.actualMinutes} min.`);
+    toast.success(focusLogMessage(write, result.actualMinutes));
     navigate({ to: "/dashboard" });
   };
 
