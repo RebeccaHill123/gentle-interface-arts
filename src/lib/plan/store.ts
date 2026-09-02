@@ -201,7 +201,7 @@ export async function persistSchedule(next: StoredPlan): Promise<StoredPlan> {
     const remote = await pullPlanFromCloud();
     const remoteSchedule = getSchedule(remote);
     if (remoteSchedule && remoteSchedule.planId === local.planId) {
-      merged = applySchedule(next, mergeSchedules(remoteSchedule, local));
+      merged = applySchedule(next, mergeSchedules(remoteSchedule, local, localDateFor()));
     }
   } catch (e) {
     console.warn("schedule merge skipped", e);
