@@ -351,6 +351,9 @@ function EditSessionDialog({
   const [type, setType] = useState<SessionType>("study");
   const [mood, setMood] = useState<number | undefined>(undefined);
   const [note, setNote] = useState<string>("");
+  const [resolution, setResolution] = useState<Resolution | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
 
   // Reset state whenever a new session opens
   useEffect(() => {
@@ -360,21 +363,61 @@ function EditSessionDialog({
       setType(inferType(session));
       setMood(session.mood);
       setNote(session.note ?? "");
+      setProblem(null);
+      setSaving(false);
+      setResolution(null);
+      let live = true;
+      void resolveCanonicalEventForSession(session.loggedAt).then((r) => {
+        if (!live) return;
+        setResolution(r);
+        if (r.status !== "mapped") setProblem(outcomeMessage({ status: "failed", reason: r.status, error: r.status === "error" ? r.error : undefined }, "update"));
+      });
+      return () => {
+        live = false;
+      };
     }
   }, [session]);
 
   if (!session) return null;
 
-  const handleSave = () => {
+  const graded = isGradedEvent(resolution?.status === "mapped" ? resolution.event : null);
+  const legacyOnly = resolution?.status === "unmapped" || resolution?.status === "ambiguous";
+  const gradedNotice = gradedEditNotice(graded);
+
+  /**
+   * Canonical-first save: `study_events` is updated (or durably queued) and the
+   * compatibility mirror only moves as part of the same accepted action.
+   */
+  const handleSave = async () => {
+    if (saving) return;
     const mins = Math.max(1, Math.min(600, Math.round(minutes || 0)));
-    updateStudySession(session.loggedAt, {
-      minutes: mins,
-      module: module || undefined,
-      sessionType: type,
-      mood: mood as StudySession["mood"],
-      note: note.trim() || undefined,
-    });
-    toast.success("Session updated");
+    const trimmedNote = note.trim() || undefined;
+    setSaving(true);
+    setProblem(null);
+    const outcome = await updateSessionCanonically(
+      session.loggedAt,
+      {
+        actualMinutes: mins,
+        subject: module || null,
+        // Graded rows keep their canonical type/notes so accuracy cannot desync.
+        ...(graded ? {} : { activityType: type, note: trimmedNote ?? null }),
+        selfMood: (mood as number | undefined) ?? null,
+      },
+      {
+        minutes: mins,
+        module: module || undefined,
+        ...(graded ? {} : { sessionType: type, note: trimmedNote }),
+        mood: mood as StudySession["mood"],
+      },
+    );
+    setSaving(false);
+    if (outcome.status === "failed") {
+      // Keep the dialog open: nothing canonical changed, so don't claim success.
+      setProblem(outcomeMessage(outcome, "update"));
+      return;
+    }
+    if (outcome.status === "queued") toast.info(outcomeMessage(outcome, "update"));
+    else toast.success(outcomeMessage(outcome, "update"));
     onSaved();
   };
 
@@ -390,6 +433,17 @@ function EditSessionDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {gradedNotice && (
+            <p className="rounded-xl border border-border bg-background/50 p-3 text-xs text-muted-foreground">
+              {gradedNotice}
+            </p>
+          )}
+          {legacyOnly && (
+            <p className="rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-xs text-amber-200">
+              Legacy entry: we can't link it to a study record, so it can't be edited here.
+            </p>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label htmlFor="edit-minutes">Duration (min)</Label>
@@ -399,12 +453,13 @@ function EditSessionDialog({
                 min={1}
                 max={600}
                 value={minutes}
+                disabled={saving}
                 onChange={(e) => setMinutes(Number(e.target.value))}
               />
             </div>
             <div className="space-y-1.5">
               <Label>Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as SessionType)}>
+              <Select value={type} onValueChange={(v) => setType(v as SessionType)} disabled={graded || saving}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -450,6 +505,7 @@ function EditSessionDialog({
                 <button
                   key={m}
                   type="button"
+                  disabled={saving}
                   onClick={() => setMood(mood === m ? undefined : (m as 1 | 2 | 3 | 4 | 5))}
                   className={`grid h-10 w-10 place-items-center rounded-xl border text-lg transition-all ${
                     mood === m
@@ -469,6 +525,7 @@ function EditSessionDialog({
             <Textarea
               id="edit-note"
               value={note}
+              disabled={graded || saving}
               onChange={(e) => setNote(e.target.value)}
               rows={3}
               placeholder="What did you focus on?"
@@ -476,15 +533,22 @@ function EditSessionDialog({
           </div>
         </div>
 
+        {problem && (
+          <p className="text-xs text-destructive" role="alert">
+            {problem}
+          </p>
+        )}
+
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={saving}>
             Cancel
           </Button>
           <Button
-            onClick={handleSave}
+            disabled={saving || !resolution || legacyOnly}
+            onClick={() => void handleSave()}
             className="bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
           >
-            Save changes
+            {saving ? "Saving…" : "Save changes"}
           </Button>
         </DialogFooter>
       </DialogContent>
