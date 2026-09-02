@@ -267,10 +267,15 @@ export async function pushPlanToCloud(plan: StoredPlan): Promise<void> {
   if (userError) throw userError;
   const uid = userData.user?.id;
   if (!uid) throw new Error("Please sign in to save your plan.");
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("user_plans")
-    .upsert([{ user_id: uid, plan: plan as unknown as Json }], { onConflict: "user_id" });
+    .upsert([{ user_id: uid, plan: plan as unknown as Json }], { onConflict: "user_id" })
+    .select("user_id");
   if (error) throw error;
+  // A write is only accepted when the intended user's row actually came back.
+  if (!data || data.length === 0 || !data.some((row) => row.user_id === uid)) {
+    throw new Error("Your plan change was not accepted by the server. We'll retry.");
+  }
 }
 
 export type CloudPlanResult = {
@@ -281,31 +286,49 @@ export type CloudPlanResult = {
 
 /**
  * Read the cloud plan while distinguishing "this user genuinely has no plan"
- * from "we could not read it". A failed read must never erase a good local plan.
+ * from "we could not read it". A failed read must never erase a good local plan,
+ * and a dirty (unsynced) local plan is never overwritten by cloud data: we
+ * re-push first and only accept cloud once the exact local revision is
+ * confirmed persisted.
  */
 export async function pullPlanFromCloudResult(): Promise<CloudPlanResult> {
   try {
     const user = await waitForAuthUser();
     const uid = user?.id;
     if (!uid) return { ok: false, plan: null };
+
+    const deps = planSyncDeps();
+    if (isPlanSyncDirty(deps)) {
+      await flushPlanSync(deps).catch(() => undefined);
+      if (isPlanSyncDirty(deps)) {
+        // Still unsynced — local is authoritative until the server confirms it.
+        return { ok: false, plan: loadPlan() };
+      }
+    }
+
     const { data, error } = await supabase
       .from("user_plans")
       .select("plan")
       .eq("user_id", uid)
       .maybeSingle();
-    if (error) {
-      console.warn("pullPlanFromCloud failed", error);
-      return { ok: false, plan: null };
+
+    const decision = decidePlanPull({
+      dirty: isPlanSyncDirty(deps),
+      readOk: !error,
+      cloudHasPlan: Boolean(data),
+      recentAuthCallback: typeof window !== "undefined" && hasRecentAuthCallback(),
+    });
+
+    if (error) console.warn("pullPlanFromCloud failed", error);
+
+    if (decision.action === "keep-local") {
+      return { ok: !error && decision.reason !== "read-failed", plan: loadPlan() };
     }
-    if (!data) {
-      // No cloud plan for this user — clear stale local cache after normal sign-in,
-      // but preserve it immediately after verification while auth storage settles.
-      if (typeof window !== "undefined" && !hasRecentAuthCallback()) {
-        localStorage.removeItem(KEY);
-      }
+    if (decision.action === "clear-local") {
+      if (typeof window !== "undefined") localStorage.removeItem(KEY);
       return { ok: true, plan: null };
     }
-    const plan = data.plan as unknown as StoredPlan;
+    const plan = (data as { plan: unknown }).plan as StoredPlan;
     if (typeof window !== "undefined") {
       localStorage.setItem(KEY, JSON.stringify(plan));
       return { ok: true, plan: loadPlan() };
@@ -320,6 +343,7 @@ export async function pullPlanFromCloudResult(): Promise<CloudPlanResult> {
 export async function pullPlanFromCloud(): Promise<StoredPlan | null> {
   return (await pullPlanFromCloudResult()).plan;
 }
+
 
 
 export function toggleTaskCompletion(index: number) {
