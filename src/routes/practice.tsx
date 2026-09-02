@@ -14,7 +14,6 @@ import {
   Brain,
   AlertTriangle,
   Flag,
-  Bookmark,
   ChevronLeft,
   Play,
 } from "lucide-react";
@@ -23,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 
 import { Progress } from "@/components/ui/progress";
-import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { loadPlan } from "@/lib/plan-store";
 import {
@@ -59,6 +57,8 @@ import {
   persistSnapshot,
   readSnapshotRaw,
   remainingMs,
+  restoreTiming,
+  timingBound,
   type ActiveSnapshot,
   type CompletionStatus,
   type FinalSnapshot,
@@ -139,6 +139,7 @@ function PracticeSessionPage() {
   const [completion, setCompletion] = useState<CompletionStatus | null>(null);
   const [finalSnapshot, setFinalSnapshot] = useState<FinalSnapshot | null>(null);
   const [retrying, setRetrying] = useState(false);
+  const retryLockRef = useRef(false);
 
   const questionsRef = useRef<QuizQuestion[]>([]);
   const answersRef = useRef<(number | null)[]>([]);
@@ -174,6 +175,7 @@ function PracticeSessionPage() {
       feedbackMode: feedbackRef.current,
       current: currentRef.current,
       perQuestionMs: perRef.current,
+      questionStartedAt: p === "quiz" ? questionStartRef.current : null,
       startedAt: startedAtRef.current,
       deadlineAt: deadlineRef.current,
       phase: p,
@@ -236,8 +238,6 @@ function PracticeSessionPage() {
       setQuestions(s.questions);
       answersRef.current = s.answers;
       setAnswers(s.answers);
-      perRef.current = s.perQuestionMs;
-      setPerQuestionMs(s.perQuestionMs);
       revealedRef.current = new Set(s.revealed);
       setRevealedSet(new Set(s.revealed));
       feedbackRef.current = s.feedbackMode;
@@ -252,7 +252,12 @@ function PracticeSessionPage() {
       setCompletion(s.completion);
       finalRef.current = s.finalSnapshot;
       setFinalSnapshot(s.finalSnapshot);
-      if (s.phase === "quiz") questionStartRef.current = Date.now();
+      // Recover the live interval exactly once (bounded by the deadline).
+      const timing = restoreTiming({ snapshot: s, now: Date.now() });
+      perRef.current = timing.perQuestionMs;
+      setPerQuestionMs(timing.perQuestionMs);
+      questionStartRef.current = timing.questionStartedAt;
+      setNow(Date.now());
       if (s.phase === "results") finishingRef.current = true;
       setPhaseTracked(s.phase);
       // Restored: the provider is never called.
@@ -361,7 +366,8 @@ function PracticeSessionPage() {
     const start = questionStartRef.current;
     if (start == null) return;
     const at = Date.now();
-    perRef.current = applyElapsed(perRef.current, currentRef.current, at - start);
+    const end = timingBound(deadlineRef.current, at);
+    perRef.current = applyElapsed(perRef.current, currentRef.current, end - start);
     questionStartRef.current = at;
     setPerQuestionMs(perRef.current);
   }
@@ -485,6 +491,8 @@ function PracticeSessionPage() {
       perQuestionMs: perRef.current,
       current: currentRef.current,
       questionStartedAt: questionStartRef.current,
+      startedAt: startedAtRef.current,
+      deadlineAt: deadlineRef.current,
       now: Date.now(),
     });
     questionStartRef.current = null;
@@ -505,7 +513,9 @@ function PracticeSessionPage() {
   async function retryCompletion() {
     const snap = finalRef.current;
     const status = completionRef.current;
-    if (!snap || !status || retrying) return;
+    // Ref lock: guards the window before setRetrying commits.
+    if (!snap || !status || retryLockRef.current) return;
+    retryLockRef.current = true;
     setRetrying(true);
     try {
       const parts = pendingParts(status);
@@ -525,6 +535,7 @@ function PracticeSessionPage() {
         }
       }
     } finally {
+      retryLockRef.current = false;
       setRetrying(false);
     }
   }
@@ -1020,6 +1031,7 @@ function ResultsScreen({
   // Every displayed number comes from the one stable final snapshot.
   const answers = final.answers;
   const perQuestionMs = final.perQuestionMs;
+  const positiveMs = perQuestionMs.filter((m) => m > 0);
   const total = final.total;
   const correct = final.correct;
   const accuracy = final.accuracy;
@@ -1049,12 +1061,6 @@ function ResultsScreen({
       : avgSec < 45
         ? "You moved fast — verify accuracy isn't slipping under speed."
         : "Pacing was within the exam-realistic band.";
-
-  function saveWeakTopics() {
-    toast.success("Weak topics added to your study plan", {
-      description: `${wrong.length} item${wrong.length === 1 ? "" : "s"} flagged for review`,
-    });
-  }
 
   function followUpDrill() {
     const cfg: PracticeConfig = {
@@ -1144,18 +1150,22 @@ function ResultsScreen({
 
         <Insight title="Timing analysis" icon={Timer}>
           <p className="text-sm text-muted-foreground">{pacingNote}</p>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-            <div>
-              Fastest: <span className="text-foreground">
-                {Math.round(Math.min(...perQuestionMs.filter(Boolean), Infinity) / 1000)}s
-              </span>
+          {positiveMs.length === 0 ? (
+            <p className="mt-3 text-[11px] text-muted-foreground">— No timing data for this session yet.</p>
+          ) : (
+            <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+              <div>
+                Fastest: <span className="text-foreground">
+                  {Math.round(Math.min(...positiveMs) / 1000)}s
+                </span>
+              </div>
+              <div>
+                Slowest: <span className="text-foreground">
+                  {Math.round(Math.max(...positiveMs) / 1000)}s
+                </span>
+              </div>
             </div>
-            <div>
-              Slowest: <span className="text-foreground">
-                {Math.round(Math.max(...perQuestionMs, 0) / 1000)}s
-              </span>
-            </div>
-          </div>
+          )}
         </Insight>
       </section>
 
@@ -1222,9 +1232,6 @@ function ResultsScreen({
       <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
         <Button variant="outline" onClick={onRetry} className="rounded-full">
           <RefreshCw className="mr-1 h-4 w-4" /> Retry session
-        </Button>
-        <Button variant="outline" onClick={saveWeakTopics} className="rounded-full">
-          <Bookmark className="mr-1 h-4 w-4" /> Save weak topics
         </Button>
         {wrong.length > 0 && (
           <Button

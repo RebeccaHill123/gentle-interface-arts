@@ -18,7 +18,12 @@ import { normaliseQuestion } from "./quiz-validate";
 import { normaliseConfig } from "./config";
 
 export const ACTIVE_SNAPSHOT_KEY = "practice:active:v1";
-export const ACTIVE_SNAPSHOT_VERSION = 1;
+/**
+ * v2 adds `questionStartedAt` so the live question interval survives reload.
+ * v1 snapshots are migrated (they simply have no recoverable live interval).
+ */
+export const ACTIVE_SNAPSHOT_VERSION = 2;
+const SUPPORTED_SNAPSHOT_VERSIONS = [1, 2];
 /** An abandoned session stops being restorable after this long. */
 export const ACTIVE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_SNAPSHOT_CHARS = 400_000;
@@ -58,6 +63,8 @@ export type ActiveSnapshot = {
   feedbackMode: "immediate" | "end";
   current: number;
   perQuestionMs: number[];
+  /** Wall-clock start of the currently open question interval (quiz phase only). */
+  questionStartedAt: number | null;
   startedAt: number | null;
   deadlineAt: number | null;
   phase: "launch" | "quiz" | "results";
@@ -135,7 +142,7 @@ function validateFinal(v: unknown, total: number): FinalSnapshot | null {
 export function validateSnapshot(raw: unknown): ActiveSnapshot | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  if (r.version !== ACTIVE_SNAPSHOT_VERSION) return null;
+  if (typeof r.version !== "number" || !SUPPORTED_SNAPSHOT_VERSIONS.includes(r.version)) return null;
   if (typeof r.sessionId !== "string" || !r.sessionId) return null;
   if (typeof r.fingerprint !== "string" || !r.fingerprint) return null;
   const config = normaliseConfig(r.config);
@@ -176,6 +183,7 @@ export function validateSnapshot(raw: unknown): ActiveSnapshot | null {
     feedbackMode: r.feedbackMode === "end" ? "end" : "immediate",
     current,
     perQuestionMs,
+    questionStartedAt: r.version === ACTIVE_SNAPSHOT_VERSION ? time(r.questionStartedAt) : null,
     startedAt: time(r.startedAt),
     deadlineAt: time(r.deadlineAt),
     phase,
@@ -253,6 +261,68 @@ export function applyElapsed(per: number[], index: number, elapsedMs: number): n
   return next;
 }
 
+/** End of the attributable window: bounded by the deadline for timed sessions. */
+export function timingBound(deadlineAt: number | null, now: number): number {
+  return deadlineAt == null ? now : Math.min(now, deadlineAt);
+}
+
+/**
+ * For timed sessions the authoritative session length is
+ * `min(now, deadlineAt) - startedAt`. Any interval not attributed to a
+ * question (e.g. time while the tab was closed) is folded ONCE into the
+ * current question so per-question durations and totalMs agree.
+ */
+export function reconcileTotals(input: {
+  perQuestionMs: number[];
+  current: number;
+  startedAt: number | null;
+  deadlineAt: number | null;
+  now: number;
+}): number[] {
+  const per = [...input.perQuestionMs];
+  if (input.startedAt == null || input.deadlineAt == null) return per;
+  const authoritative = Math.max(0, timingBound(input.deadlineAt, input.now) - input.startedAt);
+  const sum = per.reduce((a, b) => a + b, 0);
+  const gap = authoritative - sum;
+  if (gap <= 0) return per;
+  return applyElapsed(per, input.current, gap);
+}
+
+/**
+ * Recovers timing after a reload.
+ * - Timed: wall-clock keeps running while away, bounded by the deadline, and
+ *   totals are reconciled against startedAt→min(now, deadlineAt).
+ * - Untimed: only already-observed active time (up to the last persist) is
+ *   kept; closed-tab time is never invented. Timing resumes from `now`.
+ */
+export function restoreTiming(input: { snapshot: ActiveSnapshot; now: number }): {
+  perQuestionMs: number[];
+  questionStartedAt: number | null;
+} {
+  const s = input.snapshot;
+  if (s.phase !== "quiz") {
+    return { perQuestionMs: [...s.perQuestionMs], questionStartedAt: null };
+  }
+  const timed = s.deadlineAt != null;
+  const endBound = timed ? timingBound(s.deadlineAt, input.now) : s.updatedAt;
+  let per = [...s.perQuestionMs];
+  if (s.questionStartedAt != null) {
+    per = applyElapsed(per, s.current, endBound - s.questionStartedAt);
+  }
+  if (timed) {
+    per = reconcileTotals({
+      perQuestionMs: per,
+      current: s.current,
+      startedAt: s.startedAt,
+      deadlineAt: s.deadlineAt,
+      now: input.now,
+    });
+    // Expired while away: no further live interval may open.
+    if (isExpired(s.deadlineAt, input.now)) return { perQuestionMs: per, questionStartedAt: null };
+  }
+  return { perQuestionMs: per, questionStartedAt: input.now };
+}
+
 // ───────── scoring + final snapshot
 
 export function scoreAnswers(
@@ -273,7 +343,9 @@ export function scoreAnswers(
 
 /**
  * Builds the one stable snapshot used for displayed totals AND every graded
- * attempt duration. The live question's elapsed time is folded in exactly once.
+ * attempt duration. The live question's elapsed time is folded in exactly once,
+ * bounded by the deadline, and timed totals are reconciled to the authoritative
+ * startedAt → min(now, deadlineAt) interval.
  */
 export function buildFinalSnapshot(input: {
   sessionId: string;
@@ -282,12 +354,22 @@ export function buildFinalSnapshot(input: {
   perQuestionMs: number[];
   current: number;
   questionStartedAt: number | null;
+  startedAt?: number | null;
+  deadlineAt?: number | null;
   now: number;
   occurredAt?: Date;
 }): FinalSnapshot {
-  const elapsed =
-    input.questionStartedAt != null ? Math.max(0, input.now - input.questionStartedAt) : 0;
-  const per = applyElapsed(input.perQuestionMs, input.current, elapsed);
+  const deadlineAt = input.deadlineAt ?? null;
+  const end = timingBound(deadlineAt, input.now);
+  const elapsed = input.questionStartedAt != null ? Math.max(0, end - input.questionStartedAt) : 0;
+  let per = applyElapsed(input.perQuestionMs, input.current, elapsed);
+  per = reconcileTotals({
+    perQuestionMs: per,
+    current: input.current,
+    startedAt: input.startedAt ?? null,
+    deadlineAt,
+    now: input.now,
+  });
   const { total, correct, answeredCount, accuracy } = scoreAnswers(input.questions, input.answers);
   return {
     sessionId: input.sessionId,
