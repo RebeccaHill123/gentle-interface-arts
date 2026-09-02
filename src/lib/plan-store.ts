@@ -235,17 +235,62 @@ export function loadPlan(): StoredPlan | null {
   }
 }
 
-export function savePlan(plan: StoredPlan) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(KEY, JSON.stringify(plan));
-  // Fire-and-forget cloud sync
-  void pushPlanToCloud(plan).catch((error) => console.warn("pushPlanToCloud failed", error));
+/** Durable local write, verified by read-back so "saved" is never assumed. */
+function writePlanLocal(plan: StoredPlan): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    localStorage.setItem(KEY, JSON.stringify(plan));
+  } catch {
+    return false;
+  }
+  return localStorage.getItem(KEY) !== null;
+}
+
+/** Browser bindings for the injectable plan-sync engine. */
+export function planSyncDeps(): PlanSyncDeps {
+  return {
+    storage: typeof window === "undefined" ? null : window.localStorage,
+    writePlan: writePlanLocal,
+    readPlan: loadPlan,
+    pushPlan: pushPlanToCloud,
+  };
+}
+
+/** True while a local plan change has not been confirmed by the server. */
+export function isPlanSyncPending(): boolean {
+  return isPlanSyncDirty(planSyncDeps());
+}
+
+/** Retry the dirty latest plan (online / visibility / next load). */
+export function retryPlanSync(): Promise<PlanSyncOutcome> {
+  return flushPlanSync(planSyncDeps());
+}
+
+/**
+ * Persist locally (durable + dirty-marked) and flush to the cloud in the
+ * background. Returns an honest outcome: `failed` means nothing was stored.
+ */
+export function savePlan(plan: StoredPlan): PlanSyncOutcome {
+  const deps = planSyncDeps();
+  const marked = markPlanDirty(deps, plan);
+  if (!marked.ok) {
+    console.warn("savePlan could not persist locally");
+    return marked;
+  }
+  void flushPlanSync(deps).catch((error) => console.warn("plan flush failed", error));
+  return marked;
 }
 
 export async function savePlanAndSync(plan: StoredPlan): Promise<void> {
-  if (typeof window !== "undefined") localStorage.setItem(KEY, JSON.stringify(plan));
-  await pushPlanToCloud(plan);
+  const outcome = await savePlanDurable(planSyncDeps(), plan);
+  if (outcome.state === "failed") {
+    throw new Error(outcome.error ?? "We couldn't save your plan on this device.");
+  }
+  if (outcome.state === "queued") {
+    throw new Error(outcome.error ?? "We couldn't save your plan to your account. We'll retry.");
+  }
 }
+
 
 export function loadOnboardingDraft(): OnboardingDraft | null {
   if (typeof window === "undefined") return null;
