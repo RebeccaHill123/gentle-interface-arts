@@ -1277,19 +1277,28 @@ function ResultsView({
 }) {
   const navigate = useNavigate();
   const blueprint = getBlueprint(sim.pathway);
-  const mcqSections = sections.filter(
-    (s) => getSection(sim.pathway, s.section_type)?.kind === "mcq",
+  const mcqAnswers = answers.filter(
+    (a) => getSection(sim.pathway, sections.find((s) => s.id === a.section_id)?.section_type ?? "")?.kind === "mcq",
   );
-  const mcqAnswers = answers.filter((a) => a.answer_value !== null);
-  const correct = mcqAnswers.filter((a) => a.is_correct === true).length;
-  const total = mcqAnswers.length;
-  const accuracy = total > 0 ? Math.round((correct / total) * 100) : null;
+  const answeredCount = mcqAnswers.filter((a) => a.answer_value !== null).length;
+  // Weighted by question count; written sections excluded rather than scored 0.
+  const objective = objectiveScore(
+    sections.map((s) => {
+      const bp = getSection(sim.pathway, s.section_type);
+      const sectionAnswers = answers.filter((a) => a.section_id === s.id);
+      return {
+        kind: bp?.kind ?? "mcq",
+        graded: sectionAnswers.length,
+        correct: sectionAnswers.filter((a) => a.is_correct === true).length,
+      };
+    }),
+  );
+  const accuracy = objective.percent;
   const flaggedCount = answers.filter((a) => a.is_flagged).length;
 
-  // Topic breakdown (MCQ only — derive topic from answer.question_id prefix)
+  // Topic breakdown (MCQ only — fall back to section title)
   const topicStats = new Map<string, { right: number; total: number }>();
   for (const a of mcqAnswers) {
-    // We can't derive topic without questions; fall back to section title
     const sec = sections.find((s) => s.id === a.section_id);
     const key = sec?.title ?? "Other";
     const cur = topicStats.get(key) ?? { right: 0, total: 0 };
@@ -1309,12 +1318,23 @@ function ResultsView({
       <section className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-card md:p-8">
         <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-gradient-pink-blue opacity-25 blur-3xl" />
         <div className="relative grid gap-4 md:grid-cols-4">
-          <Stat label="Overall score" value={accuracy != null ? `${accuracy}%` : "—"} />
-          <Stat label="Questions answered" value={`${total}`} />
+          <Stat
+            label="Objective score"
+            value={accuracy != null ? `${accuracy}%` : "Not auto-graded"}
+          />
+          <Stat label="Questions answered" value={`${answeredCount}/${objective.graded}`} />
           <Stat label="Flagged" value={`${flaggedCount}`} />
           <Stat label="Total time" value={totalMinutes ? `${totalMinutes} min` : "—"} />
         </div>
+        {objective.excludedWrittenSections > 0 && (
+          <p className="relative mt-4 text-xs text-muted-foreground">
+            {objective.excludedWrittenSections} written section
+            {objective.excludedWrittenSections === 1 ? "" : "s"} are not auto-graded and are
+            excluded from this percentage — mark them up with self-review.
+          </p>
+        )}
       </section>
+
 
       <section className="mt-6 rounded-2xl border border-border bg-card/70 p-6 backdrop-blur">
         <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
