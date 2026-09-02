@@ -183,6 +183,7 @@ export function validateSnapshot(raw: unknown): ActiveSnapshot | null {
     feedbackMode: r.feedbackMode === "end" ? "end" : "immediate",
     current,
     perQuestionMs,
+    questionStartedAt: r.version === ACTIVE_SNAPSHOT_VERSION ? time(r.questionStartedAt) : null,
     startedAt: time(r.startedAt),
     deadlineAt: time(r.deadlineAt),
     phase,
