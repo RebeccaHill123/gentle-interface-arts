@@ -257,7 +257,7 @@ function SimulationPage() {
    * bypassed and cannot be written twice.
    */
   const finalizeSimulation = useCallback(
-    async (allSections: DbSection[]) => {
+    async (allSections: DbSection[], allAnswers?: DbAnswer[]) => {
       if (!sim || !blueprint) return;
       if (finalizeLock.current) return;
       finalizeLock.current = true;
@@ -269,13 +269,14 @@ function SimulationPage() {
           setPhase("overview");
           return;
         }
+        const rows = allAnswers ?? answers;
         const totalSeconds = totalElapsedSeconds(
           allSections.map((s) => ({ elapsedSeconds: sectionElapsedSeconds(s) })),
         );
         const objective = objectiveScore(
           allSections.map((s) => {
             const bp = getSection(sim.pathway, s.section_type);
-            const sectionAnswers = answers.filter((a) => a.section_id === s.id);
+            const sectionAnswers = rows.filter((a) => a.section_id === s.id);
             return {
               kind: bp?.kind ?? "mcq",
               graded: sectionAnswers.filter((a) => a.is_correct != null).length,
@@ -283,6 +284,7 @@ function SimulationPage() {
             };
           }),
         );
+
         if (!finalizedRef.current || sim.status !== "completed") {
           await completeSimulation(sim.id, objective.percent, totalSeconds);
         }
