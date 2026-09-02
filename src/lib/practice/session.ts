@@ -343,7 +343,9 @@ export function scoreAnswers(
 
 /**
  * Builds the one stable snapshot used for displayed totals AND every graded
- * attempt duration. The live question's elapsed time is folded in exactly once.
+ * attempt duration. The live question's elapsed time is folded in exactly once,
+ * bounded by the deadline, and timed totals are reconciled to the authoritative
+ * startedAt → min(now, deadlineAt) interval.
  */
 export function buildFinalSnapshot(input: {
   sessionId: string;
@@ -352,12 +354,22 @@ export function buildFinalSnapshot(input: {
   perQuestionMs: number[];
   current: number;
   questionStartedAt: number | null;
+  startedAt?: number | null;
+  deadlineAt?: number | null;
   now: number;
   occurredAt?: Date;
 }): FinalSnapshot {
-  const elapsed =
-    input.questionStartedAt != null ? Math.max(0, input.now - input.questionStartedAt) : 0;
-  const per = applyElapsed(input.perQuestionMs, input.current, elapsed);
+  const deadlineAt = input.deadlineAt ?? null;
+  const end = timingBound(deadlineAt, input.now);
+  const elapsed = input.questionStartedAt != null ? Math.max(0, end - input.questionStartedAt) : 0;
+  let per = applyElapsed(input.perQuestionMs, input.current, elapsed);
+  per = reconcileTotals({
+    perQuestionMs: per,
+    current: input.current,
+    startedAt: input.startedAt ?? null,
+    deadlineAt,
+    now: input.now,
+  });
   const { total, correct, answeredCount, accuracy } = scoreAnswers(input.questions, input.answers);
   return {
     sessionId: input.sessionId,
