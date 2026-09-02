@@ -212,17 +212,22 @@ export async function persistSchedule(next: StoredPlan): Promise<StoredPlan> {
 
 async function mutate(
   fn: (schedule: PlanSchedule) => { schedule: PlanSchedule; ok?: boolean; reason?: string },
-): Promise<{ stored: StoredPlan | null; ok: boolean; reason?: string }> {
+): Promise<{ stored: StoredPlan | null; ok: boolean; reason?: string; sync?: PlanSyncState }> {
   const stored = loadPlan();
   const schedule = getSchedule(stored);
   if (!stored || !schedule) return { stored, ok: false, reason: "No schedule yet." };
   const res = fn(schedule);
   if (res.ok === false) return { stored, ok: false, reason: res.reason };
   const next = applySchedule(stored, res.schedule);
-  savePlan(next);
+  const saved = savePlan(next);
+  if (!saved.ok) {
+    // Nothing durable happened — the caller must not claim success.
+    return { stored, ok: false, reason: saved.error, sync: "failed" };
+  }
   void persistSchedule(next).catch((e) => console.warn("persistSchedule failed", e));
-  return { stored: next, ok: true };
+  return { stored: next, ok: true, sync: "queued" };
 }
+
 
 export function completeScheduledTask(
   taskId: string,
