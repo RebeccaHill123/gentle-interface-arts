@@ -338,8 +338,11 @@ function enqueueMutation(
 }
 
 /** Number of canonical writes still waiting to reach the server. */
-export function pendingWriteCount(): number {
-  return readJson<QueueItem[]>(QUEUE_KEY, []).length;
+/** Pending writes belonging to the current account only. */
+export function pendingWriteCount(owner: string | null = currentLocalOwnerId()): number {
+  const all = readJson<QueueItem[]>(QUEUE_KEY, []);
+  if (!owner) return 0;
+  return all.filter((i) => ownedBy(i, owner)).length;
 }
 
 /**

@@ -64,6 +64,7 @@ vi.mock("@/integrations/supabase/client", () => ({
 
 vi.mock("@/lib/auth-session", () => ({
   waitForAuthUser: async () => state.user,
+  getCachedAuthOwnerId: () => state.user?.id ?? null,
 }));
 
 const mirror = {
