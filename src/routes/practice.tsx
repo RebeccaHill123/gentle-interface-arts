@@ -40,8 +40,11 @@ import {
 } from "@/lib/practice/config";
 import { validateQuizQuestions, type QuizQuestion } from "@/lib/practice/quiz-validate";
 import {
+  ACTIVE_MAX_AGE_MS,
   ACTIVE_SNAPSHOT_VERSION,
   applyElapsed,
+  validateSnapshot,
+
   buildFinalSnapshot,
   clearSnapshot,
   completionAccepted,
