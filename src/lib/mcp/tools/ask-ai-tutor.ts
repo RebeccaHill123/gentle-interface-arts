@@ -5,7 +5,7 @@ import {
   callGateway,
   loadPlan,
   loadProfile,
-  requireAuth,
+  requireAccess,
 } from "../shared";
 
 const SYSTEM_PROMPT = `You are Tentra Tutor — a premium AI subject tutor for SQE (SQE1, SQE2) and NY Bar candidates, accessed here via ChatGPT.
@@ -32,7 +32,7 @@ export default defineTool({
   name: "ask_ai_tutor",
   title: "Ask the AI Tutor",
   description:
-    "Read-only. Ask the Tentra AI Tutor a subject-learning or testing question. Uses the signed-in user's exam type and weak areas to personalise explanations, generate quick MCQs, review mistakes, or drill a topic. Best for 'explain this topic', 'quiz me on my weakest area', 'why did I get this wrong?', 'give me practice questions on X'. Requires the user to be signed in. Does not write to the plan.",
+    "Read-only. Ask the Tentra AI Tutor a subject-learning or testing question. Uses the signed-in user's exam type and weak areas to personalise explanations, generate quick MCQs, review mistakes, or drill a topic. Best for 'explain this topic', 'quiz me on my weakest area', 'why did I get this wrong?', 'give me practice questions on X'. Requires active Tentra access (subscription or trial). Does not write to the plan.",
   inputSchema: {
     question: z
       .string()
@@ -43,7 +43,7 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: false },
   handler: async ({ question }, ctx) => {
-    const auth = requireAuth(ctx);
+    const auth = await requireAccess(ctx);
     if (auth) return auth;
     const [{ plan }, { profile }] = await Promise.all([loadPlan(ctx), loadProfile(ctx)]);
     const { text: snapshot } = buildSnapshot(plan, profile);

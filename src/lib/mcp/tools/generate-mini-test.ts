@@ -1,6 +1,6 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
-import { buildSnapshot, loadPlan, loadProfile, requireAuth } from "../shared";
+import { buildSnapshot, loadPlan, loadProfile, requireAccess } from "../shared";
 
 type Question = {
   prompt: string;
@@ -21,7 +21,7 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: false },
   handler: async ({ subject, topic, questionCount }, ctx) => {
-    const auth = requireAuth(ctx);
+    const auth = await requireAccess(ctx);
     if (auth) return auth;
     const [{ plan }, { profile }] = await Promise.all([loadPlan(ctx), loadProfile(ctx)]);
     if (!plan) {

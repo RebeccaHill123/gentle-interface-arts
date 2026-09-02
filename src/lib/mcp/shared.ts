@@ -1,5 +1,9 @@
 import type { ToolContext } from "@lovable.dev/mcp-js";
 import { supabaseForUser } from "./supabase";
+import {
+  resolveEntitlementForUser,
+  type EntitlementClient,
+} from "@/lib/entitlement";
 import { deriveAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
 import type { GradedResults } from "@/lib/graded-performance";
 import type { StoredPlan, StudySession, StrategyTask } from "@/lib/plan-store";
@@ -23,6 +27,42 @@ export function requireAuth(ctx: ToolContext): ToolResult | null {
     };
   }
   return null;
+}
+
+/**
+ * Authorization for cost-incurring / premium-content tools. Verifies the
+ * connection AND the user's real entitlement (same rules as the app), and
+ * distinguishes "not entitled" from "temporarily unavailable".
+ */
+export async function requireAccess(ctx: ToolContext): Promise<ToolResult | null> {
+  const auth = requireAuth(ctx);
+  if (auth) return auth;
+  let result;
+  try {
+    result = await resolveEntitlementForUser(
+      supabaseForUser(ctx) as unknown as EntitlementClient,
+      ctx.getUserId(),
+    );
+  } catch (e) {
+    console.error("mcp entitlement read failed", e);
+    return {
+      content: [
+        {
+          type: "text",
+          text: "Tentra is temporarily unable to confirm this account's access. Ask the user to try again in a moment.",
+        },
+      ],
+      isError: true,
+    };
+  }
+  if (result.ok) return null;
+  const text =
+    result.status === 503
+      ? "Tentra is temporarily unable to confirm this account's access. Ask the user to try again in a moment."
+      : result.status === 401
+        ? "Not signed in. Ask the user to connect their Tentra account first."
+        : "This feature needs active Tentra access (subscription or trial). Ask the user to start or renew their plan at tentraapp.com.";
+  return { content: [{ type: "text", text }], isError: true };
 }
 
 export async function loadPlan(

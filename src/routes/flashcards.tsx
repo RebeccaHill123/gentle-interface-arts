@@ -37,6 +37,7 @@ import {
 import { loadPlan } from "@/lib/plan-store";
 import { isUbePath } from "@/lib/exam-paths";
 import { useServerFn } from "@tanstack/react-start";
+import { resolveTopicDeck } from "@/lib/flashcards-catalog";
 import {
   fetchSubtopicDeck,
   generateSubtopicDeck,
@@ -391,18 +392,6 @@ function aiToFlashcard(c: GeneratedCard, deckId: string, area: CardArea): Flashc
   };
 }
 
-function resolveTopicDeck(kind: ExamKind, subject: string): { id: string; area: CardArea } {
-  const decks = getDecksFor(kind);
-  const want = normalize(subject);
-  const match = decks.find((d) => {
-    const n = normalize(d.subject);
-    const t = normalize(d.title);
-    return n === want || n.includes(want) || want.includes(n) || t.includes(want) || want.includes(t);
-  });
-  if (match) return { id: match.id, area: match.flk };
-  const fallbackArea: CardArea = kind === "UBE" ? "MBE" : "FLK1";
-  return { id: `topic-${want.replace(/\s+/g, "-")}`, area: fallbackArea };
-}
 
 function buildQueue(mode: ReviewMode, kind: ExamKind, extraAi: Flashcard[] = []): Flashcard[] {
   const progress = getAllProgress();
@@ -484,6 +473,11 @@ function StudyView({
           data: { examKind: kind, subject: mode.subject, subtopic: mode.subtopic!, deckId },
         });
         if (cancelled) return;
+        if (existing.status === "denied" || existing.status === "unavailable") {
+          setAiStatus("failed");
+          setAiError(existing.error ?? "Couldn't load these flashcards.");
+          return;
+        }
         if (existing.status === "ready" && existing.cards.length > 0) {
           const mapped = existing.cards.map((c) => aiToFlashcard(c, deckId, area));
           setAiCards(mapped);
@@ -521,7 +515,12 @@ function StudyView({
           }, 8000);
         } else {
           setAiStatus("failed");
-          setAiError(gen.error ?? "Generation failed");
+          setAiError(
+            gen.error ??
+              (gen.status === "denied"
+                ? "This needs an active Tentra subscription."
+                : "Generation failed"),
+          );
         }
       } catch (e) {
         if (cancelled) return;

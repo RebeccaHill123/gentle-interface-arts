@@ -1,15 +1,84 @@
 // Edge function: generate a 10-question multiple-choice quiz for a given exam topic
+//
+// Cost-incurring: verifies the caller's bearer token and real Tentra entitlement
+// BEFORE the AI gateway is touched. Status semantics: 401 unauthenticated,
+// 403 no active access, 503 entitlement read failure, 400 invalid input.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
 
+const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
+
+const EXAM_TYPES = ["SQE1", "SQE2", "UBE"] as const;
+type ExamType = (typeof EXAM_TYPES)[number];
+
 interface QuizRequest {
-  module: string; // e.g. "Contract" or "Evidence"
-  topic?: string; // e.g. today's task title
-  examType: "SQE1" | "SQE2" | "UBE";
-  confidence?: number; // 1-5, used to scale difficulty
+  module: string;
+  topic?: string;
+  examType: ExamType;
+  confidence: number;
+}
+
+function fail(status: number, error: string) {
+  return new Response(JSON.stringify({ error }), { status, headers: jsonHeaders });
+}
+
+function validateBody(
+  raw: unknown,
+): { ok: true; value: QuizRequest } | { ok: false; error: string } {
+  if (!raw || typeof raw !== "object") return { ok: false, error: "Invalid request body" };
+  const r = raw as Record<string, unknown>;
+  const examType = r["examType"];
+  if (
+    typeof examType !== "string" ||
+    !(EXAM_TYPES as readonly string[]).includes(examType)
+  ) {
+    return { ok: false, error: "Invalid examType" };
+  }
+  const mod = typeof r["module"] === "string" ? r["module"].trim() : "";
+  if (mod.length < 2 || mod.length > 80) return { ok: false, error: "Invalid module" };
+  let topic: string | undefined;
+  if (r["topic"] !== undefined && r["topic"] !== null) {
+    if (typeof r["topic"] !== "string") return { ok: false, error: "Invalid topic" };
+    const t = r["topic"].trim();
+    if (t.length > 200) return { ok: false, error: "Invalid topic" };
+    if (t) topic = t;
+  }
+  let confidence = 3;
+  if (r["confidence"] !== undefined && r["confidence"] !== null) {
+    const c = Number(r["confidence"]);
+    if (!Number.isFinite(c)) return { ok: false, error: "Invalid confidence" };
+    confidence = Math.min(5, Math.max(1, Math.round(c)));
+  }
+  return {
+    ok: true,
+    value: {
+      examType: examType as ExamType,
+      module: mod,
+      confidence,
+      ...(topic ? { topic } : {}),
+    },
+  };
+}
+
+/** Mirrors src/lib/provisioning.ts profileHasAccess exactly. */
+function profileHasAccess(p: Record<string, unknown> | null): boolean {
+  if (!p) return false;
+  const status = (p["subscription_status"] as string | null) ?? null;
+  const end = p["current_period_end"] as string | null;
+  const graceActive =
+    status === "canceled" && !!end && new Date(end).getTime() > Date.now();
+  return (
+    !!p["grandfathered_pro"] ||
+    !!p["is_pro"] ||
+    status === "active" ||
+    status === "trialing" ||
+    graceActive
+  );
 }
 
 Deno.serve(async (req) => {
@@ -18,14 +87,59 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const body: QuizRequest = await req.json();
+    // ---- Authentication (never assume the platform verified the JWT) --------
+    const authHeader = req.headers.get("authorization") ?? "";
+    const token = /^Bearer\s+(.+)$/i.exec(authHeader.trim())?.[1]?.trim() ?? "";
+    if (token.length < 10) return fail(401, "Sign in to continue.");
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+    const SUPABASE_PUBLISHABLE_KEY =
+      Deno.env.get("SUPABASE_PUBLISHABLE_KEY") ?? Deno.env.get("SUPABASE_ANON_KEY");
+    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+      console.error("generate-quiz: Supabase env missing");
+      return fail(503, "Temporarily unavailable. Please try again shortly.");
+    }
+    const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+      global: { headers: { Authorization: `Bearer ${token}` } },
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    const userId = userData?.user?.id;
+    if (userError || !userId) return fail(401, "Sign in to continue.");
+
+    // ---- Entitlement (before any gateway usage) ----------------------------
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("is_pro, grandfathered_pro, subscription_status, current_period_end")
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (profileError) {
+      console.error("generate-quiz entitlement read failed", profileError.message);
+      return fail(
+        503,
+        "We couldn't confirm your subscription right now. Please try again in a moment.",
+      );
+    }
+    if (!profileHasAccess(profile as Record<string, unknown> | null)) {
+      return fail(403, "This feature needs an active Tentra subscription or trial.");
+    }
+
+    // ---- Input validation --------------------------------------------------
+    const rawBody = await req.json().catch(() => null);
+    const parsed = validateBody(rawBody);
+    if (!parsed.ok) return fail(400, parsed.error);
+    const body = parsed.value;
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+    if (!LOVABLE_API_KEY) {
+      console.error("generate-quiz: LOVABLE_API_KEY not configured");
+      return fail(503, "Quiz generation is temporarily unavailable.");
+    }
 
     const difficulty =
-      (body.confidence ?? 3) <= 2
+      body.confidence <= 2
         ? "introductory"
-        : (body.confidence ?? 3) >= 4
+        : body.confidence >= 4
           ? "advanced, exam-realistic"
           : "intermediate";
 
@@ -126,16 +240,10 @@ ${jurisdictionNote}`;
     let response = await callGateway();
     if (!response.ok) {
       if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit reached. Please try again in a moment." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return fail(429, "Rate limit reached. Please try again in a moment.");
       }
       if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Add credits in Lovable workspace." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-        );
+        return fail(402, "AI credits exhausted. Add credits in Lovable workspace.");
       }
       const text = await response.text();
       console.error("AI gateway error (quiz, attempt 1)", response.status, text.slice(0, 400));
@@ -147,10 +255,7 @@ ${jurisdictionNote}`;
       if (!response.ok) {
         const text2 = await response.text();
         console.error("AI gateway error (quiz, final)", response.status, text2.slice(0, 400));
-        return new Response(JSON.stringify({ error: "AI gateway error" }), {
-          status: 502,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        return fail(502, "Couldn't generate quiz. Please try again.");
       }
     }
 
@@ -173,21 +278,12 @@ ${jurisdictionNote}`;
 
     if (!quiz) {
       console.error("Quiz extraction failed after retry", JSON.stringify(data).slice(0, 500));
-      return new Response(
-        JSON.stringify({ error: "Couldn't generate quiz. Please try again." }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return fail(502, "Couldn't generate quiz. Please try again.");
     }
 
-    return new Response(JSON.stringify(quiz), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(JSON.stringify(quiz), { headers: jsonHeaders });
   } catch (e) {
     console.error("generate-quiz error", e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-    );
+    return fail(500, "Couldn't generate quiz. Please try again.");
   }
 });
-

@@ -5,7 +5,7 @@ import {
   callGateway,
   loadPlan,
   loadProfile,
-  requireAuth,
+  requireAccess,
 } from "../shared";
 
 const SYSTEM_PROMPT = `You are Tentra Coach — a premium AI SQE / NY Bar planning and accountability tutor accessed here via ChatGPT.
@@ -32,7 +32,7 @@ export default defineTool({
   name: "ask_ai_coach",
   title: "Ask the AI Coach",
   description:
-    "Read-only. Ask the Tentra AI Coach a planning or accountability question. The Coach answers using the signed-in user's real Tentra study data (plan, weak areas, weekly hours, recent sessions, days to exam). Best for prompts like 'what should I study today?', 'I missed yesterday, fix my week', 'how am I doing this week?', 'give me a 45-minute session'. Requires the user to be signed in. Does not write to the plan.",
+    "Read-only. Ask the Tentra AI Coach a planning or accountability question. The Coach answers using the signed-in user's real Tentra study data (plan, weak areas, weekly hours, recent sessions, days to exam). Best for prompts like 'what should I study today?', 'I missed yesterday, fix my week', 'how am I doing this week?', 'give me a 45-minute session'. Requires active Tentra access (subscription or trial). Does not write to the plan.",
   inputSchema: {
     question: z
       .string()
@@ -43,7 +43,7 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: false },
   handler: async ({ question }, ctx) => {
-    const auth = requireAuth(ctx);
+    const auth = await requireAccess(ctx);
     if (auth) return auth;
     const [{ plan }, { profile }] = await Promise.all([loadPlan(ctx), loadProfile(ctx)]);
     const { text: snapshot } = buildSnapshot(plan, profile);
