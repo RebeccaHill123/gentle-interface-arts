@@ -11,11 +11,20 @@ import {
   Trophy,
   Zap,
 } from "lucide-react";
+import { type StudySession } from "@/lib/plan-store";
 import {
-  removeStudySession,
-  updateStudySession,
-  type StudySession,
-} from "@/lib/plan-store";
+  deleteSessionCanonically,
+  resolveCanonicalEventForSession,
+  updateSessionCanonically,
+} from "@/lib/study-log";
+import {
+  deleteConfirmCopy,
+  gradedEditNotice,
+  isGradedEvent,
+  outcomeMessage,
+  type Resolution,
+} from "@/lib/canonical-edit";
+
 import { ActivityInsights } from "@/components/activity-insights";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
