@@ -10,7 +10,9 @@
 import type { OnboardingInput } from "@/lib/plan-store";
 import { addDaysKey } from "./dates";
 import { evidenceSignature, prioritiseSubjects } from "./priority";
+import { dedupeTasksById } from "./repair";
 import { buildSchedule, DEFAULT_HORIZON_DAYS, MAX_DAY_MINUTES } from "./schedule";
+
 import type {
   PlanChange,
   PlanEvidence,
@@ -98,14 +100,29 @@ export function createSchedule(args: RecalibrateArgs): PlanSchedule {
   };
 }
 
-/** Immutable history: past days plus anything the student already acted on. */
-function isHistory(task: ScheduledTask, today: string): boolean {
-  return task.date < today || task.status !== "scheduled";
+/**
+ * Immutable history: anything the student already acted on (completed/skipped),
+ * on any date.
+ *
+ * Past tasks that are still `scheduled` are deliberately NOT history — they are
+ * "missed" work and are consumed exactly once per recalibration (retired as a
+ * skipped record). Treating them as history as well is what previously produced
+ * duplicate task ids and a runaway recalibration loop.
+ */
+function isHistory(task: ScheduledTask): boolean {
+  return task.status !== "scheduled";
 }
+
+/** A past task still open: consumed once per recalibration. */
+function isMissed(task: ScheduledTask, today: string): boolean {
+  return task.status === "scheduled" && task.date < today;
+}
+
 
 function minutesOnDay(tasks: ScheduledTask[], date: string): number {
   return tasks.filter((t) => t.date === date).reduce((a, t) => a + t.minutes, 0);
 }
+
 
 function carryForwardMissed(
   missed: ScheduledTask[],
@@ -141,7 +158,20 @@ function carryForwardMissed(
       const load = minutesOnDay([...future, ...carried], date);
       if (load + task.minutes > MAX_DAY_MINUTES) continue;
       counts.set(date, used + 1);
-      carried.push({ ...task, date, movedFrom: task.date, createdInVersion: version });
+      // New, deterministic identity: the original record is retired as skipped
+      // history, so the carried replacement must never reuse its id.
+      carried.push({
+        ...task,
+        id: `${task.id}~mv${version}`,
+        date,
+        status: "scheduled",
+        movedFrom: task.movedFrom ?? task.date,
+        skipReason: undefined,
+        skippedAt: undefined,
+        completedAt: undefined,
+        createdInVersion: version,
+      });
+
       changes.push({
         kind: "moved",
         module: task.module,
@@ -209,22 +239,29 @@ export function recalibrate(args: RecalibrateArgs): RecalibrateResult {
     current.hoursPerWeek !== args.input.hoursPerWeek ||
     current.examDate !== args.input.examDate;
 
-  const missedInFuture = current.tasks.filter(
-    (t) => t.status === "scheduled" && t.date < today,
-  );
+  // Deduplicate defensively: a schedule corrupted by the historical duplicate
+  // bug must not be re-processed once per duplicate copy.
+  const currentTasks = dedupeTasksById(current.tasks, today);
+  const missed = currentTasks.filter((t) => isMissed(t, today));
 
   if (
     !FORCE_TRIGGERS.includes(args.trigger) &&
     !availabilityChanged &&
-    missedInFuture.length === 0 &&
+    missed.length === 0 &&
+    currentTasks.length === current.tasks.length &&
     current.evidenceSignature === signature
   ) {
     return { schedule: current, revision: null, changed: false };
   }
 
   const version = current.scheduleVersion + 1;
-  const history = current.tasks.filter((t) => isHistory(t, today));
-  const replacedFuture = current.tasks.filter((t) => !isHistory(t, today));
+  // Three disjoint partitions of every existing task: acted-on history,
+  // missed past work, and the future being replaced.
+  const history = currentTasks.filter((t) => isHistory(t));
+  const replacedFuture = currentTasks.filter(
+    (t) => t.status === "scheduled" && t.date >= today,
+  );
+
 
   const fresh = buildSchedule({
     input: args.input,
@@ -236,11 +273,12 @@ export function recalibrate(args: RecalibrateArgs): RecalibrateResult {
   });
 
   const { carried, changes: carryChanges } = carryForwardMissed(
-    missedInFuture,
+    missed,
     fresh,
     today,
     version,
   );
+
 
   const changes: PlanChange[] = [...carryChanges];
   const beforeByModule = countByModule(replacedFuture);
@@ -285,11 +323,14 @@ export function recalibrate(args: RecalibrateArgs): RecalibrateResult {
     changes,
   };
 
-  // Missed scheduled tasks are retained as history (marked skipped) so nothing
-  // silently disappears from the record.
-  const retiredMissed: ScheduledTask[] = missedInFuture.map((t) => ({
+  // Each missed task is consumed exactly once: retired as a single skipped
+  // history record. Its forward replacement (if any) carries a new id.
+  const carriedFrom = new Set(carried.map((t) => t.movedFrom ?? ""));
+  const retiredMissed: ScheduledTask[] = missed.map((t) => ({
     ...t,
-    status: "skipped",
+    status: "skipped" as const,
+    skippedAt: t.skippedAt ?? revision.at,
+    skipReason: t.skipReason ?? (carriedFrom.has(t.date) ? "no-time" : "other"),
   }));
 
   const schedule: PlanSchedule = {
@@ -300,11 +341,10 @@ export function recalibrate(args: RecalibrateArgs): RecalibrateResult {
     hoursPerWeek: args.input.hoursPerWeek,
     horizonDays: args.horizonDays ?? current.horizonDays,
     evidenceSignature: signature,
-    tasks: [...history, ...retiredMissed, ...fresh, ...carried].sort(
-      (a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id),
-    ),
+    tasks: dedupeTasksById([...history, ...retiredMissed, ...fresh, ...carried], today),
     revisions: [...current.revisions, revision].slice(-25),
   };
+
 
   return { schedule, revision, changed: true };
 }
@@ -428,12 +468,12 @@ export function mergeSchedules(
 
   return {
     ...base,
-    tasks: [
-      ...base.tasks.map((t) => outcomes.get(t.id) ?? t),
-      ...extraHistory,
-    ].sort((a, b) => a.date.localeCompare(b.date) || a.id.localeCompare(b.id)),
+    // Unique task identity is an invariant of the merge result: a stale copy
+    // from either side can never reintroduce a duplicate id.
+    tasks: dedupeTasksById([...base.tasks.map((t) => outcomes.get(t.id) ?? t), ...extraHistory]),
     revisions: dedupeRevisions([...base.revisions, ...other.revisions]),
   };
+
 }
 
 function dedupeRevisions(list: PlanRevisionRecord[]): PlanRevisionRecord[] {

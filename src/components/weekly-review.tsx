@@ -27,7 +27,11 @@ export function computeWeeklyReview(
   fromDate: string,
   toDate: string,
 ): WeeklyReviewStats {
-  const window = tasks.filter((t) => t.date >= fromDate && t.date <= toDate);
+  // Canonical, unique task records only: a duplicated task id must never be
+  // counted twice in planned minutes, session counts or skips.
+  const canonical = dedupeTasksById(tasks, toDate);
+  const window = canonical.filter((t) => t.date >= fromDate && t.date <= toDate);
+
   const completed = window.filter((t) => t.status === "completed");
   const skipped = window.filter((t) => t.status === "skipped");
 
