@@ -46,13 +46,23 @@ export type QuizValidation =
   | { ok: true; questions: QuizQuestion[] }
   | { ok: false; error: string };
 
+/** A session is still worth running with at least this many usable questions. */
+export const MIN_USABLE_QUESTIONS = 4;
+
 /**
- * Requires `requested` usable, non-duplicate questions (never fewer, never more).
+ * Returns up to `requested` usable, non-duplicate questions. A short set is
+ * accepted (the session then honestly runs with fewer questions) as long as at
+ * least `minimum` usable questions survived validation.
  * `requested` must already be clamped to the provider's real maximum.
  */
-export function validateQuizQuestions(raw: unknown, requested: number): QuizValidation {
+export function validateQuizQuestions(
+  raw: unknown,
+  requested: number,
+  options: { minimum?: number } = {},
+): QuizValidation {
   if (!Array.isArray(raw)) return { ok: false, error: "The generator returned no questions." };
   const want = Math.max(1, Math.floor(requested));
+  const minimum = Math.max(1, Math.min(want, Math.floor(options.minimum ?? MIN_USABLE_QUESTIONS)));
   const seen = new Set<string>();
   const out: QuizQuestion[] = [];
   for (const item of raw) {
@@ -64,11 +74,12 @@ export function validateQuizQuestions(raw: unknown, requested: number): QuizVali
     out.push(q);
     if (out.length === want) break;
   }
-  if (out.length < want) {
+  if (out.length < minimum) {
     return {
       ok: false,
-      error: `We only got ${out.length} usable question${out.length === 1 ? "" : "s"} of the ${want} needed. Please try again.`,
+      error: `We only got ${out.length} usable question${out.length === 1 ? "" : "s"} — at least ${minimum} are needed. Please try again.`,
     };
   }
   return { ok: true, questions: out };
 }
+
