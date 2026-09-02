@@ -501,11 +501,29 @@ function SimulationPage() {
         sections={sections}
         answers={answers}
         saveResult={mockSaveResult}
-        onRetrySave={() => {
-          flushStudyLogQueue().then((r) => {
-            setMockSaveResult(r.remaining === 0 ? { ok: true, queued: false } : { ok: false, queued: true });
-          });
+        onRetrySave={async () => {
+          // Re-run the same idempotent canonical write (stable key, so retries
+          // cannot double-count). Never infer success from an empty queue.
+          try {
+            const result = await recordMockActivity(sim, sections, answers);
+            if (result.ok) {
+              setMockSaveResult(result);
+              return;
+            }
+            if (result.queued) {
+              const flushed = await flushStudyLogQueue();
+              setMockSaveResult(
+                flushed.flushed > 0 ? { ok: true, queued: false } : result,
+              );
+              return;
+            }
+            setMockSaveResult(result);
+          } catch (err) {
+            console.error("[mock] activity retry failed", err);
+            setMockSaveResult({ ok: false, queued: false });
+          }
         }}
+
         onRetake={() => navigate({ to: "/mocks" })}
       />
     );
