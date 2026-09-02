@@ -409,3 +409,65 @@ export function retryDelayMs(attempt: number, baseMs = 4000, maxMs = 60_000): nu
   const n = Math.max(0, Math.floor(attempt));
   return Math.min(maxMs, baseMs * 2 ** Math.min(n, 10));
 }
+
+// ---------------------------------------------------------------------------
+// 6. Per-question revisions
+//
+// A save confirms one *revision* of an answer, not the question forever. If the
+// candidate edits while a request is in flight, the older success must not clear
+// the newer dirty state.
+
+export type RevisionMap = Record<string, number>;
+
+export function revisionOf(map: RevisionMap, questionId: string): number {
+  return map[questionId] ?? 0;
+}
+
+export function bumpRevision(map: RevisionMap, questionId: string): RevisionMap {
+  return { ...map, [questionId]: revisionOf(map, questionId) + 1 };
+}
+
+/**
+ * Clear dirty state only when the write that just succeeded carried the newest
+ * revision of that question.
+ */
+export function markSyncedIfCurrent(
+  set: SyncSet,
+  revisions: RevisionMap,
+  questionId: string,
+  savedRevision: number,
+): SyncSet {
+  if (revisionOf(revisions, questionId) !== savedRevision) return set;
+  return markSynced(set, questionId);
+}
+
+/** Deterministic content snapshot — time tracking alone is not a content change. */
+export function answerSnapshot(la: {
+  answerIndex?: number | null;
+  essayText?: string | null;
+  isFlagged?: boolean | null;
+}): string {
+  return JSON.stringify({
+    a: la.answerIndex ?? null,
+    e: la.essayText ?? "",
+    f: !!la.isFlagged,
+  });
+}
+
+/** Debounce window for essay/MPT typing so we never write per keystroke. */
+export const TYPING_SAVE_DEBOUNCE_MS = 1200;
+
+/** Honest label for what is still waiting to reach the account. */
+export function pendingSyncLabel(
+  unsyncedAnswers: number,
+  timerPending: boolean,
+): string | null {
+  const parts: string[] = [];
+  if (unsyncedAnswers > 0) {
+    parts.push(`${unsyncedAnswers} answer${unsyncedAnswers === 1 ? "" : "s"}`);
+  }
+  if (timerPending) parts.push("timer");
+  if (!parts.length) return null;
+  return `Saved on this device · ${parts.join(" + ")} waiting to sync`;
+}
+
