@@ -42,7 +42,10 @@ export async function submitManualSession(
     const moduleName = input.moduleName.trim();
     const note = input.note.trim();
     const res = await deps.record({ minutes, moduleName, note });
-    if (!res.ok) {
+    // A durably queued write IS accepted: the session is on this device and
+    // will sync. Only a write that persisted nowhere is an error — otherwise
+    // the user retries and double-records the same session.
+    if (!res.ok && !res.queued) {
       return {
         status: "error",
         message: res.error ?? "We couldn't save that session. Try again.",
