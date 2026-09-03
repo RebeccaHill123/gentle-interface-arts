@@ -3,7 +3,13 @@ import { submitManualSession } from "./manual-session";
 import type { WriteResult } from "./study-log";
 
 const ok: WriteResult = { ok: true, queued: false };
-const queued: WriteResult = { ok: true, queued: true };
+// Shape actually produced by recordStudyActivity when the canonical write
+// failed but the event was durably enqueued on this device.
+const queued: WriteResult = {
+  ok: false,
+  queued: true,
+  error: "Saved on this device; will sync.",
+};
 const failed: WriteResult = {
   ok: false,
   queued: false,
