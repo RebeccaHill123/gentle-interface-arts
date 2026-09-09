@@ -59,7 +59,11 @@ import {
   flushStudyLogQueue,
 } from "@/lib/study-log";
 import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
+import { SqeAssessmentDialog } from "@/components/sqe-assessment-dialog";
+import { loadExamPreference, saveExamPreference } from "@/lib/exam-preference";
+import { planAssessment, planIsSqe1, type SqeAssessment } from "@/lib/exam-scope";
 import {
+  applyExamScope,
   ensureSchedule,
   getSchedule,
   tasksForDate,
@@ -169,6 +173,52 @@ function DashboardPage() {
   }, [reloadKey]);
 
 
+  // ── SQE1 assessment scope (FLK1 / FLK2 / both).
+  // The profile is the durable record. A student whose choice is unknown is
+  // asked BEFORE the schedule is recalibrated — we never assume "both".
+  const [assessmentPrompt, setAssessmentPrompt] = useState(false);
+  const [assessmentCurrent, setAssessmentCurrent] = useState<SqeAssessment | null>(null);
+  const [assessmentResolved, setAssessmentResolved] = useState(false);
+  const planAssessmentKey = stored?.input.sqeAssessment ?? stored?.input.examPath ?? "";
+  useEffect(() => {
+    if (!stored) return;
+    if (!planIsSqe1(stored)) {
+      setAssessmentResolved(true);
+      return;
+    }
+    let active = true;
+    (async () => {
+      const fromPlan = planAssessment(stored);
+      const pref = await loadExamPreference();
+      if (!active) return;
+      if (pref.assessment) {
+        setAssessmentCurrent(pref.assessment);
+        if (fromPlan !== pref.assessment) {
+          const res = await applyExamScope(pref.assessment, null).catch(() => null);
+          if (active && res) setStored(res.stored);
+        }
+        setAssessmentResolved(true);
+        return;
+      }
+      if (fromPlan) {
+        // Plan knows, profile doesn't (e.g. plan created before sign-in).
+        void saveExamPreference(fromPlan).catch(() => false);
+        setAssessmentCurrent(fromPlan);
+        setAssessmentResolved(true);
+        return;
+      }
+      if (!pref.authenticated) {
+        setAssessmentResolved(true);
+        return;
+      }
+      setAssessmentPrompt(true);
+    })();
+    return () => {
+      active = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [planAssessmentKey, !!stored]);
+
   // Re-read local cache when tick changes (e.g. after task toggle)
   useEffect(() => {
     if (tick === 0) return;
@@ -195,6 +245,8 @@ function DashboardPage() {
   const [schedule, setSchedule] = useState<PlanSchedule | null>(null);
   useEffect(() => {
     if (!stored || !analytics) return;
+    // Don't rebuild a plan whose FLK scope is still unknown.
+    if (!assessmentResolved) return;
     let active = true;
     void ensureSchedule(stored, analytics, "completion")
       .then((res) => {
@@ -207,7 +259,7 @@ function DashboardPage() {
       active = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [analytics]);
+  }, [analytics, assessmentResolved]);
 
   useEffect(() => {
     const existing = getSchedule(stored);
@@ -648,6 +700,19 @@ function DashboardPage() {
         today={today}
         onCancel={() => setMoveTarget(null)}
         onPick={handleRescheduleConfirmed}
+      />
+
+      <SqeAssessmentDialog
+        open={assessmentPrompt}
+        required
+        current={assessmentCurrent}
+        onOpenChange={setAssessmentPrompt}
+        onApplied={(value) => {
+          setAssessmentCurrent(value);
+          setAssessmentPrompt(false);
+          setAssessmentResolved(true);
+          setTick((t) => t + 1);
+        }}
       />
 
       {quizTask && (
