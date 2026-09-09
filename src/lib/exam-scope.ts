@@ -77,10 +77,37 @@ function normalise(name: string): string {
   return name.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/**
+ * Common aliases used by decks, AI-named topics and older plans, so a subject
+ * written a different way still resolves to the correct paper.
+ */
+const SUBJECT_ALIASES: Record<string, FLKPaper> = {
+  "wills": "FLK2",
+  "wills & administration of estates": "FLK2",
+  "wills and administration of estates": "FLK2",
+  "administration of estates": "FLK2",
+  "land": "FLK2",
+  "property": "FLK2",
+  "accounts": "FLK2",
+  "solicitors' accounts": "FLK2",
+  "criminal litigation": "FLK2",
+  "criminal": "FLK2",
+  "criminal law": "FLK2",
+  "criminal practice": "FLK2",
+  "civil litigation": "FLK1",
+  "business law": "FLK1",
+  "public law": "FLK1",
+  "constitutional and administrative law": "FLK1",
+  "eu law": "FLK1",
+  "legal services": "FLK1",
+};
+
 /** The FLK paper a subject belongs to, or undefined when unknown/cross-paper. */
 export function paperForSubject(name: string): FLKPaper | undefined {
   const want = normalise(name);
   if (CROSS_PAPER_SUBJECTS.has(name) || want.includes("ethics")) return undefined;
+  const alias = SUBJECT_ALIASES[want];
+  if (alias) return alias;
   const match = SQE_SYLLABUS.find((s) => {
     const n = normalise(s.name);
     return n === want || n.includes(want) || want.includes(n);

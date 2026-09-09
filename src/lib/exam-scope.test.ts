@@ -22,7 +22,7 @@ const FLK2_SUBJECTS = [
   "Land Law",
   "Property Practice",
   "Trusts",
-  "Wills & Administration of Estates",
+  "Wills & Estates",
   "Solicitors Accounts",
 ];
 
@@ -54,6 +54,14 @@ describe("SQE1 assessment scope", () => {
     expect(subjectInScope("Ethics & Professional Conduct", "FLK2")).toBe(true);
   });
 
+  it("resolves common subject aliases to the right paper", () => {
+    expect(subjectInScope("Wills", "FLK1")).toBe(false);
+    expect(subjectInScope("Criminal Litigation", "FLK1")).toBe(false);
+    expect(subjectInScope("Property", "FLK1")).toBe(false);
+    expect(subjectInScope("Business Law", "FLK2")).toBe(false);
+    expect(subjectInScope("Public Law", "FLK2")).toBe(false);
+  });
+
   it("scopes onboarding modules", () => {
     const modules = [...FLK1_SUBJECTS, ...FLK2_SUBJECTS].map((name, i) => ({
       id: String(i),
@@ -77,6 +85,7 @@ describe("SQE1 assessment scope", () => {
 
     const flk2 = getSubjectsForExamPath("FLK2").map((s) => s.name);
     expect(flk2).toContain("Land Law");
+    expect(flk2).not.toContain("Business Law & Practice");
     expect(flk2).not.toContain("Contract");
     expect(flk2.some((n) => n.includes("Ethics"))).toBe(true);
 
