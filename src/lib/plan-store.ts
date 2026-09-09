@@ -70,6 +70,12 @@ export interface OnboardingInput {
    * started the syllabus yet", or balanced coverage (nothing rated).
    */
   confidenceSource?: "rated" | "not-started" | "balanced";
+  /**
+   * Which SQE1 assessment(s) the student is preparing for. Present only when
+   * the student explicitly answered the question — legacy plans omit it, and
+   * must be prompted rather than assumed to be "both".
+   */
+  sqeAssessment?: "FLK1" | "FLK2" | "BOTH";
 }
 
 export type StrategyRationale =
@@ -182,6 +188,8 @@ export interface OnboardingDraft {
   modules: ModuleConfidence[];
   /** Present from the three-stage setup; older two-step drafts omit it. */
   confidenceSource?: "rated" | "not-started" | "balanced";
+  /** Explicit SQE1 assessment answer, when the student has given one. */
+  sqeAssessment?: "FLK1" | "FLK2" | "BOTH";
 }
 
 export const SQE1_MODULES = [

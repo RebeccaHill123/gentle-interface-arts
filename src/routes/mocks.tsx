@@ -29,6 +29,7 @@ import {
   type PaperKey,
 } from "@/components/practice-launcher-dialog";
 import { AIQuizBuilderDialog } from "@/components/ai-quiz-builder-dialog";
+import { useSqeScope } from "@/lib/use-sqe-scope";
 import { loadPlan } from "@/lib/plan-store";
 import { isUbePath } from "@/lib/exam-paths";
 import { getProStatus } from "@/lib/pro-store";
@@ -104,6 +105,7 @@ function MocksPage() {
     return path ? isUbePath(path) : plan?.input.examType === "UBE";
   }, []);
   const pathway: Pathway = isUbe ? "UBE" : "SQE";
+  const { papers: scopePapers, assessment } = useSqeScope();
 
   useEffect(() => {
     (async () => {
@@ -114,14 +116,25 @@ function MocksPage() {
     })();
   }, []);
 
-  const miniMocks = isUbe ? UBE_MINI : SQE_MINI;
-  const fullMockTitle = isUbe ? "Full UBE Simulation" : "Full SQE1 Simulation";
+  const singlePaper = !isUbe && scopePapers.length === 1 ? scopePapers[0] : null;
+  const miniMocks = isUbe
+    ? UBE_MINI
+    : SQE_MINI.filter((m) => scopePapers.length === 0 || scopePapers.includes(m.paper as "FLK1" | "FLK2"));
+  const fullMockTitle = isUbe
+    ? "Full UBE Simulation"
+    : singlePaper
+      ? `Full ${singlePaper} Simulation`
+      : "Full SQE1 Simulation";
   const fullMockDesc = isUbe
     ? "Sit a full-length UBE simulation: MBE + MEE + MPT under exam conditions."
-    : "Sit a full-length SQE1 simulation: FLK1 and FLK2 SBA papers under exam conditions.";
+    : singlePaper
+      ? `Sit a full-length ${singlePaper} simulation: both ${singlePaper} SBA blocks under exam conditions.`
+      : "Sit a full-length SQE1 simulation: FLK1 and FLK2 SBA papers under exam conditions.";
   const fullMockMeta = isUbe
     ? "200 MBE + 6 MEE + 2 MPT · 12 hours"
-    : "360 SBAs across FLK1 and FLK2 · ~10 hours";
+    : singlePaper
+      ? `180 SBAs across ${singlePaper} · ~5 hours`
+      : "360 SBAs across FLK1 and FLK2 · ~10 hours";
 
   const inProgressSim = sims.find((s) => s.pathway === pathway && s.status === "in_progress");
 
@@ -282,7 +295,9 @@ function MocksPage() {
               Review key rules, definitions and high-yield legal principles.
             </p>
             <div className="mt-3 text-xs text-muted-foreground/80">
-              {isUbe ? "Adaptive recall · MBE & MEE" : "Adaptive recall · FLK1 & FLK2"}
+              {isUbe
+                ? "Adaptive recall · MBE & MEE"
+                : `Adaptive recall · ${assessment === "FLK1" ? "FLK1" : assessment === "FLK2" ? "FLK2" : "FLK1 & FLK2"}`}
             </div>
           </div>
         </Link>
@@ -364,6 +379,7 @@ function MocksPage() {
         onOpenChange={setFullMockOpen}
         pathway={pathway}
         isPro={isPro}
+        scopePapers={scopePapers}
       />
     </AppShell>
   );
@@ -377,14 +393,24 @@ function FullMockDialog({
   onOpenChange,
   pathway,
   isPro,
+  scopePapers,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   pathway: Pathway;
   isPro: boolean;
+  /** FLK papers the student is sitting; other papers' sections are hidden. */
+  scopePapers: ("FLK1" | "FLK2")[];
 }) {
   const navigate = useNavigate();
-  const blueprint = getBlueprint(pathway);
+  const fullBlueprint = getBlueprint(pathway);
+  // A student sitting one FLK paper never sees the other paper's blocks.
+  const sections = useMemo(() => {
+    if (pathway !== "SQE" || scopePapers.length !== 1) return fullBlueprint.sections;
+    const prefix = scopePapers[0].toLowerCase();
+    return fullBlueprint.sections.filter((s) => s.id.startsWith(prefix));
+  }, [fullBlueprint, pathway, scopePapers]);
+  const blueprint = { ...fullBlueprint, sections };
   const [mode, setMode] = useState<SimulationMode>("practice");
   const [selected, setSelected] = useState<string[]>([]); // empty = full
   const [launching, setLaunching] = useState(false);
@@ -410,10 +436,10 @@ function FullMockDialog({
     setLaunching(true);
     try {
       // Free preview: only allow first section in practice mode
-      const effectiveSections =
-        !isPro
-          ? [blueprint.sections[0].id]
-          : sectionIds;
+      const scopedIds = blueprint.sections.map((s) => s.id);
+      const effectiveSections = !isPro
+        ? [blueprint.sections[0].id]
+        : (sectionIds ?? (scopedIds.length === fullBlueprint.sections.length ? undefined : scopedIds));
       const { simulation } = await createSimulation(pathway, mode, effectiveSections);
       onOpenChange(false);
       navigate({

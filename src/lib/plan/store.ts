@@ -19,6 +19,12 @@ import {
 import type { PlanSyncState } from "@/lib/plan-sync";
 
 import type { AnalyticsBundle } from "@/lib/analytics-derive";
+import { getSubjectsForExamPath } from "@/lib/exam-paths";
+import {
+  assessmentToPath,
+  subjectInScope,
+  type SqeAssessment,
+} from "@/lib/exam-scope";
 import { buildPlanEvidence } from "./evidence";
 import {
   capacityOutlook,
@@ -281,4 +287,102 @@ export async function applyPlanSettings(
 export function latestRevision(schedule: PlanSchedule | null): PlanRevisionRecord | null {
   if (!schedule || schedule.revisions.length === 0) return null;
   return schedule.revisions[schedule.revisions.length - 1];
+}
+
+/* ---------- SQE1 assessment scope (FLK1 / FLK2 / both) ---------- */
+
+/**
+ * Apply a new SQE1 assessment choice to the stored plan.
+ *
+ * History is never touched: completed and skipped sessions stay exactly as they
+ * are. Only the FUTURE is rebuilt, and any future session belonging to the
+ * excluded paper is pruned so no out-of-scope subject can survive anywhere.
+ */
+export async function applyExamScope(
+  assessment: SqeAssessment,
+  analytics: AnalyticsBundle | null,
+): Promise<EnsureScheduleResult | null> {
+  const stored = loadPlan();
+  if (!stored) return null;
+  const today = localDateFor();
+  const path = assessmentToPath(assessment);
+
+  // Keep existing ratings for subjects that stay, and seed any subject that the
+  // newly included paper brings in.
+  const existing = new Map(stored.input.modules.map((m) => [m.name, m]));
+  const modules = getSubjectsForExamPath(path).map((s, i) => {
+    const prev = existing.get(s.name);
+    return (
+      prev ?? {
+        id: `scope-${i}`,
+        name: s.name,
+        confidence: 3,
+        weakSubtopics: [],
+        rated: false,
+      }
+    );
+  });
+
+  const inScope = (module?: string | null) =>
+    !module || subjectInScope(module, assessment);
+
+  const updated: StoredPlan = {
+    ...stored,
+    input: {
+      ...stored.input,
+      examType: "SQE1",
+      examPath: path,
+      sqeAssessment: assessment,
+      modules,
+    },
+    plan: {
+      ...stored.plan,
+      weeklyFocus: (stored.plan.weeklyFocus ?? []).map((w) => ({
+        ...w,
+        modules: (w.modules ?? []).filter((m) => inScope(m)),
+      })),
+      masteryTargets: (stored.plan.masteryTargets ?? []).filter((t) => inScope(t.module)),
+      ...(stored.plan.weeklyStrategy
+        ? {
+            weeklyStrategy: {
+              ...stored.plan.weeklyStrategy,
+              allocations: stored.plan.weeklyStrategy.allocations.filter((a) =>
+                inScope((a as { module?: string }).module),
+              ),
+            },
+          }
+        : {}),
+      todayTasks: (stored.plan.todayTasks ?? []).filter((t) => inScope(t.module)),
+    },
+  };
+
+  // Drop out-of-scope FUTURE sessions before rebuilding, so the recalibration
+  // cannot carry them forward. Past/settled records are preserved untouched.
+  const currentSchedule = getSchedule(updated);
+  const pruned: StoredPlan = currentSchedule
+    ? {
+        ...updated,
+        schedule: {
+          ...currentSchedule,
+          tasks: currentSchedule.tasks.filter(
+            (t) =>
+              t.status !== "scheduled" || t.date < today || inScope(t.module),
+          ),
+        },
+      }
+    : updated;
+
+  const result = await ensureSchedule(pruned, analytics, "manual", { today });
+
+  // Safety net: nothing out of scope may remain scheduled from today onwards.
+  const finalSchedule: PlanSchedule = {
+    ...result.schedule,
+    tasks: result.schedule.tasks.filter(
+      (t) => t.status !== "scheduled" || t.date < today || inScope(t.module),
+    ),
+  };
+  const finalStored = applySchedule(result.stored, finalSchedule, today);
+  savePlan(finalStored);
+  void persistSchedule(finalStored).catch((e) => console.warn("persistSchedule failed", e));
+  return { stored: finalStored, schedule: finalSchedule, revision: result.revision };
 }

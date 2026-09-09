@@ -287,8 +287,12 @@ export function getSubjectByName(name: string): SQESubject | undefined {
   );
 }
 
+/**
+ * Subjects for one FLK paper. Ethics & Professional Conduct is assessed in
+ * BOTH papers (its primary tag is FLK1), so it is always included.
+ */
 export function getSubjectsForPaper(paper: FLKPaper): SQESubject[] {
-  return SQE_SYLLABUS.filter((s) => s.paper === paper);
+  return SQE_SYLLABUS.filter((s) => s.paper === paper || s.id === "ethics");
 }
 
 export type ExamPath =

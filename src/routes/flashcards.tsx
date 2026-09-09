@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import {
   Layers,
@@ -35,6 +35,7 @@ import {
   type CardProgress,
 } from "@/lib/flashcards-progress";
 import { loadPlan } from "@/lib/plan-store";
+import { paperInScope, useSqeScope } from "@/lib/use-sqe-scope";
 import { isUbePath } from "@/lib/exam-paths";
 import { useServerFn } from "@tanstack/react-start";
 import { resolveTopicDeck } from "@/lib/flashcards-catalog";
@@ -129,8 +130,14 @@ function DeckBrowser({ kind, onStart }: { kind: ExamKind; onStart: (m: ReviewMod
   const [filter, setFilter] = useState<Filter>("all");
   const progress = useProgress();
   const isUbe = kind === "UBE";
-  const decks = useMemo(() => getDecksFor(kind), [kind]);
-  const cards = useMemo(() => getCardsFor(kind), [kind]);
+  const { papers: scopePapers } = useSqeScope();
+  // A student sitting one FLK paper never sees the other paper's decks.
+  const inScope = useCallback(
+    (flk: string) => isUbe || scopePapers.length === 0 || scopePapers.includes(flk as "FLK1" | "FLK2"),
+    [isUbe, scopePapers],
+  );
+  const decks = useMemo(() => getDecksFor(kind).filter((d) => inScope(d.flk)), [kind, inScope]);
+  const cards = useMemo(() => getCardsFor(kind).filter((c) => inScope(c.flk)), [kind, inScope]);
 
   const decksFiltered = useMemo(() => {
     if (filter === "all" || filter === "weak" || filter === "starred") return decks;
@@ -158,7 +165,9 @@ function DeckBrowser({ kind, onStart }: { kind: ExamKind; onStart: (m: ReviewMod
     return best ? getDeckFor(kind, best.deckId) ?? null : null;
   }, [progress, cards, kind]);
 
-  const areaChips: Filter[] = isUbe ? ["MBE", "MEE", "MPT"] : ["FLK1", "FLK2"];
+  const areaChips: Filter[] = isUbe
+    ? ["MBE", "MEE", "MPT"]
+    : (["FLK1", "FLK2"] as Filter[]).filter((f) => inScope(f as string));
   const filters: { id: Filter; label: string; count?: number }[] = [
     { id: "all", label: "All" },
     ...areaChips.map((id) => ({ id, label: id })),
@@ -184,7 +193,7 @@ function DeckBrowser({ kind, onStart }: { kind: ExamKind; onStart: (m: ReviewMod
               variant="outline"
               className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground"
             >
-              {isUbe ? "MBE · MEE · MPT" : "FLK1 · FLK2"}
+              {isUbe ? "MBE · MEE · MPT" : areaChips.join(" · ")}
             </Badge>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
               Flashcards
@@ -395,7 +404,7 @@ function aiToFlashcard(c: GeneratedCard, deckId: string, area: CardArea): Flashc
 
 function buildQueue(mode: ReviewMode, kind: ExamKind, extraAi: Flashcard[] = []): Flashcard[] {
   const progress = getAllProgress();
-  const allCards = getCardsFor(kind);
+  const allCards = getCardsFor(kind).filter((c) => paperInScope(c.flk));
   let pool: Flashcard[] = [];
   if (mode.kind === "deck") pool = getCardsByDeckFor(kind, mode.deckId);
   else if (mode.kind === "weak")
@@ -404,7 +413,7 @@ function buildQueue(mode: ReviewMode, kind: ExamKind, extraAi: Flashcard[] = [])
     pool = allCards.filter((c) => progress[c.id]?.starred);
   else {
     // topic mode: match by subject on the deck; narrow by subtopic against card.topic if we can.
-    const decks = getDecksFor(kind);
+    const decks = getDecksFor(kind).filter((d) => paperInScope(d.flk));
     const wantSubject = normalize(mode.subject);
     const matchedDecks = decks.filter((d) => {
       const n = normalize(d.subject);
@@ -755,7 +764,7 @@ function CompletionPanel({
   onResetDeck?: () => void;
   onExit: () => void;
 }) {
-  const allCards = getCardsFor(kind);
+  const allCards = getCardsFor(kind).filter((c) => paperInScope(c.flk));
   const cards =
     mode.kind === "deck"
       ? getCardsByDeckFor(kind, mode.deckId)

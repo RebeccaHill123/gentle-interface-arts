@@ -16,6 +16,7 @@ export type AnalyticsEvent =
   | "onboarding_started"
   | "onboarding_resumed"
   | "onboarding_exam_switched"
+  | "sqe_assessment_selected"
   | "exam_date_viewed"
   | "exam_date_completed"
   | "weekly_hours_viewed"
