@@ -38,6 +38,16 @@ import {
 } from "@/lib/plan-store";
 import { getSubjectsForExamPath, defaultPathForExam, pathToExamType } from "@/lib/exam-paths";
 import {
+  assessmentDateHeading,
+  assessmentToPath,
+  type SqeAssessment,
+} from "@/lib/exam-scope";
+import { saveExamPreference } from "@/lib/exam-preference";
+import {
+  SQE_ASSESSMENT_QUESTION,
+  SqeAssessmentPicker,
+} from "@/components/sqe-assessment-picker";
+import {
   buildConfidenceProfile,
   confidenceToRating,
   PREPARATION_STAGES,
@@ -241,6 +251,12 @@ function OnboardingPage() {
   // Search params repopulate the previous answers when the sessionStorage
   // draft is gone (new tab, shared link), so "change my answers" never
   // drops what the visitor already told us.
+  // Which SQE1 assessment(s) the student is sitting. Required for SQE1 and
+  // never defaulted — an unanswered question blocks step 1.
+  const [sqeAssessment, setSqeAssessment] = useState<SqeAssessment | null>(
+    draft?.sqeAssessment ??
+      (draft?.examPath === "FLK1" || draft?.examPath === "FLK2" ? draft.examPath : null),
+  );
   const [examDate, setExamDate] = useState(draft?.examDate ?? search.date ?? "");
   const [hoursPerWeek, setHoursPerWeek] = useState(
     draft?.hoursPerWeek ?? search.hours ?? 10,
@@ -343,8 +359,15 @@ function OnboardingPage() {
   useEffect(() => {
     const opt = EXAM_OPTIONS.find((o) => o.value === examType);
     if (!opt) return;
-    if (opt.path !== examPath) setExamPath(opt.path);
-  }, [examType, examPath]);
+    // SQE1's path is decided by the FLK answer; every other exam has one path.
+    const desired =
+      examType === "SQE1"
+        ? sqeAssessment
+          ? assessmentToPath(sqeAssessment)
+          : "SQE1_FULL"
+        : opt.path;
+    if (desired !== examPath) setExamPath(desired);
+  }, [examType, examPath, sqeAssessment]);
 
   // Changing exam reseeds the syllabus and discards ratings that belonged to
   // the previous exam, so no stale confidence data survives.
@@ -372,6 +395,7 @@ function OnboardingPage() {
       intensity,
       coverageMode,
       modules,
+      ...(sqeAssessment ? { sqeAssessment } : {}),
       ...(stage ? { confidenceSource } : {}),
     });
   }, [
@@ -385,6 +409,7 @@ function OnboardingPage() {
     intensity,
     coverageMode,
     modules,
+    sqeAssessment,
     stage,
     confidenceSource,
   ]);
@@ -397,6 +422,9 @@ function OnboardingPage() {
   }, [hoursPerWeek]);
 
   const validateStep1 = (): string | null => {
+    if (examType === "SQE1" && !sqeAssessment) {
+      return "Please choose which part of SQE1 you're preparing for.";
+    }
     if (!examDate) return "Please choose your exam date.";
     if (new Date(examDate).getTime() <= Date.now()) return "Exam date must be in the future.";
     return null;
@@ -517,6 +545,7 @@ function OnboardingPage() {
         hoursPerWeek,
         modules,
         confidenceSource,
+        ...(examType === "SQE1" && sqeAssessment ? { sqeAssessment } : {}),
       };
 
 
@@ -569,6 +598,9 @@ function OnboardingPage() {
             sessions: [],
           };
           await savePlanAndSync(stored);
+          if (examType === "SQE1" && sqeAssessment) {
+            await saveExamPreference(sqeAssessment).catch(() => false);
+          }
           clearOnboardingDraft();
           trackEvent("plan_preview_created", { ...eventBase, authed: true });
           trackEvent("onboarding_completed", {
@@ -664,6 +696,15 @@ function OnboardingPage() {
                     setPickerOpen={setExamPickerOpen}
                     examDate={examDate}
                     setExamDate={setExamDate}
+                    sqeAssessment={sqeAssessment}
+                    onSqeAssessmentChange={(value) => {
+                      setSqeAssessment(value);
+                      setError(null);
+                      trackEvent("sqe_assessment_selected", {
+                        ...eventBase,
+                        assessment: value,
+                      });
+                    }}
                   />
                   <div className="border-t border-border/60 pt-6">
                     <StepHours
@@ -838,6 +879,8 @@ function StepExamDate({
   setPickerOpen,
   examDate,
   setExamDate,
+  sqeAssessment,
+  onSqeAssessmentChange,
 }: {
   option: ExamOption;
   examType: ExamType;
@@ -846,16 +889,31 @@ function StepExamDate({
   setPickerOpen: (v: boolean) => void;
   examDate: string;
   setExamDate: (v: string) => void;
+  sqeAssessment: SqeAssessment | null;
+  onSqeAssessmentChange: (v: SqeAssessment) => void;
 }) {
   const minDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const isSqe1 = examType === "SQE1";
 
   return (
     <div className="space-y-6">
       <StepHeader
         kicker="Step 1 of 3"
-        title={option.dateHeading}
+        title={isSqe1 ? assessmentDateHeading(sqeAssessment) : option.dateHeading}
         sub="Tentra will work backwards from your exam date."
       />
+
+      {isSqe1 && (
+        <div className="space-y-2 rounded-2xl border border-border/60 bg-background/40 p-3.5">
+          <div className="text-[13.5px] font-semibold text-foreground">
+            {SQE_ASSESSMENT_QUESTION}
+          </div>
+          <p className="text-xs leading-[1.45] text-muted-foreground">
+            Tentra only schedules subjects from the assessment(s) you choose.
+          </p>
+          <SqeAssessmentPicker value={sqeAssessment} onChange={onSqeAssessmentChange} />
+        </div>
+      )}
 
       <div className="space-y-2">
         <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">

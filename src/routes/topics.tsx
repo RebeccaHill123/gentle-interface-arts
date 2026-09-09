@@ -37,6 +37,7 @@ import {
   type TopicFilter,
 } from "@/lib/topic-map";
 import { useEffect } from "react";
+import { useSqeScope } from "@/lib/use-sqe-scope";
 
 export const Route = createFileRoute("/topics")({
   beforeLoad: async () => {
@@ -479,10 +480,20 @@ function TopicsPage() {
     [stored],
   );
 
-  const map = useMemo(
+  const { papers: scopePapers } = useSqeScope();
+  const rawMap = useMemo(
     () => buildExamMap(activeExam, new Map(), subjectMinutes),
     [activeExam, subjectMinutes],
   );
+  // Only the FLK paper(s) the student is sitting appear on the map.
+  const map = useMemo(() => {
+    if (activeExam !== "SQE1" || scopePapers.length !== 1) return rawMap;
+    const paper = scopePapers[0];
+    // The map's components ARE the FLK papers, and each carries its own Ethics
+    // subject, so filtering by component is exact.
+    const components = rawMap.components.filter((c) => c.id === paper || c.name === paper);
+    return { ...rawMap, components: components.length > 0 ? components : rawMap.components };
+  }, [rawMap, activeExam, scopePapers]);
 
   const filtered = useMemo(() => {
     const perSubject = new Map<

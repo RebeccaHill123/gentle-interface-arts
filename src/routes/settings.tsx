@@ -10,6 +10,14 @@ import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/use-auth";
 import { clearOnboardingDraft, clearPlan, loadPlan } from "@/lib/plan-store";
+import { SqeAssessmentDialog } from "@/components/sqe-assessment-dialog";
+import { loadExamPreference } from "@/lib/exam-preference";
+import {
+  assessmentLabel,
+  planAssessment,
+  planIsSqe1,
+  type SqeAssessment,
+} from "@/lib/exam-scope";
 import { applyPlanSettings } from "@/lib/plan/store";
 import { useSubscription } from "@/hooks/useSubscription";
 import { createBillingPortalSession } from "@/lib/pro.functions";
@@ -48,13 +56,29 @@ function SettingsPage() {
   const [applying, setApplying] = useState(false);
   const [hoursPerWeek, setHoursPerWeek] = useState("");
   const [examDate, setExamDate] = useState("");
+  const [isSqe1, setIsSqe1] = useState(false);
+  const [assessment, setAssessment] = useState<SqeAssessment | null>(null);
+  const [assessmentOpen, setAssessmentOpen] = useState(false);
 
   useEffect(() => {
     const stored = loadPlan();
     if (!stored) return;
     setHoursPerWeek(String(stored.input.hoursPerWeek ?? ""));
     setExamDate(stored.input.examDate ?? "");
+    setIsSqe1(planIsSqe1(stored));
+    setAssessment(planAssessment(stored));
   }, []);
+
+  useEffect(() => {
+    if (!isSqe1) return;
+    let active = true;
+    void loadExamPreference().then((pref) => {
+      if (active && pref.assessment) setAssessment(pref.assessment);
+    });
+    return () => {
+      active = false;
+    };
+  }, [isSqe1]);
 
   const handleApplyPlanSettings = async () => {
     const hours = Number(hoursPerWeek);
@@ -299,6 +323,43 @@ function SettingsPage() {
             </div>
           )}
         </Card>
+
+        {isSqe1 && (
+          <Card title="Exam preferences">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-foreground">
+                    SQE1 assessment
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {assessment
+                      ? `You're preparing for ${assessmentLabel(assessment)}. Only these subjects appear in your plan, dashboard, analytics and coaching.`
+                      : "Choose which part of SQE1 you're preparing for."}
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setAssessmentOpen(true)}
+                  className="rounded-full"
+                >
+                  {assessment ? "Change" : "Choose"}
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        <SqeAssessmentDialog
+          open={assessmentOpen}
+          onOpenChange={setAssessmentOpen}
+          current={assessment}
+          onApplied={(value) => {
+            setAssessment(value);
+            const stored = loadPlan();
+            if (stored) setExamDate(stored.input.examDate ?? examDate);
+          }}
+        />
 
         <Card title="Plan settings">
           <div className="space-y-4">
