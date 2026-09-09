@@ -275,3 +275,96 @@ export const getSubscribePriceDisplay = createServerFn({ method: "POST" })
       return { error: getStripeErrorMessage(error) };
     }
   });
+
+
+// Re-issue first-access for a paid checkout WITHOUT depending on the
+// email/OTP signup path. `signInWithOtp` fails with 422 "Signups not allowed
+// for otp" whenever the auth user does not exist yet (or signups are closed),
+// which used to leave a paying customer with no way in. Here the server:
+//   1. proves the token was actually paid,
+//   2. ensures the auth user exists (admin API bypasses signup settings),
+//   3. mints a fresh magic-link hash the browser can redeem immediately.
+export type CheckoutAccessLinkResult =
+  | { ok: true; hash: string; email: string }
+  | { ok: false; error: string };
+
+export const issueCheckoutAccessLink = createServerFn({ method: "POST" })
+  .inputValidator((data: { token: string; redirectTo?: string }) => {
+    if (!data?.token || typeof data.token !== "string") {
+      throw new Error("Missing token");
+    }
+    return data;
+  })
+  .handler(async ({ data }): Promise<CheckoutAccessLinkResult> => {
+    const { supabaseAdmin } = await import(
+      "@/integrations/supabase/client.server"
+    );
+    const { data: row, error } = await supabaseAdmin
+      .from("pending_plans")
+      .select("id, status, email, magic_link_email, claimed_user_id")
+      .eq("token", data.token)
+      .maybeSingle();
+    if (error) return { ok: false, error: "Could not read your checkout." };
+    if (!row) return { ok: false, error: "Checkout not found." };
+    if (row.status !== "paid" && row.status !== "claimed") {
+      return { ok: false, error: "This checkout is not paid yet." };
+    }
+    const email = (row.magic_link_email ?? row.email ?? "").trim();
+    if (!email) return { ok: false, error: "No email on this checkout." };
+
+    // Ensure the auth user exists. Admin creation is not subject to the
+    // project's signup settings, so this works even with signups disabled.
+    let userId = row.claimed_user_id ?? null;
+    if (!userId) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id")
+        .eq("email", email)
+        .maybeSingle();
+      userId = profile?.user_id ?? null;
+    }
+    if (!userId) {
+      const { data: created, error: createErr } =
+        await supabaseAdmin.auth.admin.createUser({
+          email,
+          email_confirm: true,
+          user_metadata: { source: "checkout", password_set: false },
+        });
+      if (createErr || !created?.user) {
+        const { data: retry } = await supabaseAdmin
+          .from("profiles")
+          .select("user_id")
+          .eq("email", email)
+          .maybeSingle();
+        if (!retry?.user_id) {
+          return { ok: false, error: "Could not prepare your account." };
+        }
+        userId = retry.user_id;
+      } else {
+        userId = created.user.id;
+      }
+    }
+
+    const { data: link, error: linkErr } =
+      await supabaseAdmin.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        ...(data.redirectTo
+          ? { options: { redirectTo: data.redirectTo } }
+          : {}),
+      });
+    const hash =
+      (link?.properties as { hashed_token?: string } | undefined)
+        ?.hashed_token ?? null;
+    if (linkErr || !hash) {
+      return { ok: false, error: "Could not create a sign-in link." };
+    }
+
+    // Persist the fresh hash so a reload of the return page can reuse it.
+    await supabaseAdmin
+      .from("pending_plans")
+      .update({ magic_link_email: email, magic_link_hash: hash })
+      .eq("id", row.id);
+
+    return { ok: true, hash, email };
+  });
