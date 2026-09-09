@@ -269,10 +269,19 @@ function CheckoutReturnPage() {
               <Button
                 variant="outline"
                 onClick={resendMagicLink}
+                disabled={resending}
                 className="rounded-full"
               >
-                Resend sign-in link
+                {resending ? "Sending…" : "Resend sign-in link"}
               </Button>
+              {resendNote && (
+                <p
+                  className={`text-[13px] ${resendNote.kind === "error" ? "text-destructive" : "text-muted-foreground"}`}
+                  role="status"
+                >
+                  {resendNote.text}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => navigate({ to: "/auth", search: { mode: "signin", from: undefined, next: "/dashboard" } })}
