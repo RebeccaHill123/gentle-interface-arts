@@ -10,6 +10,14 @@ import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { signOut } from "@/lib/use-auth";
 import { clearOnboardingDraft, clearPlan, loadPlan } from "@/lib/plan-store";
+import { SqeAssessmentDialog } from "@/components/sqe-assessment-dialog";
+import { loadExamPreference } from "@/lib/exam-preference";
+import {
+  assessmentLabel,
+  planAssessment,
+  planIsSqe1,
+  type SqeAssessment,
+} from "@/lib/exam-scope";
 import { applyPlanSettings } from "@/lib/plan/store";
 import { useSubscription } from "@/hooks/useSubscription";
 import { createBillingPortalSession } from "@/lib/pro.functions";
