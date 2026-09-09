@@ -58,7 +58,16 @@ type Module = { name?: string; confidence?: number };
 
 function buildInsights(plan: Record<string, unknown> | null | undefined, profileName: string) {
   if (!plan) return "";
-  const input = (plan as { input?: { hoursPerWeek?: number; examDate?: string; examType?: string; modules?: Module[] } }).input;
+  const input = (plan as {
+    input?: {
+      hoursPerWeek?: number;
+      examDate?: string;
+      examType?: string;
+      examPath?: string;
+      sqeAssessment?: string;
+      modules?: Module[];
+    };
+  }).input;
   const sessions: Session[] = ((plan as { sessions?: Session[] }).sessions ?? []).slice(-200);
   const mocks: Mock[] = ((plan as { mocks?: Mock[] }).mocks ?? []).slice(-30);
 
@@ -132,6 +141,15 @@ function buildInsights(plan: Record<string, unknown> | null | undefined, profile
     `\n\n=== USER PERFORMANCE SNAPSHOT (use this to personalise; do not dump it back verbatim) ===`,
     `Name: ${profileName}`,
     `Exam: ${input?.examType ?? "?"}${daysToExam !== null ? ` in ${daysToExam} days` : ""}`,
+    ...(input?.sqeAssessment === "FLK1" || input?.examPath === "FLK1"
+      ? [
+          `SQE1 scope: FLK1 ONLY. Never prioritise, mention or recommend FLK2 subjects (Land Law, Property Practice, Trusts, Wills & Estates, Criminal Law/Practice, Solicitors Accounts).`,
+        ]
+      : input?.sqeAssessment === "FLK2" || input?.examPath === "FLK2"
+        ? [
+            `SQE1 scope: FLK2 ONLY. Never prioritise, mention or recommend FLK1 subjects (Contract, Tort, Business Law & Practice, Dispute Resolution, Constitutional & Administrative Law, Legal System, EU law).`,
+          ]
+        : []),
     `Weekly hours: ${weeklyHours}h done / ${targetHours ?? "?"}h target (rolling 7d)`,
     `Weakest by confidence: ${weakest.join(", ") || "n/a"}`,
     `Recency gaps (days since last touched): ${recencyGaps.map((r) => `${r.module} ${r.days}d`).join(", ") || "n/a"}`,
