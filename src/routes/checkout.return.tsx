@@ -70,6 +70,10 @@ function CheckoutReturnPage() {
     message: "Confirming your payment…",
   });
   const startedAt = useRef(Date.now());
+  const [resending, setResending] = useState(false);
+  const [resendNote, setResendNote] = useState<
+    { kind: "ok" | "error"; text: string } | null
+  >(null);
 
   useEffect(() => {
     if (!token) {
