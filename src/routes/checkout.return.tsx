@@ -189,15 +189,38 @@ function CheckoutReturnPage() {
 
   const resendMagicLink = async () => {
     if (state.kind !== "email-fallback" || !state.email) return;
-    await supabase.auth.signInWithOtp({
-      email: state.email,
-      options: {
-        emailRedirectTo:
-          typeof window !== "undefined"
-            ? `${window.location.origin}/dashboard`
-            : undefined,
-      },
-    });
+    if (resending) return;
+    setResending(true);
+    setResendNote(null);
+    try {
+      const { error: otpErr } = await supabase.auth.signInWithOtp({
+        email: state.email,
+        options: {
+          emailRedirectTo: getAuthRedirectURL("/dashboard"),
+          shouldCreateUser: false,
+        },
+      });
+      if (otpErr) {
+        console.error("[checkout-return] resend failed", otpErr);
+        setResendNote({
+          kind: "error",
+          text: "We couldn't send that link. Your payment is safe — please contact support with your receipt and we'll get you in.",
+        });
+        return;
+      }
+      setResendNote({
+        kind: "ok",
+        text: "Sent. Check your inbox (and spam) for the new sign-in link.",
+      });
+    } catch (err) {
+      console.error("[checkout-return] resend threw", err);
+      setResendNote({
+        kind: "error",
+        text: "We couldn't send that link. Please contact support with your receipt.",
+      });
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
