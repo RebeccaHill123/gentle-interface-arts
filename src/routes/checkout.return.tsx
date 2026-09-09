@@ -11,6 +11,7 @@ import { Loader2, CheckCircle2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { pollPendingClaim } from "@/lib/pending-plans.functions";
 import { decideReturnStep } from "@/lib/provisioning";
+import { getAuthRedirectURL } from "@/lib/auth-redirect";
 
 import { pullPlanFromCloud } from "@/lib/plan-store";
 import { trackEvent } from "@/lib/analytics";
@@ -69,6 +70,10 @@ function CheckoutReturnPage() {
     message: "Confirming your payment…",
   });
   const startedAt = useRef(Date.now());
+  const [resending, setResending] = useState(false);
+  const [resendNote, setResendNote] = useState<
+    { kind: "ok" | "error"; text: string } | null
+  >(null);
 
   useEffect(() => {
     if (!token) {
@@ -189,15 +194,38 @@ function CheckoutReturnPage() {
 
   const resendMagicLink = async () => {
     if (state.kind !== "email-fallback" || !state.email) return;
-    await supabase.auth.signInWithOtp({
-      email: state.email,
-      options: {
-        emailRedirectTo:
-          typeof window !== "undefined"
-            ? `${window.location.origin}/dashboard`
-            : undefined,
-      },
-    });
+    if (resending) return;
+    setResending(true);
+    setResendNote(null);
+    try {
+      const { error: otpErr } = await supabase.auth.signInWithOtp({
+        email: state.email,
+        options: {
+          emailRedirectTo: getAuthRedirectURL("/dashboard"),
+          shouldCreateUser: false,
+        },
+      });
+      if (otpErr) {
+        console.error("[checkout-return] resend failed", otpErr);
+        setResendNote({
+          kind: "error",
+          text: "We couldn't send that link. Your payment is safe — please contact support with your receipt and we'll get you in.",
+        });
+        return;
+      }
+      setResendNote({
+        kind: "ok",
+        text: "Sent. Check your inbox (and spam) for the new sign-in link.",
+      });
+    } catch (err) {
+      console.error("[checkout-return] resend threw", err);
+      setResendNote({
+        kind: "error",
+        text: "We couldn't send that link. Please contact support with your receipt.",
+      });
+    } finally {
+      setResending(false);
+    }
   };
 
   return (
@@ -241,10 +269,19 @@ function CheckoutReturnPage() {
               <Button
                 variant="outline"
                 onClick={resendMagicLink}
+                disabled={resending}
                 className="rounded-full"
               >
-                Resend sign-in link
+                {resending ? "Sending…" : "Resend sign-in link"}
               </Button>
+              {resendNote && (
+                <p
+                  className={`text-[13px] ${resendNote.kind === "error" ? "text-destructive" : "text-muted-foreground"}`}
+                  role="status"
+                >
+                  {resendNote.text}
+                </p>
+              )}
               <button
                 type="button"
                 onClick={() => navigate({ to: "/auth", search: { mode: "signin", from: undefined, next: "/dashboard" } })}
