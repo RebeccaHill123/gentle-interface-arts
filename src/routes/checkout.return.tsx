@@ -11,6 +11,7 @@ import { Loader2, CheckCircle2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { pollPendingClaim } from "@/lib/pending-plans.functions";
 import { decideReturnStep } from "@/lib/provisioning";
+import { getAuthRedirectURL } from "@/lib/auth-redirect";
 
 import { pullPlanFromCloud } from "@/lib/plan-store";
 import { trackEvent } from "@/lib/analytics";
