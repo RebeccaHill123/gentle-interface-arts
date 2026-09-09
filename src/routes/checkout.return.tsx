@@ -9,7 +9,10 @@ import { BackgroundBlobs } from "@/components/background-blobs";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle2, Mail } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { pollPendingClaim } from "@/lib/pending-plans.functions";
+import {
+  pollPendingClaim,
+  issueCheckoutAccessLink,
+} from "@/lib/pending-plans.functions";
 import { decideReturnStep } from "@/lib/provisioning";
 import { getAuthRedirectURL } from "@/lib/auth-redirect";
 
@@ -193,29 +196,57 @@ function CheckoutReturnPage() {
   }, [token, navigate]);
 
   const resendMagicLink = async () => {
-    if (state.kind !== "email-fallback" || !state.email) return;
+    if (state.kind !== "email-fallback" || !token) return;
     if (resending) return;
     setResending(true);
     setResendNote(null);
     try {
-      const { error: otpErr } = await supabase.auth.signInWithOtp({
-        email: state.email,
-        options: {
-          emailRedirectTo: getAuthRedirectURL("/dashboard"),
-          shouldCreateUser: false,
-        },
+      // Server-issued link: works even when the auth user does not exist yet
+      // and when email signups are closed (the OTP path 422s in both cases).
+      const issued = await issueCheckoutAccessLink({
+        data: { token, redirectTo: getAuthRedirectURL("/dashboard") },
       });
-      if (otpErr) {
-        console.error("[checkout-return] resend failed", otpErr);
-        setResendNote({
-          kind: "error",
-          text: "We couldn't send that link. Your payment is safe — please contact support with your receipt and we'll get you in.",
+      if (issued.ok) {
+        const { error: otpError } = await supabase.auth.verifyOtp({
+          type: "magiclink",
+          token_hash: issued.hash,
         });
-        return;
+        if (!otpError) {
+          setState({ kind: "signed-in" });
+          trackOnce(token, "checkout_completed");
+          trackEvent("account_access_completed", { path: "issued-link" });
+          await pullPlanFromCloud().catch(() => null);
+          trackEvent("dashboard_reached", {});
+          navigate({ to: "/dashboard", replace: true });
+          return;
+        }
+        console.error("[checkout-return] issued link verify failed", otpError);
+      } else {
+        console.error("[checkout-return] issue failed", issued.error);
+      }
+
+      // Last resort: email a link to an account we know now exists.
+      const email = issued.ok ? issued.email : state.email;
+      if (email) {
+        const { error: otpErr } = await supabase.auth.signInWithOtp({
+          email,
+          options: {
+            emailRedirectTo: getAuthRedirectURL("/dashboard"),
+            shouldCreateUser: false,
+          },
+        });
+        if (!otpErr) {
+          setResendNote({
+            kind: "ok",
+            text: "Sent. Check your inbox (and spam) for the new sign-in link.",
+          });
+          return;
+        }
+        console.error("[checkout-return] resend failed", otpErr);
       }
       setResendNote({
-        kind: "ok",
-        text: "Sent. Check your inbox (and spam) for the new sign-in link.",
+        kind: "error",
+        text: "We couldn't send that link. Your payment is safe — please contact support with your receipt and we'll get you in.",
       });
     } catch (err) {
       console.error("[checkout-return] resend threw", err);
@@ -227,6 +258,7 @@ function CheckoutReturnPage() {
       setResending(false);
     }
   };
+
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-background">
