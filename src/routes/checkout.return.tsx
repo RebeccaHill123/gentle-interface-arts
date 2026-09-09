@@ -164,6 +164,32 @@ function CheckoutReturnPage() {
           console.error("[checkout-return] verifyOtp failed", otpError);
         }
 
+        // Stored hash missing, used or expired: mint a fresh one server-side
+        // (this also creates the auth user if provisioning left it missing)
+        // rather than falling straight to an email the OTP path may refuse.
+        if (step === "magic-link") {
+          const issued = await issueCheckoutAccessLink({
+            data: { token: token!, redirectTo: getAuthRedirectURL("/dashboard") },
+          }).catch(() => null);
+          if (issued?.ok) {
+            const { error: freshErr } = await supabase.auth.verifyOtp({
+              type: "magiclink",
+              token_hash: issued.hash,
+            });
+            if (!freshErr) {
+              setState({ kind: "signed-in" });
+              trackOnce(token!, "checkout_completed");
+              trackEvent("account_access_completed", { path: "issued-link" });
+              await pullPlanFromCloud().catch(() => null);
+              trackEvent("dashboard_reached", {});
+              navigate({ to: "/dashboard", replace: true });
+              return;
+            }
+            console.error("[checkout-return] fresh link verify failed", freshErr);
+          }
+        }
+
+
         setState({
           kind: "email-fallback",
           email: result.email || "",
