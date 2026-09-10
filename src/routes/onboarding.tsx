@@ -61,6 +61,11 @@ import {
 } from "@/lib/confidence";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
+import {
+  parseAcquisitionSearch,
+  type AcquisitionExamParam,
+  type AcquisitionSearch,
+} from "@/lib/acquisition";
 
 /**
  * First-run onboarding is deliberately two screens: exam + date, then weekly
@@ -69,59 +74,18 @@ import { trackEvent } from "@/lib/analytics";
  * Settings → Study plan. See DEFAULTS below.
  */
 
-type ExamParam = "sqe1" | "sqe2" | "ube" | "mpre";
-
-const EXAM_PARAMS: ExamParam[] = ["sqe1", "sqe2", "ube", "mpre"];
-
-const EXAM_PARAM_TO_TYPE: Record<ExamParam, ExamType> = {
+const EXAM_PARAM_TO_TYPE: Record<AcquisitionExamParam, ExamType> = {
   sqe1: "SQE1",
   sqe2: "SQE2",
   ube: "UBE",
   mpre: "MPRE",
 };
 
-interface OnboardingSearch {
-  exam?: ExamParam;
-  src?: string;
-  placement?: string;
-  /** Optional YYYY-MM-DD carried back from the plan reveal ("change my answers"). */
-  date?: string;
-  /** Optional weekly hours carried back from the plan reveal. */
-  hours?: number;
-}
-
-
-function toStringOrUndefined(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value.slice(0, 40) : undefined;
-}
-
-/** Accept only a plain future-safe YYYY-MM-DD string. */
-function toDateOrUndefined(value: unknown): string | undefined {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
-  return Number.isNaN(new Date(`${value}T00:00:00`).getTime()) ? undefined : value;
-}
-
-function toHoursOrUndefined(value: unknown): number | undefined {
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return undefined;
-  const rounded = Math.round(n);
-  return rounded >= 1 && rounded <= 60 ? rounded : undefined;
-}
-
 export const Route = createFileRoute("/onboarding")({
   // No auth gate — onboarding runs for anonymous visitors so they can
   // experience the personalised plan BEFORE being asked to sign up.
-  validateSearch: (search: Record<string, unknown>): OnboardingSearch => {
-    const raw = typeof search.exam === "string" ? search.exam.toLowerCase() : "";
-    const exam = (EXAM_PARAMS as string[]).includes(raw) ? (raw as ExamParam) : "sqe1";
-    return {
-      exam,
-      src: toStringOrUndefined(search.src ?? search.utm_source),
-      placement: toStringOrUndefined(search.placement),
-      date: toDateOrUndefined(search.date),
-      hours: toHoursOrUndefined(search.hours),
-    };
-  },
+  validateSearch: (search: Record<string, unknown>): AcquisitionSearch =>
+    parseAcquisitionSearch(search),
   component: OnboardingPage,
   head: () => ({
     meta: [
@@ -129,8 +93,16 @@ export const Route = createFileRoute("/onboarding")({
       {
         name: "description",
         content:
-          "Three quick steps and Tentra builds your personalised, adaptive SQE study plan around your exam date.",
+          "Three quick steps to a personalised, adaptive study plan for SQE or the U.S. Bar (UBE), built around your exam date and available time.",
       },
+      { property: "og:title", content: "Build your personalised law exam plan · Tentra" },
+      {
+        property: "og:description",
+        content:
+          "Create an adaptive SQE or U.S. Bar (UBE) study plan around your exam date, confidence and available time.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
 });
@@ -181,11 +153,11 @@ const EXAM_OPTIONS: ExamOption[] = [
   {
     value: "UBE",
     path: "UBE_FULL",
-    title: "NY Bar",
-    blurb: "Uniform Bar Exam (MBE + MEE + MPT) — qualifies for NY admission.",
+    title: "U.S. Bar (UBE)",
+    blurb: "Uniform Bar Examination — MBE, MEE & MPT.",
     icon: Landmark,
-    ctaLabel: "Build my NY Bar plan",
-    dateHeading: "When are you sitting the NY Bar?",
+    ctaLabel: "Build my UBE plan",
+    dateHeading: "When are you sitting the UBE?",
   },
   {
     value: "MPRE",
@@ -239,9 +211,11 @@ function OnboardingPage() {
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [examPickerOpen, setExamPickerOpen] = useState(false);
+  const hasInitialExam = Boolean(draft?.examType || search.exam);
+  const [examPickerOpen, setExamPickerOpen] = useState(!hasInitialExam);
+  const [examSelected, setExamSelected] = useState(hasInitialExam);
 
-  const acquisitionType = EXAM_PARAM_TO_TYPE[search.exam ?? "sqe1"];
+  const acquisitionType = search.exam ? EXAM_PARAM_TO_TYPE[search.exam] : "SQE1";
 
   // Exam + path. Draft wins on resume; otherwise the acquisition route decides.
   const [examType, setExamType] = useState<ExamType>(draft?.examType ?? acquisitionType);
@@ -422,6 +396,7 @@ function OnboardingPage() {
   }, [hoursPerWeek]);
 
   const validateStep1 = (): string | null => {
+    if (!examSelected) return "Please choose the exam you're preparing for.";
     if (examType === "SQE1" && !sqeAssessment) {
       return "Please choose which part of SQE1 you're preparing for.";
     }
@@ -685,6 +660,7 @@ function OnboardingPage() {
                     examType={examType}
                     onExamChange={(value) => {
                       setExamType(value);
+                      setExamSelected(true);
                       setExamPickerOpen(false);
                       trackEvent("onboarding_exam_switched", {
                         ...eventBase,
@@ -694,6 +670,7 @@ function OnboardingPage() {
                     }}
                     pickerOpen={examPickerOpen}
                     setPickerOpen={setExamPickerOpen}
+                    examSelected={examSelected}
                     examDate={examDate}
                     setExamDate={setExamDate}
                     sqeAssessment={sqeAssessment}
@@ -706,13 +683,13 @@ function OnboardingPage() {
                       });
                     }}
                   />
-                  <div className="border-t border-border/60 pt-6">
+                  {examSelected && <div className="border-t border-border/60 pt-6">
                     <StepHours
                       hoursPerWeek={hoursPerWeek}
                       setHoursPerWeek={setHoursPerWeek}
                       sessionShape={sessionShape}
                     />
-                  </div>
+                  </div>}
                 </div>
               ) : step === 2 ? (
                 <StepPreparation
@@ -877,6 +854,7 @@ function StepExamDate({
   onExamChange,
   pickerOpen,
   setPickerOpen,
+  examSelected,
   examDate,
   setExamDate,
   sqeAssessment,
@@ -887,6 +865,7 @@ function StepExamDate({
   onExamChange: (v: ExamType) => void;
   pickerOpen: boolean;
   setPickerOpen: (v: boolean) => void;
+  examSelected: boolean;
   examDate: string;
   setExamDate: (v: string) => void;
   sqeAssessment: SqeAssessment | null;
@@ -899,11 +878,21 @@ function StepExamDate({
     <div className="space-y-6">
       <StepHeader
         kicker="Step 1 of 3"
-        title={isSqe1 ? assessmentDateHeading(sqeAssessment) : option.dateHeading}
-        sub="Tentra will work backwards from your exam date."
+        title={
+          examSelected
+            ? isSqe1
+              ? assessmentDateHeading(sqeAssessment)
+              : option.dateHeading
+            : "Which exam are you preparing for?"
+        }
+        sub={
+          examSelected
+            ? "Tentra will work backwards from your exam date."
+            : "Choose your pathway so Tentra can build the right study plan."
+        }
       />
 
-      {isSqe1 && (
+      {examSelected && isSqe1 && (
         <div className="space-y-2 rounded-2xl border border-border/60 bg-background/40 p-3.5">
           <div className="text-[13.5px] font-semibold text-foreground">
             {SQE_ASSESSMENT_QUESTION}
@@ -915,7 +904,7 @@ function StepExamDate({
         </div>
       )}
 
-      <div className="space-y-2">
+      {examSelected && <div className="space-y-2">
         <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
           Quick options
         </div>
@@ -948,9 +937,9 @@ function StepExamDate({
             );
           })}
         </div>
-      </div>
+      </div>}
 
-      <div className="space-y-1.5">
+      {examSelected && <div className="space-y-1.5">
         <Label htmlFor="examDate" className="flex items-center gap-1.5">
           <Calendar className="h-3.5 w-3.5" /> Or pick your exact exam date
         </Label>
@@ -966,10 +955,10 @@ function StepExamDate({
         <p className="text-xs text-muted-foreground">
           Not fixed yet? Use your best guess — you can change it any time.
         </p>
-      </div>
+      </div>}
 
       <div className="border-t border-border/60 pt-4">
-        {!pickerOpen ? (
+        {examSelected && !pickerOpen ? (
           <button
             type="button"
             onClick={() => setPickerOpen(true)}
@@ -989,7 +978,7 @@ function StepExamDate({
             <div className="grid gap-2" role="radiogroup" aria-labelledby="exam-picker-label">
               {EXAM_OPTIONS.map((opt) => {
                 const Icon = opt.icon;
-                const active = examType === opt.value;
+                const active = examSelected && examType === opt.value;
                 return (
                   <button
                     key={opt.value}

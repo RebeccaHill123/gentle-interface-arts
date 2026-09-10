@@ -26,17 +26,17 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
     meta: [
-      { title: "Tentra — Personalised SQE revision plans that adapt" },
+      { title: "Tentra — Personalised SQE & U.S. Bar study plans" },
       {
         name: "description",
         content:
-          "Enter your SQE exam date and weekly study hours and Tentra builds a personalised SQE1 revision plan across FLK1 and FLK2 — adapting as you progress.",
+          "Personalised study plans for SQE1, SQE2, the U.S. Bar (UBE) and MPRE, built around your exam date, available time and progress.",
       },
-      { property: "og:title", content: "Tentra — Personalised SQE revision plans that adapt" },
+      { property: "og:title", content: "Your law exam study plan, built around you" },
       {
         property: "og:description",
         content:
-          "Tell Tentra your SQE exam date and available hours. Get a personalised FLK1 and FLK2 revision plan that recalibrates as you study.",
+          "Plan, track and adapt with AI for SQE1, SQE2, the U.S. Bar (UBE) and MPRE.",
       },
       { property: "og:url", content: "https://tentraapp.com/" },
       { property: "og:type", content: "website" },
@@ -54,7 +54,7 @@ export const Route = createFileRoute("/")({
           operatingSystem: "Web",
           url: "https://tentraapp.com/",
           description:
-            "Personalised, adaptive SQE1 revision planning across FLK1 and FLK2, with revision tracking, practice questions, analytics and AI study support. Also supports the New York Bar (UBE) and MPRE.",
+            "Personalised, adaptive study planning for SQE1, SQE2, the U.S. Bar (UBE) and MPRE, with revision tracking, practice questions, analytics and AI study support.",
 
           offers: { "@type": "Offer", price: "9.99", priceCurrency: "GBP" },
         }),
@@ -136,7 +136,7 @@ function LandingPage() {
   }, []);
   // Homepage view + how-it-works view, for funnel instrumentation.
   useEffect(() => {
-    trackEvent("homepage_viewed", { surface: "landing", primaryMarket: "SQE" });
+    trackEvent("homepage_viewed", { surface: "landing", primaryMarket: "SQE_UBE" });
   }, []);
   useEffect(() => {
     const el = document.getElementById("how");
@@ -186,7 +186,7 @@ function LandingPage() {
                 </Link>
                 <PremiumCta
                   to="/onboarding"
-                  search={{ exam: "sqe1", src: "landing", placement: "header" }}
+                  search={{ src: "landing", placement: "header" }}
                   className="px-4 md:px-5"
                 >
                   Get started
@@ -197,23 +197,23 @@ function LandingPage() {
         </header>
 
         <main>
-          {/* HERO — SQE-first, mobile first */}
+          {/* HERO — dual-market, mobile first */}
           <section className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:px-8 md:pt-12 md:pb-20">
             <div className="grid items-center gap-8 md:grid-cols-[1.05fr_1fr] md:gap-16">
               <div className="text-left">
                 <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-foreground/80 backdrop-blur">
                   <Sparkles className="h-3 w-3 text-pink" />
-                  Built for SQE1 · FLK1 &amp; FLK2
+                  SQE 🇬🇧 + U.S. Bar (UBE) 🇺🇸
                 </div>
 
                 <h1 className="mt-4 text-[2.35rem] font-light leading-[1.02] tracking-[-0.03em] text-foreground sm:text-[2.6rem] md:text-[2.85rem] lg:text-[3.15rem]">
-                  The smarter way to plan your{" "}
-                  <span className="text-gradient-pink-violet font-light">SQE revision</span>.
+                  Your law exam study plan,{" "}
+                  <span className="text-gradient-pink-violet font-light">built around you</span>.
                 </h1>
 
                 <p className="mt-5 max-w-[32rem] text-[15.5px] leading-[1.55] text-muted-foreground md:text-[16.5px]">
-                  Tell Tentra your exam date and how many hours you can study each week.
-                  We&apos;ll build your personalised SQE revision plan — and adapt it as you progress.
+                  Tentra builds a personalised plan around your exam date, weekly availability and
+                  progress — then recalibrates as you study. Plan → Track → Adapt with AI.
                 </p>
 
                 <div ref={heroCtaRef} className="mt-7 flex flex-col items-stretch gap-3 md:flex-row md:items-center">
@@ -225,14 +225,14 @@ function LandingPage() {
                   ) : (
                     <PremiumCta
                       to="/onboarding"
-                      search={{ exam: "sqe1", src: "landing" }}
+                      search={{ src: "landing" }}
                       size="lg"
                       className="w-full md:w-auto"
                       onClick={() =>
                         trackEvent("build_plan_cta_clicked", { surface: "landing", placement: "hero" })
                       }
                     >
-                      Build my SQE plan
+                      Build my personalised plan
                       <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </PremiumCta>
                   )}
@@ -245,7 +245,7 @@ function LandingPage() {
                 </div>
 
                 <p className="mt-3 text-[13px] leading-snug text-muted-foreground/80">
-                  No spreadsheets. Your first SQE plan takes under 2 minutes.
+                  Choose your exam pathway. Your first plan takes under 2 minutes.
                 </p>
               </div>
 
@@ -264,11 +264,11 @@ function LandingPage() {
                 Inside Tentra
               </div>
               <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
-                Your whole SQE revision,{" "}
+                Your whole study system,{" "}
                 <span className="text-gradient-pink-violet font-light">in one place</span>.
               </h2>
               <p className="mt-4 text-[14.5px] leading-[1.55] text-muted-foreground md:text-[16px]">
-                FLK1 and FLK2 topics, weekly sessions, progress and analytics — tap through the product.
+                Your plan, focused sessions, AI support, practice and analytics — tap through the product.
               </p>
             </div>
 
@@ -282,8 +282,8 @@ function LandingPage() {
                 How Tentra works
               </div>
               <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
-                Four steps to your{" "}
-                <span className="text-gradient-pink-violet font-light">SQE plan</span>.
+                Four steps to a plan{" "}
+                <span className="text-gradient-pink-violet font-light">built around you</span>.
               </h2>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4 md:gap-5">
@@ -291,7 +291,7 @@ function LandingPage() {
                 num="01"
                 total="04"
                 icon={<Calendar className="h-4 w-4" />}
-                title="Add your SQE exam date"
+                title="Add your exam date"
                 body="Tentra works backwards from your exam."
               />
               <StepCard
@@ -306,7 +306,7 @@ function LandingPage() {
                 total="04"
                 icon={<LayoutDashboard className="h-4 w-4" />}
                 title="Get your personalised plan"
-                body="Tentra distributes your revision across the SQE syllabus."
+                body="Tentra distributes your time across the syllabus for your chosen pathway."
               />
               <StepCard
                 num="04"
@@ -317,7 +317,7 @@ function LandingPage() {
               />
             </div>
             <InlineCta
-              label="Build my SQE plan"
+              label="Build my personalised plan"
               placement="how_it_works"
               isAuthenticated={isAuthenticated}
               ctaTo={ctaTo}
@@ -333,7 +333,7 @@ function LandingPage() {
                   The problem
                 </div>
                 <h2 className="mt-4 text-[1.6rem] font-light leading-[1.12] tracking-[-0.025em] text-foreground md:text-[2.25rem]">
-                  Your SQE revision plan shouldn&apos;t become useless the moment{" "}
+                  Your law exam study plan shouldn&apos;t become useless the moment{" "}
                   <span className="text-gradient-pink-violet font-light">life gets in the way</span>.
                 </h2>
                 <p className="mt-4 text-[14px] leading-[1.6] text-muted-foreground md:text-[15.5px]">
@@ -347,7 +347,7 @@ function LandingPage() {
                   "One topic takes longer than expected",
                   "You have less study time one week",
                   "You're stronger or weaker in certain areas",
-                  "Your SQE exam date gets closer",
+                  "Your exam date gets closer",
                 ].map((x) => (
                   <div
                     key={x}
@@ -367,14 +367,14 @@ function LandingPage() {
             </div>
           </section>
 
-          {/* SQE FEATURE BLOCKS */}
+          {/* DUAL-MARKET FEATURE BLOCKS */}
           <section className="mx-auto max-w-6xl px-4 pb-14 md:px-8 md:pb-24">
             <div className="mx-auto mb-8 max-w-2xl text-center md:mb-12">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
-                Built for SQE1
+                Built for your pathway
               </div>
               <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
-                Everything your SQE revision{" "}
+                Everything your law exam preparation{" "}
                 <span className="text-gradient-pink-violet font-light">actually needs</span>.
               </h2>
             </div>
@@ -382,7 +382,7 @@ function LandingPage() {
               <SqeFeatureCard
                 icon={<Calendar className="h-4 w-4" />}
                 title="Personalised study plans"
-                body="Built around your SQE exam date, available time and the FLK1 and FLK2 syllabus."
+                body="Built around your exam date, available time and the syllabus for your chosen pathway."
               />
               <SqeFeatureCard
                 icon={<Target className="h-4 w-4" />}
@@ -392,22 +392,22 @@ function LandingPage() {
               <SqeFeatureCard
                 icon={<Timer className="h-4 w-4" />}
                 title="Revision tracking"
-                body="See exactly how much time you've spent across FLK1 and FLK2."
+                body="See exactly how much time you've spent across the subjects in your pathway."
               />
               <SqeFeatureCard
                 icon={<BarChart3 className="h-4 w-4" />}
                 title="Progress & analytics"
-                body="Understand which SQE subjects are getting enough attention and where gaps remain."
+                body="Understand which subjects are getting enough attention and where gaps remain."
               />
               <SqeFeatureCard
                 icon={<MessageSquareText className="h-4 w-4" />}
                 title="AI study support"
-                body="Use Tentra's AI coach and tutor to guide and explain your SQE revision."
+                body="Use Tentra's AI coach and tutor to guide and explain your revision."
               />
               <SqeFeatureCard
                 icon={<ClipboardCheck className="h-4 w-4" />}
                 title="Practice questions"
-                body="Topic-based SQE practice questions and mini tests today."
+                body="Topic-based practice questions and mini tests for your selected exam."
                 note="Full timed mocks coming soon"
               />
             </div>
@@ -495,7 +495,7 @@ function LandingPage() {
                   <div className="mt-8 flex flex-col items-center gap-3">
                     <PremiumCta
                       to="/onboarding"
-                      search={{ exam: "sqe1", src: "landing" }}
+                      search={{ src: "landing" }}
                       size="lg"
                       className="w-full"
                       onClick={() => trackEvent("founding_cta_clicked", { surface: "landing" })}
@@ -551,29 +551,37 @@ function LandingPage() {
             </div>
           </section>
 
-          {/* NEW YORK BAR — secondary route */}
+          {/* SUPPORTED EXAM PATHWAYS */}
           <section className="mx-auto max-w-4xl px-4 pb-16 md:px-8 md:pb-24">
-            <div className="flex flex-col items-start gap-5 rounded-[1.25rem] border border-border/60 bg-card/45 p-5 backdrop-blur md:flex-row md:items-center md:justify-between md:rounded-[1.5rem] md:p-8">
-              <div className="min-w-0">
-                <div className="text-[10.5px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                  Also available
-                </div>
-                <h2 className="mt-2 text-[1.15rem] font-light tracking-[-0.02em] text-foreground md:text-[1.4rem]">
-                  Studying for the New York Bar?
-                </h2>
-                <p className="mt-2 max-w-lg text-[13.5px] leading-[1.55] text-muted-foreground">
-                  Tentra also supports personalised study planning and revision tracking for the
-                  New York Bar (UBE) and the MPRE.
-                </p>
+            <div className="rounded-[1.25rem] border border-border/60 bg-card/45 p-5 text-center backdrop-blur md:rounded-[1.5rem] md:p-8">
+              <div className="text-[10.5px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
+                Supported pathways
               </div>
-              <Link
-                to="/new-york-bar"
-                onClick={() => trackEvent("ny_bar_cta_clicked", { surface: "landing" })}
-                className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-5 text-[13.5px] font-medium text-foreground transition-colors hover:border-pink/40"
-              >
-                Explore New York Bar
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
+              <h2 className="mt-2 text-[1.35rem] font-light tracking-[-0.02em] text-foreground md:text-[1.65rem]">
+                One study system. Two exam pathways.
+              </h2>
+              <div className="mt-5 grid gap-3 text-left sm:grid-cols-2">
+                <Link
+                  to="/onboarding"
+                  search={{ exam: "sqe1", src: "landing", placement: "pathways" }}
+                  className="rounded-xl border border-border/60 bg-background/45 p-4 transition-colors hover:border-pink/35"
+                >
+                  <span className="text-[14px] font-medium text-foreground">SQE 🇬🇧</span>
+                  <span className="mt-1 block text-[12.5px] leading-[1.5] text-muted-foreground">
+                    SQE1 pathways for FLK1, FLK2 or both, plus SQE2 preparation.
+                  </span>
+                </Link>
+                <Link
+                  to="/onboarding"
+                  search={{ exam: "ube", src: "landing", placement: "pathways" }}
+                  className="rounded-xl border border-border/60 bg-background/45 p-4 transition-colors hover:border-pink/35"
+                >
+                  <span className="text-[14px] font-medium text-foreground">U.S. Bar (UBE) 🇺🇸</span>
+                  <span className="mt-1 block text-[12.5px] leading-[1.5] text-muted-foreground">
+                    Uniform Bar Examination preparation across MBE, MEE and MPT, plus MPRE support.
+                  </span>
+                </Link>
+              </div>
             </div>
           </section>
         </main>
@@ -613,14 +621,14 @@ function LandingPage() {
         >
           <PremiumCta
             to="/onboarding"
-            search={{ exam: "sqe1", src: "landing" }}
+            search={{ src: "landing", placement: "sticky_mobile" }}
             size="lg"
             className="w-full"
             onClick={() =>
               trackEvent("build_plan_cta_clicked", { surface: "landing", placement: "sticky_mobile" })
             }
           >
-            Build my SQE plan <ArrowRight className="ml-1.5 h-4 w-4" />
+            Build my personalised plan <ArrowRight className="ml-1.5 h-4 w-4" />
           </PremiumCta>
         </div>
       )}
@@ -680,7 +688,7 @@ function HeroPreviewCard() {
               minutes: "15m",
               format: "Revision",
               title: "Actus reus vs mens rea",
-              reason: "High-yield for SQE1 — not started",
+              reason: "High-yield for your exam — not started",
               done: false,
             },
           ].map((x) => (
@@ -814,7 +822,7 @@ function InlineCta({
     <div className="mt-8 flex justify-center md:mt-12">
       <PremiumCta
         to={isAuthenticated ? ctaTo : "/onboarding"}
-        search={isAuthenticated ? undefined : { exam: "sqe1", src: "landing", placement }}
+        search={isAuthenticated ? undefined : { src: "landing", placement }}
         size="lg"
         className="w-full sm:w-auto"
         onClick={() =>
