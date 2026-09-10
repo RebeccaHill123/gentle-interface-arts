@@ -61,6 +61,11 @@ import {
 } from "@/lib/confidence";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
+import {
+  parseAcquisitionSearch,
+  type AcquisitionExamParam,
+  type AcquisitionSearch,
+} from "@/lib/acquisition";
 
 /**
  * First-run onboarding is deliberately two screens: exam + date, then weekly
@@ -69,59 +74,18 @@ import { trackEvent } from "@/lib/analytics";
  * Settings → Study plan. See DEFAULTS below.
  */
 
-type ExamParam = "sqe1" | "sqe2" | "ube" | "mpre";
-
-const EXAM_PARAMS: ExamParam[] = ["sqe1", "sqe2", "ube", "mpre"];
-
-const EXAM_PARAM_TO_TYPE: Record<ExamParam, ExamType> = {
+const EXAM_PARAM_TO_TYPE: Record<AcquisitionExamParam, ExamType> = {
   sqe1: "SQE1",
   sqe2: "SQE2",
   ube: "UBE",
   mpre: "MPRE",
 };
 
-interface OnboardingSearch {
-  exam?: ExamParam;
-  src?: string;
-  placement?: string;
-  /** Optional YYYY-MM-DD carried back from the plan reveal ("change my answers"). */
-  date?: string;
-  /** Optional weekly hours carried back from the plan reveal. */
-  hours?: number;
-}
-
-
-function toStringOrUndefined(value: unknown): string | undefined {
-  return typeof value === "string" && value.length > 0 ? value.slice(0, 40) : undefined;
-}
-
-/** Accept only a plain future-safe YYYY-MM-DD string. */
-function toDateOrUndefined(value: unknown): string | undefined {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
-  return Number.isNaN(new Date(`${value}T00:00:00`).getTime()) ? undefined : value;
-}
-
-function toHoursOrUndefined(value: unknown): number | undefined {
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n)) return undefined;
-  const rounded = Math.round(n);
-  return rounded >= 1 && rounded <= 60 ? rounded : undefined;
-}
-
 export const Route = createFileRoute("/onboarding")({
   // No auth gate — onboarding runs for anonymous visitors so they can
   // experience the personalised plan BEFORE being asked to sign up.
-  validateSearch: (search: Record<string, unknown>): OnboardingSearch => {
-    const raw = typeof search.exam === "string" ? search.exam.toLowerCase() : "";
-    const exam = (EXAM_PARAMS as string[]).includes(raw) ? (raw as ExamParam) : undefined;
-    return {
-      exam,
-      src: toStringOrUndefined(search.src ?? search.utm_source),
-      placement: toStringOrUndefined(search.placement),
-      date: toDateOrUndefined(search.date),
-      hours: toHoursOrUndefined(search.hours),
-    };
-  },
+  validateSearch: (search: Record<string, unknown>): AcquisitionSearch =>
+    parseAcquisitionSearch(search),
   component: OnboardingPage,
   head: () => ({
     meta: [
@@ -131,6 +95,14 @@ export const Route = createFileRoute("/onboarding")({
         content:
           "Three quick steps to a personalised, adaptive study plan for SQE or the U.S. Bar (UBE), built around your exam date and available time.",
       },
+      { property: "og:title", content: "Build your personalised law exam plan · Tentra" },
+      {
+        property: "og:description",
+        content:
+          "Create an adaptive SQE or U.S. Bar (UBE) study plan around your exam date, confidence and available time.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
 });
@@ -711,13 +683,13 @@ function OnboardingPage() {
                       });
                     }}
                   />
-                  <div className="border-t border-border/60 pt-6">
+                  {examSelected && <div className="border-t border-border/60 pt-6">
                     <StepHours
                       hoursPerWeek={hoursPerWeek}
                       setHoursPerWeek={setHoursPerWeek}
                       sessionShape={sessionShape}
                     />
-                  </div>
+                  </div>}
                 </div>
               ) : step === 2 ? (
                 <StepPreparation
