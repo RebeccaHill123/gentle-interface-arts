@@ -178,6 +178,8 @@ const DRAFT_KEY = "tentra.onboarding.draft.v1";
 
 export interface OnboardingDraft {
   step: number;
+  /** True only after the visitor explicitly chose an exam. Legacy drafts omit it. */
+  examSelected?: boolean;
   examType: ExamType;
   examPath: ExamPath;
   name: string;

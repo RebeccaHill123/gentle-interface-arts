@@ -14,6 +14,17 @@ export type ProfileAccessFields = {
   current_period_end?: string | null;
 };
 
+export type CancellationWriteOutcome = "updated" | "missing-profile" | "retry";
+
+/** Missing profiles cannot be repaired by replaying a cancellation forever. */
+export function classifyCancellationWrite(
+  error: unknown,
+  matchedRowCount: number,
+): CancellationWriteOutcome {
+  if (error) return "retry";
+  return matchedRowCount > 0 ? "updated" : "missing-profile";
+}
+
 /**
  * Mirrors `requireAccess` exactly: grandfathered, is_pro, active, trialing, or
  * a cancellation still inside its paid period.

@@ -5,3 +5,6 @@
 - [x] Rename UBE acquisition copy and update onboarding metadata.
 - [x] Add focused regression coverage and run full tests, typecheck, and production build.
 - [x] Report remaining intentionally untouched New York-specific public copy; do not publish.
+- [x] Prevent generic onboarding drafts from manufacturing an SQE selection.
+- [x] Stop retrying subscription cancellations when the resolved profile no longer exists.
+- [x] Add regression tests and verify the integrity fixes without deploying.
