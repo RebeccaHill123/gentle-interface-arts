@@ -204,24 +204,38 @@ function OnboardingPage() {
   const search = Route.useSearch();
   const [draft] = useState(() => loadOnboardingDraft());
   const [checking, setChecking] = useState(true);
+  const hasInitialExam = hasExplicitExamSelection(draft?.examSelected, search.exam);
   // Returning from the plan reveal to change answers always restarts at
-  // step 1 so the exam and date are editable again.
+  // step 1 so the exam and date are editable again. Legacy drafts without an
+  // explicit exam selection also restart there rather than inheriting SQE1.
   const editingFromReveal = search.src === "plan_reveal";
   const [step, setStep] = useState(() =>
-    editingFromReveal ? 1 : Math.min(STEP_COUNT, Math.max(1, draft?.step ?? 1)),
+    editingFromReveal || !hasInitialExam
+      ? 1
+      : Math.min(STEP_COUNT, Math.max(1, draft?.step ?? 1)),
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasInitialExam = hasExplicitExamSelection(draft?.examSelected, search.exam);
   const [examPickerOpen, setExamPickerOpen] = useState(!hasInitialExam);
   const [examSelected, setExamSelected] = useState(hasInitialExam);
 
   const acquisitionType = search.exam ? EXAM_PARAM_TO_TYPE[search.exam] : "SQE1";
+  const restoredExamType =
+    search.exam
+      ? acquisitionType
+      : draft?.examSelected
+        ? draft.examType
+        : acquisitionType;
 
-  // Exam + path. Draft wins on resume; otherwise the acquisition route decides.
-  const [examType, setExamType] = useState<ExamType>(draft?.examType ?? acquisitionType);
+  // An explicit route wins; an explicitly selected draft resumes; generic and
+  // legacy drafts retain an internal fallback only while the chooser is open.
+  const [examType, setExamType] = useState<ExamType>(restoredExamType);
   const [examPath, setExamPath] = useState<ExamPath>(
-    draft?.examPath ?? defaultPathForExam(draft?.examType ?? acquisitionType),
+    search.exam
+      ? defaultPathForExam(acquisitionType)
+      : draft?.examSelected
+        ? draft.examPath
+        : defaultPathForExam(acquisitionType),
   );
   // Search params repopulate the previous answers when the sessionStorage
   // draft is gone (new tab, shared link), so "change my answers" never
@@ -238,7 +252,9 @@ function OnboardingPage() {
   );
 
   const [modules, setModules] = useState<ModuleConfidence[]>(
-    draft?.modules?.length ? draft.modules : seedModules(draft?.examPath ?? defaultPathForExam(acquisitionType)),
+    draft?.examSelected && !search.exam && draft.modules?.length
+      ? draft.modules
+      : seedModules(defaultPathForExam(restoredExamType)),
   );
   // Preparation stage (stored on the existing `intensity` model). A two-step
   // legacy draft carries the defaulted "intermediate", which is NOT a real
