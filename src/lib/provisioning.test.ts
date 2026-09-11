@@ -6,6 +6,7 @@ import {
   resolvePolledClaimStatus,
   decideReturnStep,
   decideClaimAction,
+  classifyCancellationWrite,
 } from "./provisioning";
 import { decidePlanLoad } from "./plan-recovery";
 
@@ -13,6 +14,17 @@ const future = new Date(Date.now() + 86_400_000).toISOString();
 const past = new Date(Date.now() - 86_400_000).toISOString();
 
 const entitled = { is_pro: true, subscription_status: "active" };
+
+describe("cancellation webhook writes", () => {
+  it("accepts a cancellation when the resolved user has no profile", () => {
+    expect(classifyCancellationWrite(null, 0)).toBe("missing-profile");
+  });
+
+  it("retries real write failures and accepts matched updates", () => {
+    expect(classifyCancellationWrite(new Error("timeout"), 0)).toBe("retry");
+    expect(classifyCancellationWrite(null, 1)).toBe("updated");
+  });
+});
 
 describe("profileHasAccess", () => {
   it("grants access for active, trialing, grandfathered and grace", () => {

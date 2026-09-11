@@ -62,6 +62,7 @@ import {
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 import {
+  hasExplicitExamSelection,
   parseAcquisitionSearch,
   type AcquisitionExamParam,
   type AcquisitionSearch,
@@ -211,7 +212,7 @@ function OnboardingPage() {
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const hasInitialExam = Boolean(draft?.examType || search.exam);
+  const hasInitialExam = hasExplicitExamSelection(draft?.examSelected, search.exam);
   const [examPickerOpen, setExamPickerOpen] = useState(!hasInitialExam);
   const [examSelected, setExamSelected] = useState(hasInitialExam);
 
@@ -361,6 +362,7 @@ function OnboardingPage() {
     if (checking) return;
     saveOnboardingDraft({
       step,
+      examSelected,
       examType,
       examPath,
       name,
@@ -375,6 +377,7 @@ function OnboardingPage() {
   }, [
     checking,
     step,
+    examSelected,
     examType,
     examPath,
     name,

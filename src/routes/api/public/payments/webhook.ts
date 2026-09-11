@@ -4,6 +4,7 @@ import {
   profileHasAccess,
   verifyClaim,
   decideClaimAction,
+  classifyCancellationWrite,
 } from "@/lib/provisioning";
 
 /**
@@ -231,12 +232,13 @@ async function handleSubscriptionDeleted(subscription: any, env: StripeEnv) {
     })
     .eq("user_id", userId)
     .select("user_id");
-  if (updateErr) {
+  const outcome = classifyCancellationWrite(updateErr, rows?.length ?? 0);
+  if (outcome === "retry") {
     throw new ProvisioningError("cancellation write failed", updateErr);
   }
-  if (!rows || rows.length === 0) {
-    throw new ProvisioningError(
-      `cancellation update matched no profile for ${userId}`,
+  if (outcome === "missing-profile") {
+    console.warn(
+      `[webhook] cancellation accepted without profile for ${userId}`,
     );
   }
 }

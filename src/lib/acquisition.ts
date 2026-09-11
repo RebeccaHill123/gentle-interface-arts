@@ -10,6 +10,18 @@ export interface AcquisitionSearch {
   hours?: number;
 }
 
+/**
+ * A generic visit must never infer an exam from fallback form state. Old
+ * drafts predate the explicit marker, so they are deliberately treated as
+ * unanswered; an explicit acquisition link remains authoritative.
+ */
+export function hasExplicitExamSelection(
+  draftExamSelected: boolean | undefined,
+  searchExam: AcquisitionExamParam | undefined,
+): boolean {
+  return Boolean(searchExam || draftExamSelected === true);
+}
+
 function toStringOrUndefined(value: unknown): string | undefined {
   return typeof value === "string" && value.length > 0 ? value.slice(0, 40) : undefined;
 }
