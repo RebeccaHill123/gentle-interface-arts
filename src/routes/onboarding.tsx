@@ -220,22 +220,19 @@ function OnboardingPage() {
   const [examSelected, setExamSelected] = useState(hasInitialExam);
 
   const acquisitionType = search.exam ? EXAM_PARAM_TO_TYPE[search.exam] : "SQE1";
-  const restoredExamType =
-    search.exam
-      ? acquisitionType
-      : draft?.examSelected
-        ? draft.examType
-        : acquisitionType;
+  // A saved draft is reusable when the visitor explicitly chose an exam and the
+  // route (if any) points at the same exam — e.g. "change my answers", which
+  // must never wipe the ratings or FLK choice already given.
+  const draftReusable = Boolean(
+    draft?.examSelected && (!search.exam || acquisitionType === draft.examType),
+  );
+  const restoredExamType = draftReusable && draft ? draft.examType : acquisitionType;
 
   // An explicit route wins; an explicitly selected draft resumes; generic and
   // legacy drafts retain an internal fallback only while the chooser is open.
   const [examType, setExamType] = useState<ExamType>(restoredExamType);
   const [examPath, setExamPath] = useState<ExamPath>(
-    search.exam
-      ? defaultPathForExam(acquisitionType)
-      : draft?.examSelected
-        ? draft.examPath
-        : defaultPathForExam(acquisitionType),
+    draftReusable && draft ? draft.examPath : defaultPathForExam(acquisitionType),
   );
   // Search params repopulate the previous answers when the sessionStorage
   // draft is gone (new tab, shared link), so "change my answers" never
@@ -252,10 +249,11 @@ function OnboardingPage() {
   );
 
   const [modules, setModules] = useState<ModuleConfidence[]>(
-    draft?.examSelected && !search.exam && draft.modules?.length
+    draftReusable && draft?.modules?.length
       ? draft.modules
       : seedModules(defaultPathForExam(restoredExamType)),
   );
+
   // Preparation stage (stored on the existing `intensity` model). A two-step
   // legacy draft carries the defaulted "intermediate", which is NOT a real
   // answer, so stage stays null until the user taps one.
