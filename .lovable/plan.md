@@ -1,29 +1,85 @@
-# Dual-market public acquisition update
+# Today dashboard: primary daily study experience
 
-## Goal
-Make Tentra’s existing public journey speak equally to UK SQE and U.S. Bar (UBE)/MPRE candidates while preserving the pastel premium design, interactive product showcase, pricing, authentication, checkout, and all study-plan logic.
+## What exists today (audit)
 
-## Homepage
-- Rewrite homepage title, description, Open Graph copy, and `SoftwareApplication` description around personalised SQE1/SQE2 and U.S. Bar (UBE)/MPRE study planning; keep the existing £9.99 GBP offer and self-referencing URL.
-- Replace the SQE-first badge, headline, supporting copy, and trust line with the supplied headline and a concise “Plan → Track → Adapt with AI” dual-market message.
-- Make header, hero, inline, pricing, and mobile sticky actions exam-neutral and stop attaching `exam=sqe1` to generic homepage links.
-- Update “Inside Tentra,” “How Tentra works,” the missed-session problem statement, feature cards, and product-preview examples so both supported pathways are represented without implying support for every state-specific U.S. exam or promising unavailable mock formats.
-- Replace the bottom New York-specific promotion with a compact “One study system. Two exam pathways.” reassurance showing SQE1/SQE2 and UBE/MPRE side-by-side. Keep `/new-york-bar` itself intact.
-- Change the homepage analytics market value from `SQE` to `SQE_UBE` while preserving existing event names.
+- **`src/routes/dashboard.tsx`** (~2,300 lines) is the Today route. It loads the stored plan,
+  derives analytics, ensures the adaptive schedule, and renders `TodayPanel`, weekly review,
+  a metrics row and a "Record session" dialog.
+- **`src/components/dashboard/today-panel.tsx`** already renders a greeting, a "Do this next"
+  card with method steps, and a "Rest of today" list with inline complete/start buttons.
+- **`src/lib/plan/store.ts`** is the single source of truth wrapper over the stored plan:
+  `getSchedule`, `tasksForDate`, `missedTasks`, `scheduleCapacity`,
+  `completeScheduledTask`, `skipScheduledTask`, `rescheduleScheduledTask`, `ensureSchedule`.
+- **`src/lib/plan/types.ts`** — `ScheduledTask` carries module, subtopic, minutes, taskType,
+  priority, why, evidence label, status, `actualMinutes`, `sessionId`.
+- **Sessions**: `src/lib/focus-session.ts` (wall-clock durable timer, one session at a time)
+  plus `src/routes/focus.sprint.tsx`, which logs via `recordStudyActivity` and then calls
+  `completeScheduledTask` for planned work. `SessionCompleteSheet` already asks for real
+  minutes and whether the output was finished.
+- **Logging**: `src/lib/study-log.ts` (`recordStudyActivity`, owner-scoped, idempotency keys,
+  offline queue) and `src/lib/manual-session.ts` for the dialog's acceptance rules.
 
-## Onboarding and acquisition routing
-- Keep explicit `exam=sqe1`, `sqe2`, `ube`, and `mpre` links working exactly as direct-entry selections.
-- For a generic `/onboarding` visit, retain no implicit acquisition exam: open the exam choices immediately, require an explicit selection before date entry/continuation, and avoid visually or logically treating SQE1 as chosen.
-- Rename the UBE option to “U.S. Bar (UBE)” and use neutral MBE/MEE/MPT copy, CTA wording, and date wording.
-- Update the onboarding page description to cover both SQE and U.S. Bar pathways.
-- Preserve SQE’s required FLK assessment choice after SQE1 selection and leave the New York-specific route unchanged.
+## Reused, not rebuilt
 
-## Technical details
-- Make the onboarding search validator return an optional exam rather than defaulting missing/invalid values to `sqe1`.
-- Track whether an exam was explicitly selected separately from the internal form state, so existing drafts and valid direct links resume correctly while generic visitors cannot continue accidentally.
-- Keep all current route values and plan types unchanged; this is copy and acquisition-selection behavior only.
-- Add focused deterministic tests for generic exam choice and all four explicit exam parameters where practical, then run the full test suite, TypeScript check, and production build.
+Tables: `user_plans`, `study_events`, `graded_attempts`, `plan_revisions`, `profiles`.
+Functions/components: everything listed above, plus `SkipReasonSheet`, `RescheduleSheet`,
+`SessionCompleteSheet`, `task-presentation.ts`, `WeeklyReview`, `AppShell`.
 
-## Scope and reporting
-- Do not change authenticated product screens, study-plan generation, payment/webhook behavior, pricing, or publish the app.
-- Report exact changed files and verification totals. List remaining New York-specific public copy intentionally left untouched, especially the existing `/new-york-bar` page and cross-link references outside the main homepage/acquisition flow.
+## Data-model changes
+
+None. No new tables, no migration. Two additive, optional fields on the existing in-plan
+`ScheduledTask` JSON (already free-form inside `user_plans.plan`):
+
+- `partialMinutes?: number` — time credited to a task that was worked but not finished.
+- `lastWorkedAt?: string` — lets the card show "In progress".
+
+Progress everywhere stays in **minutes** as the single unit.
+
+## Implementation stages
+
+**1. Today header** — new `TodayHeader` component: "Today" + full date, contextual greeting,
+planned vs completed minutes, one slim daily progress bar, weekly minutes as a subtle line
+beneath, exam countdown chip. Header holds nothing else.
+
+**2. Task cards** — new `TodayTaskCard`: subject/exam area, topic, duration, task-type label,
+status (not started / in progress / complete), one prominent action, and a discreet overflow
+menu (mark complete, log elsewhere, reschedule, skip). Cards render in schedule order; the
+first incomplete task gets the prominent gradient action, everything else stays quiet.
+
+**3. Start session** — keeps the existing `startSession` → `/focus/sprint` path, carrying
+subject, topic, duration and planned-task reference as it already does.
+
+**4. Partial completion** — in `focus.sprint`, a planned task is only marked complete when the
+user confirms completion in `SessionCompleteSheet`; if they answer "Partly", the logged minutes
+are credited to `partialMinutes` and the task stays open and shows as in progress. Study time
+is still logged exactly once via the existing idempotency key.
+
+**5. Log completed elsewhere** — reuse the existing record-session controller, extended to
+confirm subject, topic, duration, date, study type, and whether the linked planned task is
+complete or partial. One `recordStudyActivity` write, no duplicate records.
+
+**6. Up next** — new pure module `src/lib/plan/up-next.ts` with transparent rules in order:
+unfinished task today → overdue task → heavily weighted exam topic → weak topic (only where
+graded or rated data exists) → next task in the plan. Each returns a short honest reason
+string. No invented weakness.
+
+**7. Empty / completed states** — empty day offers: start a free session, add a task for today,
+review an overdue task, view the plan. All-complete shows a calm summary of minutes studied and
+weekly progress, with no pressure to do more.
+
+**8. Reschedule & skip** — keep the existing sheets, which already respect daily capacity and
+never duplicate a task. Add a one-line explanation of what will change before confirming;
+no automatic whole-plan recalibration from a single skip.
+
+**9. Tests** — extend Vitest coverage for header/day totals in minutes, partial-completion
+crediting, and the up-next rule order (including "no weakness data" cases).
+
+## Risks
+
+- Focus-session completion is shared with free-form sprints; the partial-completion change
+  touches that file, so free sprints must keep logging exactly as now (covered by tests).
+- Plan mutations go through the revisioned sync layer; all writes stay inside existing
+  `plan/store.ts` helpers so sync and concurrency behaviour is unchanged.
+- The dashboard route is large; work stays inside Today and its directly connected flows.
+
+No changes to branding, billing, auth, Coach/Tutor, mocks or practice.
