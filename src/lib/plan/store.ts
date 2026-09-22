@@ -28,6 +28,7 @@ import {
 import { buildPlanEvidence } from "./evidence";
 import {
   capacityOutlook,
+  creditPartialProgress,
   mergeSchedules,
   moveTask,
   recalibrate,
@@ -242,6 +243,18 @@ export function completeScheduledTask(
   detail: { actualMinutes?: number; sessionId?: string } = {},
 ) {
   return mutate((s) => ({ schedule: setTaskStatus(s, taskId, "completed", detail) }));
+}
+
+/**
+ * Credit worked-but-unfinished minutes so the task shows as in progress. Used
+ * when a session ends short of the planned output.
+ */
+export function creditScheduledTaskProgress(
+  taskId: string,
+  minutes: number,
+  detail: { sessionId?: string } = {},
+) {
+  return mutate((s) => ({ schedule: creditPartialProgress(s, taskId, minutes, detail) }));
 }
 
 export function reopenScheduledTask(taskId: string) {

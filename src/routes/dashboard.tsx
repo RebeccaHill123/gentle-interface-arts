@@ -74,7 +74,9 @@ import {
   rescheduleScheduledTask,
   missedTasks,
   scheduleCapacity,
+  upcomingTasks,
 } from "@/lib/plan/store";
+import { LogElsewhereDialog } from "@/components/dashboard/log-elsewhere-dialog";
 import { diffDaysKey } from "@/lib/plan/dates";
 import type { PlanSchedule, ScheduledTask, SkipReason } from "@/lib/plan/types";
 import { activityLabel, expectedOutput } from "@/lib/plan/task-presentation";
@@ -274,6 +276,15 @@ function DashboardPage() {
 
   const missed = useMemo(() => missedTasks(schedule, today), [schedule, today]);
   const capacity = useMemo(() => scheduleCapacity(schedule, today, 10), [schedule, today]);
+  /** Open work after today, used for "next in your plan" and pull-forward. */
+  const upcoming = useMemo(
+    () =>
+      schedule
+        ? upcomingTasks(schedule, today, 14).filter((t) => t.date > today && t.status === "scheduled")
+        : [],
+    [schedule, today],
+  );
+  const [logTarget, setLogTarget] = useState<{ task?: ScheduledTask | null } | null>(null);
 
   // Days since any recorded study activity — drives the return-after-absence
   // recovery card. Derived from logged sessions, never from app opens.
@@ -561,6 +572,24 @@ function DashboardPage() {
     });
   };
 
+  /**
+   * "Add a session to today" moves the next planned session forward. It uses
+   * the same reschedule path as everything else, so the task is moved — never
+   * duplicated — and the rest of the plan is untouched.
+   */
+  const handlePullForward = () => {
+    const task = upcoming[0];
+    if (!task) return;
+    void rescheduleScheduledTask(task.id, today).then((res) => {
+      if (!res.ok) {
+        toast.error(res.reason ?? "Couldn't add a session to today.");
+        return;
+      }
+      setTick((t) => t + 1);
+      toast.success(`Moved “${task.title}” to today.`);
+    });
+  };
+
   /** Missed work and long absences rebuild the FUTURE only, never history. */
   const handleRecoverMissed = () => {
     if (!stored) return;
@@ -613,11 +642,13 @@ function DashboardPage() {
       title="Today"
       subtitle="What to do next, and why."
       actions={
-        <RecordSessionDialog
-          moduleNames={input.modules.map((m) => m.name)}
-          onSessionLogged={refresh}
-          todayTasks={plan.todayTasks}
-        />
+        <Button
+          size="sm"
+          onClick={() => setLogTarget({ task: null })}
+          className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
+        >
+          <Plus className="h-4 w-4" /> Record session
+        </Button>
       }
     >
       <div className="space-y-8">
@@ -629,6 +660,8 @@ function DashboardPage() {
           daysUntilExam={daysUntilExam}
           tasks={todayTasks}
           missed={missed}
+          upcoming={upcoming}
+          analytics={analytics}
           daysSinceLastActivity={daysSinceLastActivity}
           weeklyDoneMins={weeklyDoneMins}
           weeklyTargetMins={weeklyTargetMins}
@@ -638,6 +671,9 @@ function DashboardPage() {
           onComplete={handleCompleteTodayItem}
           onSkip={setSkipTarget}
           onReschedule={setMoveTarget}
+          onLogElsewhere={(task) => setLogTarget({ task: task ?? null })}
+          onFreeSession={() => navigate({ to: "/focus" })}
+          onAddTaskToday={upcoming.length > 0 ? handlePullForward : undefined}
           onRecoverMissed={handleRecoverMissed}
           onGeneratePlan={() => navigate({ to: "/onboarding" })}
         />
@@ -701,6 +737,16 @@ function DashboardPage() {
         onCancel={() => setMoveTarget(null)}
         onPick={handleRescheduleConfirmed}
       />
+
+      <LogElsewhereDialog
+        open={!!logTarget}
+        task={logTarget?.task ?? null}
+        moduleNames={input.modules.map((m) => m.name)}
+        examPath={input.examType}
+        onOpenChange={(v) => !v && setLogTarget(null)}
+        onLogged={refresh}
+      />
+
 
       <SqeAssessmentDialog
         open={assessmentPrompt}

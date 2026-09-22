@@ -28,6 +28,10 @@ export function SkipReasonSheet({
           </SheetTitle>
         </SheetHeader>
         {taskTitle && <p className="mt-1 text-xs text-muted-foreground">{taskTitle}</p>}
+        <p className="mt-2 rounded-xl border border-border/50 bg-background/60 p-3 text-[11.5px] text-muted-foreground">
+          This session comes off today only. Nothing is duplicated and the rest of your plan stays
+          as it is — your reason just tells Tentra what to do at the next update.
+        </p>
         <div className="mt-4 space-y-2 pb-6">
           {SKIP_REASONS.map((r) => (
             <button
@@ -78,6 +82,10 @@ export function RescheduleSheet({
           </SheetTitle>
         </SheetHeader>
         {taskTitle && <p className="mt-1 text-xs text-muted-foreground">{taskTitle}</p>}
+        <p className="mt-2 rounded-xl border border-border/50 bg-background/60 p-3 text-[11.5px] text-muted-foreground">
+          The session moves to the day you pick — it isn't copied, and only days that still fit your
+          daily study limit are offered.
+        </p>
         <div className="mt-4 space-y-2 pb-6">
           {days
             .filter((d) => d.date !== today)

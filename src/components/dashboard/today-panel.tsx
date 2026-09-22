@@ -1,29 +1,26 @@
 // The Today panel — Tentra's daily execution surface.
 //
-// It answers, in order: what should I do next, why does it matter, how long
-// will it take, how do I do it, and what happens when I finish. Everything
-// shown is derived from the adaptive schedule and its stored provenance.
+// It answers, in order: what should I do next and why, how long it takes, how
+// to do it, and what happens when the day doesn't go to plan. Everything shown
+// is derived from the adaptive schedule and its stored provenance.
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   ArrowRight,
-  CalendarClock,
   CheckCircle2,
-  Clock3,
+  NotebookPen,
   Play,
   RotateCcw,
-  SkipForward,
   Sparkles,
   Target,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  activityLabel,
-  evidenceChip,
-  expectedOutput,
-  howToDoIt,
-  recommendedNext,
-} from "@/lib/plan/task-presentation";
+import { TodayHeader } from "@/components/dashboard/today-header";
+import { TodayTaskCard } from "@/components/dashboard/today-task-card";
+import { expectedOutput, howToDoIt } from "@/lib/plan/task-presentation";
+import { dayTotals, taskState } from "@/lib/plan/today";
+import { pickUpNext } from "@/lib/plan/up-next";
+import type { AnalyticsBundle } from "@/lib/analytics-derive";
 import type { ScheduledTask } from "@/lib/plan/types";
 
 export interface TodayPanelProps {
@@ -33,6 +30,9 @@ export interface TodayPanelProps {
   daysUntilExam: number | null;
   tasks: ScheduledTask[];
   missed: ScheduledTask[];
+  /** Open tasks after today, schedule order — used for "next in your plan". */
+  upcoming?: ScheduledTask[];
+  analytics?: AnalyticsBundle | null;
   daysSinceLastActivity: number | null;
   weeklyDoneMins: number;
   weeklyTargetMins: number;
@@ -42,53 +42,36 @@ export interface TodayPanelProps {
   onComplete: (task: ScheduledTask) => void;
   onSkip: (task: ScheduledTask) => void;
   onReschedule: (task: ScheduledTask) => void;
+  onLogElsewhere: (task?: ScheduledTask) => void;
+  onFreeSession?: () => void;
+  /** Pull the next planned session forward into today. */
+  onAddTaskToday?: () => void;
   onRecoverMissed: () => void;
   onGeneratePlan?: () => void;
 }
 
-function greeting(name?: string): string {
-  const h = new Date().getHours();
-  const part = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-  return name ? `${part}, ${name.split(" ")[0]}` : part;
-}
-
 export function TodayPanel(props: TodayPanelProps) {
-  const { tasks, missed, daysUntilExam, weeklyDoneMins, weeklyTargetMins, daysSinceLastActivity } =
-    props;
+  const { tasks, missed, daysSinceLastActivity } = props;
 
-  const open = tasks.filter((t) => t.status === "scheduled");
-  const done = tasks.filter((t) => t.status === "completed");
-  const skipped = tasks.filter((t) => t.status === "skipped");
-  const next = useMemo(() => recommendedNext(tasks), [tasks]);
-  const plannedMins = tasks.reduce((a, t) => a + t.minutes, 0);
-  const doneMins = done.reduce((a, t) => a + (t.actualMinutes ?? t.minutes), 0);
-  const allDone = tasks.length > 0 && open.length === 0;
+  const totals = dayTotals(tasks);
+  const upNext = useMemo(
+    () => pickUpNext(tasks, missed, props.upcoming ?? [], props.analytics ?? null),
+    [tasks, missed, props.upcoming, props.analytics],
+  );
+  const next = upNext?.task;
+  const rest = tasks.filter((t) => t.id !== next?.id);
 
   return (
     <section className="space-y-4">
-      {/* Header */}
-      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 sm:flex sm:items-center sm:justify-between">
-        <div className="min-w-0">
-          <h2 className="truncate font-display text-xl tracking-[-0.01em] text-foreground sm:text-2xl">
-            {greeting(props.firstName)}
-          </h2>
-          <p className="mt-0.5 text-[12.5px] text-muted-foreground">
-            {new Date(`${props.today}T12:00:00`).toLocaleDateString(undefined, {
-              weekday: "long",
-              day: "numeric",
-              month: "long",
-            })}
-            {tasks.length > 0
-              ? ` · ${plannedMins} min planned · ${doneMins} min done`
-              : ` · ${props.examLabel} route`}
-          </p>
-        </div>
-        {daysUntilExam !== null && (
-          <span className="shrink-0 rounded-full border border-border/60 bg-card px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground">
-            {daysUntilExam} days to exam
-          </span>
-        )}
-      </header>
+      <TodayHeader
+        firstName={props.firstName}
+        today={props.today}
+        examLabel={props.examLabel}
+        daysUntilExam={props.daysUntilExam}
+        tasks={tasks}
+        weeklyDoneMins={props.weeklyDoneMins}
+        weeklyTargetMins={props.weeklyTargetMins}
+      />
 
       {/* Live session */}
       {props.activeSessionTitle && (
@@ -134,30 +117,27 @@ export function TodayPanel(props: TodayPanelProps) {
         </div>
       )}
 
-      {/* Recommended next */}
-      {next ? (
+      {/* Up next */}
+      {next && (
         <article className="relative overflow-hidden rounded-3xl border border-border/50 bg-card p-5 shadow-card md:p-6">
           <div className="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-gradient-pink-blue opacity-[0.08] blur-3xl" />
           <div className="relative">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-pink/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-pink">
-                <Target className="h-3 w-3" /> Do this next
-              </span>
-              <span className="rounded-full bg-foreground/[0.05] px-2.5 py-1 text-[11px] text-muted-foreground">
-                {activityLabel(next)}
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-foreground/[0.05] px-2.5 py-1 text-[11px] text-muted-foreground">
-                <Clock3 className="h-3 w-3" /> {next.minutes} min
-              </span>
-            </div>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-pink/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-pink">
+              <Target className="h-3 w-3" /> Recommended next
+            </span>
 
-            <h3 className="mt-3 font-display text-lg tracking-[-0.01em] text-foreground md:text-xl">
-              {next.title}
-            </h3>
-            <p className="mt-1 text-[12.5px] text-muted-foreground">
-              {next.module}
-              {next.subtopic ? ` · ${next.subtopic}` : ""} · {evidenceChip(next)}
-            </p>
+            <div className="mt-3">
+              <TodayTaskCard
+                task={next}
+                primary
+                reason={upNext?.reason}
+                onStart={props.onStart}
+                onComplete={props.onComplete}
+                onLogElsewhere={props.onLogElsewhere}
+                onReschedule={props.onReschedule}
+                onSkip={props.onSkip}
+              />
+            </div>
 
             {next.why && (
               <p className="mt-3 rounded-xl border border-border/50 bg-background/60 p-3 text-[12.5px] text-foreground/90">
@@ -184,52 +164,45 @@ export function TodayPanel(props: TodayPanelProps) {
                 {expectedOutput(next)}
               </p>
             </div>
-
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <Button
-                onClick={() => props.onStart(next)}
-                size="lg"
-                className="min-h-12 flex-1 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow hover:brightness-[1.06]"
-              >
-                <Play className="mr-2 h-4 w-4" /> Start {next.minutes}-min session
-              </Button>
-              <div className="grid grid-cols-3 gap-2 sm:flex">
-                <Button
-                  onClick={() => props.onComplete(next)}
-                  variant="outline"
-                  size="lg"
-                  className="min-h-12 rounded-full"
-                >
-                  <CheckCircle2 className="mr-1.5 h-4 w-4" /> Done
-                </Button>
-                <Button
-                  onClick={() => props.onReschedule(next)}
-                  variant="outline"
-                  size="lg"
-                  className="min-h-12 rounded-full"
-                >
-                  <CalendarClock className="mr-1.5 h-4 w-4" /> Move
-                </Button>
-                <Button
-                  onClick={() => props.onSkip(next)}
-                  variant="outline"
-                  size="lg"
-                  className="min-h-12 rounded-full"
-                >
-                  <SkipForward className="mr-1.5 h-4 w-4" /> Skip
-                </Button>
-              </div>
-            </div>
           </div>
         </article>
-      ) : allDone ? (
+      )}
+
+      {/* Today's study plan */}
+      {rest.length > 0 && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-1">
+            <h3 className="truncate text-[13.5px] font-medium text-foreground">
+              {next ? "Rest of today" : "Today's study plan"}
+            </h3>
+            <span className="shrink-0 text-[11.5px] text-muted-foreground">
+              {totals.completedCount}/{totals.taskCount} done
+              {totals.skippedCount > 0 ? ` · ${totals.skippedCount} skipped` : ""}
+            </span>
+          </div>
+          {rest.map((t) => (
+            <TodayTaskCard
+              key={t.id}
+              task={t}
+              onStart={props.onStart}
+              onComplete={props.onComplete}
+              onLogElsewhere={props.onLogElsewhere}
+              onReschedule={props.onReschedule}
+              onSkip={props.onSkip}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Day complete */}
+      {!next && totals.allSettled && (
         <article className="rounded-3xl border border-border/50 bg-card p-6 text-center shadow-card">
           <CheckCircle2 className="mx-auto h-6 w-6 text-pink" />
           <h3 className="mt-2 font-display text-lg text-foreground">Today is done</h3>
           <p className="mx-auto mt-1 max-w-md text-[12.5px] text-muted-foreground">
-            {doneMins} minutes logged across {done.length} session
-            {done.length === 1 ? "" : "s"}. Everything else stays where it is — you're ahead, not
-            behind.
+            {totals.doneMinutes} minutes logged across {totals.completedCount} session
+            {totals.completedCount === 1 ? "" : "s"}. This week you're at {props.weeklyDoneMins} of{" "}
+            {props.weeklyTargetMins} min. Nothing else is needed today.
           </p>
           <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row">
             <Link
@@ -246,114 +219,74 @@ export function TodayPanel(props: TodayPanelProps) {
             </Link>
           </div>
         </article>
-      ) : (
+      )}
+
+      {/* Nothing scheduled at all */}
+      {!next && totals.taskCount === 0 && (
         <article className="rounded-3xl border border-dashed border-border/60 bg-card p-6 text-center">
           <Sparkles className="mx-auto h-5 w-5 text-pink" />
-          <h3 className="mt-2 text-sm font-medium text-foreground">No plan yet</h3>
+          <h3 className="mt-2 text-sm font-medium text-foreground">Nothing scheduled for today</h3>
           <p className="mx-auto mt-1 max-w-md text-[12.5px] text-muted-foreground">
-            Tentra schedules your study around your exam date and the hours you actually have.
+            You can still study — pick one of these, or look at the wider plan.
           </p>
-          {props.onGeneratePlan && (
+          <div className="mt-4 flex flex-col justify-center gap-2 sm:flex-row sm:flex-wrap">
+            {props.onFreeSession && (
+              <Button
+                onClick={props.onFreeSession}
+                className="min-h-11 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
+              >
+                <Play className="mr-2 h-4 w-4" /> Start a free session
+              </Button>
+            )}
+            {props.onAddTaskToday && (
+              <Button
+                onClick={props.onAddTaskToday}
+                variant="outline"
+                className="min-h-11 rounded-full"
+              >
+                Add a session to today
+              </Button>
+            )}
             <Button
-              onClick={props.onGeneratePlan}
-              className="mt-4 min-h-11 rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
+              onClick={() => props.onLogElsewhere()}
+              variant="outline"
+              className="min-h-11 rounded-full"
             >
-              Build my plan
+              <NotebookPen className="mr-2 h-4 w-4" /> Log study done elsewhere
             </Button>
-          )}
+            {props.onGeneratePlan && (
+              <Button
+                onClick={props.onGeneratePlan}
+                variant="outline"
+                className="min-h-11 rounded-full"
+              >
+                Build my plan
+              </Button>
+            )}
+          </div>
         </article>
       )}
 
-      {/* Rest of today */}
-      {tasks.length > 0 && (
-        <div className="rounded-3xl border border-border/50 bg-card p-5 shadow-card">
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3">
-            <h3 className="truncate text-[13.5px] font-medium text-foreground">Rest of today</h3>
-            <span className="shrink-0 text-[11.5px] text-muted-foreground">
-              {done.length}/{tasks.length} done
-              {skipped.length > 0 ? ` · ${skipped.length} skipped` : ""}
-            </span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-foreground/[0.06]">
-            <div
-              className="h-full rounded-full bg-gradient-pink-blue transition-all"
-              style={{
-                width: `${Math.min(100, Math.round((done.length / Math.max(1, tasks.length)) * 100))}%`,
-              }}
-            />
-          </div>
-
-          <ul className="mt-4 space-y-2">
-            {tasks
-              .filter((t) => t.id !== next?.id)
-              .map((t) => (
-                <li
-                  key={t.id}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-2xl border border-border/50 bg-background/60 px-3 py-2.5"
-                >
-                  <div className="min-w-0">
-                    <div
-                      className={`truncate text-[13px] ${
-                        t.status === "completed"
-                          ? "text-muted-foreground line-through"
-                          : "text-foreground"
-                      }`}
-                    >
-                      {t.title}
-                    </div>
-                    <div className="mt-0.5 truncate text-[11.5px] text-muted-foreground">
-                      {activityLabel(t)} · {t.minutes} min · {evidenceChip(t)}
-                    </div>
-                  </div>
-                  {t.status === "scheduled" ? (
-                    <div className="flex shrink-0 items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={() => props.onComplete(t)}
-                        className="grid h-11 w-11 place-items-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-pink/50 hover:text-pink"
-                        aria-label={`Mark ${t.title} done`}
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => props.onStart(t)}
-                        className="grid h-11 w-11 place-items-center rounded-full border border-border/60 text-muted-foreground transition-colors hover:border-pink/50 hover:text-pink"
-                        aria-label={`Start ${t.title}`}
-                      >
-                        <Play className="h-4 w-4" />
-                      </button>
-                    </div>
-                  ) : t.status === "completed" ? (
-                    <span className="shrink-0 rounded-full bg-pink/10 px-2.5 py-1 text-[11px] font-medium text-pink">
-                      Done
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => props.onComplete(t)}
-                      className="shrink-0 rounded-full border border-border/60 px-2.5 py-1 text-[11px] text-muted-foreground hover:text-foreground"
-                    >
-                      Skipped · mark done
-                    </button>
-                  )}
-                </li>
-              ))}
-          </ul>
-
-          <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 border-t border-border/50 pt-3">
-            <p className="min-w-0 text-[11.5px] text-muted-foreground">
-              This week: {weeklyDoneMins} of {weeklyTargetMins} min
-            </p>
-            <Link
-              to="/plan"
-              className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-pink"
-            >
-              Full plan <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
+      {totals.taskCount > 0 && (
+        <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-1">
+          <button
+            type="button"
+            onClick={() => props.onLogElsewhere()}
+            className="min-w-0 text-left text-[12px] font-medium text-muted-foreground hover:text-foreground"
+          >
+            Studied outside Tentra? Log it
+          </button>
+          <Link
+            to="/plan"
+            className="inline-flex shrink-0 items-center gap-1 text-[12px] font-medium text-pink"
+          >
+            Full plan <ArrowRight className="h-3 w-3" />
+          </Link>
         </div>
       )}
     </section>
   );
 }
+
+/** Re-exported so callers can label buttons consistently. */
+export { taskState };
