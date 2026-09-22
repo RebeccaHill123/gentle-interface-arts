@@ -156,7 +156,7 @@ export function SessionCompleteSheet({
               ) : (
                 <Check className="mr-2 h-4 w-4" />
               )}
-              Save and mark complete
+              {producedOutput ? "Save and mark complete" : "Save progress, keep it open"}
             </Button>
             {canQuickCheck && (
               <Button

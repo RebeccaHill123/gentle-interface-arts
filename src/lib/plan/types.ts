@@ -51,6 +51,10 @@ export interface ScheduledTask {
   evidenceLabel?: string;
   /** Real minutes recorded against this task when it was completed. */
   actualMinutes?: number;
+  /** Minutes worked against a task that is NOT finished yet (in progress). */
+  partialMinutes?: number;
+  /** ISO stamp of the last time work was credited to this task. */
+  lastWorkedAt?: string;
   /** Focus-session id that completed this task (idempotency trace). */
   sessionId?: string;
   /** Set when the student skipped the task. */

@@ -374,11 +374,20 @@ export function setTaskStatus(
     tasks: schedule.tasks.map((t) => {
       if (t.id !== taskId) return t;
       if (status === "completed") {
+        // Time already credited while the task was in progress is part of the
+        // total, so a part-worked task never loses the earlier minutes.
+        const prior = Math.max(0, Math.round(t.partialMinutes ?? 0));
+        const actual =
+          detail.actualMinutes != null
+            ? Math.max(0, Math.round(detail.actualMinutes)) + prior
+            : (t.actualMinutes ?? Math.max(t.minutes, prior));
         return {
           ...t,
           status,
           completedAt: now,
-          actualMinutes: detail.actualMinutes ?? t.actualMinutes,
+          actualMinutes: actual,
+          partialMinutes: undefined,
+          lastWorkedAt: now,
           sessionId: detail.sessionId ?? t.sessionId,
           skipReason: undefined,
           skippedAt: undefined,
@@ -393,10 +402,47 @@ export function setTaskStatus(
           skippedAt: now,
         };
       }
-      return { ...t, status, completedAt: undefined, skipReason: undefined, skippedAt: undefined };
+      return {
+        ...t,
+        status,
+        completedAt: undefined,
+        partialMinutes: undefined,
+        skipReason: undefined,
+        skippedAt: undefined,
+      };
     }),
   };
 }
+
+/**
+ * Credit worked-but-unfinished minutes to an open task.
+ *
+ * Idempotent per session: replaying the same `sessionId` cannot add the minutes
+ * twice, so a retry after a failed write is safe.
+ */
+export function creditPartialProgress(
+  schedule: PlanSchedule,
+  taskId: string,
+  minutes: number,
+  detail: { sessionId?: string; nowIso?: string } = {},
+): PlanSchedule {
+  const now = detail.nowIso ?? new Date().toISOString();
+  const add = Math.max(0, Math.round(minutes));
+  return {
+    ...schedule,
+    tasks: schedule.tasks.map((t) => {
+      if (t.id !== taskId || t.status !== "scheduled") return t;
+      if (detail.sessionId && t.sessionId === detail.sessionId) return t;
+      return {
+        ...t,
+        partialMinutes: Math.max(0, Math.round(t.partialMinutes ?? 0)) + add,
+        lastWorkedAt: now,
+        sessionId: detail.sessionId ?? t.sessionId,
+      };
+    }),
+  };
+}
+
 
 /** Days with remaining capacity in the next `days` days, for reschedule UI. */
 export function capacityOutlook(

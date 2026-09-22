@@ -22,7 +22,8 @@ import {
   SessionCompleteSheet,
   type SessionCompletionResult,
 } from "@/components/session-complete-sheet";
-import { completeScheduledTask } from "@/lib/plan/store";
+import { completeScheduledTask, creditScheduledTaskProgress } from "@/lib/plan/store";
+import { shouldCompletePlannedTask } from "@/lib/plan/today";
 import { recordStudyActivity } from "@/lib/study-log";
 import { focusLogMessage, shouldMarkLogged } from "@/lib/canonical-edit";
 import { MOTIVATIONAL_LINES } from "@/lib/focus-store";
@@ -162,14 +163,31 @@ function FocusPage() {
     setSession(accepted);
 
     if (session.planned) {
+      // A short session never silently closes a long planned task: it only
+      // completes when the student confirmed the output, or when the planned
+      // time was genuinely worked. Otherwise the minutes are credited and the
+      // task stays open as "in progress".
+      const plannedMinutes = Math.round(session.plannedMs / 60000);
+      const complete = shouldCompletePlannedTask({
+        plannedMinutes,
+        actualMinutes: result.actualMinutes,
+        confirmedComplete: result.producedOutput,
+      });
       try {
-        await completeScheduledTask(session.planned.taskId, {
-          actualMinutes: result.actualMinutes,
-          sessionId: session.sessionId,
-        });
+        if (complete) {
+          await completeScheduledTask(session.planned.taskId, {
+            actualMinutes: result.actualMinutes,
+            sessionId: session.sessionId,
+          });
+        } else {
+          await creditScheduledTaskProgress(session.planned.taskId, result.actualMinutes, {
+            sessionId: session.sessionId,
+          });
+          toast.info("Progress saved — the session stays on your plan until it's finished.");
+        }
       } catch (e) {
-        console.warn("planned task completion failed", e);
-        toast.error("Time logged, but we couldn't tick off the planned task. Try again from Today.");
+        console.warn("planned task update failed", e);
+        toast.error("Time logged, but we couldn't update the planned task. Try again from Today.");
       }
     }
 
