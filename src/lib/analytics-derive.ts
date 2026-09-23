@@ -216,7 +216,7 @@ export function deriveAnalytics(
   const signals: CoverageSignal[] = activities
     .filter((a) => a.subject)
     .map((a) => ({ subject: a.subject!, subtopic: a.subtopic, minutes: a.minutes }));
-  const coverage = computeCoverage(examPath, signals);
+  const coverage = computeCoverage(examPath, signals, plan?.input.accaPapers);
 
   // ── on track this week (planned vs completed real minutes)
   const weekStart = localMondayKey(new Date());
