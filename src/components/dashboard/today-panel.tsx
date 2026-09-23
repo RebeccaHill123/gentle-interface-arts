@@ -58,8 +58,12 @@ export function TodayPanel(props: TodayPanelProps) {
     () => pickUpNext(tasks, missed, props.upcoming ?? [], props.analytics ?? null),
     [tasks, missed, props.upcoming, props.analytics],
   );
-  const next = upNext?.task;
-  const rest = tasks.filter((t) => t.id !== next?.id);
+  // When every session planned for today is settled, a future session must not
+  // be pushed as "recommended next" — the day gets its calm summary instead.
+  // Overdue work is still surfaced, because that is today's real remaining work.
+  const dayDone = totals.allSettled && upNext?.rule === "next-in-plan";
+  const next = dayDone ? undefined : upNext?.task;
+  const rest = totals.allSettled ? [] : tasks.filter((t) => t.id !== next?.id);
 
   return (
     <section className="space-y-4">
