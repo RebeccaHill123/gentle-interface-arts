@@ -224,9 +224,9 @@ export const ACCA_QUESTIONS: AccaBankQuestion[] = [
     "FA",
     "fa-doubleentry",
     "A machine cost $60,000 with an estimated residual value of $6,000 and a five-year life, depreciated on a straight-line basis. It is sold after three years for $28,000. What is the profit or loss on disposal?",
-    ["$2,800 profit", "$4,000 profit", "$2,000 loss", "$5,600 profit"],
-    1,
-    "Annual depreciation = ($60,000 − $6,000) / 5 = $10,800. Accumulated after three years = $32,400, so carrying amount = $60,000 − $32,400 = $27,600. Proceeds $28,000 − $27,600 = $400 profit. Note the arithmetic: the correct figure is $400, which shows why each step must be shown rather than estimated.",
+    ["$400 profit", "$2,400 profit", "$400 loss", "$2,000 loss"],
+    0,
+    "Annual depreciation = ($60,000 − $6,000) / 5 = $10,800. Accumulated after three years = 3 × $10,800 = $32,400, so carrying amount = $60,000 − $32,400 = $27,600. Proceeds of $28,000 exceed the carrying amount by $400, giving a $400 profit on disposal.",
     ["non-current assets", "disposal"],
   ),
   q(
