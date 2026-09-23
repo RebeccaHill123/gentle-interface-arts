@@ -134,6 +134,8 @@ export const createPendingCheckoutSession = createServerFn({ method: "POST" })
         client_reference_id: data.token,
         // Card details are mandatory even though £0 is due today.
         payment_method_collection: "always",
+        // Lets invited users redeem a free-access promotion code.
+        allow_promotion_codes: true,
         metadata: { pending_token: data.token, priceId: "founding_monthly" },
         subscription_data: {
           ...trialSubscriptionData(TRIAL_DAYS),
