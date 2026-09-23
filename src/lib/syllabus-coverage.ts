@@ -33,8 +33,10 @@ export const MEANINGFUL_MINUTES = 10;
 export function computeCoverage(
   examPath: ExamPath,
   signals: CoverageSignal[],
+  /** Required for ACCA: the papers the student is actually sitting. */
+  accaPapers?: string[],
 ): CoverageResult {
-  const subjects = getSubjectsForExamPath(examPath);
+  const subjects = getSubjectsForExamPath(examPath, accaPapers);
   const minutesBySubject = new Map<string, number>();
   const minutesBySubtopic = new Map<string, number>();
 

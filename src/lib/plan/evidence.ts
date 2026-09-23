@@ -16,7 +16,7 @@ export function buildPlanEvidence(
   today: string = localDateFor(),
 ): PlanEvidence {
   const path = input.examPath ?? defaultPathForExam(input.examType);
-  const syllabus = getSubjectsForExamPath(path).map((s) => s.name);
+  const syllabus = getSubjectsForExamPath(path, input.accaPapers).map((s) => s.name);
   const names = Array.from(
     new Set([...input.modules.map((m) => m.name), ...syllabus]),
   );
