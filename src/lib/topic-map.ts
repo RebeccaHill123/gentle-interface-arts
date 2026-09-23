@@ -7,14 +7,19 @@
 // A `SubTopic` view is Layer 1 + optional Layer 2 + derived status.
 // If a user has no activity, the derived fields stay null so the UI can
 // show honest empty states instead of invented metrics.
+import { ACCA_PAPERS, accaSubjectName, normaliseAccaPapers } from "@/lib/acca-syllabus";
+import { MPRE_SYLLABUS } from "@/lib/mpre-syllabus";
 
 export type UserExamType = "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
-export type ExamId = "SQE1" | "UBE";
+export type ExamId = "SQE1" | "UBE" | "MPRE" | "ACCA";
+type LegalExamId = "SQE1" | "UBE";
 
 /** Map the onboarding `examType` to a Topic Map id. */
 export function getUserExamId(examType?: string | null): ExamId {
   if (!examType) return "SQE1";
-  if (examType === "UBE" || examType === "MPRE") return "UBE";
+  if (examType === "UBE") return "UBE";
+  if (examType === "MPRE") return "MPRE";
+  if (examType === "ACCA") return "ACCA";
   return "SQE1";
 }
 
@@ -136,7 +141,7 @@ type RawSubject = [string, string | undefined, RawChapter[]];
 type RawComponent = [string, RawSubject[]];
 type RawExam = { label: string; components: RawComponent[] };
 
-const RAW: Record<ExamId, RawExam> = {
+const RAW: Record<LegalExamId, RawExam> = {
   SQE1: {
     label: "SQE1",
     components: [
@@ -1604,7 +1609,7 @@ function isHighYield(name: string): boolean {
   return HIGH_YIELD_KEYWORDS.some((k) => n.includes(k));
 }
 
-function buildSyllabus(examId: ExamId): Syllabus {
+function buildSyllabus(examId: LegalExamId): Syllabus {
   const raw = RAW[examId];
   const components: SyllabusComponent[] = raw.components.map(
     ([componentName, subjects]) => ({
@@ -1639,9 +1644,82 @@ function buildSyllabus(examId: ExamId): Syllabus {
   return { exam: examId, label: raw.label, components };
 }
 
+function buildMpreSyllabus(): Syllabus {
+  return {
+    exam: "MPRE",
+    label: "MPRE",
+    components: [
+      {
+        id: "MPRE-core",
+        name: "Professional Responsibility",
+        subjects: MPRE_SYLLABUS.map((subject) => ({
+          id: `MPRE-${slug(subject.name)}`,
+          name: subject.name,
+          shortName: undefined,
+          chapters: [
+            {
+              id: `MPRE-${slug(subject.name)}-core-rules`,
+              name: "Core rules",
+              subTopics: subject.subtopics.map((subtopic) => ({
+                id: `MPRE-${subject.id}-${subtopic.id}`,
+                name: subtopic.name,
+                isHighYield: subject.weight >= 0.1 || isHighYield(subtopic.name),
+                defaultPriority: subject.weight >= 0.1 ? "must" : "should",
+                subject: subject.name,
+                chapter: "Core rules",
+                component: "MPRE",
+                exam: "MPRE",
+              })),
+            },
+          ],
+        })),
+      },
+    ],
+  };
+}
+
+function buildAccaSyllabus(paperCodes?: string[]): Syllabus {
+  const selected = normaliseAccaPapers(paperCodes ?? []);
+  const papers = selected.length > 0 ? ACCA_PAPERS.filter((p) => selected.includes(p.code)) : ACCA_PAPERS;
+  return {
+    exam: "ACCA",
+    label: "ACCA",
+    components: papers.map((paper) => ({
+      id: `ACCA-${paper.code}`,
+      name: `${paper.code} ${paper.name}`,
+      subjects: paper.areas.map((area) => {
+        const subjectName = accaSubjectName(paper.code, area.name);
+        return {
+          id: `ACCA-${paper.code}-${area.id}`,
+          name: subjectName,
+          shortName: paper.code,
+          chapters: [
+            {
+              id: `ACCA-${paper.code}-${area.id}-syllabus-area`,
+              name: area.name,
+              subTopics: area.subtopics.map((subtopic) => ({
+                id: `ACCA-${paper.code}-${area.id}-${subtopic.id}`,
+                name: subtopic.name,
+                isHighYield: area.highYield >= 4,
+                defaultPriority: area.highYield >= 4 ? "must" : area.highYield <= 2 ? "optional" : "should",
+                subject: subjectName,
+                chapter: area.name,
+                component: paper.code,
+                exam: "ACCA",
+              })),
+            },
+          ],
+        };
+      }),
+    })),
+  };
+}
+
 export const SYLLABUSES: Record<ExamId, Syllabus> = {
   SQE1: buildSyllabus("SQE1"),
   UBE: buildSyllabus("UBE"),
+  MPRE: buildMpreSyllabus(),
+  ACCA: buildAccaSyllabus(),
 };
 
 // ---------- Deriving status from real progress ------------------------------
@@ -1727,8 +1805,9 @@ export function buildExamMap(
   examId: ExamId,
   progress: Map<string, UserTopicProgress> = new Map(),
   subjectMinutes: Map<string, number> = new Map(),
+  options?: { accaPapers?: string[] },
 ): ExamMap {
-  const s = SYLLABUSES[examId];
+  const s = examId === "ACCA" ? buildAccaSyllabus(options?.accaPapers) : SYLLABUSES[examId];
   const components: ExamComponent[] = s.components.map((c) => ({
     id: c.id,
     name: c.name,
