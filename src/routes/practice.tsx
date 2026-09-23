@@ -39,6 +39,7 @@ import {
   type PracticeSearch,
 } from "@/lib/practice/config";
 import { validateQuizQuestions, type QuizQuestion } from "@/lib/practice/quiz-validate";
+import { accaQuestionsFor } from "@/lib/acca-questions";
 import {
   ACTIVE_MAX_AGE_MS,
   ACTIVE_SNAPSHOT_VERSION,
