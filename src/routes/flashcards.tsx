@@ -83,13 +83,22 @@ export const Route = createFileRoute("/flashcards")({
 
 type Filter = "all" | "FLK1" | "FLK2" | "MBE" | "MEE" | "MPT" | "weak" | "starred";
 
-function useExamContext(): { kind: ExamKind; unsupported: Extract<ExamLabel, "ACCA" | "MPRE"> | null } {
-  return useMemo(() => {
+function getExamContext(): { kind: ExamKind; unsupported: Extract<ExamLabel, "ACCA" | "MPRE"> | null } {
     const plan = loadPlan();
     const exam = getExamLabel(plan?.input.examType, plan?.input.examPath);
     if (exam === "ACCA" || exam === "MPRE") return { kind: "SQE", unsupported: exam };
     return { kind: exam === "UBE" ? "UBE" : "SQE", unsupported: null };
+}
+
+function useExamContext(): { kind: ExamKind; unsupported: Extract<ExamLabel, "ACCA" | "MPRE"> | null } {
+  const [context, setContext] = useState<{ kind: ExamKind; unsupported: Extract<ExamLabel, "ACCA" | "MPRE"> | null }>({
+    kind: "SQE",
+    unsupported: null,
+  });
+  useEffect(() => {
+    setContext(getExamContext());
   }, []);
+  return context;
 }
 
 type ReviewMode =

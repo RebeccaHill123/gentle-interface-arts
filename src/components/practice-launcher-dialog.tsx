@@ -73,7 +73,7 @@ type PracticeTypeDefinition = {
 const DEFAULT_PRACTICE_TYPE: PracticeTypeDefinition = {
   id: "weak-area",
   title: "Weak Area Drill",
-  desc: "Targeted SBAs on your lowest-confidence and most-missed topics.",
+  desc: "Targeted questions on your lowest-confidence and most-missed topics.",
   icon: Target,
   defaultMinutes: 20,
   defaultQuestions: 12,
@@ -109,6 +109,57 @@ const PRACTICE_TYPES: PracticeTypeDefinition[] = [
     id: "flashcards",
     title: "Flashcard Sprint",
     desc: "Spaced-repetition burst on key rules and definitions.",
+    icon: Layers,
+    defaultMinutes: 10,
+    defaultQuestions: 30,
+  },
+  {
+    id: "technique",
+    title: "Exam Technique Drill",
+    desc: "Drills on pacing, elimination strategy and answer hygiene.",
+    icon: Lightbulb,
+    defaultMinutes: 20,
+    defaultQuestions: 10,
+  },
+];
+
+const UBE_PRACTICE_TYPES: PracticeTypeDefinition[] = [
+  {
+    id: "weak-area",
+    title: "Weak Area Drill",
+    desc: "Targeted bar questions on your lowest-confidence and most-missed subjects.",
+    icon: Target,
+    defaultMinutes: 20,
+    defaultQuestions: 12,
+  },
+  {
+    id: "timed-mini",
+    title: "Timed MBE Set",
+    desc: "Mixed MBE questions under exam pacing.",
+    icon: Timer,
+    defaultMinutes: 45,
+    defaultQuestions: 26,
+  },
+  {
+    id: "mini-flk",
+    title: "Mini Bar Component",
+    desc: "Exam-style sample drawn from one UBE component.",
+    icon: Scale,
+    defaultMinutes: 30,
+    defaultQuestions: 20,
+  },
+  {
+    id: "scenario",
+    title: "Issue-Spotting Practice",
+    desc: "Bar-style fact patterns with rule application.",
+    icon: Brain,
+    defaultMinutes: 45,
+    defaultQuestions: 8,
+  },
+  {
+    id: "flashcards",
+    title: "Flashcard Sprint",
+    desc: "Spaced-repetition burst on rules, elements and exceptions.",
     icon: Layers,
     defaultMinutes: 10,
     defaultQuestions: 30,
@@ -196,6 +247,7 @@ const MPRE_PRACTICE_TYPES: PracticeTypeDefinition[] = [
 function practiceTypesFor(exam: ExamLabel): PracticeTypeDefinition[] {
   if (exam === "ACCA") return ACCA_PRACTICE_TYPES;
   if (exam === "MPRE") return MPRE_PRACTICE_TYPES;
+  if (exam === "UBE") return UBE_PRACTICE_TYPES;
   return PRACTICE_TYPES;
 }
 

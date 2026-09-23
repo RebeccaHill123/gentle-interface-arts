@@ -470,7 +470,7 @@ function TopicsPage() {
     };
   }, []);
 
-  const userExamId: ExamId = getUserExamId(stored?.input.examType);
+  const userExamId: ExamId = getUserExamId(stored?.input.examType, stored?.input.examPath);
   const [exam, setExam] = useState<ExamId | null>(null);
   const activeExam: ExamId = exam ?? userExamId;
 

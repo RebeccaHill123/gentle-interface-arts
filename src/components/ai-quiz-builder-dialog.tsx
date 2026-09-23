@@ -189,22 +189,19 @@ export function AIQuizBuilderDialog({
   }, [phase, thinkingLines]);
 
   const meta = formats.find((f) => f.id === format) ?? formats[0];
-  const skillFocus =
-    format === "scenario"
-      ? examLabel === "ACCA"
-        ? ["Application", "Workings", "Judgement"]
-        : examLabel === "MPRE"
-          ? ["Rule application", "Ethics", "Reasoning"]
-          : ["Application", "Issue spotting", "Reasoning"]
-      : format === "recall"
-        ? ["Retrieval", "Definitions", "Memory"]
-        : format === "rapid"
-          ? ["Speed", "Pattern recognition"]
-          : format === "mixed"
-            ? ["Interleaving", "Transfer", "Discrimination"]
-      : examLabel === "ACCA"
-        ? ["Accuracy", "Workings", "Pacing"]
-        : ["Accuracy", "Pacing", "Application"];
+  const skillFocus = (() => {
+    if (format === "scenario") {
+      if (examLabel === "ACCA") return ["Application", "Workings", "Judgement"];
+      if (examLabel === "MPRE") return ["Rule application", "Ethics", "Reasoning"];
+      return ["Application", "Issue spotting", "Reasoning"];
+    }
+    if (format === "recall") return ["Retrieval", "Definitions", "Memory"];
+    if (format === "rapid") return ["Speed", "Pattern recognition"];
+    if (format === "mixed") return ["Interleaving", "Transfer", "Discrimination"];
+    if (examLabel === "ACCA") return ["Accuracy", "Workings", "Pacing"];
+    if (examLabel === "MPRE") return ["Accuracy", "Rule recall", "Pacing"];
+    return ["Accuracy", "Pacing", "Application"];
+  })();
 
   const confidenceImpact =
     targetStat && targetStat.confidence <= 2

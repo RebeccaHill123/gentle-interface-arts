@@ -29,10 +29,9 @@ import {
   type PaperKey,
 } from "@/components/practice-launcher-dialog";
 import { AIQuizBuilderDialog } from "@/components/ai-quiz-builder-dialog";
-import { useSqeScope } from "@/lib/use-sqe-scope";
-import { loadPlan } from "@/lib/plan-store";
-import { isAccaPath, isUbePath } from "@/lib/exam-paths";
+import { loadPlan, type StoredPlan } from "@/lib/plan-store";
 import { accaPaperLabel } from "@/lib/acca-syllabus";
+import { getExamLabel } from "@/lib/exam-label";
 import { getProStatus } from "@/lib/pro-store";
 import {
   createSimulation,
@@ -55,13 +54,13 @@ export const Route = createFileRoute("/mocks")({
       {
         name: "description",
         content:
-          "Exam simulations and adaptive practice for SQE, UBE and ACCA candidates. Build exam stamina with Tentra.",
+          "Exam simulations and adaptive practice for SQE, UBE, MPRE and ACCA candidates. Build exam stamina with Tentra.",
       },
       { property: "og:title", content: "Mocks & Practice | Tentra" },
       {
         property: "og:description",
         content:
-          "Full-length simulations, mini mocks and targeted practice across SQE, UBE and ACCA pathways.",
+          "Full-length simulations, mini mocks and targeted practice across SQE, UBE, MPRE and ACCA pathways.",
       },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "https://tentraapp.com/mocks" },
@@ -84,14 +83,14 @@ const SQE_MINI: MiniMock[] = [
 ];
 
 const UBE_MINI: MiniMock[] = [
-  { paper: "MBE", title: "Mini MBE Set", desc: "20 MBE-style SBAs across the 7 MBE subjects.", duration: "36 min" },
+  { paper: "MBE", title: "Mini MBE Set", desc: "20 MBE-style questions across the 7 MBE subjects.", duration: "36 min" },
   { paper: "MEE", title: "Mini MEE Drill", desc: "Essay-style prompts on MEE-tested subjects.", duration: "30 min" },
   { paper: "MPT", title: "MPT Practice Task", desc: "Closed-library lawyering task with a memo or brief.", duration: "45 min" },
 ];
 
 function MocksPage() {
   const navigate = useNavigate();
-  const plan = useMemo(() => loadPlan(), []);
+  const [plan, setPlan] = useState<StoredPlan | null>(null);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
   const [practicePreset, setPracticePreset] = useState<
@@ -103,16 +102,25 @@ function MocksPage() {
   const [sims, setSims] = useState<DbSimulation[]>([]);
   const [proLoaded, setProLoaded] = useState(false);
 
-  const isUbe = useMemo(() => {
-    const path = plan?.input.examPath;
-    return path ? isUbePath(path) : plan?.input.examType === "UBE";
-  }, [plan]);
-  const isAcca = useMemo(() => {
-    const path = plan?.input.examPath;
-    return plan?.input.examType === "ACCA" || (path ? isAccaPath(path) : false);
-  }, [plan]);
-  const pathway: Pathway | null = isAcca ? null : isUbe ? "UBE" : "SQE";
-  const { papers: scopePapers, assessment } = useSqeScope();
+  const examLabel = getExamLabel(plan?.input.examType, plan?.input.examPath);
+  const isUbe = examLabel === "UBE";
+  const isMpre = examLabel === "MPRE";
+  const isAcca = examLabel === "ACCA";
+  const pathway: Pathway | null = isAcca || isMpre ? null : isUbe ? "UBE" : "SQE";
+
+  const assessment = plan?.input.sqeAssessment ??
+    (plan?.input.examPath === "FLK1" || plan?.input.examPath === "FLK2" ? plan.input.examPath : null);
+  const scopePapers: ("FLK1" | "FLK2")[] = examLabel !== "SQE"
+    ? []
+    : assessment === "FLK1"
+      ? ["FLK1"]
+      : assessment === "FLK2"
+        ? ["FLK2"]
+        : [];
+
+  useEffect(() => {
+    setPlan(loadPlan());
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -123,8 +131,8 @@ function MocksPage() {
     })();
   }, []);
 
-  const singlePaper = !isUbe && scopePapers.length === 1 ? scopePapers[0] : null;
-  const miniMocks = isAcca
+  const singlePaper = !isUbe && !isMpre && !isAcca && scopePapers.length === 1 ? scopePapers[0] : null;
+  const miniMocks = isAcca || isMpre
     ? []
     : isUbe
     ? UBE_MINI
@@ -133,6 +141,8 @@ function MocksPage() {
   const accaPapersLabel = accaLabel === "ACCA" ? "your selected ACCA papers" : accaLabel;
   const fullMockTitle = isAcca
     ? "ACCA exam practice"
+    : isMpre
+    ? "MPRE exam practice"
     : isUbe
     ? "Full UBE Simulation"
     : singlePaper
@@ -140,6 +150,8 @@ function MocksPage() {
       : "Full SQE1 Simulation";
   const fullMockDesc = isAcca
     ? `Practise realistic ACCA objective questions for ${accaPapersLabel}, with worked explanations and adaptive targeting.`
+    : isMpre
+    ? "Practise realistic MPRE professional-responsibility questions, with rule-led explanations and adaptive targeting."
     : isUbe
     ? "Sit a full-length UBE simulation: MBE + MEE + MPT under exam conditions."
     : singlePaper
@@ -147,12 +159,14 @@ function MocksPage() {
       : "Sit a full-length SQE1 simulation: FLK1 and FLK2 SBA papers under exam conditions.";
   const fullMockMeta = isAcca
     ? "Paper-scoped practice · worked explanations"
+    : isMpre
+    ? "Professional responsibility · rule-led explanations"
     : isUbe
     ? "200 MBE + 6 MEE + 2 MPT · 12 hours"
     : singlePaper
       ? `180 SBAs across ${singlePaper} · ~5 hours`
       : "360 SBAs across FLK1 and FLK2 · ~10 hours";
-  const pathwayLabel = isAcca ? "ACCA pathway" : `${pathway} pathway`;
+  const pathwayLabel = isAcca ? "ACCA pathway" : isMpre ? "MPRE pathway" : `${pathway} pathway`;
   const relevantSims = pathway ? sims.filter((s) => s.pathway === pathway) : [];
 
   const inProgressSim = relevantSims.find((s) => s.status === "in_progress");
@@ -186,7 +200,7 @@ function MocksPage() {
             <div className="mt-3 text-sm text-muted-foreground/80">{fullMockMeta}</div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              {isAcca ? (
+              {isAcca || isMpre ? (
                 <Button
                   size="lg"
                   onClick={openPractice}
@@ -230,13 +244,13 @@ function MocksPage() {
           </div>
 
           <div className="hidden h-32 w-32 shrink-0 place-items-center rounded-3xl bg-gradient-pink-blue text-primary-foreground opacity-70 shadow-glow md:grid">
-            {isAcca ? <Target className="h-14 w-14" /> : <Scale className="h-14 w-14" />}
+                  {isAcca || isMpre ? <Target className="h-14 w-14" /> : <Scale className="h-14 w-14" />}
           </div>
         </div>
       </section>
 
       {/* SQE2 placeholder for SQE pathway */}
-      {!isUbe && !isAcca && (
+      {!isUbe && !isMpre && !isAcca && (
         <section className="mt-4">
           <div className="flex items-center justify-between rounded-2xl border border-dashed border-border bg-card/50 p-5">
             <div className="flex items-center gap-3">
@@ -298,18 +312,20 @@ function MocksPage() {
           </div>
           <div className="relative mt-6">
             <div className="text-lg font-semibold text-foreground">
-              {isAcca ? "ACCA Topic Drill" : isUbe ? "Mixed MBE Drill" : "Weak Topic Drill"}
+              {isAcca ? "ACCA Topic Drill" : isMpre ? "MPRE Rule Drill" : isUbe ? "Mixed MBE Drill" : "Weak Topic Drill"}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
               {isAcca
                 ? "Targeted questions across your selected paper areas."
+                : isMpre
+                  ? "Targeted questions across professional-responsibility rules."
                 : "Targeted questions on your weakest topics."}
             </p>
           </div>
           <ArrowRight className="relative mt-4 h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
         </button>
 
-        {!isAcca && (
+        {!isAcca && !isMpre && (
           <Link
             to="/flashcards"
             className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 text-left backdrop-blur transition hover:border-pink/40 hover:shadow-glow"

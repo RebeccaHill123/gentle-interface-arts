@@ -57,13 +57,14 @@ export function validateChatMessages(
     out.push({ role, content: text });
   }
   if (out.length === 0) return { ok: false, error: "messages must not be empty" };
-  if (out[out.length - 1]!.role !== "user") {
+  const last = out[out.length - 1];
+  if (!last || last.role !== "user") {
     return { ok: false, error: "last message must be from the user" };
   }
   return { ok: true, value: out };
 }
 
-export const QUIZ_EXAM_TYPES = ["SQE1", "SQE2", "UBE", "ACCA"] as const;
+export const QUIZ_EXAM_TYPES = ["SQE1", "SQE2", "UBE", "MPRE", "ACCA"] as const;
 export type QuizExamType = (typeof QUIZ_EXAM_TYPES)[number];
 
 export type QuizInput = {
