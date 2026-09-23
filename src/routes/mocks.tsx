@@ -31,7 +31,8 @@ import {
 import { AIQuizBuilderDialog } from "@/components/ai-quiz-builder-dialog";
 import { useSqeScope } from "@/lib/use-sqe-scope";
 import { loadPlan } from "@/lib/plan-store";
-import { isUbePath } from "@/lib/exam-paths";
+import { isAccaPath, isUbePath } from "@/lib/exam-paths";
+import { accaPaperLabel } from "@/lib/acca-syllabus";
 import { getProStatus } from "@/lib/pro-store";
 import {
   createSimulation,
@@ -54,15 +55,17 @@ export const Route = createFileRoute("/mocks")({
       {
         name: "description",
         content:
-          "Full UBE and SQE1 mock exam simulations, mini mocks and adaptive drills. Build exam stamina with Tentra.",
+          "Exam simulations and adaptive practice for SQE, UBE and ACCA candidates. Build exam stamina with Tentra.",
       },
       { property: "og:title", content: "Mocks & Practice | Tentra" },
       {
         property: "og:description",
         content:
-          "Full-length mock exam simulations and adaptive drills for SQE (FLK1/FLK2) and NY UBE (MBE/MEE/MPT).",
+          "Full-length simulations, mini mocks and targeted practice across SQE, UBE and ACCA pathways.",
       },
+      { property: "og:type", content: "website" },
       { property: "og:url", content: "https://tentraapp.com/mocks" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://tentraapp.com/mocks" }],
   }),
