@@ -303,7 +303,7 @@ function DashboardPage() {
   }, [tick]);
 
   const examLabel = getExamLabel(stored?.input.examType, stored?.input.examPath);
-  const examId = getUserExamId(stored?.input.examType);
+  const examId = getUserExamId(stored?.input.examType, stored?.input.examPath);
   const subjectMinutes = useMemo(() => aggregateSubjectMinutes(stored?.sessions ?? []), [stored]);
   const accaPapers = useMemo(
     () => normaliseAccaPapers(stored?.input.accaPapers ?? []),
