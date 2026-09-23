@@ -303,7 +303,7 @@ export function PracticeLauncherDialog({
         : type === "scenario"
           ? ["Application", "Issue spotting", "Reasoning"]
           : type === "flashcards"
-            ? ["Recall", "Definitions", "Procedural rules"]
+            ? ["Recall", "Definitions", "Core rules"]
             : type === "technique"
               ? ["Pacing", "Elimination", "Answer hygiene"]
               : ["Accuracy", "Pattern recognition", "Speed"];
