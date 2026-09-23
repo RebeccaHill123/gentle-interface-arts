@@ -368,9 +368,9 @@ export const ACCA_QUESTIONS: AccaBankQuestion[] = [
     "PM",
     "pm-techniques",
     "A factory has a bottleneck machine with 1,200 available hours. A product sells for $90, has material cost of $30 and takes 0.5 bottleneck hours. Factory costs are $48,000. What is the throughput accounting ratio?",
-    ["1.50", "0.80", "1.25", "2.25"],
+    ["3.00", "1.50", "0.33", "2.00"],
     0,
-    "Throughput per bottleneck hour = ($90 − $30) / 0.5 = $120. Factory cost per bottleneck hour = $48,000 / 1,200 = $40... giving a TPAR of $120 / $40 = 3.0. The method is what is examined: throughput per hour divided by factory cost per hour, and only a ratio above 1 covers operating costs.",
+    "Throughput per bottleneck hour = (selling price − material cost) / bottleneck hours = ($90 − $30) / 0.5 = $120. Factory cost per bottleneck hour = $48,000 / 1,200 = $40. TPAR = $120 / $40 = 3.00. A ratio above 1 means the product's throughput covers operating costs, so it is worth making.",
     ["throughput", "TPAR"],
   ),
   q(
