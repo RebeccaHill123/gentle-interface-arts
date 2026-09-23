@@ -206,7 +206,7 @@ function MocksPage() {
                   onClick={openPractice}
                   className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
                 >
-                  Start ACCA practice <ArrowRight className="ml-1.5 h-4 w-4" />
+                  {isMpre ? "Start MPRE practice" : "Start ACCA practice"} <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Button>
               ) : inProgressSim ? (
                 <Button
@@ -230,7 +230,7 @@ function MocksPage() {
                   Start Full Simulation
                 </Button>
               )}
-              {!isAcca && !isPro && proLoaded && (
+              {!isAcca && !isMpre && !isPro && proLoaded && (
                 <Button
                   size="lg"
                   variant="outline"

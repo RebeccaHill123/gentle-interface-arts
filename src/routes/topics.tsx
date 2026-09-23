@@ -53,6 +53,14 @@ export const Route = createFileRoute("/topics")({
         content:
           "Full SQE1, UBE, MPRE and ACCA syllabus maps — track confidence, weak spots and next actions by subject, chapter and sub-topic as you study.",
       },
+      { property: "og:title", content: "Topic Map | Tentra" },
+      {
+        property: "og:description",
+        content:
+          "Track SQE, UBE, MPRE and ACCA syllabus coverage by subject, chapter and sub-topic.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
 });
