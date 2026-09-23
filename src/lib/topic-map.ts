@@ -14,8 +14,11 @@ export type UserExamType = "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
 export type ExamId = "SQE1" | "UBE" | "MPRE" | "ACCA";
 type LegalExamId = "SQE1" | "UBE";
 
-/** Map the onboarding `examType` to a Topic Map id. */
-export function getUserExamId(examType?: string | null): ExamId {
+/** Map the onboarding exam route to a Topic Map id. */
+export function getUserExamId(examType?: string | null, examPath?: string | null): ExamId {
+  if (examPath === "UBE_FULL" || examPath === "UBE_MBE" || examPath === "UBE_ESSAYS" || examPath === "UBE_MPT") return "UBE";
+  if (examPath === "MPRE_FULL") return "MPRE";
+  if (examPath === "ACCA_PAPERS") return "ACCA";
   if (!examType) return "SQE1";
   if (examType === "UBE") return "UBE";
   if (examType === "MPRE") return "MPRE";

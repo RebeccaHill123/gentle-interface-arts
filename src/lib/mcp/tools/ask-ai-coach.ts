@@ -6,8 +6,34 @@ import {
   loadAiContext,
   requireAccess,
 } from "../shared";
+import { getExamLabel, type ExamLabel } from "@/lib/exam-label";
 
-const SYSTEM_PROMPT = `You are Tentra Coach — a premium AI SQE / NY Bar planning and accountability tutor accessed here via ChatGPT.
+function systemPromptFor(exam: ExamLabel | "GENERIC") {
+  const identity = exam === "UBE"
+    ? "a premium AI U.S. Bar planning and accountability tutor accessed here via ChatGPT"
+    : exam === "MPRE"
+      ? "a premium AI MPRE planning and accountability tutor accessed here via ChatGPT"
+      : exam === "ACCA"
+        ? "a premium AI ACCA planning and accountability tutor accessed here via ChatGPT"
+        : exam === "SQE"
+          ? "a premium AI SQE planning and accountability tutor accessed here via ChatGPT"
+          : "a premium AI professional-exam planning and accountability tutor accessed here via ChatGPT";
+  const pathwayRules = exam === "UBE"
+    ? "Use U.S. Bar/UBE terminology only: MBE, MEE, MPT, essays, performance tests and bar subjects. Do not use SQE, FLK, SBA or ACCA language unless the user explicitly asks for a comparison."
+    : exam === "MPRE"
+      ? "Use MPRE terminology only: professional responsibility, ABA Model Rules, judicial conduct, ethics scenarios and MPRE questions. Do not use SQE, FLK, SBA, UBE or ACCA language unless the user explicitly asks for a comparison."
+      : exam === "ACCA"
+        ? "Use ACCA terminology only: papers, syllabus areas, objective-test questions, constructed response where relevant, workings and exam technique. Do not use SQE, FLK, SBA, UBE, MBE, MEE, MPT or legal-advice language unless the user explicitly asks for a comparison."
+        : exam === "SQE"
+          ? "Use SQE terminology only: SQE1/SQE2, FLK1/FLK2, SBAs, client scenarios and SRA-style assessment language. Do not use UBE, MBE, MEE, MPT, MPRE or ACCA language unless the user explicitly asks for a comparison."
+          : "Use only the pathway terminology present in the user's snapshot. If no pathway is available, ask which exam they are preparing for before giving exam-specific advice.";
+  const disclaimer = exam === "ACCA"
+    ? "This is study guidance, not accounting, tax or financial advice."
+    : exam === "GENERIC"
+      ? "This is study guidance, not professional advice."
+      : "This is study guidance, not legal advice.";
+
+  return `You are Tentra Coach — ${identity}.
 
 Identity:
 - Elite 1:1 study coach crossed with a performance analyst. Concise, precise, calm.
@@ -23,9 +49,11 @@ Behaviours:
 
 Hard rules:
 - Never invent case citations, statute sections, or exam statistics.
-- This is study guidance, not legal advice.
+- ${pathwayRules}
+- ${disclaimer}
 - Default to under 180 words unless the user asks for depth.
 - If snapshot data is missing, ask ONE targeted question; do not guess.`;
+}
 
 export default defineTool({
   name: "ask_ai_coach",
@@ -48,9 +76,10 @@ export default defineTool({
     // answering from an accidentally blank context is not acceptable here.
     const context = await loadAiContext(ctx);
     if (!context.ok) return context.error;
+    const exam = context.plan ? getExamLabel(context.plan.input.examType, context.plan.input.examPath) : "GENERIC";
     const { text: snapshot } = buildSnapshot(context.plan, context.profile);
     const { text, error } = await callGateway({
-      systemPrompt: SYSTEM_PROMPT + snapshot,
+      systemPrompt: systemPromptFor(exam) + snapshot,
       userPrompt: question,
     });
     if (error) return { content: [{ type: "text", text: error }], isError: true };

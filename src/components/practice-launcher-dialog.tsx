@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
-import { isAccaPath } from "@/lib/exam-paths";
+import { getExamLabel, type ExamLabel } from "@/lib/exam-label";
 import { normaliseAccaPapers } from "@/lib/acca-syllabus";
 import { deriveAnalytics, type SubjectStat } from "@/lib/analytics-derive";
 import { pickEvidenceLedSubject, evidenceReason } from "@/lib/evidence-priority";
@@ -73,7 +73,7 @@ type PracticeTypeDefinition = {
 const DEFAULT_PRACTICE_TYPE: PracticeTypeDefinition = {
   id: "weak-area",
   title: "Weak Area Drill",
-  desc: "Targeted SBAs on your lowest-confidence and most-missed topics.",
+  desc: "Targeted questions on your lowest-confidence and most-missed topics.",
   icon: Target,
   defaultMinutes: 20,
   defaultQuestions: 12,
@@ -123,6 +123,57 @@ const PRACTICE_TYPES: PracticeTypeDefinition[] = [
   },
 ];
 
+const UBE_PRACTICE_TYPES: PracticeTypeDefinition[] = [
+  {
+    id: "weak-area",
+    title: "Weak Area Drill",
+    desc: "Targeted bar questions on your lowest-confidence and most-missed subjects.",
+    icon: Target,
+    defaultMinutes: 20,
+    defaultQuestions: 12,
+  },
+  {
+    id: "timed-mini",
+    title: "Timed MBE Set",
+    desc: "Mixed MBE questions under exam pacing.",
+    icon: Timer,
+    defaultMinutes: 45,
+    defaultQuestions: 26,
+  },
+  {
+    id: "mini-flk",
+    title: "Mini Bar Component",
+    desc: "Exam-style sample drawn from one UBE component.",
+    icon: Scale,
+    defaultMinutes: 30,
+    defaultQuestions: 20,
+  },
+  {
+    id: "scenario",
+    title: "Issue-Spotting Practice",
+    desc: "Bar-style fact patterns with rule application.",
+    icon: Brain,
+    defaultMinutes: 45,
+    defaultQuestions: 8,
+  },
+  {
+    id: "flashcards",
+    title: "Flashcard Sprint",
+    desc: "Spaced-repetition burst on rules, elements and exceptions.",
+    icon: Layers,
+    defaultMinutes: 10,
+    defaultQuestions: 30,
+  },
+  {
+    id: "technique",
+    title: "Exam Technique Drill",
+    desc: "Drills on pacing, elimination strategy and answer hygiene.",
+    icon: Lightbulb,
+    defaultMinutes: 20,
+    defaultQuestions: 10,
+  },
+];
+
 const ACCA_PRACTICE_TYPES: PracticeTypeDefinition[] = [
   {
     id: "weak-area",
@@ -158,6 +209,71 @@ const ACCA_PRACTICE_TYPES: PracticeTypeDefinition[] = [
   },
 ];
 
+const MPRE_PRACTICE_TYPES: PracticeTypeDefinition[] = [
+  {
+    id: "weak-area",
+    title: "Rule Drill",
+    desc: "Targeted MPRE questions on your weakest professional-responsibility areas.",
+    icon: Target,
+    defaultMinutes: 20,
+    defaultQuestions: 12,
+  },
+  {
+    id: "timed-mini",
+    title: "Timed MPRE Set",
+    desc: "Mixed ethics questions under exam-style pacing.",
+    icon: Timer,
+    defaultMinutes: 45,
+    defaultQuestions: 26,
+  },
+  {
+    id: "scenario",
+    title: "Ethics Scenario Practice",
+    desc: "Professional-responsibility fact patterns with rule-led explanations.",
+    icon: Brain,
+    defaultMinutes: 45,
+    defaultQuestions: 8,
+  },
+  {
+    id: "technique",
+    title: "Exam Technique Drill",
+    desc: "Drills on pacing, option elimination and answer hygiene.",
+    icon: Lightbulb,
+    defaultMinutes: 20,
+    defaultQuestions: 10,
+  },
+];
+
+function practiceTypesFor(exam: ExamLabel): PracticeTypeDefinition[] {
+  if (exam === "ACCA") return ACCA_PRACTICE_TYPES;
+  if (exam === "MPRE") return MPRE_PRACTICE_TYPES;
+  if (exam === "UBE") return UBE_PRACTICE_TYPES;
+  return PRACTICE_TYPES;
+}
+
+function fallbackSubjectFor(exam: ExamLabel, accaPapers: string[]): string {
+  if (exam === "ACCA") return accaPapers[0] ? `Mixed (${accaPapers[0]})` : "Mixed ACCA practice";
+  if (exam === "MPRE") return "Mixed MPRE practice";
+  if (exam === "UBE") return "Mixed UBE practice";
+  return "Mixed";
+}
+
+function skillFocusFor(type: PracticeType, exam: ExamLabel): string[] {
+  if (type === "mini-flk") return ["Pacing", "Breadth", "Application"];
+  if (type === "flashcards") return ["Recall", "Definitions", "Core rules"];
+  if (type === "technique") return ["Pacing", "Elimination", "Answer hygiene"];
+  if (exam === "ACCA") {
+    if (type === "scenario") return ["Application", "Workings", "Judgement"];
+    return ["Accuracy", "Workings", "Speed"];
+  }
+  if (exam === "MPRE") {
+    if (type === "scenario") return ["Rule application", "Ethics", "Reasoning"];
+    return ["Accuracy", "Rule recall", "Speed"];
+  }
+  if (type === "scenario") return ["Application", "Issue spotting", "Reasoning"];
+  return ["Accuracy", "Pattern recognition", "Speed"];
+}
+
 const DURATIONS: { v: 10 | 20 | 30 | 45 | 90; label: string }[] = [
   { v: 10, label: "10 min" },
   { v: 20, label: "20 min" },
@@ -190,11 +306,11 @@ export function PracticeLauncherDialog({
   const [paper, setPaper] = useState<PaperKey | undefined>(undefined);
 
   const plan = useMemo(() => loadPlan(), [open]);
-  const path = plan?.input.examPath;
-  const isAcca = plan?.input.examType === "ACCA" || (path ? isAccaPath(path) : false);
+  const examLabel = getExamLabel(plan?.input.examType, plan?.input.examPath);
+  const isAcca = examLabel === "ACCA";
   const accaPapers = normaliseAccaPapers(plan?.input.accaPapers ?? []);
-  const accaFallbackSubject = accaPapers[0] ? `Mixed (${accaPapers[0]})` : "Mixed ACCA practice";
-  const practiceTypes = isAcca ? ACCA_PRACTICE_TYPES : PRACTICE_TYPES;
+  const fallbackSubject = fallbackSubjectFor(examLabel, accaPapers);
+  const practiceTypes = practiceTypesFor(examLabel);
   const analytics = useMemo(() => deriveAnalytics(plan), [plan]);
   const subjects: SubjectStat[] = analytics.subjects;
   const examDate = plan?.input.examDate;
@@ -234,7 +350,7 @@ export function PracticeLauncherDialog({
     type === "mini-flk" && paper
       ? `Mixed (${paper})`
       : subject === "auto"
-        ? recommended?.module ?? (isAcca ? subjects[0]?.module ?? accaFallbackSubject : "Mixed")
+        ? recommended?.module ?? subjects[0]?.module ?? fallbackSubject
         : subject;
   const targetStat = subjects.find((s) => s.module === targetSubject);
 
@@ -298,15 +414,7 @@ export function PracticeLauncherDialog({
           : `Generated from a balanced view of your syllabus.`;
 
     const skillFocus =
-      type === "mini-flk"
-        ? ["Pacing", "Breadth", "Application"]
-        : type === "scenario"
-          ? ["Application", "Issue spotting", "Reasoning"]
-          : type === "flashcards"
-            ? ["Recall", "Definitions", "Core rules"]
-            : type === "technique"
-              ? ["Pacing", "Elimination", "Answer hygiene"]
-              : ["Accuracy", "Pattern recognition", "Speed"];
+      skillFocusFor(type, examLabel);
 
     // For mini-flk, send a descriptive module string so the generator can
     // cover the whole selected paper.
@@ -518,14 +626,8 @@ export function PracticeLauncherDialog({
                 </div>
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {(type === "mini-flk"
-                    ? ["Pacing", "Breadth", "Application"]
-                    : type === "scenario"
-                      ? ["Application", "Issue spotting", "Reasoning"]
-                      : type === "flashcards"
-                        ? ["Recall", "Definitions", "Core rules"]
-                        : type === "technique"
-                          ? ["Pacing", "Elimination", "Answer hygiene"]
-                          : ["Accuracy", "Pattern recognition", "Speed"]
+                    ? skillFocusFor("mini-flk", examLabel)
+                    : skillFocusFor(type, examLabel)
                   ).map((s) => (
                     <span
                       key={s}

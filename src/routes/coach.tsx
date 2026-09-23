@@ -25,18 +25,12 @@ import { waitForAuthUser } from "@/lib/auth-session";
 import { supabase } from "@/integrations/supabase/client";
 import { loadPlan, computeStreak } from "@/lib/plan-store";
 import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
+import { getExamLabel } from "@/lib/exam-label";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type Suggestion = { label: string; prompt: string };
 type Mode = "coach" | "tutor";
 type CoachExam = "SQE" | "UBE" | "MPRE" | "ACCA";
-
-function coachExamFromType(examType: "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA" | null): CoachExam {
-  if (examType === "UBE") return "UBE";
-  if (examType === "MPRE") return "MPRE";
-  if (examType === "ACCA") return "ACCA";
-  return "SQE";
-}
 
 function examQuestionName(exam: CoachExam): string {
   if (exam === "UBE") return "MBE";
@@ -147,6 +141,13 @@ export const Route = createFileRoute("/coach")({
     meta: [
       { title: "Tentra Coach · Your exam strategist & private tutor" },
       { name: "description", content: "An intelligent study coach and private tutor. Plan strategically, drill weak areas, test understanding and stay on track for qualification." },
+      { property: "og:title", content: "Tentra Coach | Study strategist and private tutor" },
+      {
+        property: "og:description",
+        content: "Pathway-aware study coaching and private tutoring for SQE, UBE, MPRE and ACCA candidates.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
 });
@@ -162,13 +163,11 @@ function CoachPage() {
   const [mode, setMode] = useState<Mode>("coach");
   const [thinkingIdx, setThinkingIdx] = useState(0);
   const [hasPrior, setHasPrior] = useState(false);
-  const [examType, setExamType] = useState<"SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA" | null>(null);
+  const [coachExam, setCoachExam] = useState<CoachExam>("SQE");
   const scrollerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  const isUbe = examType === "UBE";
-  const coachExam = coachExamFromType(examType);
   const questionName = examQuestionName(coachExam);
 
   // Bootstrap: profile + analytics + last conversation flag
@@ -186,7 +185,7 @@ function CoachPage() {
 
       const plan = loadPlan();
       if (plan) {
-        setExamType(plan.input.examType);
+        setCoachExam(getExamLabel(plan.input.examType, plan.input.examPath));
         setStreak(computeStreak(plan.sessions).current);
         setAnalytics(await loadAnalytics(plan));
         if (plan.input?.examDate) {
