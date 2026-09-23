@@ -138,8 +138,8 @@ export const ACCA_QUESTIONS: AccaBankQuestion[] = [
       "$12,000 under-absorbed",
       "$10,000 over-absorbed",
     ],
-    0,
-    "Absorption rate = $250,000 / 50,000 = $5 per hour. Overhead absorbed = 52,000 × $5 = $260,000... compare with actual $262,000, so $2,000 was not absorbed. Careful: absorbed $260,000 is less than incurred $262,000, which is $2,000 UNDER-absorbed, so the correct treatment is a debit to profit. Option A is wrong on direction; the examinable point is absorbed less incurred.",
+    1,
+    "Absorption rate = $250,000 / 50,000 budgeted hours = $5 per hour. Overhead absorbed = 52,000 actual hours × $5 = $260,000, against $262,000 actually incurred. Absorbed is $2,000 less than incurred, so $2,000 is under-absorbed and charged as an extra debit to profit or loss.",
     ["absorption", "overheads"],
   ),
   q(
