@@ -8,7 +8,7 @@
 // If a user has no activity, the derived fields stay null so the UI can
 // show honest empty states instead of invented metrics.
 
-export type UserExamType = "SQE1" | "SQE2" | "UBE" | "MPRE";
+export type UserExamType = "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
 export type ExamId = "SQE1" | "UBE";
 
 /** Map the onboarding `examType` to a Topic Map id. */

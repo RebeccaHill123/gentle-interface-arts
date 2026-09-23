@@ -247,7 +247,7 @@ function PracticeSessionPage() {
     const mod = plan?.input.modules.find((m) => m.name === cfg.module);
 
     setConfidenceBefore(mod?.confidence ?? null);
-    const examType = (plan?.input.examType ?? "SQE1") as "SQE1" | "SQE2" | "UBE" | "MPRE";
+    const examType = (plan?.input.examType ?? "SQE1") as "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
     examPathRef.current = plan?.input.examType ?? undefined;
     setExamPath(plan?.input.examType ?? undefined);
 

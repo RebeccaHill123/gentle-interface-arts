@@ -15,7 +15,7 @@ describe("acquisition exam routing", () => {
     });
   });
 
-  it.each(["sqe1", "sqe2", "ube", "mpre"] as const)(
+  it.each(["sqe1", "sqe2", "ube", "mpre", "acca"] as const)(
     "preserves the explicit %s pathway",
     (exam) => {
       expect(parseAcquisitionSearch({ exam }).exam).toBe(exam);

@@ -1,6 +1,6 @@
-export type AcquisitionExamParam = "sqe1" | "sqe2" | "ube" | "mpre";
+export type AcquisitionExamParam = "sqe1" | "sqe2" | "ube" | "mpre" | "acca";
 
-const EXAM_PARAMS: AcquisitionExamParam[] = ["sqe1", "sqe2", "ube", "mpre"];
+const EXAM_PARAMS: AcquisitionExamParam[] = ["sqe1", "sqe2", "ube", "mpre", "acca"];
 
 export interface AcquisitionSearch {
   exam?: AcquisitionExamParam;

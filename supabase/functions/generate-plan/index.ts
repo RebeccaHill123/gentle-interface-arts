@@ -5,10 +5,10 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-type ExamPath = "SQE1_FULL" | "FLK1" | "FLK2" | "SQE2" | "UBE_FULL" | "UBE_MBE" | "UBE_ESSAYS" | "UBE_MPT" | "CUSTOM";
+type ExamPath = "SQE1_FULL" | "FLK1" | "FLK2" | "SQE2" | "UBE_FULL" | "UBE_MBE" | "UBE_ESSAYS" | "UBE_MPT" | "ACCA_PAPERS" | "CUSTOM";
 type IntensityTier = "beginner" | "intermediate" | "advanced" | "resitter";
 type CoverageMode = "even" | "advanced";
-type ExamType = "SQE1" | "SQE2" | "UBE";
+type ExamType = "SQE1" | "SQE2" | "UBE" | "ACCA";
 
 interface PlanRequest {
   name: string;
@@ -24,6 +24,10 @@ interface PlanRequest {
   coverageMode?: CoverageMode;
   recentMockAccuracy?: { module: string; accuracy: number }[];
   recentlyStudied?: { module: string; daysAgo: number }[];
+  /** ACCA only: the paper codes entered for this sitting, e.g. ["FR","AA"]. */
+  accaPapers?: string[];
+  /** ACCA only: canonical syllabus text for the chosen papers (from the app). */
+  accaSyllabus?: string;
 }
 
 type TaskMinutes = 30 | 45 | 60 | 90 | 120;
@@ -123,7 +127,32 @@ function isUbe(body: PlanRequest): boolean {
   return p.startsWith("UBE_");
 }
 
+function isAcca(body: PlanRequest): boolean {
+  return body.examType === "ACCA" || body.examPath === "ACCA_PAPERS";
+}
+
+/**
+ * ACCA is sat paper by paper, so the syllabus is whatever the student entered
+ * for. The app sends the canonical area names as modules, so the table is
+ * derived from those rather than hardcoded here — nothing is invented.
+ */
+function accaSubjectTable(body: PlanRequest): Record<string, { weight: number; highYield: number; groups: string[]; subtopics: string[] }> {
+  const table: Record<string, { weight: number; highYield: number; groups: string[]; subtopics: string[] }> = {};
+  const count = Math.max(1, body.modules.length);
+  for (const m of body.modules) {
+    const paper = /\(([A-Z]{2,3})\)\s*$/.exec(m.name)?.[1] ?? "ACCA";
+    table[m.name] = {
+      weight: 1 / count,
+      highYield: 4,
+      groups: [paper],
+      subtopics: m.weakSubtopics?.length ? m.weakSubtopics : [m.name],
+    };
+  }
+  return table;
+}
+
 function getSubjectTable(body: PlanRequest): Record<string, { weight: number; highYield: number; groups: string[]; subtopics: string[] }> {
+  if (isAcca(body)) return accaSubjectTable(body);
   if (isUbe(body)) return UBE_FALLBACK_SUBJECTS;
   return SQE_FALLBACK_SUBJECTS;
 }
@@ -604,7 +633,39 @@ Tasks MUST be academically specific. Bad: "Study evidence". Good: "Timed 30-MBE 
 
 Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
 
-    const systemPrompt = examIsUbe ? ubeSystemPrompt : sqeSystemPrompt;
+    const examIsAcca = isAcca(body);
+    // ACCA's syllabus depends on the papers entered for this sitting, so the
+    // canonical area/subtopic list is supplied by the app rather than assumed.
+    const accaSyllabusBlock = (body.accaSyllabus ?? "").slice(0, 8000);
+    const accaPaperList = (body.accaPapers ?? []).join(" + ") || "the chosen papers";
+    const accaSystemPrompt = `You are an elite ACCA tutor and performance coach with deep knowledge of the ACCA syllabus, examiner reports and computer-based exam (CBE) technique. You design adaptive weekly strategies that read like a top Kaplan/BPP tutor crossed with a performance analyst.
+
+# This student's sitting
+Papers entered: ${accaPaperList}. Plan ONLY these papers — never schedule a paper the student has not entered for.
+
+# Canonical syllabus (use EXACT area names as written, including the paper code in brackets)
+${accaSyllabusBlock || "(Use only the module names supplied in the request.)"}
+
+# Planner doctrine
+1. PRIORITY SCORE = 0.4·areaWeight + 0.3·HY/5 + 0.2·confidenceGap + 0.1·recencyBoost. Apply explicitly.
+2. Weak (confidence ≤ 2) AND high-yield (HY ≥ 4) areas get DOUBLE the time of strong/low-yield areas.
+3. Every syllabus area needs BOTH technique work (worked examples, calculations, proformas, standards application) and exam-standard question practice — never reading alone.
+4. Numerical papers (MA, FA, PM, TX, FR, FM, AFM, APM, ATX): schedule calculation drills with a stated question count and timing, and require full workings.
+5. Discursive papers (BT, LW, AA, SBL, SBR, AAA): schedule written answers to past-exam requirements with a stated mark allocation and 1.8 minutes per mark.
+6. SPACED REPETITION — re-touch an area at 1d, 3d, 7d, 14d. Anything stale (>10 days) earns a revision refresh block.
+7. CBE discipline: from the halfway point, practise in the real exam software style (spreadsheet/word processing) and under section timing.
+8. Mock exposure scales with proximity: 0–25% of weekly hours far out, 40–55% in the final 4 weeks (mix of objective test sets and full constructed-response questions).
+9. Where two papers are sat together, interleave them across the week and never let one paper starve.
+
+Tasks MUST be academically specific. Bad: "Study financial reporting". Good: "Consolidated statement of profit or loss with mid-year acquisition and intra-group trading — 2 past-exam requirements (30 marks, 54 mins) with full workings". Today is ${new Date().toISOString().slice(0, 10)}.
+
+Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
+
+    const systemPrompt = examIsAcca
+      ? accaSystemPrompt
+      : examIsUbe
+        ? ubeSystemPrompt
+        : sqeSystemPrompt;
 
     const mockSummary = body.recentMockAccuracy?.length
       ? `\nRecent mock accuracy:\n${body.recentMockAccuracy.map((m) => `- ${m.module}: ${Math.round(m.accuracy * 100)}%`).join("\n")}`
@@ -613,7 +674,13 @@ Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
       ? `\nLast revised (days ago):\n${body.recentlyStudied.map((m) => `- ${m.module}: ${m.daysAgo}d`).join("\n")}`
       : "";
 
-    const defaultPath: ExamPath = examIsUbe ? "UBE_FULL" : body.examType === "SQE2" ? "SQE2" : "SQE1_FULL";
+    const defaultPath: ExamPath = examIsAcca
+      ? "ACCA_PAPERS"
+      : examIsUbe
+        ? "UBE_FULL"
+        : body.examType === "SQE2"
+          ? "SQE2"
+          : "SQE1_FULL";
     const examPath = body.examPath ?? defaultPath;
     const intensity = body.intensity ?? "intermediate";
     const coverageMode = body.coverageMode ?? "even";
@@ -630,7 +697,17 @@ Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
       advanced: "Heavy timed practice (≥40% timed MBE + ≥20% full MEE essays under 30-min timing). Weekly full MPT. Surgical weak-subtopic drills.",
       resitter: "RESITTER MODE — assume prior bar prep. ≥50% timed MBE + MEE essays under exam timing. Aggressive spaced repetition (1d/3d/7d/14d) on every flagged weak subtopic. Treat low-confidence + flagged subtopics as the entire revision spine.",
     };
-    const intensityGuidance = examIsUbe ? ubeIntensityGuidance : sqeIntensityGuidance;
+    const accaIntensityGuidance: Record<string, string> = {
+      beginner: "Lead with foundation technique: worked examples, proformas and standards/rules application on the exact syllabus areas. Avoid recall-only or mistake-review blocks on day 1 unless genuine mistakes exist.",
+      intermediate: "Balanced mix: ~40% exam-standard question practice, 30% technique/worked examples, 20% recall of rules and formats, 10% timed sections.",
+      advanced: "Heavy exam-standard practice (≥45% past-exam questions under timing) plus full CBE sections weekly. Surgical drills on weak areas only.",
+      resitter: "RESITTER MODE — assume prior coverage. ≥50% timed past-exam questions and full sections. Aggressive spaced repetition (1d/3d/7d/14d) on every flagged weak area, driven by the examiner's common-weakness themes.",
+    };
+    const intensityGuidance = examIsAcca
+      ? accaIntensityGuidance
+      : examIsUbe
+        ? ubeIntensityGuidance
+        : sqeIntensityGuidance;
     const weakSubtopicSummary = body.modules
       .filter((m) => (m.weakSubtopics?.length ?? 0) > 0)
       .map((m) => `  - ${m.name}: ${m.weakSubtopics!.join("; ")}`)
@@ -639,9 +716,11 @@ Task minutes MUST be one of: 30, 45, 60, 90, 120.`;
       ? `\nUSER-FLAGGED WEAK SUBTOPICS (give these noticeably more sessions, drills, mocks and spaced-repetition reps; reference by name in task titles):\n${weakSubtopicSummary}`
       : "";
 
-    const themeExample = examIsUbe
-      ? `"Repair weak areas in Evidence hearsay and Real Property mortgages, then apply through a timed 50-MBE mixed set and a full MEE essay"`
-      : `"Repair weak areas in Land Law and Business Law, then apply through mixed SBA practice"`;
+    const themeExample = examIsAcca
+      ? `"Rebuild consolidation technique and lease accounting, then apply through two past-exam requirements under exam timing"`
+      : examIsUbe
+        ? `"Repair weak areas in Evidence hearsay and Real Property mortgages, then apply through a timed 50-MBE mixed set and a full MEE essay"`
+        : `"Repair weak areas in Land Law and Business Law, then apply through mixed SBA practice"`;
 
     const userPrompt = `Design ${body.name}'s ${examPath} weekly strategy.
 Exam path: ${examPath} (${body.examType})
@@ -653,7 +732,7 @@ Available study time: ${body.hoursPerWeek} hours/week
 Confidence per module (1=weak, 5=strong):
 ${body.modules.map((m) => `- ${m.name}: ${m.confidence}/5`).join("\n")}${weakSubtopicBlock}${mockSummary}${recencySummary}
 
-Apply the planner doctrine. Voice MUST sound like a calm, premium ${examIsUbe ? "bar prep" : "legal revision"} coach — never robotic. Produce:
+Apply the planner doctrine. Voice MUST sound like a calm, premium ${examIsAcca ? "ACCA" : examIsUbe ? "bar prep" : "legal revision"} coach — never robotic. Produce:
 (a) a 1–2 sentence overview that names the highest-priority subjects + reasoning (mention intensity and any weak subtopics by name);
 (b) weeklyStrategy.allocations across modules. For EACH allocation include: rationale tag, plain-English note, 2–4 EXACT subtopics to cover this week, the suggested study method (one sentence), the expected outcome (one sentence). Tilt toward high-yield + weak-area + recency-gap; suppress HY≤2 niche topics; flagged weak modules get a noticeably larger share;
 (c) todayTasks — academically-specific study blocks for THIS WEEK using interleaving + spaced repetition. Restrict tasks to the 2–3 priority subjects in weeklyFocus[0].modules PLUS at most 1–2 maintenance blocks on other subjects (so the week is coherent, not a random timetable). For EACH task include: title (names the exact subtopic and, where useful, the micro-rules/fact triggers${examIsUbe ? "; for MBE blocks state Q count and timing at 1.8 min/Q; for MEE blocks state essay count and 30-min timing; for MPT blocks state 90-min timing" : ""}), module, minutes, taskType, rationale, priority, why (one line), subtopic (canonical name), difficulty (foundational | core | challenging), output (the concrete artefact the user should produce), bucket (must | should | optional — split roughly 50% must, 30% should, 20% optional by minutes). CRITICAL: SUM of block minutes MUST equal ${body.hoursPerWeek * 60} (±10%). Typical count: ${Math.max(4, Math.ceil(body.hoursPerWeek * 60 / 75))}–${Math.ceil(body.hoursPerWeek * 60 / 45)} blocks. Allowed durations: 30/45/60/90/120. FORBIDDEN unless genuine mock/practice mistake evidence exists: generic "Mistake review" blocks. FORBIDDEN always: titles that only name the broad subject, e.g. "Active recall: Civil Procedure" or "Timed MCQs: Constitutional Law";

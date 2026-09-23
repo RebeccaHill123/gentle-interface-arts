@@ -26,17 +26,20 @@ export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
     meta: [
-      { title: "Tentra — Personalised SQE & U.S. Bar study plans" },
+      { title: "Tentra — Personalised study plans for SQE, U.S. Bar & ACCA" },
       {
         name: "description",
         content:
-          "Personalised study plans for SQE1, SQE2, the U.S. Bar (UBE) and MPRE, built around your exam date, available time and progress.",
+          "Personalised study plans for SQE1, SQE2, the U.S. Bar (UBE), MPRE and ACCA papers, built around your exam date, available time and progress.",
       },
-      { property: "og:title", content: "Your law exam study plan, built around you" },
+      {
+        property: "og:title",
+        content: "The study plan for demanding professional exams",
+      },
       {
         property: "og:description",
         content:
-          "Plan, track and adapt with AI for SQE1, SQE2, the U.S. Bar (UBE) and MPRE.",
+          "Plan, track and adapt with AI for SQE1, SQE2, the U.S. Bar (UBE), MPRE and ACCA.",
       },
       { property: "og:url", content: "https://tentraapp.com/" },
       { property: "og:type", content: "website" },
@@ -54,7 +57,7 @@ export const Route = createFileRoute("/")({
           operatingSystem: "Web",
           url: "https://tentraapp.com/",
           description:
-            "Personalised, adaptive study planning for SQE1, SQE2, the U.S. Bar (UBE) and MPRE, with revision tracking, practice questions, analytics and AI study support.",
+            "Personalised, adaptive study planning for SQE1, SQE2, the U.S. Bar (UBE), MPRE and ACCA papers, with revision tracking, practice questions, analytics and AI study support.",
 
           offers: { "@type": "Offer", price: "9.99", priceCurrency: "GBP" },
         }),
@@ -136,7 +139,7 @@ function LandingPage() {
   }, []);
   // Homepage view + how-it-works view, for funnel instrumentation.
   useEffect(() => {
-    trackEvent("homepage_viewed", { surface: "landing", primaryMarket: "SQE_UBE" });
+    trackEvent("homepage_viewed", { surface: "landing", primaryMarket: "SQE_UBE_ACCA" });
   }, []);
   useEffect(() => {
     const el = document.getElementById("how");
@@ -201,19 +204,20 @@ function LandingPage() {
           <section className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:px-8 md:pt-12 md:pb-20">
             <div className="grid items-center gap-8 md:grid-cols-[1.05fr_1fr] md:gap-16">
               <div className="text-left">
-                <div className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-foreground/80 backdrop-blur">
+                <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-foreground/80 backdrop-blur">
                   <Sparkles className="h-3 w-3 text-pink" />
-                  SQE 🇬🇧 + U.S. Bar (UBE) 🇺🇸
+                  SQE 🇬🇧 · U.S. Bar (UBE) 🇺🇸 · ACCA 🌍
                 </div>
 
                 <h1 className="mt-4 text-[2.35rem] font-light leading-[1.02] tracking-[-0.03em] text-foreground sm:text-[2.6rem] md:text-[2.85rem] lg:text-[3.15rem]">
-                  Your law exam study plan,{" "}
+                  The study plan for demanding professional exams,{" "}
                   <span className="text-gradient-pink-violet font-light">built around you</span>.
                 </h1>
 
                 <p className="mt-5 max-w-[32rem] text-[15.5px] leading-[1.55] text-muted-foreground md:text-[16.5px]">
-                  Tentra builds a personalised plan around your exam date, weekly availability and
-                  progress — then recalibrates as you study. Plan → Track → Adapt with AI.
+                  Law or accountancy — Tentra builds a personalised plan around your exam date,
+                  weekly availability and progress, then recalibrates as you study. Plan → Track →
+                  Adapt with AI.
                 </p>
 
                 <div ref={heroCtaRef} className="mt-7 flex flex-col items-stretch gap-3 md:flex-row md:items-center">
@@ -558,9 +562,9 @@ function LandingPage() {
                 Supported pathways
               </div>
               <h2 className="mt-2 text-[1.35rem] font-light tracking-[-0.02em] text-foreground md:text-[1.65rem]">
-                One study system. Two exam pathways.
+                One study system. Three qualification pathways.
               </h2>
-              <div className="mt-5 grid gap-3 text-left sm:grid-cols-2">
+              <div className="mt-5 grid gap-3 text-left sm:grid-cols-2 lg:grid-cols-3">
                 <Link
                   to="/onboarding"
                   search={{ exam: "sqe1", src: "landing", placement: "pathways" }}
@@ -579,6 +583,17 @@ function LandingPage() {
                   <span className="text-[14px] font-medium text-foreground">U.S. Bar (UBE) 🇺🇸</span>
                   <span className="mt-1 block text-[12.5px] leading-[1.5] text-muted-foreground">
                     Uniform Bar Examination preparation across MBE, MEE and MPT, plus MPRE support.
+                  </span>
+                </Link>
+                <Link
+                  to="/onboarding"
+                  search={{ exam: "acca", src: "landing", placement: "pathways" }}
+                  className="rounded-xl border border-border/60 bg-background/45 p-4 transition-colors hover:border-pink/35"
+                >
+                  <span className="text-[14px] font-medium text-foreground">ACCA 🌍</span>
+                  <span className="mt-1 block text-[12.5px] leading-[1.5] text-muted-foreground">
+                    Applied Knowledge, Applied Skills and Strategic Professional papers — plan one
+                    or two papers per sitting.
                   </span>
                 </Link>
               </div>

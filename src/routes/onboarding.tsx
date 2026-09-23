@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   Scale,
   Landmark,
+  Calculator,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -37,6 +38,8 @@ import {
   type StudyPlan,
 } from "@/lib/plan-store";
 import { getSubjectsForExamPath, defaultPathForExam, pathToExamType } from "@/lib/exam-paths";
+import { accaSyllabusForPrompt, normaliseAccaPapers } from "@/lib/acca-syllabus";
+import { AccaPaperPicker, ACCA_PAPER_QUESTION } from "@/components/acca-paper-picker";
 import {
   assessmentDateHeading,
   assessmentToPath,
@@ -80,6 +83,7 @@ const EXAM_PARAM_TO_TYPE: Record<AcquisitionExamParam, ExamType> = {
   sqe2: "SQE2",
   ube: "UBE",
   mpre: "MPRE",
+  acca: "ACCA",
 };
 
 export const Route = createFileRoute("/onboarding")({
@@ -169,6 +173,15 @@ const EXAM_OPTIONS: ExamOption[] = [
     ctaLabel: "Build my MPRE plan",
     dateHeading: "When are you sitting the MPRE?",
   },
+  {
+    value: "ACCA",
+    path: "ACCA_PAPERS",
+    title: "ACCA",
+    blurb: "Applied Knowledge, Applied Skills or Strategic Professional papers.",
+    icon: Calculator,
+    ctaLabel: "Build my ACCA plan",
+    dateHeading: "When is your ACCA sitting?",
+  },
 ];
 
 const HOUR_PRESETS = [5, 10, 15, 20] as const;
@@ -189,8 +202,8 @@ function isoInMonths(months: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-function seedModules(path: ExamPath): ModuleConfidence[] {
-  return getSubjectsForExamPath(path).map((s, i) => ({
+function seedModules(path: ExamPath, accaPapers: string[] = []): ModuleConfidence[] {
+  return getSubjectsForExamPath(path, accaPapers).map((s, i) => ({
     id: String(i),
     name: s.name,
     confidence: DEFAULTS.neutralConfidence,
@@ -247,11 +260,17 @@ function OnboardingPage() {
   const [hoursPerWeek, setHoursPerWeek] = useState(
     draft?.hoursPerWeek ?? search.hours ?? 10,
   );
+  // ACCA only: the paper(s) entered for this sitting. Required for ACCA and
+  // never defaulted — there is no syllabus until the student picks papers.
+  const [accaPapers, setAccaPapers] = useState<string[]>(
+    draftReusable ? normaliseAccaPapers(draft?.accaPapers) : [],
+  );
+  const accaPapersKey = accaPapers.join(",");
 
   const [modules, setModules] = useState<ModuleConfidence[]>(
     draftReusable && draft?.modules?.length
       ? draft.modules
-      : seedModules(defaultPathForExam(restoredExamType)),
+      : seedModules(defaultPathForExam(restoredExamType), accaPapers),
   );
 
   // Preparation stage (stored on the existing `intensity` model). A two-step
@@ -358,11 +377,11 @@ function OnboardingPage() {
     if (desired !== examPath) setExamPath(desired);
   }, [examType, examPath, sqeAssessment]);
 
-  // Changing exam reseeds the syllabus and discards ratings that belonged to
-  // the previous exam, so no stale confidence data survives.
+  // Changing exam (or ACCA paper selection) reseeds the syllabus and discards
+  // ratings that belonged to the previous choice, so no stale data survives.
   useEffect(() => {
     setModules((prev) => {
-      const seeded = seedModules(examPath);
+      const seeded = seedModules(examPath, accaPapers);
       if (prev.length === seeded.length && prev.every((m, i) => m.name === seeded[i]?.name)) {
         return prev;
       }
@@ -370,7 +389,8 @@ function OnboardingPage() {
       setBalancedAccepted(false);
       return seeded;
     });
-  }, [examPath]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [examPath, accaPapersKey]);
 
   useEffect(() => {
     if (checking) return;
@@ -386,8 +406,10 @@ function OnboardingPage() {
       coverageMode,
       modules,
       ...(sqeAssessment ? { sqeAssessment } : {}),
+      ...(accaPapers.length ? { accaPapers } : {}),
       ...(stage ? { confidenceSource } : {}),
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     checking,
     step,
@@ -401,6 +423,7 @@ function OnboardingPage() {
     coverageMode,
     modules,
     sqeAssessment,
+    accaPapersKey,
     stage,
     confidenceSource,
   ]);
@@ -416,6 +439,9 @@ function OnboardingPage() {
     if (!examSelected) return "Please choose the exam you're preparing for.";
     if (examType === "SQE1" && !sqeAssessment) {
       return "Please choose which part of SQE1 you're preparing for.";
+    }
+    if (examType === "ACCA" && accaPapers.length === 0) {
+      return "Please choose the ACCA paper(s) you're sitting.";
     }
     if (!examDate) return "Please choose your exam date.";
     if (new Date(examDate).getTime() <= Date.now()) return "Exam date must be in the future.";
@@ -538,6 +564,7 @@ function OnboardingPage() {
         modules,
         confidenceSource,
         ...(examType === "SQE1" && sqeAssessment ? { sqeAssessment } : {}),
+        ...(examType === "ACCA" && accaPapers.length ? { accaPapers } : {}),
       };
 
 
@@ -568,7 +595,14 @@ function OnboardingPage() {
             );
           });
           const { data, error: fnErr } = await Promise.race([
-            supabase.functions.invoke("generate-plan", { body: onboarding }),
+            supabase.functions.invoke("generate-plan", {
+              body: {
+                ...onboarding,
+                ...(examType === "ACCA" && accaPapers.length
+                  ? { accaSyllabus: accaSyllabusForPrompt(accaPapers) }
+                  : {}),
+              },
+            }),
             timeout,
           ]);
           if (fnErr) {
@@ -690,6 +724,15 @@ function OnboardingPage() {
                     examSelected={examSelected}
                     examDate={examDate}
                     setExamDate={setExamDate}
+                    accaPapers={accaPapers}
+                    onAccaPapersChange={(next) => {
+                      setAccaPapers(next);
+                      setError(null);
+                      trackEvent("acca_papers_selected", {
+                        ...eventBase,
+                        paperCount: next.length,
+                      });
+                    }}
                     sqeAssessment={sqeAssessment}
                     onSqeAssessmentChange={(value) => {
                       setSqeAssessment(value);
@@ -874,6 +917,8 @@ function StepExamDate({
   examSelected,
   examDate,
   setExamDate,
+  accaPapers,
+  onAccaPapersChange,
   sqeAssessment,
   onSqeAssessmentChange,
 }: {
@@ -885,11 +930,14 @@ function StepExamDate({
   examSelected: boolean;
   examDate: string;
   setExamDate: (v: string) => void;
+  accaPapers: string[];
+  onAccaPapersChange: (next: string[]) => void;
   sqeAssessment: SqeAssessment | null;
   onSqeAssessmentChange: (v: SqeAssessment) => void;
 }) {
   const minDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   const isSqe1 = examType === "SQE1";
+  const isAcca = examType === "ACCA";
 
   return (
     <div className="space-y-6">
@@ -920,6 +968,16 @@ function StepExamDate({
           <SqeAssessmentPicker value={sqeAssessment} onChange={onSqeAssessmentChange} />
         </div>
       )}
+
+      {examSelected && isAcca && (
+        <div className="space-y-3 rounded-2xl border border-border/60 bg-background/40 p-3.5">
+          <div className="text-[13.5px] font-semibold text-foreground">
+            {ACCA_PAPER_QUESTION}
+          </div>
+          <AccaPaperPicker value={accaPapers} onChange={onAccaPapersChange} />
+        </div>
+      )}
+
 
       {examSelected && <div className="space-y-2">
         <div className="text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
