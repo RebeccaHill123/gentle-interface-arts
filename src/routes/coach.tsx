@@ -29,29 +29,60 @@ import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
 type Msg = { role: "user" | "assistant"; content: string };
 type Suggestion = { label: string; prompt: string };
 type Mode = "coach" | "tutor";
+type CoachExam = "SQE" | "UBE" | "MPRE" | "ACCA";
 
-function getModes(isUbe: boolean) {
+function coachExamFromType(examType: "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA" | null): CoachExam {
+  if (examType === "UBE") return "UBE";
+  if (examType === "MPRE") return "MPRE";
+  if (examType === "ACCA") return "ACCA";
+  return "SQE";
+}
+
+function examQuestionName(exam: CoachExam): string {
+  if (exam === "UBE") return "MBE";
+  if (exam === "MPRE") return "MPRE multiple-choice";
+  if (exam === "ACCA") return "ACCA objective-test";
+  return "SBA";
+}
+
+function getModes(exam: CoachExam) {
+  const isLegal = exam === "SQE" || exam === "UBE" || exam === "MPRE";
   return [
     {
       id: "coach" as Mode,
       label: "Coach",
       blurb: "Strategy, planning and exam readiness.",
-      systemHint: isUbe
+      systemHint: exam === "UBE"
         ? "Reply as a senior bar exam study strategist. Prioritise sequencing, trade-offs, graded accuracy, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused."
-        : "Reply as a senior SQE study strategist. Prioritise sequencing, trade-offs, graded accuracy, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused.",
+        : exam === "MPRE"
+          ? "Reply as a senior MPRE study strategist. Prioritise professional-responsibility coverage, timed multiple-choice practice, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused."
+          : exam === "ACCA"
+            ? "Reply as a senior ACCA study strategist. Prioritise syllabus-area coverage, technical confidence, question practice, exam proximity, CBE technique and marks-per-minute discipline. Cite the user's snapshot where relevant. Be direct, structured and exam-focused."
+            : "Reply as a senior SQE study strategist. Prioritise sequencing, trade-offs, graded accuracy, recency decay and pacing. Cite the user's snapshot where relevant. Be direct, structured and exam-focused.",
     },
     {
       id: "tutor" as Mode,
       label: "Tutor",
-      blurb: isUbe ? "Legal concepts, worked examples and MBE practice." : "Legal concepts, worked examples and SBA practice.",
-      systemHint: isUbe
+      blurb: exam === "ACCA"
+        ? "Technical topics, worked calculations and objective-test practice."
+        : exam === "UBE"
+          ? "Legal concepts, worked examples and MBE practice."
+          : exam === "MPRE"
+            ? "Professional responsibility rules, worked examples and MPRE practice."
+            : "Legal concepts, worked examples and SBA practice.",
+      systemHint: exam === "UBE"
         ? "Reply as a private bar exam tutor (MBE/MEE/MPT). Explain the law with academic precision, structured headings, worked examples and key authorities only when certain. Where useful, offer to test understanding with multiple-choice-style questions."
-        : "Reply as a private SQE1 tutor (FLK1/FLK2). Explain the law with academic precision, structured headings, worked examples and key authorities only when certain. Where useful, offer to test understanding with SBA-style questions.",
+        : exam === "MPRE"
+          ? "Reply as a private MPRE tutor. Explain professional responsibility rules with precision, structured headings, worked ethical scenarios and rule references only when certain. Where useful, offer to test understanding with MPRE-style multiple-choice questions."
+          : exam === "ACCA"
+            ? "Reply as a private ACCA tutor. Explain accounting, audit, tax, finance, performance and strategy topics with clear workings, proformas, standards and exam technique. Where useful, offer to test understanding with ACCA objective-test questions."
+            : "Reply as a private SQE1 tutor (FLK1/FLK2). Explain the law with academic precision, structured headings, worked examples and key authorities only when certain. Where useful, offer to test understanding with SBA-style questions.",
+      isLegal,
     },
   ];
 }
 
-function getSuggestionsByMode(mode: Mode, isUbe: boolean): Suggestion[] {
+function getSuggestionsByMode(mode: Mode, exam: CoachExam): Suggestion[] {
   if (mode === "coach") {
     return [
       { label: "Prioritise this week", prompt: "What should I prioritise this week based on my weak areas, recency decay and exam proximity? Give me a 3-step ordered plan with the reasoning behind each step." },
@@ -61,13 +92,31 @@ function getSuggestionsByMode(mode: Mode, isUbe: boolean): Suggestion[] {
       { label: "Highest mark-impact today", prompt: "What should I revise today for the single highest mark impact? Cite the data — recency, accuracy, syllabus weight — and give me a 60-minute session structure." },
     ];
   }
-  if (isUbe) {
+  if (exam === "UBE") {
     return [
       { label: "Explain a concept", prompt: "Explain a tricky bar exam concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?" },
       { label: "Test me on MBE", prompt: "Test me on a Uniform Bar Exam MBE topic. Ask one multiple-choice question at a time, wait for my answer, mark it, then explain." },
       { label: "5 MBE questions", prompt: "Give me 5 MBE-style multiple-choice questions on a topic of my choice. Four options each (A–D), correct answer marked, one-line explanation per question." },
       { label: "Mark my reasoning", prompt: "I'll give you my answer and reasoning to a problem question. Mark it as a bar examiner would, explain exactly where the reasoning is wrong, and show the model answer structure." },
       { label: "Compare key doctrines", prompt: "Compare two closely related legal doctrines that are commonly tested on the bar exam. Explain when each applies, the leading authorities, and the most-tested traps. Finish with two contrasting worked examples." },
+    ];
+  }
+  if (exam === "MPRE") {
+    return [
+      { label: "Explain a rule", prompt: "Explain a tricky MPRE professional responsibility rule clearly, with a short ethical scenario and the common exam trap. Start with: which rule should we cover?" },
+      { label: "Test me on MPRE", prompt: "Test me on an MPRE topic. Ask one multiple-choice question at a time, wait for my answer, mark it, then explain the rule." },
+      { label: "5 MPRE questions", prompt: "Give me 5 MPRE-style multiple-choice questions on a topic of my choice. Four options each (A–D), correct answer marked, one-line explanation per question." },
+      { label: "Mark my reasoning", prompt: "I'll give you my answer and reasoning to an ethics scenario. Mark it as an MPRE tutor would, explain where the reasoning is wrong, and show the model rule structure." },
+      { label: "Compare duties", prompt: "Compare two professional responsibility duties that are commonly confused on the MPRE. Explain when each applies and finish with two contrasting examples." },
+    ];
+  }
+  if (exam === "ACCA") {
+    return [
+      { label: "Explain a topic", prompt: "Explain a tricky ACCA topic clearly with a worked example. Start with: which paper and syllabus area should we cover?" },
+      { label: "Test me on ACCA", prompt: "Test me on one of my ACCA paper areas. Ask one objective-test question at a time, wait for my answer, mark it, then show the workings." },
+      { label: "5 OT questions", prompt: "Give me 5 ACCA objective-test questions on a topic of my choice. Four options each (A–D), correct answer marked, with worked explanations." },
+      { label: "Mark my workings", prompt: "I'll give you my answer and workings to an ACCA question. Mark it as an ACCA tutor would, identify the error, and show the corrected working." },
+      { label: "Compare treatments", prompt: "Compare two ACCA treatments or techniques that are commonly confused. Explain when each applies and finish with two contrasting worked examples." },
     ];
   }
   return [
@@ -119,6 +168,8 @@ function CoachPage() {
   const taRef = useRef<HTMLTextAreaElement>(null);
 
   const isUbe = examType === "UBE";
+  const coachExam = coachExamFromType(examType);
+  const questionName = examQuestionName(coachExam);
 
   // Bootstrap: profile + analytics + last conversation flag
   useEffect(() => {
@@ -193,9 +244,7 @@ function CoachPage() {
   }, [input]);
 
   const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    const part = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-    return firstName ? `${part}, ${firstName}.` : `${part}.`;
+    return firstName ? `Hello, ${firstName}.` : "Hello.";
   }, [firstName]);
 
   // Intelligent contextual insight derived from exam distance + graded accuracy
@@ -205,7 +254,7 @@ function CoachPage() {
     }
     if (daysToExam === 0) return "Exam day. Trust your preparation — review high-yield rules only.";
     const acc = analytics?.graded.accuracy ?? null;
-    const qType = isUbe ? "MBEs" : "SBAs";
+    const qType = coachExam === "UBE" ? "MBEs" : coachExam === "ACCA" ? "objective questions" : coachExam === "MPRE" ? "MPRE questions" : "SBAs";
     if (daysToExam <= 7) {
       return `You're ${daysToExam} days out — protect sleep, taper volume, and run timed ${qType} only on your weakest two modules.`;
     }
@@ -221,11 +270,11 @@ function CoachPage() {
       return `${daysToExam} days out — build depth on your weakest modules now while there's still time for spaced repetition to compound.`;
     }
     return `${daysToExam} days out — establish the cadence and breadth now; tactical drills come later.`;
-  }, [daysToExam, analytics, isUbe]);
+  }, [daysToExam, analytics, coachExam]);
 
   // Three curated premium insight cards
   const insightCards = useMemo(() => {
-    const qType = isUbe ? "MBE" : "SBA";
+    const qType = examQuestionName(coachExam);
     type Card = {
       eyebrow: string;
       icon: typeof Target;
@@ -317,7 +366,7 @@ function CoachPage() {
     }
 
     return cards;
-  }, [analytics, daysToExam, streak, isUbe]);
+  }, [analytics, daysToExam, streak, coachExam]);
 
   const suggestions = useMemo<Suggestion[]>(() => {
     const dyn: Suggestion[] = [];
@@ -335,12 +384,12 @@ function CoachPage() {
       if (weakest) {
         dyn.push({
           label: `Drill ${weakest.module}`,
-          prompt: `Build me a 10-question ${isUbe ? "MBE" : "SBA"} drill on ${weakest.module}, targeting my weakest sub-topics, with answers and explanations.`,
+          prompt: `Build me a 10-question ${questionName} drill on ${weakest.module}, targeting my weakest sub-topics, with answers and explanations.`,
         });
       }
     }
-    return [...dyn, ...getSuggestionsByMode(mode, isUbe)].slice(0, 5);
-  }, [mode, analytics]);
+    return [...dyn, ...getSuggestionsByMode(mode, coachExam)].slice(0, 5);
+  }, [mode, analytics, coachExam, questionName]);
 
   const canSend = input.trim().length > 0 && !isStreaming;
 
@@ -367,7 +416,7 @@ function CoachPage() {
     if (!text || isStreaming) return;
     setInput("");
 
-    const modes = getModes(isUbe);
+      const modes = getModes(coachExam);
     const modeHint = modes.find((m) => m.id === mode)?.systemHint ?? "";
     const userMsg: Msg = { role: "user", content: text };
     const next: Msg[] =
@@ -460,7 +509,15 @@ function CoachPage() {
   return (
     <AppShell
       title="Tentra Coach"
-      subtitle={`Your ${isUbe ? "Bar" : "SQE"} strategist and private tutor.`}
+      subtitle={
+        coachExam === "UBE"
+          ? "Your US Bar strategist and private tutor."
+          : coachExam === "MPRE"
+            ? "Your MPRE strategist and private tutor."
+            : coachExam === "ACCA"
+              ? "Your ACCA strategist and private tutor."
+              : "Your SQE strategist and private tutor."
+      }
       actions={
         !isEmpty ? (
           <button
@@ -476,7 +533,7 @@ function CoachPage() {
         {/* MODE TOGGLE — Coach | Tutor only */}
         <div className="flex flex-col gap-3">
           <div className="inline-flex w-full items-center gap-1 rounded-2xl border border-border bg-card/40 p-1 backdrop-blur sm:w-auto sm:self-start">
-            {getModes(isUbe).map((m) => {
+            {getModes(coachExam).map((m) => {
               const active = mode === m.id;
               return (
                 <button
@@ -493,7 +550,9 @@ function CoachPage() {
               );
             })}
           </div>
-          <p className="text-xs text-muted-foreground">{getModes(isUbe).find((m) => m.id === mode)!.blurb}</p>
+          <p className="text-xs text-muted-foreground">
+            {getModes(coachExam).find((m) => m.id === mode)?.blurb ?? "Strategy, planning and exam readiness."}
+          </p>
         </div>
 
         {/* EMPTY STATE — Insight panel + curated cards */}
@@ -556,21 +615,35 @@ function CoachPage() {
                     eyebrow: "Explain",
                     icon: BookOpenCheck,
                     title: "A concept, clearly",
-                    body: "Pick any topic — I'll teach it with structure, authority and a worked example.",
-                    prompt: isUbe
+                    body: coachExam === "ACCA"
+                      ? "Pick any topic — I'll teach it with structure, workings and a worked example."
+                      : "Pick any topic — I'll teach it with structure, authority and a worked example.",
+                    prompt: coachExam === "UBE"
                       ? "Explain a tricky bar exam concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?"
-                      : "Explain a tricky SQE concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?",
+                      : coachExam === "MPRE"
+                        ? "Explain a tricky MPRE professional responsibility rule clearly with a short ethical scenario. Start with: which topic should we cover?"
+                        : coachExam === "ACCA"
+                          ? "Explain a tricky ACCA topic clearly with structure, workings and a worked example. Start with: which paper and area should we cover?"
+                          : "Explain a tricky SQE concept clearly with structure, key authorities and a worked example. Start with: which topic should we cover?",
                   },
                   {
                     eyebrow: "Test",
                     icon: Compass,
                     title: "My understanding",
-                    body: isUbe
+                    body: coachExam === "UBE"
                       ? "I'll generate MBE-style questions and mark your reasoning as an examiner would."
-                      : "I'll generate SBA-style questions and mark your reasoning as an examiner would.",
-                    prompt: isUbe
+                      : coachExam === "MPRE"
+                        ? "I'll generate MPRE-style questions and mark your rule application."
+                        : coachExam === "ACCA"
+                          ? "I'll generate objective-test questions and show the workings behind each answer."
+                          : "I'll generate SBA-style questions and mark your reasoning as an examiner would.",
+                    prompt: coachExam === "UBE"
                       ? "Test my understanding with 5 MBE-style multiple-choice questions on a topic of my choice. Mark each answer and explain the reasoning."
-                      : "Test my understanding with 5 SQE1-style SBA questions on a topic of my choice. Mark each answer and explain the reasoning.",
+                      : coachExam === "MPRE"
+                        ? "Test my understanding with 5 MPRE-style multiple-choice questions on a topic of my choice. Mark each answer and explain the rule."
+                        : coachExam === "ACCA"
+                          ? "Test my understanding with 5 ACCA objective-test questions on a topic of my choice. Mark each answer and show the workings."
+                          : "Test my understanding with 5 SQE1-style SBA questions on a topic of my choice. Mark each answer and explain the reasoning.",
                   },
                   {
                     eyebrow: "Review",
@@ -699,7 +772,7 @@ function CoachPage() {
             </Button>
           </form>
           <p className="text-center text-[11px] tracking-wide text-muted-foreground/70">
-            Study guidance, not legal advice.
+            {coachExam === "ACCA" ? "Study guidance, not accounting, tax or financial advice." : "Study guidance, not legal advice."}
           </p>
         </section>
       </div>
