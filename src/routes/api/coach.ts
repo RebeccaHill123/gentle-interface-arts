@@ -60,7 +60,7 @@ type Module = { name?: string; confidence?: number };
  * ACCA students get an accountancy tutor, not a legal one. The addendum
  * overrides the legal vocabulary above without duplicating the whole prompt.
  */
-const ACCA_ADDENDUM = (papers: string) => `
+const ACCA_ADDENDUM = (papers: string, exemplars = "") => `
 
 === ACCA MODE (overrides the legal framing above) ===
 You are coaching an ACCA candidate${papers ? ` sitting ${papers}` : ""}. Speak as an experienced ACCA tutor and performance analyst.
