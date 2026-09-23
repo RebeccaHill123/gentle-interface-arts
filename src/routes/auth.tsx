@@ -857,17 +857,24 @@ function AuthPage() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             {isSignup ? "Already have an account?" : "New to Tentra?"}{" "}
-            <button
-              type="button"
-              onClick={() => {
-                setMode(isSignup ? "signin" : "signup");
-                setError(null);
-              }}
-              className="font-medium text-foreground hover:underline"
-            >
-              {isSignup ? "Sign in" : "Create an account"}
-            </button>
+            {isSignup ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setMode("signin");
+                  setError(null);
+                }}
+                className="font-medium text-foreground hover:underline"
+              >
+                Sign in
+              </button>
+            ) : (
+              <Link to="/onboarding" className="font-medium text-foreground hover:underline">
+                Create an account
+              </Link>
+            )}
           </p>
+
         </div>
         )}
       </div>
