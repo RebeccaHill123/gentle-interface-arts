@@ -37,7 +37,7 @@ import {
   type TopicFilter,
 } from "@/lib/topic-map";
 import { useEffect } from "react";
-import { useSqeScope } from "@/lib/use-sqe-scope";
+import { normaliseAccaPapers } from "@/lib/acca-syllabus";
 
 export const Route = createFileRoute("/topics")({
   beforeLoad: async () => {
@@ -51,7 +51,7 @@ export const Route = createFileRoute("/topics")({
       {
         name: "description",
         content:
-          "Full SQE1 & UBE syllabus map — track confidence, weak spots and next actions by subject, chapter and sub-topic as you study.",
+          "Full SQE1, UBE, MPRE and ACCA syllabus maps — track confidence, weak spots and next actions by subject, chapter and sub-topic as you study.",
       },
     ],
   }),
@@ -241,8 +241,8 @@ function SubTopicRow({ sub, onPlanChanged }: { sub: SubTopic; onPlanChanged: () 
   if (sub.recommendedAction === "start") {
     action = (
       <Link
-        to="/flashcards"
-        search={{ subject: sub.subject, subtopic: sub.name }}
+        to={sub.exam === "SQE1" || sub.exam === "UBE" ? "/flashcards" : "/practice"}
+        search={{ subject: sub.subject, subtopic: sub.name, length: 5, mode: "revise" }}
         aria-label={aria}
         className={buttonClass}
       >
@@ -446,6 +446,8 @@ function SubjectBlock({
 const EXAMS: { id: ExamId; label: string }[] = [
   { id: "SQE1", label: "SQE1" },
   { id: "UBE", label: "UBE" },
+  { id: "MPRE", label: "MPRE" },
+  { id: "ACCA", label: "ACCA" },
 ];
 
 function TopicsPage() {
@@ -480,10 +482,24 @@ function TopicsPage() {
     [stored],
   );
 
-  const { papers: scopePapers } = useSqeScope();
+  const sqeAssessment = stored?.input.sqeAssessment ??
+    (stored?.input.examPath === "FLK1" || stored?.input.examPath === "FLK2"
+      ? stored.input.examPath
+      : null);
+  const scopePapers = activeExam !== "SQE1"
+    ? []
+    : sqeAssessment === "FLK1"
+      ? ["FLK1"]
+      : sqeAssessment === "FLK2"
+        ? ["FLK2"]
+        : [];
+  const accaPapers = useMemo(
+    () => normaliseAccaPapers(stored?.input.accaPapers ?? []),
+    [stored],
+  );
   const rawMap = useMemo(
-    () => buildExamMap(activeExam, new Map(), subjectMinutes),
-    [activeExam, subjectMinutes],
+    () => buildExamMap(activeExam, new Map(), subjectMinutes, { accaPapers }),
+    [activeExam, subjectMinutes, accaPapers],
   );
   // Only the FLK paper(s) the student is sitting appear on the map.
   const map = useMemo(() => {
@@ -537,7 +553,7 @@ function TopicsPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="inline-flex items-center gap-1.5 rounded-full bg-foreground/[0.04] px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
-                <Sparkles className="h-3 w-3 text-pink" /> Currently tracking: {userExamId}
+                <Sparkles className="h-3 w-3 text-pink" /> Currently tracking: {SYLLABUSES[userExamId].label}
               </div>
               <h2 className="mt-3 font-display text-2xl tracking-[-0.01em] text-foreground md:text-[1.75rem]">
                 {SYLLABUSES[activeExam].label} Topic Map
@@ -550,7 +566,7 @@ function TopicsPage() {
               {isSwitched && (
                 <p className="mt-3 max-w-2xl rounded-xl border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-[12px] text-amber-500/90">
                   You're viewing the {activeExam} map. This doesn't change your
-                  active study route ({userExamId}) — confirm in Settings if you
+                  active study route ({SYLLABUSES[userExamId].label}) — confirm in Settings if you
                   want to switch.
                 </p>
               )}
