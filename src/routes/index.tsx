@@ -337,7 +337,7 @@ function LandingPage() {
                   The problem
                 </div>
                 <h2 className="mt-4 text-[1.6rem] font-light leading-[1.12] tracking-[-0.025em] text-foreground md:text-[2.25rem]">
-                  Your law exam study plan shouldn&apos;t become useless the moment{" "}
+                  Your study plan shouldn&apos;t become useless the moment{" "}
                   <span className="text-gradient-pink-violet font-light">life gets in the way</span>.
                 </h2>
                 <p className="mt-4 text-[14px] leading-[1.6] text-muted-foreground md:text-[15.5px]">
@@ -378,7 +378,7 @@ function LandingPage() {
                 Built for your pathway
               </div>
               <h2 className="mt-4 text-[1.85rem] font-light leading-[1.08] tracking-[-0.03em] text-foreground md:text-[2.6rem]">
-                Everything your law exam preparation{" "}
+                Everything your exam preparation{" "}
                 <span className="text-gradient-pink-violet font-light">actually needs</span>.
               </h2>
             </div>
