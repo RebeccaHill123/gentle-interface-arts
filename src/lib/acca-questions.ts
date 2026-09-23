@@ -716,9 +716,9 @@ export const ACCA_QUESTIONS: AccaBankQuestion[] = [
     "FM",
     "fm-workingcapital",
     "A supplier offers a 2% discount for payment in 10 days instead of 40 days. What is the approximate annual cost of refusing the discount?",
-    ["18.2%", "24.5%", "2.0%", "12.0%"],
-    1,
-    "The discount is taken 30 days earlier. Cost of refusing = [1 / (1 − 0.02)]^(365/30) − 1 = (1.020408)^12.17 − 1 ≈ 0.277, about 27.7% a year — far above normal short-term borrowing rates, so the discount is usually worth taking. The examinable point is the compounding formula rather than the rounded figure.",
+    ["27.9%", "24.5%", "2.0%", "18.2%"],
+    0,
+    "Payment is accelerated by 40 − 10 = 30 days. Cost of refusing = [1 / (1 − 0.02)]^(365/30) − 1 = 1.020408^12.17 − 1 = 0.279, about 27.9% a year. That is far above normal short-term borrowing rates, so taking the discount is usually the better decision.",
     ["early settlement discount"],
   ),
   q(
