@@ -91,6 +91,7 @@ const UBE_MINI: MiniMock[] = [
 
 function MocksPage() {
   const navigate = useNavigate();
+  const plan = useMemo(() => loadPlan(), []);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
   const [practicePreset, setPracticePreset] = useState<
@@ -103,11 +104,14 @@ function MocksPage() {
   const [proLoaded, setProLoaded] = useState(false);
 
   const isUbe = useMemo(() => {
-    const plan = loadPlan();
     const path = plan?.input.examPath;
     return path ? isUbePath(path) : plan?.input.examType === "UBE";
-  }, []);
-  const pathway: Pathway = isUbe ? "UBE" : "SQE";
+  }, [plan]);
+  const isAcca = useMemo(() => {
+    const path = plan?.input.examPath;
+    return plan?.input.examType === "ACCA" || (path ? isAccaPath(path) : false);
+  }, [plan]);
+  const pathway: Pathway | null = isAcca ? null : isUbe ? "UBE" : "SQE";
   const { papers: scopePapers, assessment } = useSqeScope();
 
   useEffect(() => {
@@ -120,26 +124,38 @@ function MocksPage() {
   }, []);
 
   const singlePaper = !isUbe && scopePapers.length === 1 ? scopePapers[0] : null;
-  const miniMocks = isUbe
+  const miniMocks = isAcca
+    ? []
+    : isUbe
     ? UBE_MINI
     : SQE_MINI.filter((m) => scopePapers.length === 0 || scopePapers.includes(m.paper as "FLK1" | "FLK2"));
-  const fullMockTitle = isUbe
+  const accaLabel = accaPaperLabel(plan?.input.accaPapers ?? []);
+  const accaPapersLabel = accaLabel === "ACCA" ? "your selected ACCA papers" : accaLabel;
+  const fullMockTitle = isAcca
+    ? "ACCA exam practice"
+    : isUbe
     ? "Full UBE Simulation"
     : singlePaper
       ? `Full ${singlePaper} Simulation`
       : "Full SQE1 Simulation";
-  const fullMockDesc = isUbe
+  const fullMockDesc = isAcca
+    ? `Practise realistic ACCA objective questions for ${accaPapersLabel}, with worked explanations and adaptive targeting.`
+    : isUbe
     ? "Sit a full-length UBE simulation: MBE + MEE + MPT under exam conditions."
     : singlePaper
       ? `Sit a full-length ${singlePaper} simulation: both ${singlePaper} SBA blocks under exam conditions.`
       : "Sit a full-length SQE1 simulation: FLK1 and FLK2 SBA papers under exam conditions.";
-  const fullMockMeta = isUbe
+  const fullMockMeta = isAcca
+    ? "Paper-scoped practice · worked explanations"
+    : isUbe
     ? "200 MBE + 6 MEE + 2 MPT · 12 hours"
     : singlePaper
       ? `180 SBAs across ${singlePaper} · ~5 hours`
       : "360 SBAs across FLK1 and FLK2 · ~10 hours";
+  const pathwayLabel = isAcca ? "ACCA pathway" : `${pathway} pathway`;
+  const relevantSims = pathway ? sims.filter((s) => s.pathway === pathway) : [];
 
-  const inProgressSim = sims.find((s) => s.pathway === pathway && s.status === "in_progress");
+  const inProgressSim = relevantSims.find((s) => s.status === "in_progress");
 
   const openMiniPaper = (paper: PaperKey) => {
     setPracticePreset({ type: "mini-flk", paper });
