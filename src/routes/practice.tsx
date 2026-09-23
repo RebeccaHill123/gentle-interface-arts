@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { loadPlan } from "@/lib/plan-store";
+import { getExamLabel } from "@/lib/exam-label";
 import {
   recordStudyActivity,
   recordGradedAttempts,
@@ -107,8 +108,16 @@ export const Route = createFileRoute("/practice")({
       {
         name: "description",
         content:
-          "Adaptive interactive practice for the SQE and the US bar (UBE) — one question at a time, with session timing, scoring and feedback.",
+          "Adaptive interactive practice for SQE, UBE, MPRE and ACCA candidates — one question at a time, with session timing, scoring and feedback.",
       },
+      { property: "og:title", content: "Practice Session | Tentra" },
+      {
+        property: "og:description",
+        content:
+          "Adaptive question practice for SQE, UBE, MPRE and ACCA pathways, calibrated to your study plan and confidence map.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
 });
@@ -117,11 +126,19 @@ type Phase = "loading" | "launch" | "quiz" | "results" | "error";
 
 const THINKING = [
   "Reading your confidence map…",
-  "Scanning recent mock accuracy…",
+  "Scanning recent practice accuracy…",
   "Weighting high-yield subtopics…",
   "Calibrating difficulty…",
   "Composing exam-style items…",
 ];
+
+function fallbackSubtitle(exam?: string): string {
+  if (exam === "UBE") return "Adaptive US Bar practice";
+  if (exam === "MPRE") return "Adaptive MPRE practice";
+  if (exam === "ACCA") return "Adaptive ACCA practice";
+  if (exam === "SQE") return "Adaptive SQE practice";
+  return "Adaptive practice";
+}
 
 function PracticeSessionPage() {
   const navigate = useNavigate();
@@ -253,8 +270,9 @@ function PracticeSessionPage() {
 
     setConfidenceBefore(mod?.confidence ?? null);
     const examType = (plan?.input.examType ?? "SQE1") as "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
-    examPathRef.current = plan?.input.examType ?? undefined;
-    setExamPath(plan?.input.examType ?? undefined);
+    const examLabel = getExamLabel(plan?.input.examType, plan?.input.examPath);
+    examPathRef.current = examLabel;
+    setExamPath(examLabel);
 
     const decision = decideRestore({ raw: snapshotRaw, fingerprint: fp, now: Date.now() });
 
@@ -629,7 +647,7 @@ function PracticeSessionPage() {
   const remaining = phase === "quiz" ? remainingMs(deadlineAt, now) : null;
   const subtitle =
     config?.module ??
-    (examPath === "UBE" || examPath === "MPRE" ? "Adaptive US bar practice" : "Adaptive practice");
+    fallbackSubtitle(examPath);
 
   return (
     <AppShell title="Practice Session" subtitle={subtitle}>

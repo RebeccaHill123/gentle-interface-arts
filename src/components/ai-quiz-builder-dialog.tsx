@@ -36,36 +36,92 @@ import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
 import { deriveAnalytics } from "@/lib/analytics-derive";
 import { pickEvidenceLedSubject, evidenceReason } from "@/lib/evidence-priority";
+import { getExamLabel, type ExamLabel } from "@/lib/exam-label";
 
 type QuizFormat = "sba" | "recall" | "mixed" | "scenario" | "rapid";
 
-const FORMATS: {
+type QuizFormatDef = {
   id: QuizFormat;
   title: string;
   desc: string;
   icon: typeof Sparkles;
-}[] = [
-  { id: "sba", title: "SBA set", desc: "Single best answer, exam-style.", icon: Target },
-  { id: "recall", title: "Active recall", desc: "Open prompts to retrieve concepts.", icon: Brain },
-  { id: "mixed", title: "Mixed-topic drill", desc: "Interleaved across modules.", icon: Layers },
-  { id: "scenario", title: "Scenario-based", desc: "Client facts with branching SBAs.", icon: Sparkles },
-  { id: "rapid", title: "Rapid-fire", desc: "Short, snappy revision rounds.", icon: Zap },
-];
+};
+
+function formatsFor(exam: ExamLabel): QuizFormatDef[] {
+  if (exam === "UBE") {
+    return [
+      { id: "sba", title: "MBE set", desc: "Multiple-choice, bar-exam style.", icon: Target },
+      { id: "recall", title: "Active recall", desc: "Open prompts to retrieve black-letter law.", icon: Brain },
+      { id: "mixed", title: "Mixed-topic drill", desc: "Interleaved across MBE/MEE subjects.", icon: Layers },
+      { id: "scenario", title: "Issue-spotting", desc: "Fact patterns with rule application.", icon: Sparkles },
+      { id: "rapid", title: "Rapid-fire", desc: "Short, snappy revision rounds.", icon: Zap },
+    ];
+  }
+  if (exam === "MPRE") {
+    return [
+      { id: "sba", title: "MPRE question set", desc: "Ethics multiple-choice, exam-style.", icon: Target },
+      { id: "recall", title: "Rule recall", desc: "Open prompts to retrieve professional duties.", icon: Brain },
+      { id: "mixed", title: "Mixed ethics drill", desc: "Interleaved across professional-responsibility areas.", icon: Layers },
+      { id: "scenario", title: "Ethics scenario", desc: "Fact patterns with rule application.", icon: Sparkles },
+      { id: "rapid", title: "Rapid-fire", desc: "Short, snappy revision rounds.", icon: Zap },
+    ];
+  }
+  if (exam === "ACCA") {
+    return [
+      { id: "sba", title: "Objective-test set", desc: "ACCA OT-style questions with workings.", icon: Target },
+      { id: "recall", title: "Active recall", desc: "Open prompts to retrieve methods and standards.", icon: Brain },
+      { id: "mixed", title: "Mixed-area drill", desc: "Interleaved across selected paper areas.", icon: Layers },
+      { id: "scenario", title: "Business scenario", desc: "Applied calculations and judgement questions.", icon: Sparkles },
+      { id: "rapid", title: "Rapid-fire", desc: "Short, snappy revision rounds.", icon: Zap },
+    ];
+  }
+  return [
+    { id: "sba", title: "SBA set", desc: "Single best answer, exam-style.", icon: Target },
+    { id: "recall", title: "Active recall", desc: "Open prompts to retrieve concepts.", icon: Brain },
+    { id: "mixed", title: "Mixed-topic drill", desc: "Interleaved across modules.", icon: Layers },
+    { id: "scenario", title: "Scenario-based", desc: "Client facts with branching SBAs.", icon: Sparkles },
+    { id: "rapid", title: "Rapid-fire", desc: "Short, snappy revision rounds.", icon: Zap },
+  ];
+}
 
 const DIFFICULTIES = ["Foundational", "Standard", "Stretch", "Adaptive"] as const;
 type Difficulty = (typeof DIFFICULTIES)[number];
 
 type Phase = "config" | "generating" | "result";
 
-const THINKING_LINES = [
+function thinkingLinesFor(exam: ExamLabel) {
+  if (exam === "ACCA") {
+    return [
+      "Analysing your confidence map…",
+      "Scanning recent question accuracy…",
+      "Weighting syllabus areas…",
+      "Prioritising weaker paper areas…",
+      "Building objective-test practice…",
+      "Calibrating difficulty curve…",
+      "Finalising worked explanations…",
+    ];
+  }
+  if (exam === "MPRE") {
+    return [
+      "Analysing your confidence map…",
+      "Scanning recent question accuracy…",
+      "Weighting professional-responsibility areas…",
+      "Prioritising weak rules…",
+      "Building MPRE question set…",
+      "Calibrating difficulty curve…",
+      "Finalising rule explanations…",
+    ];
+  }
+  return [
   "Analysing your confidence map…",
   "Scanning recent mock accuracy…",
   "Weighting high-yield subtopics…",
   "Prioritising weak areas…",
-  "Building mixed SBA set…",
+  exam === "UBE" ? "Building mixed MBE set…" : "Building mixed SBA set…",
   "Calibrating difficulty curve…",
   "Finalising answer explanations…",
-];
+  ];
+}
 
 export function AIQuizBuilderDialog({
   open,
@@ -89,7 +145,11 @@ export function AIQuizBuilderDialog({
   const [thinkingIdx, setThinkingIdx] = useState(0);
   const [favourited, setFavourited] = useState(false);
 
-  const analytics = useMemo(() => deriveAnalytics(loadPlan()), [open]);
+  const plan = useMemo(() => loadPlan(), [open]);
+  const examLabel = getExamLabel(plan?.input.examType, plan?.input.examPath);
+  const formats = useMemo(() => formatsFor(examLabel), [examLabel]);
+  const thinkingLines = useMemo(() => thinkingLinesFor(examLabel), [examLabel]);
+  const analytics = useMemo(() => deriveAnalytics(plan), [plan]);
   const subjects = analytics.subjects;
   const recommended = pickEvidenceLedSubject(analytics);
   const targetSubject = subject === "auto" ? recommended?.module ?? "Mixed" : subject;
@@ -119,26 +179,32 @@ export function AIQuizBuilderDialog({
     if (phase !== "generating") return;
     setThinkingIdx(0);
     const id = setInterval(() => {
-      setThinkingIdx((i) => Math.min(THINKING_LINES.length - 1, i + 1));
+      setThinkingIdx((i) => Math.min(thinkingLines.length - 1, i + 1));
     }, 650);
     const done = setTimeout(() => setPhase("result"), 2800);
     return () => {
       clearInterval(id);
       clearTimeout(done);
     };
-  }, [phase]);
+  }, [phase, thinkingLines]);
 
-  const meta = FORMATS.find((f) => f.id === format)!;
+  const meta = formats.find((f) => f.id === format) ?? formats[0];
   const skillFocus =
     format === "scenario"
-      ? ["Application", "Issue spotting", "Reasoning"]
+      ? examLabel === "ACCA"
+        ? ["Application", "Workings", "Judgement"]
+        : examLabel === "MPRE"
+          ? ["Rule application", "Ethics", "Reasoning"]
+          : ["Application", "Issue spotting", "Reasoning"]
       : format === "recall"
         ? ["Retrieval", "Definitions", "Memory"]
         : format === "rapid"
           ? ["Speed", "Pattern recognition"]
           : format === "mixed"
             ? ["Interleaving", "Transfer", "Discrimination"]
-            : ["Accuracy", "Pacing", "Application"];
+      : examLabel === "ACCA"
+        ? ["Accuracy", "Workings", "Pacing"]
+        : ["Accuracy", "Pacing", "Application"];
 
   const confidenceImpact =
     targetStat && targetStat.confidence <= 2
@@ -236,7 +302,7 @@ export function AIQuizBuilderDialog({
             <div className="space-y-5">
               <Field label="Format">
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {FORMATS.map((f) => {
+                  {formats.map((f) => {
                     const Icon = f.icon;
                     const active = format === f.id;
                     return (
@@ -369,10 +435,10 @@ export function AIQuizBuilderDialog({
                 </div>
               </div>
               <div className="mt-5 h-5 text-sm text-muted-foreground transition-all">
-                {THINKING_LINES[thinkingIdx]}
+                {thinkingLines[thinkingIdx]}
               </div>
               <div className="mt-4 flex flex-col gap-1.5">
-                {THINKING_LINES.slice(0, thinkingIdx + 1).map((l, i) => (
+                {thinkingLines.slice(0, thinkingIdx + 1).map((l, i) => (
                   <div
                     key={l}
                     className="flex items-center gap-2 text-[11px] text-muted-foreground"

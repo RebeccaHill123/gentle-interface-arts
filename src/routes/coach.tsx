@@ -167,7 +167,6 @@ function CoachPage() {
   const abortRef = useRef<AbortController | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
 
-  const isUbe = examType === "UBE";
   const coachExam = coachExamFromType(examType);
   const questionName = examQuestionName(coachExam);
 

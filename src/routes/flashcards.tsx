@@ -36,7 +36,7 @@ import {
 } from "@/lib/flashcards-progress";
 import { loadPlan } from "@/lib/plan-store";
 import { paperInScope, useSqeScope } from "@/lib/use-sqe-scope";
-import { isAccaPath, isUbePath } from "@/lib/exam-paths";
+import { getExamLabel, type ExamLabel } from "@/lib/exam-label";
 import { useServerFn } from "@tanstack/react-start";
 import { resolveTopicDeck } from "@/lib/flashcards-catalog";
 import {
@@ -83,13 +83,12 @@ export const Route = createFileRoute("/flashcards")({
 
 type Filter = "all" | "FLK1" | "FLK2" | "MBE" | "MEE" | "MPT" | "weak" | "starred";
 
-function useExamContext(): { kind: ExamKind; isAcca: boolean } {
+function useExamContext(): { kind: ExamKind; unsupported: Extract<ExamLabel, "ACCA" | "MPRE"> | null } {
   return useMemo(() => {
     const plan = loadPlan();
-    const path = plan?.input.examPath;
-    const isAcca = plan?.input.examType === "ACCA" || (path ? isAccaPath(path) : false);
-    const isUbe = path ? isUbePath(path) : plan?.input.examType === "UBE";
-    return { kind: isUbe ? "UBE" : "SQE", isAcca };
+    const exam = getExamLabel(plan?.input.examType, plan?.input.examPath);
+    if (exam === "ACCA" || exam === "MPRE") return { kind: "SQE", unsupported: exam };
+    return { kind: exam === "UBE" ? "UBE" : "SQE", unsupported: null };
   }, []);
 }
 
@@ -116,16 +115,17 @@ function useProgress() {
 function FlashcardsPage() {
   const search = Route.useSearch();
   const navigate = useNavigate();
-  const { kind, isAcca } = useExamContext();
+  const { kind, unsupported } = useExamContext();
   const [mode, setMode] = useState<ReviewMode | null>(() =>
     search.subject ? { kind: "topic", subject: search.subject, subtopic: search.subtopic } : null,
   );
 
-  if (isAcca) {
+  if (unsupported) {
+    const isAcca = unsupported === "ACCA";
     return (
       <AppShell
         title="Practice"
-        subtitle="Paper-scoped questions and worked explanations."
+        subtitle={isAcca ? "Paper-scoped questions and worked explanations." : "Professional-responsibility questions and explanations."}
         showBack
         backTo="/mocks"
         backLabel="Back to Mocks & Practice"
@@ -137,13 +137,15 @@ function FlashcardsPage() {
               variant="outline"
               className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground"
             >
-              ACCA pathway
+              {isAcca ? "ACCA pathway" : "MPRE pathway"}
             </Badge>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
-              ACCA practice is ready
+              {isAcca ? "ACCA practice is ready" : "MPRE practice is ready"}
             </h2>
             <p className="mt-3 text-base text-muted-foreground md:text-lg">
-              Use targeted practice for your selected papers, with realistic objective questions and worked explanations.
+              {isAcca
+                ? "Use targeted practice for your selected papers, with realistic objective questions and worked explanations."
+                : "Use targeted MPRE practice for professional responsibility rules, with exam-style questions and rule-led explanations."}
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
               <Button

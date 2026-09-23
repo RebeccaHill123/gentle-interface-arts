@@ -96,6 +96,7 @@ import {
 } from "@/lib/topic-map";
 import { getExamLabel } from "@/lib/exam-label";
 import { loadMockPerformance, type MockPerformance } from "@/lib/mock-performance";
+import { normaliseAccaPapers } from "@/lib/acca-syllabus";
 import { loadSession, startSession, type ActiveSession } from "@/lib/focus-session";
 import { normalizeStoredPlanTasks } from "@/lib/study-plan-logic";
 import {
@@ -304,6 +305,10 @@ function DashboardPage() {
   const examLabel = getExamLabel(stored?.input.examType, stored?.input.examPath);
   const examId = getUserExamId(stored?.input.examType);
   const subjectMinutes = useMemo(() => aggregateSubjectMinutes(stored?.sessions ?? []), [stored]);
+  const accaPapers = useMemo(
+    () => normaliseAccaPapers(stored?.input.accaPapers ?? []),
+    [stored],
+  );
 
   // Today's work, always in schedule shape so the panel has one contract.
   // The adaptive schedule is authoritative; the legacy envelope and a syllabus
@@ -333,7 +338,7 @@ function DashboardPage() {
       }));
     }
 
-    const map = buildExamMap(examId, undefined, subjectMinutes);
+    const map = buildExamMap(examId, undefined, subjectMinutes, { accaPapers });
     const picks: SubTopic[] = untouchedTopics(map, 2);
     const derived: ScheduledTask[] = picks.map((s, i) => ({
       id: `derived-${i}`,
@@ -357,7 +362,13 @@ function DashboardPage() {
       id: "derived-practice",
       date: today,
       module: "Mixed practice",
-      title: examLabel === "UBE" ? "Mixed MBE practice" : `Mixed ${examLabel} practice`,
+      title: examLabel === "UBE"
+        ? "Mixed MBE practice"
+        : examLabel === "MPRE"
+          ? "Mixed MPRE practice"
+          : examLabel === "ACCA"
+            ? "Mixed ACCA objective-test practice"
+            : "Mixed SQE SBA practice",
       minutes: 20,
       taskType: "timed-sba",
       difficulty: "core",
@@ -369,12 +380,18 @@ function DashboardPage() {
       evidenceLabel: "No graded evidence yet",
     });
     return derived;
-  }, [stored, scheduledToday, examId, examLabel, subjectMinutes, today]);
+  }, [stored, scheduledToday, examId, examLabel, subjectMinutes, today, accaPapers]);
 
   const [mockPerf, setMockPerf] = useState<MockPerformance | null>(null);
   useEffect(() => {
     let active = true;
-    void loadMockPerformance(examLabel === "UBE" ? "UBE" : "SQE").then((res) => {
+    if (examLabel !== "SQE" && examLabel !== "UBE") {
+      setMockPerf(null);
+      return () => {
+        active = false;
+      };
+    }
+    void loadMockPerformance(examLabel).then((res) => {
       if (active) setMockPerf(res);
     });
     return () => {
