@@ -8,6 +8,7 @@ import {
   type EntitlementClient,
 } from "@/lib/entitlement";
 import { validateChatMessages } from "@/lib/ai-request-validation";
+import { accaQuestionStyleForPrompt } from "@/lib/acca-questions";
 
 
 const SYSTEM_PROMPT = `You are Tentra Coach — a premium AI SQE tutor and performance strategist.
