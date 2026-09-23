@@ -19,7 +19,7 @@ export default defineMcp({
   title: "Tentra",
   version: "0.2.0",
   instructions:
-    "Tools for the Tentra SQE / NY Bar study app. Reads the signed-in user's profile, study plan, recent sessions, subject progress, weak areas and mock history; recommends a next session; asks the in-app AI Coach (planning/accountability) or AI Tutor (subject explanation & testing) using the user's real data; generates mini tests; and — with explicit user confirmation — logs study sessions or updates a limited set of plan fields. All tools are scoped to the authenticated user.",
+    "Tools for the Tentra professional-exam study app across SQE, U.S. Bar, MPRE and ACCA pathways. Reads the signed-in user's profile, study plan, recent sessions, subject progress, weak areas and mock history; recommends a next session; asks the in-app AI Coach (planning/accountability) or AI Tutor (subject explanation & testing) using the user's real data; generates mini tests; and — with explicit user confirmation — logs study sessions or updates a limited set of plan fields. All tools are scoped to the authenticated user.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",

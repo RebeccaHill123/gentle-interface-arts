@@ -1,6 +1,7 @@
 import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
 import { buildSnapshot, loadAiContext, requireAccess } from "../shared";
+import { getExamLabel } from "@/lib/exam-label";
 import {
   MAX_SUBJECT_CHARS,
   MAX_TOPIC_CHARS,
@@ -12,7 +13,7 @@ export default defineTool({
   name: "generate_mini_test",
   title: "Generate a mini test",
   description:
-    "Read-only. Generates a short single-best-answer mini test (default 5 questions) for the signed-in user. If no subject is provided, targets the user's weakest area. Uses their exam type (SQE1 / SQE2 / UBE / MPRE) automatically. Returns questions with 4 options each, the correct index, and a brief explanation. Requires active Tentra access (subscription or trial).",
+    "Read-only. Generates a short pathway-appropriate mini test (default 5 questions) for the signed-in user. If no subject is provided, targets the user's weakest area. Uses their exam pathway (SQE / UBE / MPRE / ACCA) automatically. Returns questions with 4 options each, the correct index, and a brief explanation. Requires active Tentra access (subscription or trial).",
   inputSchema: {
     subject: z
       .string()
@@ -54,6 +55,7 @@ export default defineTool({
       };
     }
     const examType = plan.input.examType;
+    const examLabel = getExamLabel(plan.input.examType, plan.input.examPath);
     const { analytics } = buildSnapshot(plan, profile);
     const targetModule =
       subject ??
@@ -78,13 +80,16 @@ export default defineTool({
       };
     }
 
-    const isUbe = examType === "UBE" || examType === "MPRE";
     const difficulty =
       confidence <= 2 ? "introductory" : confidence >= 4 ? "advanced, exam-realistic" : "intermediate";
-    const systemPrompt = isUbe
-      ? "You are an expert US bar (UBE / NY Bar) tutor writing rigorous MBE-style single-best-answer multiple-choice questions modelled on the NCBE Subject Matter Outlines. Exactly 4 options (A–D), exactly one correct answer, concise explanation citing the controlling rule. US federal + majority common-law only."
-      : "You are an expert UK SQE tutor writing rigorous single-best-answer multiple-choice questions in the style of the official SRA SQE assessments. Exactly 4 options (A–D), exactly one correct answer, concise explanation. English & Welsh law only.";
-    const userPrompt = `Write a ${count}-question ${difficulty} ${examType} mini-assessment.\nModule: ${targetModule}${topic ? `\nTopic: ${topic}` : ""}\nMake questions varied, scenario-based where appropriate. No trick wording.`;
+    const systemPrompt = examLabel === "UBE"
+      ? "You are an expert U.S. Bar tutor writing rigorous MBE-style multiple-choice questions modelled on the NCBE Subject Matter Outlines. Exactly 4 options (A–D), exactly one correct answer, concise explanation citing the controlling rule. Use U.S. federal law and majority common-law only. Never reference SQE, FLK, SBA, MPRE or ACCA unless the user's topic explicitly asks for an exam comparison."
+      : examLabel === "MPRE"
+        ? "You are an expert MPRE tutor writing rigorous professional-responsibility multiple-choice questions. Exactly 4 options (A–D), exactly one correct answer, concise rule-led explanation. Use ABA Model Rules, Model Code of Judicial Conduct and MPRE-tested professional responsibility principles. Never reference SQE, FLK, SBA, UBE or ACCA unless the user's topic explicitly asks for an exam comparison."
+        : examLabel === "ACCA"
+          ? "You are an expert ACCA tutor writing rigorous ACCA-style objective-test questions. Exactly 4 options (A–D), exactly one correct answer, concise explanation with workings or the relevant standard/rule. Use ACCA syllabus terminology. Never reference SQE, FLK, SBA, UBE, MBE, MEE, MPT or MPRE unless the user's topic explicitly asks for an exam comparison."
+          : "You are an expert UK SQE tutor writing rigorous single-best-answer multiple-choice questions in the style of the official SRA SQE assessments. Exactly 4 options (A–D), exactly one correct answer, concise explanation. Use English & Welsh law only. Never reference UBE, MBE, MEE, MPT, MPRE or ACCA unless the user's topic explicitly asks for an exam comparison.";
+    const userPrompt = `Write a ${count}-question ${difficulty} ${examLabel} mini-assessment.\nModule: ${targetModule}${topic ? `\nTopic: ${topic}` : ""}\nMake questions varied and scenario-based where appropriate. No trick wording.`;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -100,7 +105,7 @@ export default defineTool({
             type: "function",
             function: {
               name: "mini_assessment",
-              description: "SBA multiple-choice mini-assessment",
+              description: "Pathway-specific multiple-choice mini-assessment",
               parameters: {
                 type: "object",
                 properties: {
