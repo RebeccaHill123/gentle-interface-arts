@@ -29,6 +29,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
+import { isAccaPath } from "@/lib/exam-paths";
+import { normaliseAccaPapers } from "@/lib/acca-syllabus";
 import { deriveAnalytics, type SubjectStat } from "@/lib/analytics-derive";
 import { pickEvidenceLedSubject, evidenceReason } from "@/lib/evidence-priority";
 
@@ -59,22 +61,26 @@ type PracticeType =
   | "technique"
   | "mini-flk";
 
-const PRACTICE_TYPES: {
+type PracticeTypeDefinition = {
   id: PracticeType;
   title: string;
   desc: string;
   icon: typeof Target;
   defaultMinutes: 10 | 20 | 30 | 45 | 90;
   defaultQuestions: number;
-}[] = [
-  {
-    id: "weak-area",
-    title: "Weak Area Drill",
-    desc: "Targeted SBAs on your lowest-confidence and most-missed topics.",
-    icon: Target,
-    defaultMinutes: 20,
-    defaultQuestions: 12,
-  },
+};
+
+const DEFAULT_PRACTICE_TYPE: PracticeTypeDefinition = {
+  id: "weak-area",
+  title: "Weak Area Drill",
+  desc: "Targeted SBAs on your lowest-confidence and most-missed topics.",
+  icon: Target,
+  defaultMinutes: 20,
+  defaultQuestions: 12,
+};
+
+const PRACTICE_TYPES: PracticeTypeDefinition[] = [
+  DEFAULT_PRACTICE_TYPE,
   {
     id: "timed-mini",
     title: "Timed Mini Mock",
@@ -117,6 +123,41 @@ const PRACTICE_TYPES: {
   },
 ];
 
+const ACCA_PRACTICE_TYPES: PracticeTypeDefinition[] = [
+  {
+    id: "weak-area",
+    title: "Topic Drill",
+    desc: "Targeted objective questions on your lowest-confidence paper areas.",
+    icon: Target,
+    defaultMinutes: 20,
+    defaultQuestions: 12,
+  },
+  {
+    id: "timed-mini",
+    title: "Timed Mini Practice",
+    desc: "Mixed objective-test questions under realistic exam pacing.",
+    icon: Timer,
+    defaultMinutes: 45,
+    defaultQuestions: 26,
+  },
+  {
+    id: "scenario",
+    title: "Applied Scenario Practice",
+    desc: "Short business scenarios with calculation and judgement questions.",
+    icon: Brain,
+    defaultMinutes: 45,
+    defaultQuestions: 8,
+  },
+  {
+    id: "technique",
+    title: "Exam Technique Drill",
+    desc: "Drills on pacing, option elimination and answer hygiene.",
+    icon: Lightbulb,
+    defaultMinutes: 20,
+    defaultQuestions: 10,
+  },
+];
+
 const DURATIONS: { v: 10 | 20 | 30 | 45 | 90; label: string }[] = [
   { v: 10, label: "10 min" },
   { v: 20, label: "20 min" },
@@ -148,9 +189,15 @@ export function PracticeLauncherDialog({
   const [launching, setLaunching] = useState(false);
   const [paper, setPaper] = useState<PaperKey | undefined>(undefined);
 
-  const analytics = useMemo(() => deriveAnalytics(loadPlan()), [open]);
+  const plan = useMemo(() => loadPlan(), [open]);
+  const path = plan?.input.examPath;
+  const isAcca = plan?.input.examType === "ACCA" || (path ? isAccaPath(path) : false);
+  const accaPapers = normaliseAccaPapers(plan?.input.accaPapers ?? []);
+  const accaFallbackSubject = accaPapers[0] ? `Mixed (${accaPapers[0]})` : "Mixed ACCA practice";
+  const practiceTypes = isAcca ? ACCA_PRACTICE_TYPES : PRACTICE_TYPES;
+  const analytics = useMemo(() => deriveAnalytics(plan), [plan]);
   const subjects: SubjectStat[] = analytics.subjects;
-  const examDate = loadPlan()?.input.examDate;
+  const examDate = plan?.input.examDate;
   const daysToExam = examDate
     ? Math.max(0, Math.ceil((new Date(examDate).getTime() - Date.now()) / 86_400_000))
     : null;
@@ -171,15 +218,15 @@ export function PracticeLauncherDialog({
       setType(preset?.type ?? "weak-area");
       setSubject("auto");
       setDuration(
-        (PRACTICE_TYPES.find((p) => p.id === (preset?.type ?? "weak-area"))?.defaultMinutes ?? 20) as 10 | 20 | 30 | 45 | 90,
+        (practiceTypes.find((p) => p.id === (preset?.type ?? "weak-area"))?.defaultMinutes ?? 20) as 10 | 20 | 30 | 45 | 90,
       );
       setAdaptive(true);
       setLaunching(false);
       setPaper(undefined);
     }
-  }, [open, preset]);
+  }, [open, preset, practiceTypes]);
 
-  const meta = PRACTICE_TYPES.find((p) => p.id === type)!;
+  const meta = practiceTypes.find((p) => p.id === type) ?? DEFAULT_PRACTICE_TYPE;
 
   // Recommended subject = evidence-led (low graded accuracy > no coverage > self-rated-low), or chosen one
   const recommended = pickEvidenceLedSubject(analytics);
@@ -187,7 +234,7 @@ export function PracticeLauncherDialog({
     type === "mini-flk" && paper
       ? `Mixed (${paper})`
       : subject === "auto"
-        ? recommended?.module ?? "Mixed"
+        ? recommended?.module ?? (isAcca ? subjects[0]?.module ?? accaFallbackSubject : "Mixed")
         : subject;
   const targetStat = subjects.find((s) => s.module === targetSubject);
 
@@ -245,7 +292,7 @@ export function PracticeLauncherDialog({
     setLaunching(true);
     const rationale =
       type === "mini-flk" && paper
-        ? `Mini ${paper} mock — 20 SBAs sampled across ${PAPER_SUBJECT_LIST[paper]}, weighted by syllabus share.`
+        ? `Mini ${paper} mock — 20 questions sampled across ${PAPER_SUBJECT_LIST[paper]}, weighted by syllabus share.`
         : reasonBits.length
           ? `Generated because ${reasonBits.join(", ")}.`
           : `Generated from a balanced view of your syllabus.`;
@@ -256,13 +303,13 @@ export function PracticeLauncherDialog({
         : type === "scenario"
           ? ["Application", "Issue spotting", "Reasoning"]
           : type === "flashcards"
-            ? ["Recall", "Definitions", "Procedural rules"]
+            ? ["Recall", "Definitions", "Core rules"]
             : type === "technique"
               ? ["Pacing", "Elimination", "Answer hygiene"]
               : ["Accuracy", "Pattern recognition", "Speed"];
 
-    // For mini-flk, send a descriptive module string so the AI generates
-    // mixed-subject questions covering the whole paper.
+    // For mini-flk, send a descriptive module string so the generator can
+    // cover the whole selected paper.
     const moduleForGen =
       type === "mini-flk" && paper
         ? `${paper} mixed paper (${PAPER_SUBJECT_LIST[paper]})`
@@ -330,7 +377,7 @@ export function PracticeLauncherDialog({
           {/* STEP 1 */}
           {step === 1 && (
             <div className="grid gap-2 sm:grid-cols-2">
-              {PRACTICE_TYPES.map((p) => {
+              {practiceTypes.map((p) => {
                 const Icon = p.icon;
                 const active = type === p.id;
                 return (
@@ -475,7 +522,7 @@ export function PracticeLauncherDialog({
                     : type === "scenario"
                       ? ["Application", "Issue spotting", "Reasoning"]
                       : type === "flashcards"
-                        ? ["Recall", "Definitions", "Procedural rules"]
+                        ? ["Recall", "Definitions", "Core rules"]
                         : type === "technique"
                           ? ["Pacing", "Elimination", "Answer hygiene"]
                           : ["Accuracy", "Pattern recognition", "Speed"]

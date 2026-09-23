@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { createFileRoute, redirect, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Layers,
   BookOpen,
@@ -36,7 +36,7 @@ import {
 } from "@/lib/flashcards-progress";
 import { loadPlan } from "@/lib/plan-store";
 import { paperInScope, useSqeScope } from "@/lib/use-sqe-scope";
-import { isUbePath } from "@/lib/exam-paths";
+import { isAccaPath, isUbePath } from "@/lib/exam-paths";
 import { useServerFn } from "@tanstack/react-start";
 import { resolveTopicDeck } from "@/lib/flashcards-catalog";
 import {
@@ -61,19 +61,21 @@ export const Route = createFileRoute("/flashcards")({
   component: FlashcardsPage,
   head: () => ({
     meta: [
-      { title: "SQE Flashcards — adaptive rule recall | Tentra" },
+      { title: "Flashcards — adaptive rule recall | Tentra" },
       {
         name: "description",
         content:
-          "High-yield SQE flashcards across FLK1 and FLK2. Target weak areas, star key rules and build fast recall with Tentra.",
+          "High-yield flashcards for supported legal pathways. Target weak areas, star key rules and build fast recall with Tentra.",
       },
-      { property: "og:title", content: "SQE Flashcards | Tentra" },
+      { property: "og:title", content: "Flashcards | Tentra" },
       {
         property: "og:description",
         content:
-          "High-yield SQE flashcards: build fast recall across rules, exceptions and exam traps.",
+          "High-yield flashcards: build fast recall across rules, exceptions and exam traps.",
       },
+      { property: "og:type", content: "website" },
       { property: "og:url", content: "https://tentraapp.com/flashcards" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://tentraapp.com/flashcards" }],
   }),
@@ -81,12 +83,13 @@ export const Route = createFileRoute("/flashcards")({
 
 type Filter = "all" | "FLK1" | "FLK2" | "MBE" | "MEE" | "MPT" | "weak" | "starred";
 
-function useExamKind(): ExamKind {
+function useExamContext(): { kind: ExamKind; isAcca: boolean } {
   return useMemo(() => {
     const plan = loadPlan();
     const path = plan?.input.examPath;
+    const isAcca = plan?.input.examType === "ACCA" || (path ? isAccaPath(path) : false);
     const isUbe = path ? isUbePath(path) : plan?.input.examType === "UBE";
-    return isUbe ? "UBE" : "SQE";
+    return { kind: isUbe ? "UBE" : "SQE", isAcca };
   }, []);
 }
 
@@ -112,10 +115,58 @@ function useProgress() {
 
 function FlashcardsPage() {
   const search = Route.useSearch();
-  const kind = useExamKind();
+  const navigate = useNavigate();
+  const { kind, isAcca } = useExamContext();
   const [mode, setMode] = useState<ReviewMode | null>(() =>
     search.subject ? { kind: "topic", subject: search.subject, subtopic: search.subtopic } : null,
   );
+
+  if (isAcca) {
+    return (
+      <AppShell
+        title="Practice"
+        subtitle="Paper-scoped questions and worked explanations."
+        showBack
+        backTo="/mocks"
+        backLabel="Back to Mocks & Practice"
+      >
+        <section className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-card md:p-12">
+          <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-gradient-pink-blue opacity-20 blur-3xl" />
+          <div className="relative max-w-xl">
+            <Badge
+              variant="outline"
+              className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground"
+            >
+              ACCA pathway
+            </Badge>
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
+              ACCA practice is ready
+            </h2>
+            <p className="mt-3 text-base text-muted-foreground md:text-lg">
+              Use targeted practice for your selected papers, with realistic objective questions and worked explanations.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button
+                size="lg"
+                onClick={() => navigate({ to: "/practice" })}
+                className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
+              >
+                Open practice <ChevronRight className="ml-1.5 h-4 w-4" />
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                onClick={() => navigate({ to: "/mocks" })}
+                className="rounded-full"
+              >
+                Back to mocks
+              </Button>
+            </div>
+          </div>
+        </section>
+      </AppShell>
+    );
+  }
 
   if (mode) {
     return <StudyView mode={mode} kind={kind} onExit={() => setMode(null)} />;

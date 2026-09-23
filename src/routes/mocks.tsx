@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, redirect, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import {
   Sparkles,
   Target,
@@ -31,7 +31,8 @@ import {
 import { AIQuizBuilderDialog } from "@/components/ai-quiz-builder-dialog";
 import { useSqeScope } from "@/lib/use-sqe-scope";
 import { loadPlan } from "@/lib/plan-store";
-import { isUbePath } from "@/lib/exam-paths";
+import { isAccaPath, isUbePath } from "@/lib/exam-paths";
+import { accaPaperLabel } from "@/lib/acca-syllabus";
 import { getProStatus } from "@/lib/pro-store";
 import {
   createSimulation,
@@ -54,15 +55,17 @@ export const Route = createFileRoute("/mocks")({
       {
         name: "description",
         content:
-          "Full UBE and SQE1 mock exam simulations, mini mocks and adaptive drills. Build exam stamina with Tentra.",
+          "Exam simulations and adaptive practice for SQE, UBE and ACCA candidates. Build exam stamina with Tentra.",
       },
       { property: "og:title", content: "Mocks & Practice | Tentra" },
       {
         property: "og:description",
         content:
-          "Full-length mock exam simulations and adaptive drills for SQE (FLK1/FLK2) and NY UBE (MBE/MEE/MPT).",
+          "Full-length simulations, mini mocks and targeted practice across SQE, UBE and ACCA pathways.",
       },
+      { property: "og:type", content: "website" },
       { property: "og:url", content: "https://tentraapp.com/mocks" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [{ rel: "canonical", href: "https://tentraapp.com/mocks" }],
   }),
@@ -88,6 +91,7 @@ const UBE_MINI: MiniMock[] = [
 
 function MocksPage() {
   const navigate = useNavigate();
+  const plan = useMemo(() => loadPlan(), []);
   const [practiceOpen, setPracticeOpen] = useState(false);
   const [quizOpen, setQuizOpen] = useState(false);
   const [practicePreset, setPracticePreset] = useState<
@@ -100,11 +104,14 @@ function MocksPage() {
   const [proLoaded, setProLoaded] = useState(false);
 
   const isUbe = useMemo(() => {
-    const plan = loadPlan();
     const path = plan?.input.examPath;
     return path ? isUbePath(path) : plan?.input.examType === "UBE";
-  }, []);
-  const pathway: Pathway = isUbe ? "UBE" : "SQE";
+  }, [plan]);
+  const isAcca = useMemo(() => {
+    const path = plan?.input.examPath;
+    return plan?.input.examType === "ACCA" || (path ? isAccaPath(path) : false);
+  }, [plan]);
+  const pathway: Pathway | null = isAcca ? null : isUbe ? "UBE" : "SQE";
   const { papers: scopePapers, assessment } = useSqeScope();
 
   useEffect(() => {
@@ -117,26 +124,38 @@ function MocksPage() {
   }, []);
 
   const singlePaper = !isUbe && scopePapers.length === 1 ? scopePapers[0] : null;
-  const miniMocks = isUbe
+  const miniMocks = isAcca
+    ? []
+    : isUbe
     ? UBE_MINI
     : SQE_MINI.filter((m) => scopePapers.length === 0 || scopePapers.includes(m.paper as "FLK1" | "FLK2"));
-  const fullMockTitle = isUbe
+  const accaLabel = accaPaperLabel(plan?.input.accaPapers ?? []);
+  const accaPapersLabel = accaLabel === "ACCA" ? "your selected ACCA papers" : accaLabel;
+  const fullMockTitle = isAcca
+    ? "ACCA exam practice"
+    : isUbe
     ? "Full UBE Simulation"
     : singlePaper
       ? `Full ${singlePaper} Simulation`
       : "Full SQE1 Simulation";
-  const fullMockDesc = isUbe
+  const fullMockDesc = isAcca
+    ? `Practise realistic ACCA objective questions for ${accaPapersLabel}, with worked explanations and adaptive targeting.`
+    : isUbe
     ? "Sit a full-length UBE simulation: MBE + MEE + MPT under exam conditions."
     : singlePaper
       ? `Sit a full-length ${singlePaper} simulation: both ${singlePaper} SBA blocks under exam conditions.`
       : "Sit a full-length SQE1 simulation: FLK1 and FLK2 SBA papers under exam conditions.";
-  const fullMockMeta = isUbe
+  const fullMockMeta = isAcca
+    ? "Paper-scoped practice · worked explanations"
+    : isUbe
     ? "200 MBE + 6 MEE + 2 MPT · 12 hours"
     : singlePaper
       ? `180 SBAs across ${singlePaper} · ~5 hours`
       : "360 SBAs across FLK1 and FLK2 · ~10 hours";
+  const pathwayLabel = isAcca ? "ACCA pathway" : `${pathway} pathway`;
+  const relevantSims = pathway ? sims.filter((s) => s.pathway === pathway) : [];
 
-  const inProgressSim = sims.find((s) => s.pathway === pathway && s.status === "in_progress");
+  const inProgressSim = relevantSims.find((s) => s.status === "in_progress");
 
   const openMiniPaper = (paper: PaperKey) => {
     setPracticePreset({ type: "mini-flk", paper });
@@ -158,7 +177,7 @@ function MocksPage() {
         <div className="relative flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
           <div className="max-w-xl">
             <Badge variant="outline" className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground">
-              <Sparkles className="mr-1 h-3 w-3" /> {pathway} pathway
+              <Sparkles className="mr-1 h-3 w-3" /> {pathwayLabel}
             </Badge>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
               {fullMockTitle}
@@ -167,7 +186,15 @@ function MocksPage() {
             <div className="mt-3 text-sm text-muted-foreground/80">{fullMockMeta}</div>
 
             <div className="mt-6 flex flex-wrap gap-3">
-              {inProgressSim ? (
+              {isAcca ? (
+                <Button
+                  size="lg"
+                  onClick={openPractice}
+                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
+                >
+                  Start ACCA practice <ArrowRight className="ml-1.5 h-4 w-4" />
+                </Button>
+              ) : inProgressSim ? (
                 <Button
                   size="lg"
                   onClick={() =>
@@ -189,7 +216,7 @@ function MocksPage() {
                   Start Full Simulation
                 </Button>
               )}
-              {!isPro && proLoaded && (
+              {!isAcca && !isPro && proLoaded && (
                 <Button
                   size="lg"
                   variant="outline"
@@ -203,13 +230,13 @@ function MocksPage() {
           </div>
 
           <div className="hidden h-32 w-32 shrink-0 place-items-center rounded-3xl bg-gradient-pink-blue text-primary-foreground opacity-70 shadow-glow md:grid">
-            <Scale className="h-14 w-14" />
+            {isAcca ? <Target className="h-14 w-14" /> : <Scale className="h-14 w-14" />}
           </div>
         </div>
       </section>
 
       {/* SQE2 placeholder for SQE pathway */}
-      {!isUbe && (
+      {!isUbe && !isAcca && (
         <section className="mt-4">
           <div className="flex items-center justify-between rounded-2xl border border-dashed border-border bg-card/50 p-5">
             <div className="flex items-center gap-3">
@@ -227,29 +254,31 @@ function MocksPage() {
       )}
 
       {/* MINI MOCKS */}
-      <section className={`mt-8 grid gap-4 ${miniMocks.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
-        {miniMocks.map((m) => (
-          <button
-            key={m.paper}
-            type="button"
-            onClick={() => openMiniPaper(m.paper)}
-            className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 text-left backdrop-blur transition hover:border-pink/40 hover:shadow-glow"
-          >
-            <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-10 blur-2xl" />
-            <div className="relative flex items-start justify-between">
-              <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
-                <Scale className="h-5 w-5" />
+      {miniMocks.length > 0 && (
+        <section className={`mt-8 grid gap-4 ${miniMocks.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+          {miniMocks.map((m) => (
+            <button
+              key={m.paper}
+              type="button"
+              onClick={() => openMiniPaper(m.paper)}
+              className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 text-left backdrop-blur transition hover:border-pink/40 hover:shadow-glow"
+            >
+              <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-10 blur-2xl" />
+              <div className="relative flex items-start justify-between">
+                <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+                  <Scale className="h-5 w-5" />
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
               </div>
-              <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-            </div>
-            <div className="relative mt-6">
-              <div className="text-lg font-semibold text-foreground">{m.title}</div>
-              <p className="mt-1 text-sm text-muted-foreground">{m.desc}</p>
-              <div className="mt-3 text-xs text-muted-foreground/80">{m.duration}</div>
-            </div>
-          </button>
-        ))}
-      </section>
+              <div className="relative mt-6">
+                <div className="text-lg font-semibold text-foreground">{m.title}</div>
+                <p className="mt-1 text-sm text-muted-foreground">{m.desc}</p>
+                <div className="mt-3 text-xs text-muted-foreground/80">{m.duration}</div>
+              </div>
+            </button>
+          ))}
+        </section>
+      )}
 
       {/* DRILLS + FLASHCARDS */}
       <section className="mt-4 grid gap-4 md:grid-cols-2">
@@ -269,42 +298,46 @@ function MocksPage() {
           </div>
           <div className="relative mt-6">
             <div className="text-lg font-semibold text-foreground">
-              {isUbe ? "Mixed MBE Drill" : "Weak Topic Drill"}
+              {isAcca ? "ACCA Topic Drill" : isUbe ? "Mixed MBE Drill" : "Weak Topic Drill"}
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Targeted questions on your weakest topics.
+              {isAcca
+                ? "Targeted questions across your selected paper areas."
+                : "Targeted questions on your weakest topics."}
             </p>
           </div>
           <ArrowRight className="relative mt-4 h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
         </button>
 
-        <Link
-          to="/flashcards"
-          className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 text-left backdrop-blur transition hover:border-pink/40 hover:shadow-glow"
-        >
-          <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-10 blur-2xl" />
-          <div className="relative flex items-start justify-between">
-            <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
-              <Layers className="h-5 w-5" />
+        {!isAcca && (
+          <Link
+            to="/flashcards"
+            className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 text-left backdrop-blur transition hover:border-pink/40 hover:shadow-glow"
+          >
+            <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-10 blur-2xl" />
+            <div className="relative flex items-start justify-between">
+              <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
+                <Layers className="h-5 w-5" />
+              </div>
+              <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
             </div>
-            <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
-          </div>
-          <div className="relative mt-6">
-            <div className="text-lg font-semibold text-foreground">Flashcard Decks</div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Review key rules, definitions and high-yield legal principles.
-            </p>
-            <div className="mt-3 text-xs text-muted-foreground/80">
-              {isUbe
-                ? "Adaptive recall · MBE & MEE"
-                : `Adaptive recall · ${assessment === "FLK1" ? "FLK1" : assessment === "FLK2" ? "FLK2" : "FLK1 & FLK2"}`}
+            <div className="relative mt-6">
+              <div className="text-lg font-semibold text-foreground">Flashcard Decks</div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Review key rules, definitions and high-yield legal principles.
+              </p>
+              <div className="mt-3 text-xs text-muted-foreground/80">
+                {isUbe
+                  ? "Adaptive recall · MBE & MEE"
+                  : `Adaptive recall · ${assessment === "FLK1" ? "FLK1" : assessment === "FLK2" ? "FLK2" : "FLK1 & FLK2"}`}
+              </div>
             </div>
-          </div>
-        </Link>
+          </Link>
+        )}
       </section>
 
       {/* PAST PERFORMANCE */}
-      {sims.length > 0 && (
+      {relevantSims.length > 0 && (
         <section className="mt-8">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
@@ -315,7 +348,7 @@ function MocksPage() {
             </Link>
           </div>
           <div className="grid gap-3">
-            {sims.slice(0, 5).map((s) => (
+              {relevantSims.slice(0, 5).map((s) => (
               <button
                 key={s.id}
                 onClick={() =>
@@ -374,13 +407,15 @@ function MocksPage() {
       />
       <AIQuizBuilderDialog open={quizOpen} onOpenChange={setQuizOpen} />
 
-      <FullMockDialog
-        open={fullMockOpen}
-        onOpenChange={setFullMockOpen}
-        pathway={pathway}
-        isPro={isPro}
-        scopePapers={scopePapers}
-      />
+      {pathway && (
+        <FullMockDialog
+          open={fullMockOpen}
+          onOpenChange={setFullMockOpen}
+          pathway={pathway}
+          isPro={isPro}
+          scopePapers={scopePapers}
+        />
+      )}
     </AppShell>
   );
 }
