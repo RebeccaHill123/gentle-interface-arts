@@ -2118,7 +2118,7 @@ function QuizDialog({
   onComplete,
 }: {
   task: { index: number; title: string; module: string; minutes: number };
-  examType: "SQE1" | "SQE2" | "UBE" | "MPRE";
+  examType: "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
   confidence: number;
   onClose: () => void;
   onComplete: (

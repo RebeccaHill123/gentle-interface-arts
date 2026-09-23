@@ -13,7 +13,7 @@ const corsHeaders = {
 
 const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 
-const EXAM_TYPES = ["SQE1", "SQE2", "UBE"] as const;
+const EXAM_TYPES = ["SQE1", "SQE2", "UBE", "ACCA"] as const;
 type ExamType = (typeof EXAM_TYPES)[number];
 
 interface QuizRequest {
@@ -144,13 +144,18 @@ Deno.serve(async (req) => {
           : "intermediate";
 
     const isUbe = body.examType === "UBE";
-    const systemPrompt = isUbe
-      ? `You are an expert US bar (UBE / NY Bar) tutor. You write rigorous MBE-style single-best-answer multiple-choice questions modelled on the NCBE Subject Matter Outlines. Each question must have exactly 4 options (A-D), exactly one correct answer, and a concise explanation citing the controlling rule. Use US law only (federal rules + majority common-law positions).`
-      : `You are an expert UK SQE (Solicitors Qualifying Examination) tutor. You write rigorous single-best-answer multiple-choice questions in the style of the official SRA SQE assessments. Each question must have exactly 4 options (A-D), exactly one correct answer, and a concise explanation.`;
+    const isAcca = body.examType === "ACCA";
+    const systemPrompt = isAcca
+      ? `You are an expert ACCA tutor. You write rigorous ACCA-style objective test questions modelled on the official ACCA computer-based exams. Each question must have exactly 4 options (A-D), exactly one correct answer, and a concise explanation that shows the workings or cites the governing standard or rule. Use current IFRS, ISAs, ACCA syllabus terminology and UK tax rules as examined. Calculation questions must use plausible distractors reflecting realistic candidate errors.`
+      : isUbe
+        ? `You are an expert US bar (UBE / NY Bar) tutor. You write rigorous MBE-style single-best-answer multiple-choice questions modelled on the NCBE Subject Matter Outlines. Each question must have exactly 4 options (A-D), exactly one correct answer, and a concise explanation citing the controlling rule. Use US law only (federal rules + majority common-law positions).`
+        : `You are an expert UK SQE (Solicitors Qualifying Examination) tutor. You write rigorous single-best-answer multiple-choice questions in the style of the official SRA SQE assessments. Each question must have exactly 4 options (A-D), exactly one correct answer, and a concise explanation.`;
 
-    const jurisdictionNote = isUbe
-      ? "Make the questions varied, fact-pattern based (1.8-min MBE pace), and grounded in current US federal law and majority rules. Avoid trick wording."
-      : "Make the questions varied, scenario-based where appropriate, and grounded in current English & Welsh law. Avoid trick wording.";
+    const jurisdictionNote = isAcca
+      ? "Mix calculation and conceptual questions as the syllabus area demands, show full workings in the explanation, and never invent standard numbers, rates or thresholds."
+      : isUbe
+        ? "Make the questions varied, fact-pattern based (1.8-min MBE pace), and grounded in current US federal law and majority rules. Avoid trick wording."
+        : "Make the questions varied, scenario-based where appropriate, and grounded in current English & Welsh law. Avoid trick wording.";
 
     const userPrompt = `Write a 10-question ${difficulty} ${body.examType} mini-assessment.
 Module: ${body.module}

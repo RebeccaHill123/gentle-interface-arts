@@ -21,7 +21,7 @@ import {
 } from "@/lib/plan-sync";
 
 
-export type ExamType = "SQE1" | "SQE2" | "UBE" | "MPRE";
+export type ExamType = "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
 
 export type ExamPath =
   | "SQE1_FULL"
@@ -33,6 +33,7 @@ export type ExamPath =
   | "UBE_ESSAYS"
   | "UBE_MPT"
   | "MPRE_FULL"
+  | "ACCA_PAPERS"
   | "CUSTOM";
 
 export type IntensityTier =
@@ -76,6 +77,12 @@ export interface OnboardingInput {
    * must be prompted rather than assumed to be "both".
    */
   sqeAssessment?: "FLK1" | "FLK2" | "BOTH";
+  /**
+   * ACCA only: the paper codes (e.g. ["FR", "AA"]) the student has entered for
+   * this sitting. The syllabus, plan and practice questions are scoped to
+   * exactly these papers.
+   */
+  accaPapers?: string[];
 }
 
 export type StrategyRationale =
@@ -192,6 +199,8 @@ export interface OnboardingDraft {
   confidenceSource?: "rated" | "not-started" | "balanced";
   /** Explicit SQE1 assessment answer, when the student has given one. */
   sqeAssessment?: "FLK1" | "FLK2" | "BOTH";
+  /** ACCA paper codes chosen for this sitting. */
+  accaPapers?: string[];
 }
 
 export const SQE1_MODULES = [

@@ -56,6 +56,20 @@ type Session = {
 type Mock = { date?: string; module?: string; score?: number; total?: number };
 type Module = { name?: string; confidence?: number };
 
+/**
+ * ACCA students get an accountancy tutor, not a legal one. The addendum
+ * overrides the legal vocabulary above without duplicating the whole prompt.
+ */
+const ACCA_ADDENDUM = (papers: string) => `
+
+=== ACCA MODE (overrides the legal framing above) ===
+You are coaching an ACCA candidate${papers ? ` sitting ${papers}` : ""}. Speak as an experienced ACCA tutor and performance analyst.
+- Use ACCA vocabulary: syllabus areas, objective test (OT) questions, constructed response, CBE technique, marks-per-minute (1.8 minutes per mark), examiner reports, past-exam questions, proformas and workings.
+- Ground technical advice in current IFRS/IAS, ISAs, ACCA's Code of Ethics, and UK tax rules as examined. Never invent standard numbers, rates, thresholds or exam statistics; if unsure, name the principle instead.
+- Never reference SQE, FLK1/FLK2, SBAs or US bar material.
+- Only discuss the papers the student has entered for.
+=== END ACCA MODE ===`;
+
 function buildInsights(plan: Record<string, unknown> | null | undefined, profileName: string) {
   if (!plan) return "";
   const input = (plan as {
@@ -248,7 +262,16 @@ export const Route = createFileRoute("/api/coach")({
             });
           }
           const name = nameRow?.first_name || nameRow?.display_name || "there";
-          const userContext = buildInsights(planRow?.plan as Record<string, unknown> | null, name);
+          const planJson = planRow?.plan as Record<string, unknown> | null;
+          const userContext = buildInsights(planJson, name);
+          const planInput = (planJson?.["input"] ?? null) as Record<string, unknown> | null;
+          const isAcca = planInput?.["examType"] === "ACCA";
+          const accaPapers = Array.isArray(planInput?.["accaPapers"])
+            ? (planInput!["accaPapers"] as unknown[])
+                .filter((p): p is string => typeof p === "string")
+                .join(" + ")
+            : "";
+          const systemPrompt = isAcca ? SYSTEM_PROMPT + ACCA_ADDENDUM(accaPapers) : SYSTEM_PROMPT;
 
           const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
@@ -260,7 +283,7 @@ export const Route = createFileRoute("/api/coach")({
               model: "google/gemini-2.5-flash",
               stream: true,
               messages: [
-                { role: "system", content: SYSTEM_PROMPT + userContext },
+                { role: "system", content: systemPrompt + userContext },
                 ...messages,
               ],
             }),

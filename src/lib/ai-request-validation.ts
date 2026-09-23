@@ -63,7 +63,7 @@ export function validateChatMessages(
   return { ok: true, value: out };
 }
 
-export const QUIZ_EXAM_TYPES = ["SQE1", "SQE2", "UBE"] as const;
+export const QUIZ_EXAM_TYPES = ["SQE1", "SQE2", "UBE", "ACCA"] as const;
 export type QuizExamType = (typeof QUIZ_EXAM_TYPES)[number];
 
 export type QuizInput = {
