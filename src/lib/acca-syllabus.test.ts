@@ -19,6 +19,21 @@ describe("ACCA syllabus", () => {
     }
   });
 
+  it("covers all 15 paper codes with plannable topic depth", () => {
+    expect(ACCA_PAPERS).toHaveLength(15);
+    for (const paper of ACCA_PAPERS) {
+      expect(paper.areas.length).toBeGreaterThanOrEqual(4);
+      const subtopics = paper.areas.flatMap((a) => a.subtopics);
+      expect(subtopics.length).toBeGreaterThanOrEqual(24);
+      // ids unique so scheduled tasks never collide
+      expect(new Set(subtopics.map((s) => s.id)).size).toBe(subtopics.length);
+      for (const a of paper.areas) {
+        expect(a.subtopics.length).toBeGreaterThanOrEqual(4);
+        for (const s of a.subtopics) expect(s.name.trim().length).toBeGreaterThan(3);
+      }
+    }
+  });
+
   it("resolves papers case-insensitively", () => {
     expect(getAccaPaper("fr")?.name).toBe("Financial Reporting");
     expect(getAccaPaper("nope")).toBeUndefined();
