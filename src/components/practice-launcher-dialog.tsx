@@ -30,6 +30,7 @@ import {
 import { toast } from "sonner";
 import { loadPlan } from "@/lib/plan-store";
 import { isAccaPath } from "@/lib/exam-paths";
+import { normaliseAccaPapers } from "@/lib/acca-syllabus";
 import { deriveAnalytics, type SubjectStat } from "@/lib/analytics-derive";
 import { pickEvidenceLedSubject, evidenceReason } from "@/lib/evidence-priority";
 
@@ -69,15 +70,17 @@ type PracticeTypeDefinition = {
   defaultQuestions: number;
 };
 
+const DEFAULT_PRACTICE_TYPE: PracticeTypeDefinition = {
+  id: "weak-area",
+  title: "Weak Area Drill",
+  desc: "Targeted SBAs on your lowest-confidence and most-missed topics.",
+  icon: Target,
+  defaultMinutes: 20,
+  defaultQuestions: 12,
+};
+
 const PRACTICE_TYPES: PracticeTypeDefinition[] = [
-  {
-    id: "weak-area",
-    title: "Weak Area Drill",
-    desc: "Targeted SBAs on your lowest-confidence and most-missed topics.",
-    icon: Target,
-    defaultMinutes: 20,
-    defaultQuestions: 12,
-  },
+  DEFAULT_PRACTICE_TYPE,
   {
     id: "timed-mini",
     title: "Timed Mini Mock",
@@ -189,6 +192,8 @@ export function PracticeLauncherDialog({
   const plan = useMemo(() => loadPlan(), [open]);
   const path = plan?.input.examPath;
   const isAcca = plan?.input.examType === "ACCA" || (path ? isAccaPath(path) : false);
+  const accaPapers = normaliseAccaPapers(plan?.input.accaPapers ?? []);
+  const accaFallbackSubject = accaPapers[0] ? `Mixed (${accaPapers[0]})` : "Mixed ACCA practice";
   const practiceTypes = isAcca ? ACCA_PRACTICE_TYPES : PRACTICE_TYPES;
   const analytics = useMemo(() => deriveAnalytics(plan), [plan]);
   const subjects: SubjectStat[] = analytics.subjects;
@@ -221,7 +226,7 @@ export function PracticeLauncherDialog({
     }
   }, [open, preset, practiceTypes]);
 
-  const meta = practiceTypes.find((p) => p.id === type) ?? practiceTypes[0];
+  const meta = practiceTypes.find((p) => p.id === type) ?? DEFAULT_PRACTICE_TYPE;
 
   // Recommended subject = evidence-led (low graded accuracy > no coverage > self-rated-low), or chosen one
   const recommended = pickEvidenceLedSubject(analytics);
@@ -229,7 +234,7 @@ export function PracticeLauncherDialog({
     type === "mini-flk" && paper
       ? `Mixed (${paper})`
       : subject === "auto"
-        ? recommended?.module ?? (isAcca ? subjects[0]?.module ?? "Mixed ACCA practice" : "Mixed")
+        ? recommended?.module ?? (isAcca ? subjects[0]?.module ?? accaFallbackSubject : "Mixed")
         : subject;
   const targetStat = subjects.find((s) => s.module === targetSubject);
 
