@@ -416,13 +416,8 @@ function CoachPage() {
     if (!text || isStreaming) return;
     setInput("");
 
-      const modes = getModes(coachExam);
-    const modeHint = modes.find((m) => m.id === mode)?.systemHint ?? "";
     const userMsg: Msg = { role: "user", content: text };
-    const next: Msg[] =
-      messages.length === 0 && modeHint
-        ? [{ role: "user", content: `[${modes.find((m) => m.id === mode)?.label} mode] ${modeHint}` }, { role: "assistant", content: "Understood." }, ...messages, userMsg]
-        : [...messages, userMsg];
+    const next: Msg[] = [...messages, userMsg];
 
     const visible: Msg[] = [...messages, userMsg];
     setMessages(visible);
@@ -439,7 +434,7 @@ function CoachPage() {
       const resp = await fetch("/api/coach", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, mode }),
         signal: controller.signal,
       });
 
