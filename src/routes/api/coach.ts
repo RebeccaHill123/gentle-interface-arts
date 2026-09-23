@@ -274,12 +274,16 @@ export const Route = createFileRoute("/api/coach")({
           const userContext = buildInsights(planJson, name);
           const planInput = (planJson?.["input"] ?? null) as Record<string, unknown> | null;
           const isAcca = planInput?.["examType"] === "ACCA";
-          const accaPapers = Array.isArray(planInput?.["accaPapers"])
-            ? (planInput!["accaPapers"] as unknown[])
-                .filter((p): p is string => typeof p === "string")
-                .join(" + ")
-            : "";
-          const systemPrompt = isAcca ? SYSTEM_PROMPT + ACCA_ADDENDUM(accaPapers) : SYSTEM_PROMPT;
+          const accaPaperCodes = Array.isArray(planInput?.["accaPapers"])
+            ? (planInput!["accaPapers"] as unknown[]).filter(
+                (p): p is string => typeof p === "string",
+              )
+            : [];
+          const accaPapers = accaPaperCodes.join(" + ");
+          const systemPrompt = isAcca
+            ? SYSTEM_PROMPT +
+              ACCA_ADDENDUM(accaPapers, accaQuestionStyleForPrompt(accaPaperCodes, 1))
+            : SYSTEM_PROMPT;
 
           const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
             method: "POST",
