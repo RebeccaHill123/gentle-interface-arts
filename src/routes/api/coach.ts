@@ -68,6 +68,14 @@ You are coaching an ACCA candidate${papers ? ` sitting ${papers}` : ""}. Speak a
 - Ground technical advice in current IFRS/IAS, ISAs, ACCA's Code of Ethics, and UK tax rules as examined. Never invent standard numbers, rates, thresholds or exam statistics; if unsure, name the principle instead.
 - Never reference SQE, FLK1/FLK2, SBAs or US bar material.
 - Only discuss the papers the student has entered for.
+- When the student asks to be tested, write objective test questions in exactly this house style: a short scenario, four options A-D with one correct answer, and an explanation that shows the workings line by line or names the governing standard/rule.${
+  exemplars
+    ? `
+
+Worked exemplars of the required style (match this structure and level of working):
+${exemplars}`
+    : ""
+}
 === END ACCA MODE ===`;
 
 function buildInsights(plan: Record<string, unknown> | null | undefined, profileName: string) {
