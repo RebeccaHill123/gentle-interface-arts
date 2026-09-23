@@ -299,21 +299,51 @@ function PracticeSessionPage() {
     }, 700);
 
     (async () => {
+      // ACCA sessions are served from the authored bank first: real worked
+      // questions for the syllabus area, topped up by the generator only when
+      // the bank cannot fill the requested count.
+      const authored =
+        examType === "ACCA"
+          ? accaQuestionsFor({
+              module: cfg.module,
+              topic: cfg.topic ?? null,
+              count: cfg.questions,
+              seed: fp,
+            })
+          : [];
+
       try {
-        const { data, error: fnErr } = await supabase.functions.invoke("generate-quiz", {
-          body: {
-            module: cfg.module,
-            topic: cfg.topic ?? cfg.formatLabel,
-            examType,
-            confidence: mod?.confidence ?? 3,
-          },
-        });
-        if (cancelled) return;
-        if (fnErr) throw fnErr;
-        if (data?.error) throw new Error(data.error);
-        const validated = validateQuizQuestions(data?.questions, cfg.questions);
-        if (!validated.ok) throw new Error(validated.error);
-        const qs = validated.questions;
+        let qs: QuizQuestion[];
+        if (authored.length >= cfg.questions) {
+          qs = authored;
+        } else {
+          const { data, error: fnErr } = await supabase.functions.invoke("generate-quiz", {
+            body: {
+              module: cfg.module,
+              topic: cfg.topic ?? cfg.formatLabel,
+              examType,
+              confidence: mod?.confidence ?? 3,
+            },
+          });
+          if (cancelled) return;
+          if (fnErr) throw fnErr;
+          if (data?.error) throw new Error(data.error);
+          const need = cfg.questions - authored.length;
+          const validated = validateQuizQuestions(data?.questions, need, {
+            minimum: authored.length > 0 ? 1 : undefined,
+          });
+          if (!validated.ok) {
+            // Authored content alone can still run an honest session.
+            if (authored.length >= MIN_USABLE_QUESTIONS) qs = authored;
+            else throw new Error(validated.error);
+          } else {
+            const seen = new Set(authored.map((a) => a.prompt.toLowerCase()));
+            qs = [
+              ...authored,
+              ...validated.questions.filter((g) => !seen.has(g.prompt.toLowerCase())),
+            ];
+          }
+        }
         if (qs.length !== cfg.questions) {
           // Run honestly with what the generator actually delivered. The
           // fingerprint stays bound to the original request so a reload still
