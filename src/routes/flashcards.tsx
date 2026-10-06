@@ -159,18 +159,10 @@ function FlashcardsPage() {
             <div className="mt-6 flex flex-wrap gap-3">
               <Button
                 size="lg"
-                onClick={() => navigate({ to: "/practice" })}
+                onClick={() => navigate({ to: "/mocks" })}
                 className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
               >
-                Open practice <ChevronRight className="ml-1.5 h-4 w-4" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                onClick={() => navigate({ to: "/mocks" })}
-                className="rounded-full"
-              >
-                Back to mocks
+                Choose practice <ChevronRight className="ml-1.5 h-4 w-4" />
               </Button>
             </div>
           </div>
