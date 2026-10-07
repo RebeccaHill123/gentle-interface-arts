@@ -106,6 +106,13 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  MINI_ASSESSMENT_SIZE,
+  buildMiniAssessment,
+  miniAssessmentKey,
+  parseMiniAssessmentProgress,
+  scoreMiniAssessment,
+} from "@/lib/practice/mini-assessment";
 
 interface QuizQuestion {
   prompt: string;
