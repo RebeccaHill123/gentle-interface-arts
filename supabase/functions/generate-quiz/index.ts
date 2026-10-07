@@ -291,7 +291,7 @@ ${jurisdictionNote}`;
       return fail(502, "Couldn't generate quiz. Please try again.");
     }
 
-    // The model sometimes over-delivers; never hand back more than the 10 the UI promises.
+    // The model sometimes over-delivers; cap the payload (a few spares let the app drop duplicates and still reach exactly 10).
     return new Response(JSON.stringify({ questions: quiz.questions.slice(0, 20) }), {
       headers: jsonHeaders,
     });
