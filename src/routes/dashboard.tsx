@@ -2268,7 +2268,7 @@ function QuizDialog({
         <DialogHeader>
           <DialogTitle>Mini-assessment · {task.module}</DialogTitle>
           <DialogDescription>
-            10 quick questions on <span className="text-foreground">{task.title}</span>. Your score
+            {MINI_ASSESSMENT_SIZE} quick questions on <span className="text-foreground">{task.title}</span>. Your score
             adjusts your topic mastery.
           </DialogDescription>
         </DialogHeader>
@@ -2283,9 +2283,14 @@ function QuizDialog({
         {error && !loading && (
           <div className="space-y-3 py-4 text-center">
             <p className="text-sm text-destructive">{error}</p>
-            <Button variant="ghost" onClick={onClose}>
-              Close
-            </Button>
+            <div className="flex justify-center gap-2">
+              <Button variant="ghost" onClick={onClose}>
+                Close
+              </Button>
+              <Button variant="outline" onClick={() => setAttempt((a) => a + 1)}>
+                Try again
+              </Button>
+            </div>
           </div>
         )}
 
@@ -2293,7 +2298,7 @@ function QuizDialog({
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                Question {current + 1} of {questions.length}
+                Question {current + 1} of {total}
               </span>
               <span>{correctCount} correct so far</span>
             </div>
@@ -2301,7 +2306,7 @@ function QuizDialog({
               <div
                 className="h-full rounded-full bg-gradient-pink-blue transition-all"
                 style={{
-                  width: `${((current + (revealed ? 1 : 0)) / questions.length) * 100}%`,
+                  width: `${((current + (revealed ? 1 : 0)) / total) * 100}%`,
                 }}
               />
             </div>
@@ -2352,7 +2357,7 @@ function QuizDialog({
                 disabled={!revealed}
                 className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
-                {current < questions.length - 1 ? "Next" : "See results"}
+                {current < total - 1 ? "Next" : "See results"}
               </Button>
             </DialogFooter>
           </div>
@@ -2368,7 +2373,7 @@ function QuizDialog({
                 {Math.round(accuracy * 100)}%
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                {correctCount} / {questions.length} correct
+                {correctCount} / {total} correct
               </p>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -2381,6 +2386,7 @@ function QuizDialog({
             <DialogFooter>
               <Button
                 onClick={handleFinish}
+                disabled={savedRef.current}
                 className="w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 Mark task complete
