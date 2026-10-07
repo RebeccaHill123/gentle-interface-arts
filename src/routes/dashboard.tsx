@@ -106,6 +106,13 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  MINI_ASSESSMENT_SIZE,
+  buildMiniAssessment,
+  miniAssessmentKey,
+  parseMiniAssessmentProgress,
+  scoreMiniAssessment,
+} from "@/lib/practice/mini-assessment";
 
 interface QuizQuestion {
   prompt: string;
@@ -2134,7 +2141,7 @@ function QuizDialog({
   onClose,
   onComplete,
 }: {
-  task: { index: number; title: string; module: string; minutes: number };
+  task: { index: number; title: string; module: string; minutes: number; taskId?: string };
   examType: "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
   confidence: number;
   onClose: () => void;
@@ -2144,39 +2151,60 @@ function QuizDialog({
     attempts: { fingerprint: string; isCorrect: boolean; selectedAnswer: string | null }[],
   ) => void;
 }) {
+  const storeKey = miniAssessmentKey(task);
   const [questions, setQuestions] = useState<QuizQuestion[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [current, setCurrent] = useState(0);
-  const [answers, setAnswers] = useState<number[]>([]);
+  const [answers, setAnswers] = useState<(number | null)[]>([]);
   const [revealed, setRevealed] = useState(false);
   const [startedAt] = useState(() => Date.now());
   const [finished, setFinished] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const savedRef = useRef(false);
+  // Confidence is read once per opening so a plan re-render can't regenerate
+  // (and swap) the question set mid-assessment.
+  const confidenceRef = useRef(confidence);
 
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
       setLoading(true);
       setError(null);
+      // Resume a saved, still-valid set for this task before generating anew.
+      const resumed = parseMiniAssessmentProgress(
+        typeof window !== "undefined" ? window.sessionStorage.getItem(storeKey) : null,
+      );
+      if (resumed) {
+        setQuestions(resumed.questions);
+        setAnswers(resumed.answers);
+        setCurrent(resumed.current);
+        setRevealed(resumed.revealed);
+        setLoading(false);
+        return;
+      }
       try {
         const { data, error: fnErr } = await supabase.functions.invoke("generate-quiz", {
           body: {
             module: task.module,
             topic: task.title,
             examType,
-            confidence,
+            confidence: confidenceRef.current,
           },
         });
         if (cancelled) return;
         if (fnErr) throw fnErr;
         if (data?.error) throw new Error(data.error);
-        const qs: QuizQuestion[] = (data?.questions ?? []).filter(
-          (q: QuizQuestion) => q && Array.isArray(q.options) && q.options.length === 4,
-        );
-        if (qs.length === 0) throw new Error("No questions returned");
-        setQuestions(qs);
+        // Replace (never append): exactly 10 unique valid questions, or an explicit error.
+        const built = buildMiniAssessment(data?.questions);
+        if (!built.ok) throw new Error(built.error);
+        setQuestions(built.questions);
+        setAnswers(built.questions.map(() => null));
+        setCurrent(0);
+        setRevealed(false);
       } catch (e) {
         if (cancelled) return;
+        setQuestions(null);
         setError(e instanceof Error ? e.message : "Could not load quiz");
       } finally {
         if (!cancelled) setLoading(false);
@@ -2186,14 +2214,22 @@ function QuizDialog({
     return () => {
       cancelled = true;
     };
-  }, [task.module, task.title, examType, confidence]);
+  }, [storeKey, task.module, task.title, examType, attempt]);
 
-  const total = questions?.length ?? 0;
-  const correctCount = useMemo(() => {
-    if (!questions) return 0;
-    return answers.reduce((acc, a, i) => (a === questions[i]?.correctIndex ? acc + 1 : acc), 0);
-  }, [answers, questions]);
-  const accuracy = total > 0 ? correctCount / total : 0;
+  // Persist progress so reopening resumes the same set with answers intact.
+  useEffect(() => {
+    if (!questions || finished || savedRef.current) return;
+    try {
+      window.sessionStorage.setItem(storeKey, JSON.stringify({ questions, answers }));
+    } catch {
+      /* storage unavailable — resume just won't be offered */
+    }
+  }, [questions, answers, finished, storeKey]);
+
+  const { correct: correctCount, total, accuracy } = useMemo(
+    () => scoreMiniAssessment(questions ?? [], answers),
+    [answers, questions],
+  );
 
   const handleSelect = (optionIdx: number) => {
     if (revealed) return;
@@ -2205,20 +2241,27 @@ function QuizDialog({
 
   const handleNext = () => {
     if (!questions) return;
-    if (current < questions.length - 1) {
+    if (current < total - 1) {
       setCurrent(current + 1);
-      setRevealed(false);
+      setRevealed(answers[current + 1] != null);
     } else {
       setFinished(true);
     }
   };
 
   const handleFinish = () => {
+    if (!questions || savedRef.current) return; // save exactly once
+    savedRef.current = true;
+    try {
+      window.sessionStorage.removeItem(storeKey);
+    } catch {
+      /* ignore */
+    }
     const minutesSpent = Math.max(1, Math.round((Date.now() - startedAt) / 60000));
-    const attempts = (questions ?? []).map((question, i) => ({
+    const attempts = questions.map((question, i) => ({
       fingerprint: questionFingerprint(task.module, question.prompt),
       isCorrect: answers[i] === question.correctIndex,
-      selectedAnswer: typeof answers[i] === "number" ? String.fromCharCode(65 + answers[i]) : null,
+      selectedAnswer: typeof answers[i] === "number" ? String.fromCharCode(65 + answers[i]!) : null,
     }));
     onComplete(accuracy, minutesSpent, attempts);
   };
@@ -2232,7 +2275,7 @@ function QuizDialog({
         <DialogHeader>
           <DialogTitle>Mini-assessment · {task.module}</DialogTitle>
           <DialogDescription>
-            10 quick questions on <span className="text-foreground">{task.title}</span>. Your score
+            {MINI_ASSESSMENT_SIZE} quick questions on <span className="text-foreground">{task.title}</span>. Your score
             adjusts your topic mastery.
           </DialogDescription>
         </DialogHeader>
@@ -2247,9 +2290,14 @@ function QuizDialog({
         {error && !loading && (
           <div className="space-y-3 py-4 text-center">
             <p className="text-sm text-destructive">{error}</p>
-            <Button variant="ghost" onClick={onClose}>
-              Close
-            </Button>
+            <div className="flex justify-center gap-2">
+              <Button variant="ghost" onClick={onClose}>
+                Close
+              </Button>
+              <Button variant="outline" onClick={() => setAttempt((a) => a + 1)}>
+                Try again
+              </Button>
+            </div>
           </div>
         )}
 
@@ -2257,7 +2305,7 @@ function QuizDialog({
           <div className="space-y-4">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>
-                Question {current + 1} of {questions.length}
+                Question {current + 1} of {total}
               </span>
               <span>{correctCount} correct so far</span>
             </div>
@@ -2265,7 +2313,7 @@ function QuizDialog({
               <div
                 className="h-full rounded-full bg-gradient-pink-blue transition-all"
                 style={{
-                  width: `${((current + (revealed ? 1 : 0)) / questions.length) * 100}%`,
+                  width: `${((current + (revealed ? 1 : 0)) / total) * 100}%`,
                 }}
               />
             </div>
@@ -2316,7 +2364,7 @@ function QuizDialog({
                 disabled={!revealed}
                 className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
-                {current < questions.length - 1 ? "Next" : "See results"}
+                {current < total - 1 ? "Next" : "See results"}
               </Button>
             </DialogFooter>
           </div>
@@ -2332,7 +2380,7 @@ function QuizDialog({
                 {Math.round(accuracy * 100)}%
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                {correctCount} / {questions.length} correct
+                {correctCount} / {total} correct
               </p>
             </div>
             <p className="text-xs text-muted-foreground">
@@ -2345,6 +2393,7 @@ function QuizDialog({
             <DialogFooter>
               <Button
                 onClick={handleFinish}
+                disabled={savedRef.current}
                 className="w-full rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
               >
                 Mark task complete
