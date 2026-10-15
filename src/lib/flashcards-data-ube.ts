@@ -40,7 +40,7 @@ const c = (
   flk,
 });
 
-export const UBE_CARDS: Flashcard[] = [
+const UBE_CARDS_ALL: Flashcard[] = [
   // ===== Civil Procedure =====
   c("ube-civpro", "SMJ", "Medium", "MBE", "What are the requirements for federal diversity jurisdiction?",
     "Complete diversity between all plaintiffs and all defendants (Strawbridge) AND an amount in controversy exceeding $75,000, exclusive of interest and costs.",
@@ -218,6 +218,11 @@ export const UBE_CARDS: Flashcard[] = [
   c("ube-mpt", "Issue Spotting", "Medium", "MPT", "How are issues identified on the MPT?",
     "The task memo defines the scope. Treat each instruction (e.g. 'analyze whether X', 'address Y and Z') as a separate issue. Use the Library's table of contents as a checklist of authorities and ensure every cited rule is applied to the File's facts."),
 ];
+
+// Retired MEE subjects (July 2026+) have no deck, so their cards are dropped.
+export const UBE_CARDS: Flashcard[] = UBE_CARDS_ALL.filter((card) =>
+  UBE_DECKS.some((d) => d.id === card.deckId),
+);
 
 export const getUbeDeck = (id: string) => UBE_DECKS.find((d) => d.id === id);
 export const getUbeCardsByDeck = (deckId: string) =>
