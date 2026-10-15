@@ -155,7 +155,7 @@ function MocksPage() {
     : isUbe
     ? "Sit a full-length UBE simulation: MBE + MEE + MPT under exam conditions."
     : singlePaper
-      ? `Sit a full-length ${singlePaper} simulation: both ${singlePaper} SBA blocks under exam conditions.`
+      ? `Sit a full-length ${singlePaper} simulation: both ${singlePaper} sessions under exam conditions, in the January 2027 format.`
       : "Sit a full-length SQE1 simulation: FLK1 and FLK2 SBA papers under exam conditions.";
   const fullMockMeta = isAcca
     ? "Paper-scoped practice · worked explanations"
@@ -164,8 +164,8 @@ function MocksPage() {
     : isUbe
     ? "200 MBE + 6 MEE + 2 MPT · 12 hours"
     : singlePaper
-      ? `180 SBAs across ${singlePaper} · ~5 hours`
-      : "360 SBAs across FLK1 and FLK2 · ~10 hours";
+      ? `170 SBAs across ${singlePaper} (2 sessions of 85) · ~5 hours`
+      : "340 SBAs across FLK1 and FLK2 (4 sessions of 85) · ~10 hours";
   const pathwayLabel = isAcca ? "ACCA pathway" : isMpre ? "MPRE pathway" : `${pathway} pathway`;
   const relevantSims = pathway ? sims.filter((s) => s.pathway === pathway) : [];
 
