@@ -34,9 +34,9 @@ export const Route = createFileRoute("/new-york-bar")({
 
 const CTA_STYLE = {
   background:
-    "linear-gradient(120deg, oklch(0.80 0.15 350) 0%, oklch(0.74 0.15 330) 45%, oklch(0.70 0.15 270) 100%)",
+    "var(--gradient-cta)",
   boxShadow:
-    "0 1px 0 0 oklch(1 0 0 / 0.25) inset, 0 12px 30px -12px oklch(0.55 0.15 320 / 0.40)",
+    "var(--shadow-cta)",
 };
 
 const STEPS = [

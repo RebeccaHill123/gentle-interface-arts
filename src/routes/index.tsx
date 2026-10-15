@@ -107,9 +107,9 @@ function PremiumCta({
       className={`group relative ${h} min-h-11 rounded-full px-7 text-[14.5px] font-medium tracking-[-0.005em] text-primary-foreground transition-all duration-200 hover:brightness-[1.06] active:scale-[0.985] active:brightness-95 ${className}`}
       style={{
         background:
-          "linear-gradient(120deg, oklch(0.80 0.15 350) 0%, oklch(0.74 0.15 330) 45%, oklch(0.70 0.15 270) 100%)",
+          "var(--gradient-cta)",
         boxShadow:
-          "0 1px 0 0 oklch(1 0 0 / 0.25) inset, 0 12px 30px -12px oklch(0.55 0.15 320 / 0.40)",
+          "var(--shadow-cta)",
       }}
     >
       <Link to={to as never} search={search as never} onClick={onClick}>
@@ -478,7 +478,7 @@ function LandingPage() {
                 className="relative overflow-hidden rounded-[1.75rem] border border-border/50 bg-card p-8 md:p-10"
                 style={{
                   boxShadow:
-                    "0 1px 0 0 oklch(1 0 0 / 0.5) inset, 0 30px 60px -30px oklch(0.65 0.12 320 / 0.20)",
+                    "var(--shadow-card)",
                 }}
               >
                 {/* Very subtle pastel glow */}
@@ -486,7 +486,7 @@ function LandingPage() {
                   className="pointer-events-none absolute -inset-px -z-0 rounded-[1.75rem] opacity-70"
                   style={{
                     background:
-                      "radial-gradient(120% 60% at 50% 0%, oklch(0.94 0.05 350 / 0.5), transparent 60%), radial-gradient(120% 60% at 100% 100%, oklch(0.92 0.06 270 / 0.35), transparent 55%)",
+                      "var(--gradient-wash)",
                   }}
                 />
                 <div className="relative">
@@ -627,7 +627,7 @@ function LandingPage() {
                 className="grid h-6 w-6 place-items-center rounded-md"
                 style={{
                   background:
-                    "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+                    "var(--gradient-accent)",
                 }}
               >
                 <span className="font-display text-[11px] font-semibold text-primary-foreground">T</span>
@@ -1017,7 +1017,7 @@ function FeatureShowcase() {
                   isActive
                     ? {
                         background:
-                          "linear-gradient(120deg, oklch(0.80 0.15 350) 0%, oklch(0.72 0.15 320) 50%, oklch(0.66 0.15 275) 100%)",
+                          "var(--gradient-cta)",
                       }
                     : undefined
                 }
@@ -1097,8 +1097,8 @@ function DashboardPanel() {
             />
             <defs>
               <linearGradient id="ringGrad" x1="0" x2="1" y1="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.72 0.20 350)" />
-                <stop offset="100%" stopColor="oklch(0.60 0.18 295)" />
+                <stop offset="0%" style={{ stopColor: "var(--pink)" }} />
+                <stop offset="100%" style={{ stopColor: "var(--violet)" }} />
               </linearGradient>
             </defs>
           </svg>
@@ -1212,8 +1212,8 @@ function FocusPanel() {
         <svg viewBox="0 0 120 120" className="h-40 w-40">
           <defs>
             <linearGradient id="ring" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="oklch(0.72 0.20 350)" />
-              <stop offset="100%" stopColor="oklch(0.60 0.18 295)" />
+              <stop offset="0%" style={{ stopColor: "var(--pink)" }} />
+              <stop offset="100%" style={{ stopColor: "var(--violet)" }} />
             </linearGradient>
           </defs>
           <circle cx="60" cy="60" r="50" stroke="oklch(0.3 0.05 285 / 8%)" strokeWidth="6" fill="none" />
@@ -1260,7 +1260,7 @@ function CoachPanel() {
         <span
           className="grid h-6 w-6 place-items-center rounded-md"
           style={{
-            background: "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+            background: "var(--gradient-accent)",
           }}
         >
           <Sparkles className="h-3 w-3 text-primary-foreground" />
@@ -1274,7 +1274,7 @@ function CoachPanel() {
         <div
           className="ml-auto max-w-[80%] rounded-2xl rounded-tr-md px-3 py-2 text-[11px] text-primary-foreground"
           style={{
-            background: "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+            background: "var(--gradient-accent)",
           }}
         >
           Explain easements simply.
@@ -1294,7 +1294,7 @@ function CoachPanel() {
         <div
           className="ml-auto max-w-[70%] rounded-2xl rounded-tr-md px-3 py-2 text-[11px] text-primary-foreground"
           style={{
-            background: "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+            background: "var(--gradient-accent)",
           }}
         >
           Quiz me.
@@ -1377,7 +1377,7 @@ function AnalyticsPanel() {
               className="rounded-sm"
               style={{
                 height: `${m.v * 100}%`,
-                background: `linear-gradient(180deg, oklch(0.70 0.18 340 / ${0.55 + m.v * 0.3}), oklch(0.62 0.16 295 / ${0.45 + m.v * 0.3}))`,
+                background: `linear-gradient(180deg, color-mix(in oklab, var(--pink) ${(0.55 + m.v * 0.3)*100}%, transparent), color-mix(in oklab, var(--violet) ${(0.45 + m.v * 0.3)*100}%, transparent))`,
               }}
             />
           </div>

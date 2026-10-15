@@ -1299,8 +1299,8 @@ function CountdownRing({ days }: { days: number }) {
         <svg className="absolute inset-0 -rotate-90" viewBox="0 0 80 80">
           <defs>
             <linearGradient id="ring" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="oklch(0.72 0.24 350)" />
-              <stop offset="100%" stopColor="oklch(0.62 0.22 250)" />
+              <stop offset="0%" style={{ stopColor: "var(--pink)" }} />
+              <stop offset="100%" style={{ stopColor: "var(--blue)" }} />
             </linearGradient>
           </defs>
           <circle
@@ -1371,7 +1371,7 @@ function MasteryHeatmap({ stored }: { stored: StoredPlan }) {
                 key={v}
                 className="h-4 w-5 rounded-sm"
                 style={{
-                  background: `linear-gradient(135deg, oklch(0.72 0.24 350 / ${v}), oklch(0.62 0.22 250 / ${v}))`,
+                  background: `linear-gradient(135deg, color-mix(in oklab, var(--pink) ${v*100}%, transparent), color-mix(in oklab, var(--violet) ${v*100}%, transparent))`,
                   border: "1px solid oklch(1 0 0 / 0.05)",
                 }}
               />
@@ -1400,7 +1400,7 @@ function MasteryHeatmap({ stored }: { stored: StoredPlan }) {
                 className="h-6 flex-1 rounded-md transition-transform hover:scale-110"
                 title={`Week ${i + 1}: ${(v * 5).toFixed(1)}/5`}
                 style={{
-                  background: `linear-gradient(135deg, oklch(0.72 0.24 350 / ${v}), oklch(0.62 0.22 250 / ${v}))`,
+                  background: `linear-gradient(135deg, color-mix(in oklab, var(--pink) ${v*100}%, transparent), color-mix(in oklab, var(--violet) ${v*100}%, transparent))`,
                   border: "1px solid oklch(1 0 0 / 0.05)",
                 }}
               />
