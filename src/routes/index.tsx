@@ -179,6 +179,7 @@ function LandingPage() {
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
       <div className="relative pb-24 md:pb-0">
+        <main>
         {/* DUSK HERO — dark cinematic band with the London skyline */}
         <div className="theme-night relative isolate overflow-hidden bg-background">
           <img
@@ -226,7 +227,6 @@ function LandingPage() {
           </div>
         </header>
 
-        <main>
           {/* HERO — dual-market, mobile first */}
           <section className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:px-8 md:pt-12 md:pb-20">
             <div className="grid items-center gap-8 md:grid-cols-[1.05fr_1fr] md:gap-16">
