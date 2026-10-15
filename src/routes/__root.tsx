@@ -32,35 +32,21 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Tentra — The Revision App for SQE & NY UBE Students" },
+      { title: "Tentra — Personalised study plans for SQE, U.S. Bar & ACCA" },
       {
         name: "description",
         content:
-          "Tentra is the revision app for SQE1, SQE2 and the NY UBE — personalised study plans, MCQ practice, mock exams, AI coach and progress tracking for future lawyers.",
+          "Personalised study plans for SQE1, SQE2, the U.S. Bar (UBE), MPRE and ACCA papers, built around your exam date, available time and progress.",
       },
       { name: "author", content: "Tentra" },
       { property: "og:site_name", content: "Tentra" },
-      { property: "og:title", content: "Tentra — SQE & NY UBE Revision for Ambitious Law Students" },
-      {
-        property: "og:description",
-        content:
-          "Personalised study plans, MCQ practice and mock exams for SQE and NY UBE candidates.",
-      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@tentraapp" },
-      { name: "twitter:title", content: "Tentra — SQE & NY UBE Revision for Ambitious Law Students" },
-      {
-        name: "twitter:description",
-        content:
-          "Personalised study plans, MCQ practice and mock exams for SQE and NY UBE candidates.",
-      },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a7ddf46a-3a4f-474c-85b6-c3f508c35fbc/id-preview-1c985e4a--c0d0fdd1-6a49-47d4-acb7-092208251a0f.lovable.app-1778503272714.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a7ddf46a-3a4f-474c-85b6-c3f508c35fbc/id-preview-1c985e4a--c0d0fdd1-6a49-47d4-acb7-092208251a0f.lovable.app-1778503272714.png" },
     ],
     links: [
-      { rel: "icon", type: "image/png", href: "/src/assets/tentra-t.png" },
-      { rel: "apple-touch-icon", href: "/src/assets/tentra-t.png" },
+      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "apple-touch-icon", href: "/favicon.svg" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -80,7 +66,7 @@ export const Route = createRootRoute({
           "@type": "Organization",
           name: "Tentra",
           url: "https://tentraapp.com",
-          logo: "https://tentraapp.com/favicon.ico",
+          logo: "https://tentraapp.com/favicon.svg",
         }),
       },
       {

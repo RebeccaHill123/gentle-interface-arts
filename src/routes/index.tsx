@@ -1,3 +1,4 @@
+import homePreviewAsset from "@/assets/tentra-homepage-preview-2026-10.jpg.asset.json";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { BrandMark } from "@/components/brand-mark";
@@ -22,6 +23,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useAuth } from "@/lib/use-auth";
 import { trackEvent } from "@/lib/analytics";
 
+const HOME_PREVIEW_IMAGE = `https://tentraapp.com${homePreviewAsset.url}`;
+
 export const Route = createFileRoute("/")({
   component: LandingPage,
   head: () => ({
@@ -43,7 +46,21 @@ export const Route = createFileRoute("/")({
       },
       { property: "og:url", content: "https://tentraapp.com/" },
       { property: "og:type", content: "website" },
+      { property: "og:image", content: HOME_PREVIEW_IMAGE },
+      { property: "og:image:width", content: "1200" },
+      { property: "og:image:height", content: "630" },
+      {
+        property: "og:image:alt",
+        content: "Tentra homepage: personalised study plans for SQE, U.S. Bar and ACCA",
+      },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "The study plan for demanding professional exams" },
+      {
+        name: "twitter:description",
+        content:
+          "Plan, track and adapt with AI for SQE1, SQE2, the U.S. Bar (UBE), MPRE and ACCA.",
+      },
+      { name: "twitter:image", content: HOME_PREVIEW_IMAGE },
     ],
     links: [{ rel: "canonical", href: "https://tentraapp.com/" }],
     scripts: [
