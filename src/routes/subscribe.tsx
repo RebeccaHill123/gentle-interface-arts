@@ -215,7 +215,7 @@ function SubscribePage() {
                   className="relative overflow-hidden rounded-[1.75rem] border border-border/50 bg-card p-8 md:p-10"
                   style={{
                     boxShadow:
-                      "0 1px 0 0 oklch(1 0 0 / 0.5) inset, 0 30px 60px -30px oklch(0.65 0.12 320 / 0.20)",
+                      "var(--shadow-card)",
                   }}
                 >
                   {/* Subtle pastel glow */}
@@ -223,7 +223,7 @@ function SubscribePage() {
                     className="pointer-events-none absolute -inset-px -z-0 rounded-[1.75rem] opacity-70"
                     style={{
                       background:
-                        "radial-gradient(120% 60% at 50% 0%, oklch(0.94 0.05 350 / 0.5), transparent 60%), radial-gradient(120% 60% at 100% 100%, oklch(0.92 0.06 270 / 0.35), transparent 55%)",
+                        "var(--gradient-wash)",
                     }}
                   />
                   <div className="relative">
@@ -290,7 +290,7 @@ function SubscribePage() {
                         size="lg"
                         disabled={checkingAuth}
                         onClick={handleContinueToPayment}
-                        className="h-13 w-full rounded-full bg-gradient-pink-blue text-[15px] font-medium text-primary-foreground shadow-[0_12px_30px_-12px_oklch(0.55_0.15_320/0.4)] transition-all hover:brightness-[1.06]"
+                        className="h-13 w-full rounded-full bg-gradient-pink-blue text-[15px] font-medium text-primary-foreground shadow-card transition-all hover:brightness-[1.06]"
                       >
                         {checkingAuth ? (
                           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Checking…</>

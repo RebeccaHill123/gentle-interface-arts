@@ -1,8 +1,9 @@
-import homePreviewAsset from "@/assets/tentra-homepage-preview-2026-10.jpg.asset.json";
+import homePreviewAsset from "@/assets/tentra-london-dusk-preview-2026-10.jpg.asset.json";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { BrandMark } from "@/components/brand-mark";
-import { BackgroundBlobs } from "@/components/background-blobs";
+import { BrandMark, TentraMonogram } from "@/components/brand-mark";
+import londonDusk from "@/assets/london-dusk-hero.jpg";
+import eveningWorkspace from "@/assets/evening-workspace.jpg";
 import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
@@ -107,9 +108,9 @@ function PremiumCta({
       className={`group relative ${h} min-h-11 rounded-full px-7 text-[14.5px] font-medium tracking-[-0.005em] text-primary-foreground transition-all duration-200 hover:brightness-[1.06] active:scale-[0.985] active:brightness-95 ${className}`}
       style={{
         background:
-          "linear-gradient(120deg, oklch(0.80 0.15 350) 0%, oklch(0.74 0.15 330) 45%, oklch(0.70 0.15 270) 100%)",
+          "var(--gradient-cta)",
         boxShadow:
-          "0 1px 0 0 oklch(1 0 0 / 0.25) inset, 0 12px 30px -12px oklch(0.55 0.15 320 / 0.40)",
+          "var(--shadow-cta)",
       }}
     >
       <Link to={to as never} search={search as never} onClick={onClick}>
@@ -177,9 +178,19 @@ function LandingPage() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden bg-background">
-      <BackgroundBlobs />
-
       <div className="relative pb-24 md:pb-0">
+        <main>
+        {/* DUSK HERO — dark cinematic band with the London skyline */}
+        <div className="theme-night relative isolate overflow-hidden bg-background">
+          <img
+            src={londonDusk}
+            alt="The City of London skyline across the Thames at dusk"
+            width={1920}
+            height={1088}
+            fetchPriority="high"
+            className="absolute inset-0 -z-10 h-full w-full object-cover object-[60%_center]"
+          />
+          <div aria-hidden className="absolute inset-0 -z-10" style={{ background: "var(--gradient-dusk)" }} />
         {/* HEADER — compact on mobile */}
         <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-8 md:py-6">
           <BrandMark />
@@ -216,25 +227,23 @@ function LandingPage() {
           </div>
         </header>
 
-        <main>
           {/* HERO — dual-market, mobile first */}
           <section className="mx-auto max-w-6xl px-4 pt-2 pb-10 md:px-8 md:pt-12 md:pb-20">
             <div className="grid items-center gap-8 md:grid-cols-[1.05fr_1fr] md:gap-16">
               <div className="text-left">
-                <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.2em] text-foreground/80 backdrop-blur">
-                  <Sparkles className="h-3 w-3 text-pink" />
-                  SQE 🇬🇧 · U.S. Bar (UBE) 🇺🇸 · ACCA 🌍
+                <div className="text-[10.5px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                  SQE · U.S. Bar (UBE) · ACCA
                 </div>
 
-                <h1 className="mt-4 text-[2.35rem] font-light leading-[1.02] tracking-[-0.03em] text-foreground sm:text-[2.6rem] md:text-[2.85rem] lg:text-[3.15rem]">
-                  The study plan for demanding professional exams,{" "}
-                  <span className="text-gradient-pink-violet font-light">built around you</span>.
+                <h1 className="mt-5 text-[2.5rem] font-normal leading-[1.04] tracking-[-0.02em] text-foreground sm:text-[2.9rem] md:text-[3.3rem] lg:text-[3.8rem]">
+                  Big ambitions.
+                  <br />
+                  A plan to match.
                 </h1>
 
-                <p className="mt-5 max-w-[32rem] text-[15.5px] leading-[1.55] text-muted-foreground md:text-[16.5px]">
-                  Law or accountancy — Tentra builds a personalised plan around your exam date,
-                  weekly availability and progress, then recalibrates as you study. Plan → Track →
-                  Adapt with AI.
+                <p className="mt-5 max-w-[30rem] text-[15.5px] leading-[1.6] text-muted-foreground md:text-[17px]">
+                  Personalised study plans, clear progress and AI coaching for your next
+                  professional exam.
                 </p>
 
                 <div ref={heroCtaRef} className="mt-7 flex flex-col items-stretch gap-3 md:flex-row md:items-center">
@@ -253,7 +262,7 @@ function LandingPage() {
                         trackEvent("build_plan_cta_clicked", { surface: "landing", placement: "hero" })
                       }
                     >
-                      Build my personalised plan
+                      Build my study plan
                       <ArrowRight className="ml-1.5 h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                     </PremiumCta>
                   )}
@@ -272,9 +281,46 @@ function LandingPage() {
 
               {/* Hero product preview — edge-to-edge card on mobile */}
               <div className="relative -mx-1 mt-2 sm:mx-0 md:mt-0">
-                <div className="absolute -inset-6 -z-10 rounded-[2.5rem] bg-gradient-pink-violet opacity-[0.16] blur-3xl motion-reduce:hidden" />
-                <HeroPreviewCard />
+                <div className="mb-2 text-right text-[11px] text-muted-foreground">
+                  Illustrative example — not real user data
+                </div>
+                <div className="text-[var(--ink)] [--background:var(--ivory)] [--foreground:var(--ink)] [--card:oklch(0.99_0.005_85)] [--card-foreground:var(--ink)] [--muted-foreground:oklch(0.47_0.012_260)] [--border:oklch(0.21_0.012_260/11%)] [--primary:var(--ink)] [--primary-foreground:var(--ivory)] [--pink:oklch(0.55_0.09_2)]">
+                  <HeroPreviewCard />
+                </div>
               </div>
+            </div>
+          </section>
+        </div>
+
+          {/* WARM IVORY — feature themes */}
+          <section className="mx-auto max-w-6xl px-4 py-16 md:px-8 md:py-28">
+            <h2 className="max-w-xl text-[1.9rem] font-normal leading-[1.1] text-foreground md:text-[2.6rem]">
+              Make the most of the time you have.
+            </h2>
+            <div className="mt-10 grid gap-6 md:mt-14 md:grid-cols-3 md:gap-10">
+              {[
+                {
+                  icon: Calendar,
+                  title: "A plan that fits your life",
+                  body: "Built around your exam date, the hours you actually have each week and how confident you feel in each topic — and it adjusts as you go.",
+                },
+                {
+                  icon: TrendingUp,
+                  title: "Progress you can see",
+                  body: "Log study sessions and practice, then see coverage, time studied and weaker topics in one calm view.",
+                },
+                {
+                  icon: MessageSquareText,
+                  title: "Support when you need it",
+                  body: "Ask the AI Coach about your plan or a tricky topic, and use targeted practice questions to test yourself.",
+                },
+              ].map(({ icon: Icon, title, body }) => (
+                <div key={title} className="border-t border-foreground/15 pt-6">
+                  <Icon className="h-5 w-5 text-pink" aria-hidden />
+                  <h3 className="mt-4 text-[1.15rem] font-normal text-foreground">{title}</h3>
+                  <p className="mt-2 text-[14.5px] leading-[1.6] text-muted-foreground">{body}</p>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -478,7 +524,7 @@ function LandingPage() {
                 className="relative overflow-hidden rounded-[1.75rem] border border-border/50 bg-card p-8 md:p-10"
                 style={{
                   boxShadow:
-                    "0 1px 0 0 oklch(1 0 0 / 0.5) inset, 0 30px 60px -30px oklch(0.65 0.12 320 / 0.20)",
+                    "var(--shadow-card)",
                 }}
               >
                 {/* Very subtle pastel glow */}
@@ -486,7 +532,7 @@ function LandingPage() {
                   className="pointer-events-none absolute -inset-px -z-0 rounded-[1.75rem] opacity-70"
                   style={{
                     background:
-                      "radial-gradient(120% 60% at 50% 0%, oklch(0.94 0.05 350 / 0.5), transparent 60%), radial-gradient(120% 60% at 100% 100%, oklch(0.92 0.06 270 / 0.35), transparent 55%)",
+                      "var(--gradient-wash)",
                   }}
                 />
                 <div className="relative">
@@ -616,6 +662,41 @@ function LandingPage() {
               </div>
             </div>
           </section>
+
+          {/* EVENING WORKSPACE — closing */}
+          <section className="theme-night relative isolate overflow-hidden bg-background">
+            <img
+              src={eveningWorkspace}
+              alt="A desk with a laptop and notes by a window overlooking London at dusk"
+              width={1600}
+              height={912}
+              loading="lazy"
+              className="absolute inset-0 -z-10 h-full w-full object-cover"
+            />
+            <div aria-hidden className="absolute inset-0 -z-10 bg-background/70" />
+            <div className="mx-auto max-w-6xl px-4 py-20 md:px-8 md:py-32">
+              <h2 className="max-w-lg text-[2rem] font-normal leading-[1.08] text-foreground md:text-[2.8rem]">
+                From after work to exam ready.
+              </h2>
+              <p className="mt-4 max-w-md text-[15px] leading-[1.6] text-muted-foreground">
+                Tell Tentra your exam and your schedule. Your first plan takes under two minutes.
+              </p>
+              <div className="mt-8">
+                <PremiumCta
+                  to={ctaTo}
+                  search={isAuthenticated ? undefined : { src: "landing", placement: "closing" }}
+                  size="lg"
+                  className="w-full sm:w-auto"
+                  onClick={() =>
+                    trackEvent("build_plan_cta_clicked", { surface: "landing", placement: "closing" })
+                  }
+                >
+                  {isAuthenticated ? "View dashboard" : "Build my study plan"}
+                  <ArrowRight className="ml-1.5 h-4 w-4" />
+                </PremiumCta>
+              </div>
+            </div>
+          </section>
         </main>
 
 
@@ -623,16 +704,8 @@ function LandingPage() {
         <footer className="border-t border-border/50">
           <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-8 text-[12.5px] text-muted-foreground md:flex-row md:px-8">
             <div className="flex items-center gap-2.5">
-              <span
-                className="grid h-6 w-6 place-items-center rounded-md"
-                style={{
-                  background:
-                    "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
-                }}
-              >
-                <span className="font-display text-[11px] font-semibold text-primary-foreground">T</span>
-              </span>
-              <span className="font-medium tracking-tight text-foreground">Tentra</span>
+              <TentraMonogram className="h-6 w-6 rounded-md" />
+              <span className="wordmark text-[11px] text-foreground">Tentra</span>
             </div>
             <nav className="flex items-center gap-5">
               <Link to="/terms" className="transition-colors hover:text-foreground">Terms</Link>
@@ -660,7 +733,7 @@ function LandingPage() {
               trackEvent("build_plan_cta_clicked", { surface: "landing", placement: "sticky_mobile" })
             }
           >
-            Build my personalised plan <ArrowRight className="ml-1.5 h-4 w-4" />
+            Build my study plan <ArrowRight className="ml-1.5 h-4 w-4" />
           </PremiumCta>
         </div>
       )}
@@ -1017,7 +1090,7 @@ function FeatureShowcase() {
                   isActive
                     ? {
                         background:
-                          "linear-gradient(120deg, oklch(0.80 0.15 350) 0%, oklch(0.72 0.15 320) 50%, oklch(0.66 0.15 275) 100%)",
+                          "var(--gradient-cta)",
                       }
                     : undefined
                 }
@@ -1097,8 +1170,8 @@ function DashboardPanel() {
             />
             <defs>
               <linearGradient id="ringGrad" x1="0" x2="1" y1="0" y2="1">
-                <stop offset="0%" stopColor="oklch(0.72 0.20 350)" />
-                <stop offset="100%" stopColor="oklch(0.60 0.18 295)" />
+                <stop offset="0%" style={{ stopColor: "var(--pink)" }} />
+                <stop offset="100%" style={{ stopColor: "var(--violet)" }} />
               </linearGradient>
             </defs>
           </svg>
@@ -1212,8 +1285,8 @@ function FocusPanel() {
         <svg viewBox="0 0 120 120" className="h-40 w-40">
           <defs>
             <linearGradient id="ring" x1="0" x2="1" y1="0" y2="1">
-              <stop offset="0%" stopColor="oklch(0.72 0.20 350)" />
-              <stop offset="100%" stopColor="oklch(0.60 0.18 295)" />
+              <stop offset="0%" style={{ stopColor: "var(--pink)" }} />
+              <stop offset="100%" style={{ stopColor: "var(--violet)" }} />
             </linearGradient>
           </defs>
           <circle cx="60" cy="60" r="50" stroke="oklch(0.3 0.05 285 / 8%)" strokeWidth="6" fill="none" />
@@ -1260,7 +1333,7 @@ function CoachPanel() {
         <span
           className="grid h-6 w-6 place-items-center rounded-md"
           style={{
-            background: "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+            background: "var(--gradient-accent)",
           }}
         >
           <Sparkles className="h-3 w-3 text-primary-foreground" />
@@ -1274,7 +1347,7 @@ function CoachPanel() {
         <div
           className="ml-auto max-w-[80%] rounded-2xl rounded-tr-md px-3 py-2 text-[11px] text-primary-foreground"
           style={{
-            background: "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+            background: "var(--gradient-accent)",
           }}
         >
           Explain easements simply.
@@ -1294,7 +1367,7 @@ function CoachPanel() {
         <div
           className="ml-auto max-w-[70%] rounded-2xl rounded-tr-md px-3 py-2 text-[11px] text-primary-foreground"
           style={{
-            background: "linear-gradient(120deg, oklch(0.72 0.22 350), oklch(0.60 0.20 270))",
+            background: "var(--gradient-accent)",
           }}
         >
           Quiz me.
@@ -1377,7 +1450,7 @@ function AnalyticsPanel() {
               className="rounded-sm"
               style={{
                 height: `${m.v * 100}%`,
-                background: `linear-gradient(180deg, oklch(0.70 0.18 340 / ${0.55 + m.v * 0.3}), oklch(0.62 0.16 295 / ${0.45 + m.v * 0.3}))`,
+                background: `linear-gradient(180deg, color-mix(in oklab, var(--pink) ${(0.55 + m.v * 0.3)*100}%, transparent), color-mix(in oklab, var(--violet) ${(0.45 + m.v * 0.3)*100}%, transparent))`,
               }}
             />
           </div>

@@ -379,9 +379,9 @@ function TimerRing({
       <svg viewBox={`0 0 ${size} ${size}`} className="relative h-full w-full -rotate-90">
         <defs>
           <linearGradient id="focus-ring" x1="0" x2="1" y1="0" y2="1">
-            <stop offset="0%" stopColor="oklch(0.72 0.24 350)" />
-            <stop offset="50%" stopColor="oklch(0.6 0.25 290)" />
-            <stop offset="100%" stopColor="oklch(0.62 0.22 250)" />
+            <stop offset="0%" style={{ stopColor: "var(--pink)" }} />
+            <stop offset="50%" style={{ stopColor: "var(--violet)" }} />
+            <stop offset="100%" style={{ stopColor: "var(--blue)" }} />
           </linearGradient>
         </defs>
         <circle
