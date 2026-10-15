@@ -2,7 +2,7 @@ import homePreviewAsset from "@/assets/tentra-london-dusk-preview-2026-10.jpg.as
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { BrandMark, TentraMonogram } from "@/components/brand-mark";
-import londonDusk from "@/assets/london-dusk-hero.jpg";
+import londonDusk from "@/assets/london-blue-hour-lilac-hero.jpg";
 import eveningWorkspace from "@/assets/evening-workspace.jpg";
 import { Button } from "@/components/ui/button";
 import {
@@ -184,7 +184,7 @@ function LandingPage() {
         <div className="theme-night relative isolate overflow-hidden bg-background">
           <img
             src={londonDusk}
-            alt="The City of London skyline across the Thames at dusk"
+            alt="The City of London skyline across the Thames at blue hour under a lilac sky"
             width={1920}
             height={1088}
             fetchPriority="high"
@@ -325,7 +325,7 @@ function LandingPage() {
           </section>
 
           {/* PRODUCT SHOWCASE — interactive, directly under hero */}
-          <section id="features" className="mx-auto max-w-6xl px-4 pb-16 md:px-8 md:pb-28">
+          <section id="features" className="band-lavender mx-auto max-w-6xl px-4 pt-16 md:pt-24 pb-16 md:px-8 md:pb-28">
             <div className="mx-auto mb-8 max-w-2xl text-center md:mb-14">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
                 Inside Tentra
@@ -343,7 +343,7 @@ function LandingPage() {
           </section>
 
           {/* HOW TENTRA WORKS — four scannable steps */}
-          <section id="how" className="mx-auto max-w-6xl px-4 pb-14 md:px-8 md:pb-24">
+          <section id="how" className="band-sky mx-auto max-w-6xl px-4 pt-14 md:pt-24 pb-14 md:px-8 md:pb-24">
             <div className="mb-8 text-center md:mb-14">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
                 How Tentra works
@@ -435,7 +435,7 @@ function LandingPage() {
           </section>
 
           {/* DUAL-MARKET FEATURE BLOCKS */}
-          <section className="mx-auto max-w-6xl px-4 pb-14 md:px-8 md:pb-24">
+          <section className="band-sky mx-auto max-w-6xl px-4 pt-14 md:pt-24 pb-14 md:px-8 md:pb-24">
             <div className="mx-auto mb-8 max-w-2xl text-center md:mb-12">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
                 Built for your pathway
@@ -503,7 +503,7 @@ function LandingPage() {
           </section>
 
           {/* PRICING — single Founding Member card */}
-          <section id="pricing" className="mx-auto max-w-5xl px-4 pb-20 md:px-8 md:pb-28">
+          <section id="pricing" className="band-lavender mx-auto max-w-5xl px-4 pt-16 md:pt-24 pb-20 md:px-8 md:pb-28">
             <div className="mx-auto mb-10 max-w-2xl text-center md:mb-14">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
                 Membership
@@ -673,7 +673,7 @@ function LandingPage() {
               loading="lazy"
               className="absolute inset-0 -z-10 h-full w-full object-cover"
             />
-            <div aria-hidden className="absolute inset-0 -z-10 bg-background/70" />
+            <div aria-hidden className="absolute inset-0 -z-10" style={{ background: "var(--gradient-dusk-closing)" }} />
             <div className="mx-auto max-w-6xl px-4 py-20 md:px-8 md:py-32">
               <h2 className="max-w-lg text-[2rem] font-normal leading-[1.08] text-foreground md:text-[2.8rem]">
                 From after work to exam ready.

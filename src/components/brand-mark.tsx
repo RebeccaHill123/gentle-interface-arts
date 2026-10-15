@@ -4,7 +4,8 @@ import { Link } from "@tanstack/react-router";
 export function TentraMonogram({ className = "h-8 w-8" }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={className} aria-hidden="true">
-      <rect width="64" height="64" rx="14" fill="var(--ink)" />
+      <defs><linearGradient id="tentra-mark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--brand-blue-deep)" /><stop offset="1" stop-color="var(--brand-lilac-deep)" /></linearGradient></defs>
+      <rect width="64" height="64" rx="14" fill="url(#tentra-mark)" />
       <rect x="16" y="18" width="32" height="5" fill="var(--ivory)" />
       <rect x="29.5" y="23" width="5" height="25" fill="var(--ivory)" />
       <rect x="16" y="50" width="32" height="2" fill="var(--sunset)" />

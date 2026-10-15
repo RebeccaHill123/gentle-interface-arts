@@ -14,6 +14,10 @@
   --color-ink: var(--ink);
   --color-sunset: var(--sunset);
   --color-mauve: var(--mauve);
+  --color-lilac: var(--brand-lilac);
+  --color-periwinkle: var(--brand-blue);
+  --color-lavender: var(--lavender);
+  --color-sky: var(--sky);
 
   --radius-sm: calc(var(--radius) - 6px);
   --radius-md: calc(var(--radius) - 2px);
@@ -65,99 +69,116 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-/* Tentra brand — London at blue hour.
-   Ink #16191F · Ivory #F4F1EA · Smoky grey · Sunset pink #C98F9D · Dusty mauve #A99BB5.
-   Pink/mauve are accents only; text uses the deeper "-ink" variants for contrast. */
+/* Tentra brand — London at blue hour, lilac & periwinkle.
+   Lilac #B9A4EE · Periwinkle #91B5ED · Lavender bg #F0EBFA · Pale blue #EAF2FC
+   Off-white #FAF8FD · Deep blue-purple #25233F · Sunset pink #E6B4CE (sparingly).
+   Text/buttons use deeper shades for AA contrast. */
 :root {
   --radius: 0.75rem;
 
-  --ink: oklch(0.21 0.012 260);          /* #16191F */
-  --ivory: oklch(0.955 0.012 85);        /* #F4F1EA */
-  --smoke: oklch(0.52 0.012 260);
-  --sunset: oklch(0.72 0.065 2);         /* #C98F9D */
-  --mauve: oklch(0.71 0.045 305);        /* #A99BB5 */
-  --night: oklch(0.17 0.015 260);
+  --brand-lilac: oklch(0.76 0.1 295);        /* #B9A4EE */
+  --brand-blue: oklch(0.77 0.08 258);        /* #91B5ED */
+  --brand-lilac-deep: oklch(0.5 0.13 292);
+  --brand-blue-deep: oklch(0.48 0.11 260);
+  --lavender: oklch(0.95 0.02 300);          /* #F0EBFA */
+  --sky: oklch(0.96 0.015 255);              /* #EAF2FC */
 
-  --background: oklch(0.965 0.01 85);
+  --ink: oklch(0.27 0.05 285);               /* #25233F */
+  --ivory: oklch(0.985 0.006 300);           /* #FAF8FD */
+  --smoke: oklch(0.52 0.03 285);
+  --sunset: oklch(0.82 0.07 345);            /* #E6B4CE */
+  --mauve: var(--brand-lilac);
+  --night: oklch(0.25 0.05 285);
+
+  --background: var(--ivory);
   --foreground: var(--ink);
-  --card: oklch(0.99 0.005 85);
+  --card: oklch(0.995 0.004 300);
   --card-foreground: var(--ink);
-  --popover: oklch(0.99 0.005 85);
+  --popover: oklch(0.995 0.004 300);
   --popover-foreground: var(--ink);
 
-  --primary: var(--ink);
-  --primary-foreground: var(--ivory);
-  --secondary: oklch(0.925 0.012 80);
+  --primary: oklch(0.45 0.12 285);
+  --primary-foreground: oklch(0.99 0.005 300);
+  --secondary: var(--lavender);
   --secondary-foreground: var(--ink);
-  --muted: oklch(0.935 0.01 80);
-  --muted-foreground: oklch(0.47 0.012 260);
-  --accent: oklch(0.92 0.02 0);
+  --muted: oklch(0.955 0.015 290);
+  --muted-foreground: oklch(0.47 0.04 285);
+  --accent: oklch(0.93 0.035 280);
   --accent-foreground: var(--ink);
 
   --destructive: oklch(0.55 0.19 25);
   --destructive-foreground: oklch(0.99 0 0);
 
-  --border: oklch(0.21 0.012 260 / 11%);
-  --input: oklch(0.21 0.012 260 / 16%);
-  --ring: oklch(0.52 0.09 2);
+  --border: oklch(0.5 0.08 285 / 16%);
+  --input: oklch(0.5 0.08 285 / 22%);
+  --ring: var(--brand-lilac-deep);
 
-  /* Accent palette (names kept so existing screens re-theme automatically).
-     Tuned deep enough to pass AA as icon/label colour on ivory. */
-  --pink: oklch(0.55 0.09 2);
-  --magenta: oklch(0.5 0.08 350);
-  --violet: oklch(0.52 0.06 305);
-  --blue: oklch(0.46 0.05 255);
-  --cyan: oklch(0.55 0.04 220);
+  /* Accent names kept so existing screens re-theme automatically.
+     Deep enough to pass AA as icon/label colour on light surfaces. */
+  --pink: oklch(0.52 0.12 340);
+  --magenta: oklch(0.5 0.12 330);
+  --violet: var(--brand-lilac-deep);
+  --blue: var(--brand-blue-deep);
+  --cyan: oklch(0.52 0.08 230);
 
-  --gradient-tentra: linear-gradient(135deg, var(--ink), oklch(0.32 0.03 300));
-  --gradient-pink-blue: linear-gradient(120deg, var(--ink) 0%, oklch(0.3 0.03 320) 100%);
-  --gradient-pink-violet: linear-gradient(120deg, oklch(0.5 0.09 2), oklch(0.46 0.06 305));
-  --gradient-soft: linear-gradient(135deg, oklch(0.72 0.065 2 / 0.10), oklch(0.71 0.045 305 / 0.10));
-  --gradient-hero: radial-gradient(ellipse 60% 50% at 15% 0%, oklch(0.72 0.065 2 / 0.10), transparent 60%);
-  --gradient-cta: linear-gradient(180deg, oklch(0.26 0.014 260), var(--ink));
-  --gradient-accent: linear-gradient(135deg, var(--sunset), var(--mauve));
-  --gradient-wash: radial-gradient(120% 60% at 50% 0%, oklch(0.72 0.065 2 / 0.12), transparent 60%);
-  --gradient-dusk: linear-gradient(180deg, oklch(0.17 0.015 260 / 0.55) 0%, oklch(0.17 0.015 260 / 0.35) 40%, oklch(0.17 0.015 260 / 0.92) 100%);
+  --gradient-tentra: linear-gradient(135deg, var(--brand-blue-deep), var(--brand-lilac-deep));
+  --gradient-pink-blue: linear-gradient(120deg, var(--brand-blue-deep) 0%, var(--brand-lilac-deep) 100%);
+  --gradient-pink-violet: linear-gradient(120deg, oklch(0.47 0.12 262), oklch(0.5 0.14 300));
+  --gradient-soft: linear-gradient(135deg, oklch(0.77 0.08 258 / 0.16), oklch(0.76 0.1 295 / 0.18));
+  --gradient-hero: radial-gradient(ellipse 60% 50% at 15% 0%, oklch(0.76 0.1 295 / 0.18), transparent 60%);
+  --gradient-cta: linear-gradient(120deg, var(--brand-blue-deep), var(--brand-lilac-deep));
+  --gradient-accent: linear-gradient(135deg, var(--brand-blue), var(--brand-lilac));
+  --gradient-wash: radial-gradient(120% 60% at 50% 0%, oklch(0.76 0.1 295 / 0.18), transparent 60%);
+  --gradient-dusk: linear-gradient(90deg, oklch(0.25 0.06 285 / 0.62) 0%, oklch(0.25 0.06 285 / 0.28) 55%, oklch(0.25 0.06 285 / 0.08) 100%), linear-gradient(180deg, transparent 60%, oklch(0.25 0.05 285 / 0.55) 100%);
+  --gradient-dusk-closing: linear-gradient(180deg, oklch(0.25 0.06 285 / 0.72), oklch(0.3 0.08 295 / 0.6));
 
-  --shadow-glow: 0 1px 2px -1px oklch(0.21 0.012 260 / 0.12), 0 8px 20px -14px oklch(0.21 0.012 260 / 0.35);
-  --shadow-blue: 0 8px 20px -14px oklch(0.21 0.012 260 / 0.3);
-  --shadow-card: 0 1px 2px -1px oklch(0.21 0.012 260 / 0.06), 0 10px 28px -18px oklch(0.21 0.012 260 / 0.18);
-  --shadow-soft: 0 1px 2px -1px oklch(0.21 0.012 260 / 0.06);
-  --shadow-cta: 0 1px 0 0 oklch(1 0 0 / 0.08) inset, 0 10px 24px -14px oklch(0.17 0.015 260 / 0.55);
+  --shadow-glow: 0 1px 2px -1px oklch(0.4 0.1 285 / 0.12), 0 8px 20px -14px oklch(0.45 0.12 285 / 0.35);
+  --shadow-blue: 0 8px 20px -14px oklch(0.48 0.11 260 / 0.35);
+  --shadow-card: 0 1px 2px -1px oklch(0.4 0.08 285 / 0.06), 0 10px 28px -18px oklch(0.45 0.1 285 / 0.2);
+  --shadow-soft: 0 1px 2px -1px oklch(0.4 0.08 285 / 0.06);
+  --shadow-cta: 0 1px 0 0 oklch(1 0 0 / 0.14) inset, 0 10px 24px -14px oklch(0.45 0.12 285 / 0.6);
 
   --success: oklch(0.55 0.11 155);
   --warning: oklch(0.68 0.13 70);
 
-  --chart-1: oklch(0.55 0.09 2);
-  --chart-2: oklch(0.46 0.05 255);
-  --chart-3: oklch(0.6 0.06 305);
-  --chart-4: oklch(0.62 0.07 160);
-  --chart-5: oklch(0.7 0.09 70);
+  --chart-1: var(--brand-lilac-deep);
+  --chart-2: var(--brand-blue-deep);
+  --chart-3: oklch(0.65 0.1 295);
+  --chart-4: oklch(0.64 0.08 250);
+  --chart-5: oklch(0.6 0.11 345);
 
-  --sidebar: oklch(0.945 0.012 82);
+  --sidebar: var(--lavender);
   --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--ink);
-  --sidebar-primary-foreground: var(--ivory);
-  --sidebar-accent: oklch(0.92 0.012 80);
+  --sidebar-primary: oklch(0.45 0.12 285);
+  --sidebar-primary-foreground: oklch(0.99 0.005 300);
+  --sidebar-accent: oklch(0.92 0.04 285);
   --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: oklch(0.21 0.012 260 / 10%);
-  --sidebar-ring: oklch(0.52 0.09 2);
+  --sidebar-border: oklch(0.5 0.08 285 / 14%);
+  --sidebar-ring: var(--brand-lilac-deep);
 }
 
-/* Dark cinematic surfaces (landing hero, closing section). */
+/* Deep blue-purple surfaces (landing hero, closing section). */
 .theme-night {
   --background: var(--night);
-  --foreground: var(--ivory);
-  --card: oklch(0.22 0.015 260);
-  --card-foreground: var(--ivory);
-  --muted-foreground: oklch(0.8 0.01 85);
-  --border: oklch(0.955 0.012 85 / 14%);
-  --primary: var(--ivory);
+  --foreground: oklch(0.985 0.006 300);
+  --card: oklch(0.3 0.06 285);
+  --card-foreground: oklch(0.985 0.006 300);
+  --muted-foreground: oklch(0.88 0.03 290);
+  --border: oklch(0.9 0.05 290 / 22%);
+  --primary: oklch(0.985 0.006 300);
   --primary-foreground: var(--ink);
   --pink: var(--sunset);
-  --gradient-cta: linear-gradient(180deg, var(--ivory), oklch(0.91 0.012 85));
+  --violet: var(--brand-lilac);
+  --blue: var(--brand-blue);
+  --gradient-pink-violet: linear-gradient(120deg, var(--brand-blue), var(--brand-lilac) 60%, var(--sunset));
+  --gradient-cta: linear-gradient(120deg, oklch(0.97 0.02 260), oklch(0.93 0.04 295));
   color: var(--foreground);
 }
+
+/* Full-bleed tinted section bands. */
+.band-lavender, .band-sky { position: relative; }
+.band-lavender { background: var(--lavender); box-shadow: 0 0 0 100vmax var(--lavender); clip-path: inset(0 -100vmax); }
+.band-sky { background: var(--sky); box-shadow: 0 0 0 100vmax var(--sky); clip-path: inset(0 -100vmax); }
 
 @layer base {
   * {
