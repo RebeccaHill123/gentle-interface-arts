@@ -17,10 +17,6 @@ export const UBE_DECKS: Deck[] = [
   { id: "ube-torts", title: "Torts", description: "Intentional torts, negligence, strict liability, products and defamation.", flk: "MBE", subject: "Torts" },
   // MEE-exclusive
   { id: "ube-ba", title: "Business Associations", description: "Agency, partnerships, corporations and LLCs.", flk: "MEE", subject: "Business Associations" },
-  { id: "ube-conflicts", title: "Conflict of Laws", description: "Choice of law, domicile, FF&C and recognition of judgments.", flk: "MEE", subject: "Conflict of Laws" },
-  { id: "ube-family", title: "Family Law", description: "Marriage, divorce, property division, support and custody (UCCJEA).", flk: "MEE", subject: "Family Law" },
-  { id: "ube-trusts", title: "Trusts & Estates", description: "Wills, intestacy, will contests, express trusts and trustee duties.", flk: "MEE", subject: "Trusts & Estates" },
-  { id: "ube-secured", title: "Secured Transactions (UCC Art. 9)", description: "Attachment, perfection, priority and default under Article 9.", flk: "MEE", subject: "Secured Transactions" },
   // MPT
   { id: "ube-mpt", title: "Multistate Performance Test (MPT)", description: "Closed-library lawyering skills: memos, briefs, client letters.", flk: "MPT", subject: "MPT" },
 ];
@@ -44,7 +40,7 @@ const c = (
   flk,
 });
 
-export const UBE_CARDS: Flashcard[] = [
+const UBE_CARDS_ALL: Flashcard[] = [
   // ===== Civil Procedure =====
   c("ube-civpro", "SMJ", "Medium", "MBE", "What are the requirements for federal diversity jurisdiction?",
     "Complete diversity between all plaintiffs and all defendants (Strawbridge) AND an amount in controversy exceeding $75,000, exclusive of interest and costs.",
@@ -222,6 +218,11 @@ export const UBE_CARDS: Flashcard[] = [
   c("ube-mpt", "Issue Spotting", "Medium", "MPT", "How are issues identified on the MPT?",
     "The task memo defines the scope. Treat each instruction (e.g. 'analyze whether X', 'address Y and Z') as a separate issue. Use the Library's table of contents as a checklist of authorities and ensure every cited rule is applied to the File's facts."),
 ];
+
+// Retired MEE subjects (July 2026+) have no deck, so their cards are dropped.
+export const UBE_CARDS: Flashcard[] = UBE_CARDS_ALL.filter((card) =>
+  UBE_DECKS.some((d) => d.id === card.deckId),
+);
 
 export const getUbeDeck = (id: string) => UBE_DECKS.find((d) => d.id === id);
 export const getUbeCardsByDeck = (deckId: string) =>

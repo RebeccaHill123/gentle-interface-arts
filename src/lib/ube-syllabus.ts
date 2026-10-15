@@ -28,10 +28,10 @@ export interface UBESubject {
 }
 
 export const UBE_TOPIC_GROUPS: Record<string, { name: string; subjects: string[] }> = {
-  "civil-litigation": { name: "Civil Litigation", subjects: ["civil-procedure", "evidence", "conflict-of-laws"] },
-  "commercial": { name: "Commercial", subjects: ["contracts", "secured-transactions", "business-associations"] },
+  "civil-litigation": { name: "Civil Litigation", subjects: ["civil-procedure", "evidence"] },
+  "commercial": { name: "Commercial", subjects: ["contracts", "business-associations"] },
   "crim": { name: "Criminal", subjects: ["criminal-law-procedure", "evidence"] },
-  "property-estates": { name: "Property & Estates", subjects: ["real-property", "trusts-estates", "family-law"] },
+  "property-estates": { name: "Property & Estates", subjects: ["real-property"] },
   "public-law": { name: "Public Law", subjects: ["constitutional-law"] },
   "skills": { name: "Lawyering Skills", subjects: ["mpt"] },
 };
@@ -196,72 +196,6 @@ export const UBE_SYLLABUS: UBESubject[] = [
       { id: "llc", name: "LLCs: formation, management & member duties", highYield: 4 },
     ],
   },
-  {
-    id: "conflict-of-laws",
-    name: "Conflict of Laws",
-    component: "MEE",
-    weight: 0.10,
-    highYield: 4,
-    groups: ["civil-litigation"],
-    subtopics: [
-      { id: "domicile", name: "Domicile & characterization", highYield: 3 },
-      { id: "choice-tort-k", name: "Choice of law in tort & contract (vested rights, Second Restatement, interest analysis)", highYield: 5 },
-      { id: "property-conflicts", name: "Conflicts in property, family law & corporations", highYield: 3 },
-      { id: "fcc-fafc", name: "Full Faith & Credit, recognition of judgments", highYield: 4 },
-      { id: "renvoi-defenses", name: "Renvoi, depecage & public policy defense", highYield: 3 },
-    ],
-  },
-  {
-    id: "family-law",
-    name: "Family Law",
-    component: "MEE",
-    weight: 0.14,
-    highYield: 5,
-    groups: ["property-estates"],
-    subtopics: [
-      { id: "marriage", name: "Marriage validity & premarital agreements", highYield: 4 },
-      { id: "divorce", name: "Divorce, separation & no-fault grounds", highYield: 4 },
-      { id: "property-division", name: "Equitable distribution & community property", highYield: 5 },
-      { id: "support", name: "Spousal support & child support guidelines", highYield: 5 },
-      { id: "custody", name: "Child custody & UCCJEA jurisdiction", highYield: 5 },
-      { id: "parentage", name: "Parentage, adoption & termination of parental rights", highYield: 3 },
-    ],
-  },
-  {
-    id: "trusts-estates",
-    name: "Trusts & Estates (Wills + Trusts)",
-    component: "MEE",
-    weight: 0.18,
-    highYield: 5,
-    groups: ["property-estates"],
-    subtopics: [
-      { id: "will-execution", name: "Will execution, revocation & revival", highYield: 5 },
-      { id: "intestacy", name: "Intestacy & per stirpes/per capita distribution", highYield: 4 },
-      { id: "will-components", name: "Will components: integration, incorporation, pour-over", highYield: 4 },
-      { id: "ademption", name: "Ademption, abatement, lapse & anti-lapse", highYield: 4 },
-      { id: "will-contests", name: "Will contests: capacity, undue influence, fraud", highYield: 4 },
-      { id: "express-trusts", name: "Express trusts: creation, purpose & beneficiaries", highYield: 5 },
-      { id: "trustee-duties", name: "Trustee powers, duties & UPIA prudent-investor rule", highYield: 5 },
-      { id: "modification-termination", name: "Trust modification, termination & cy pres", highYield: 3 },
-      { id: "resulting-constructive", name: "Resulting & constructive trusts", highYield: 3 },
-      { id: "powers-of-appointment", name: "Powers of appointment & future interests in trusts", highYield: 3 },
-    ],
-  },
-  {
-    id: "secured-transactions",
-    name: "Secured Transactions (UCC Art. 9)",
-    component: "MEE",
-    weight: 0.11,
-    highYield: 4,
-    groups: ["commercial"],
-    subtopics: [
-      { id: "scope-classification", name: "Scope of Art. 9 & classification of collateral", highYield: 4 },
-      { id: "attachment", name: "Attachment of security interests", highYield: 5 },
-      { id: "perfection", name: "Perfection: filing, possession, control, automatic", highYield: 5 },
-      { id: "priority", name: "Priority rules, PMSI super-priority & buyers", highYield: 5 },
-      { id: "default", name: "Default, repossession & disposition of collateral", highYield: 4 },
-    ],
-  },
 
   // ===== MPT (skills) =====
   {
@@ -283,6 +217,22 @@ export const UBE_SYLLABUS: UBESubject[] = [
     ],
   },
 ];
+
+/**
+ * Subjects NCBE stopped testing on the MEE from the July 2026 bar exam
+ * (ncbex.org/exams/mee/preparing-mee). Kept only so saved plans can be cleaned.
+ */
+export const UBE_RETIRED_SUBJECT_PATTERNS = [
+  /conflict of laws/i,
+  /family law/i,
+  /trusts\s*(&|and)\s*estates/i,
+  /secured transactions/i,
+];
+
+export function isRetiredUbeSubject(name: string | undefined | null): boolean {
+  if (!name) return false;
+  return UBE_RETIRED_SUBJECT_PATTERNS.some((re) => re.test(name));
+}
 
 export type UBEExamPath = "UBE_FULL" | "UBE_MBE" | "UBE_ESSAYS" | "UBE_MPT";
 
@@ -312,7 +262,7 @@ export function getSubjectsForUbePath(path: UBEExamPath): { name: string; compon
     case "UBE_MBE":
       return UBE_SYLLABUS.filter((s) => s.component === "MBE").map((s) => ({ name: s.name, component: "MBE" as const }));
     case "UBE_ESSAYS":
-      // MEE: all 12 essay-eligible subjects (7 MBE + 5 MEE-exclusive)
+      // MEE (July 2026+): 7 MBE subjects + Business Associations
       return UBE_SYLLABUS.filter((s) => s.component !== "MPT").map((s) => ({ name: s.name, component: s.component }));
     case "UBE_MPT":
       return UBE_SYLLABUS.filter((s) => s.component === "MPT").map((s) => ({ name: s.name, component: "MPT" as const }));

@@ -41,7 +41,7 @@ const PAPER_SUBJECT_LIST: Record<PaperKey, string> = {
   FLK1: "Contract, Tort, Business Law, Dispute Resolution, Constitutional & Administrative, Legal System, Ethics",
   FLK2: "Property Practice, Wills & Estates, Trusts, Land Law, Criminal Law, Criminal Practice, Solicitors' Accounts, Ethics",
   MBE: "Civil Procedure, Constitutional Law, Contracts & Sales (UCC Art. 2), Criminal Law & Procedure, Evidence (FRE), Real Property, Torts",
-  MEE: "MBE subjects plus Business Associations, Conflict of Laws, Family Law, Trusts & Estates, Secured Transactions (UCC Art. 9)",
+  MEE: "MBE subjects plus Business Associations",
   MPT: "Closed-library lawyering tasks: objective memos, persuasive briefs, client letters, statute interpretation",
 };
 
