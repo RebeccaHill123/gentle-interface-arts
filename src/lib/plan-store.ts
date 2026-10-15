@@ -235,7 +235,7 @@ export function loadPlan(): StoredPlan | null {
     if (!raw) return null;
     const value = JSON.parse(raw) as Partial<StoredPlan>;
     if (!value.input || !value.plan || !Array.isArray(value.input.modules)) return null;
-    return {
+    return stripRetiredUbeSubjects({
       ...value,
       input: {
         ...value.input,
@@ -256,7 +256,7 @@ export function loadPlan(): StoredPlan | null {
       generatedAt: value.generatedAt ?? new Date().toISOString(),
       completedTaskIds: Array.isArray(value.completedTaskIds) ? value.completedTaskIds : [],
       sessions: Array.isArray(value.sessions) ? value.sessions : [],
-    } as StoredPlan;
+    } as StoredPlan);
   } catch {
     return null;
   }
