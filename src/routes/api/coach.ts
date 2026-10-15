@@ -1,3 +1,4 @@
+import { SQE_ASSESSMENT_RULES_PROMPT } from "@/lib/sqe-assessment-rules";
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 import {
@@ -96,7 +97,9 @@ ${accaQuestionStyleForPrompt(accaPaperCodes, 1)}`
 Exam vocabulary:
 - Use SQE vocabulary: SQE1, SQE2, FLK1, FLK2, SBA, legal skills, client scenarios, ethics application, timed practice and mock recovery.
 - Never reference UBE, MBE, MEE, MPT, MPRE or ACCA unless the user explicitly compares exams.
-- When testing, prefer SQE1-style SBA questions unless the user asks about SQE2 skills.`;
+- When testing, prefer SQE1-style SBA questions unless the user asks about SQE2 skills.
+
+${SQE_ASSESSMENT_RULES_PROMPT}`;
 
   const modePrompt = mode === "tutor"
     ? "\n\nCurrent mode: Tutor. Teach the concept with precision, worked examples and targeted questions before planning advice."
