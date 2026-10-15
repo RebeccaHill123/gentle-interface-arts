@@ -2,7 +2,7 @@
 // Nothing here is inferred from time spent — only from graded answers.
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
-import { getBlueprint, getSection, type Pathway } from "@/lib/full-mock-blueprints";
+import { getSection, type Pathway } from "@/lib/full-mock-blueprints";
 import { generateQuestionsForSection } from "@/lib/full-mock-questions";
 
 export interface TopicAccuracy {
