@@ -19,6 +19,7 @@ import {
   type PlanSyncDeps,
   type PlanSyncOutcome,
 } from "@/lib/plan-sync";
+import { stripRetiredUbeSubjects } from "@/lib/plan/retired-subjects";
 
 
 export type ExamType = "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
