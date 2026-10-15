@@ -1,0 +1,1 @@
+- Syllabus/format versions are explicit: new SQE1 mocks use the current SRA blueprint, legacy section ids stay resolvable via `getSection`/`getBlueprintForSections`; renamed topics keep `formerNames`; the 2027 ACCA qualification lives in its own module. Why: syllabus updates must never break saved mocks, ratings or history.

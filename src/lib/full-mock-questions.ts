@@ -583,6 +583,40 @@ function rotateMPT(count: number, prefix: string): MPTQuestion[] {
   return out;
 }
 
+/**
+ * Bank topics each January-2027-format session may draw from. Ethics is
+ * pervasive, so it is allowed in every session; Solicitors Accounts appears
+ * in both FLK2 sessions (wills context and property context).
+ */
+const SQE_2027_SESSION_TOPICS: Record<string, string[]> = {
+  "flk1-s1": ["Business Law", "Dispute Resolution", "Legal Services", "Ethics"],
+  "flk1-s2": ["Contract", "Tort", "Constitutional & Administrative", "Legal System", "Ethics"],
+  "flk2-s1": ["Wills & Estates", "Solicitors' Accounts", "Trusts", "Land Law", "Ethics"],
+  "flk2-s2": ["Property Practice", "Solicitors' Accounts", "Criminal Law", "Criminal Practice", "Ethics"],
+};
+
+/** Deterministic seeded shuffle so results can be re-derived from the section id. */
+function seededShuffle<T>(items: T[], seed: string): T[] {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 16777619);
+  const rand = () => {
+    h = Math.imul(h ^ (h >>> 15), 2246822507);
+    h = Math.imul(h ^ (h >>> 13), 3266489909);
+    return ((h ^= h >>> 16) >>> 0) / 4294967296;
+  };
+  const out = [...items];
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [out[i], out[j]] = [out[j]!, out[i]!];
+  }
+  return out;
+}
+
+/** Topics a session is allowed to test, or null when it is not session-scoped. */
+export function sessionTopics(sectionId: string): string[] | null {
+  return SQE_2027_SESSION_TOPICS[sectionId] ?? null;
+}
+
 export function generateQuestionsForSection(
   pathway: Pathway,
   section: SectionBlueprint,
@@ -592,6 +626,13 @@ export function generateQuestionsForSection(
   mpt?: MPTQuestion[];
 } {
   if (section.kind === "mcq") {
+    const allowed = pathway === "SQE" ? sessionTopics(section.id) : null;
+    if (allowed) {
+      // January 2027 format: only this session's subjects, mixed in random order.
+      const scoped = SQE_BANK.filter((q) => allowed.includes(q.topic));
+      const rotated = rotateMCQ(scoped, section.questions, section.id, section.optionsCount);
+      return { mcq: seededShuffle(rotated, section.id) };
+    }
     const bank = pathway === "UBE" ? MBE_BANK : SQE_BANK;
     return { mcq: rotateMCQ(bank, section.questions, section.id, section.optionsCount) };
   }

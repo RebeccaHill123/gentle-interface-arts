@@ -1,4 +1,5 @@
 import { defineTool } from "@lovable.dev/mcp-js";
+import { SQE_ASSESSMENT_RULES_PROMPT } from "@/lib/sqe-assessment-rules";
 import { z } from "zod";
 import {
   buildSnapshot,
@@ -25,7 +26,7 @@ function systemPromptFor(exam: ExamLabel | "GENERIC") {
       : exam === "ACCA"
         ? "Use ACCA terminology only: papers, syllabus areas, objective-test questions, constructed response where relevant, workings and exam technique. Do not use SQE, FLK, SBA, UBE, MBE, MEE, MPT or legal-advice language unless the user explicitly asks for a comparison."
         : exam === "SQE"
-          ? "Use SQE terminology only: SQE1/SQE2, FLK1/FLK2, SBAs, client scenarios and SRA-style assessment language. Do not use UBE, MBE, MEE, MPT, MPRE or ACCA language unless the user explicitly asks for a comparison."
+          ? `Use SQE terminology only: SQE1/SQE2, FLK1/FLK2, SBAs, client scenarios and SRA-style assessment language. Do not use UBE, MBE, MEE, MPT, MPRE or ACCA language unless the user explicitly asks for a comparison.\n\n${SQE_ASSESSMENT_RULES_PROMPT}`
           : "Use only the pathway terminology present in the user's snapshot. If no pathway is available, ask which exam they are preparing for before giving exam-specific advice.";
   const disclaimer = exam === "ACCA"
     ? "This is study guidance, not accounting, tax or financial advice."

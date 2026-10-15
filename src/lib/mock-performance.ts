@@ -2,7 +2,7 @@
 // Nothing here is inferred from time spent — only from graded answers.
 import { supabase } from "@/integrations/supabase/client";
 import { waitForAuthUser } from "@/lib/auth-session";
-import { getBlueprint, type Pathway } from "@/lib/full-mock-blueprints";
+import { getSection, type Pathway } from "@/lib/full-mock-blueprints";
 import { generateQuestionsForSection } from "@/lib/full-mock-questions";
 
 export interface TopicAccuracy {
@@ -81,8 +81,7 @@ export async function loadMockPerformance(pathway?: Pathway): Promise<MockPerfor
   for (const sec of sections) {
     const p = simPathway.get(sec.simulation_id);
     if (!p) continue;
-    const bp = getBlueprint(p);
-    const blueprint = bp.sections.find((s) => s.id === sec.section_type);
+    const blueprint = getSection(p, sec.section_type);
     if (!blueprint) continue;
     const gen = generateQuestionsForSection(p, blueprint);
     for (const q of gen.mcq ?? []) topicByQid.set(`${sec.id}:${q.id}`, q.topic);

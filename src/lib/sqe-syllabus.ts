@@ -13,6 +13,8 @@ export interface SubTopic {
   name: string;
   highYield: 1 | 2 | 3 | 4 | 5;
   notes?: string;
+  /** Previous names, so ratings and flags saved before a syllabus update still match. */
+  formerNames?: string[];
 }
 
 export interface SQESubject {
@@ -47,7 +49,7 @@ export const SQE_SYLLABUS: SQESubject[] = [
     groups: ["obligations", "business-cluster"],
     subtopics: [
       { id: "formation", name: "Formation (offer, acceptance, consideration, ITC)", highYield: 5 },
-      { id: "terms", name: "Express & implied terms; conditions, warranties, innominate", highYield: 5 },
+      { id: "terms", name: "Express & implied terms; interpretation of terms; classification (conditions, warranties, innominate terms)", highYield: 5, formerNames: ["Express & implied terms; conditions, warranties, innominate"] },
       { id: "exemption-clauses", name: "Exemption clauses & UCTA / CRA 2015", highYield: 4 },
       { id: "vitiating", name: "Misrepresentation, mistake, duress, undue influence", highYield: 5 },
       { id: "discharge", name: "Discharge: performance, breach, frustration, agreement", highYield: 4 },
@@ -80,13 +82,13 @@ export const SQE_SYLLABUS: SQESubject[] = [
     highYield: 5,
     groups: ["business-cluster"],
     subtopics: [
-      { id: "business-vehicles", name: "Choosing a business vehicle (sole trader, partnership, LLP, Ltd)", highYield: 5 },
+      { id: "business-vehicles", name: "Legal personality & limited liability (sole trader, partnership, LLP, private and unlisted public companies)", highYield: 5, formerNames: ["Choosing a business vehicle (sole trader, partnership, LLP, Ltd)"] },
       { id: "company-formation", name: "Company formation & constitution (CA 2006)", highYield: 4 },
       { id: "directors-shareholders", name: "Directors' duties & shareholder rights", highYield: 5 },
-      { id: "share-capital", name: "Share capital, allotments, buy-backs, dividends", highYield: 4 },
+      { id: "share-capital", name: "Debt & equity funding: allotments, redemption and buyback of shares, dividends (not other capital reductions or financial assistance)", highYield: 4, formerNames: ["Share capital, allotments, buy-backs, dividends"] },
       { id: "partnerships", name: "Partnerships & LLPs", highYield: 4 },
       { id: "insolvency", name: "Personal & corporate insolvency", highYield: 4 },
-      { id: "tax-business", name: "Business tax (CT, IT, CGT, VAT basics)", highYield: 5 },
+      { id: "tax-business", name: "Business tax: Corporation Tax charge (income profits, chargeable gains, deductions, main reliefs), IT, CGT, VAT", highYield: 5, formerNames: ["Business tax (CT, IT, CGT, VAT basics)"] },
     ],
   },
   {
@@ -103,7 +105,7 @@ export const SQE_SYLLABUS: SQESubject[] = [
       { id: "interim-applications", name: "Interim applications & case management", highYield: 5 },
       { id: "disclosure-evidence", name: "Disclosure, witness evidence, experts", highYield: 5 },
       { id: "trial-judgment", name: "Trial, judgment & costs", highYield: 4 },
-      { id: "enforcement", name: "Enforcement & appeals", highYield: 3 },
+      { id: "enforcement", name: "Enforcement of money judgments (incl. obtaining information from judgment debtor) & appeals", highYield: 3, formerNames: ["Enforcement & appeals"] },
     ],
   },
   {
@@ -115,7 +117,7 @@ export const SQE_SYLLABUS: SQESubject[] = [
     groups: ["public-law"],
     subtopics: [
       { id: "sovereignty", name: "Parliamentary sovereignty & rule of law", highYield: 4 },
-      { id: "separation", name: "Separation of powers & royal prerogative", highYield: 3 },
+      { id: "separation", name: "Separation of powers, rule of law & royal prerogative", highYield: 3, formerNames: ["Separation of powers & royal prerogative"] },
       { id: "judicial-review", name: "Judicial review (grounds, remedies, procedure)", highYield: 5 },
       { id: "human-rights", name: "Human Rights Act 1998 & Convention rights", highYield: 5 },
     ],
@@ -129,8 +131,8 @@ export const SQE_SYLLABUS: SQESubject[] = [
     groups: ["public-law"],
     subtopics: [
       { id: "sources", name: "Sources of law & statutory interpretation", highYield: 4 },
-      { id: "courts-precedent", name: "Court structure & precedent", highYield: 3 },
-      { id: "legal-services", name: "Legal services & funding", highYield: 2 },
+      { id: "courts-precedent", name: "Courts, judicial function, court hierarchy, jurisdiction & precedent", highYield: 3, formerNames: ["Court structure & precedent"], notes: "Appeals are tested in Dispute Resolution and Criminal Practice, not here (SRA, Sept 2026)." },
+      { id: "legal-services", name: "Legal services & funding (civil legal aid eligibility)", highYield: 2, formerNames: ["Legal services & funding"], notes: "Criminal legal aid moved to Criminal Practice in FLK2 (SRA, Sept 2026)." },
     ],
   },
   {
@@ -189,9 +191,9 @@ export const SQE_SYLLABUS: SQESubject[] = [
     groups: ["property-cluster"],
     subtopics: [
       { id: "freehold-sale", name: "Freehold sale & purchase procedure", highYield: 5 },
-      { id: "leasehold", name: "Leasehold & commercial leases", highYield: 4 },
-      { id: "searches-enquiries", name: "Searches, enquiries & due diligence", highYield: 4 },
-      { id: "contract-completion", name: "Contract, exchange & completion", highYield: 5 },
+      { id: "leasehold", name: "Leasehold: assignment (incl. drafting the assignment contract) & LTA 1954 Part II (incl. contracting out)", highYield: 4, formerNames: ["Leasehold & commercial leases"] },
+      { id: "searches-enquiries", name: "Searches & enquiries: range, purpose, who makes them, issues arising from results", highYield: 4, formerNames: ["Searches, enquiries & due diligence"] },
+      { id: "contract-completion", name: "Drafting the sale contract, exchange (Law Society formulae), pre-completion (finance, apportionments) & completion", highYield: 5, formerNames: ["Contract, exchange & completion"] },
       { id: "sdlt-vat", name: "SDLT, VAT & taxation on property", highYield: 4 },
       { id: "post-completion", name: "Post-completion & registration", highYield: 3 },
     ],
@@ -204,11 +206,11 @@ export const SQE_SYLLABUS: SQESubject[] = [
     highYield: 5,
     groups: ["private-client", "property-cluster"],
     subtopics: [
-      { id: "express-trusts", name: "Express trusts: certainties & formalities", highYield: 5 },
-      { id: "resulting-constructive", name: "Resulting & constructive trusts", highYield: 5 },
+      { id: "express-trusts", name: "Express trusts: certainties, formalities, constitution (Re Rose, Strong v Bird, Choithram v Pagarani)", highYield: 5, formerNames: ["Express trusts: certainties & formalities"] },
+      { id: "resulting-constructive", name: "Automatic & presumed resulting trusts; constructive trusts", highYield: 5, formerNames: ["Resulting & constructive trusts"] },
       { id: "trustees-duties", name: "Trustees' powers & duties", highYield: 4 },
       { id: "breach-remedies", name: "Breach of trust & equitable remedies", highYield: 4 },
-      { id: "tracing", name: "Tracing & third-party liability", highYield: 4 },
+      { id: "tracing", name: "Tracing & liability of strangers (knowing receipt, dishonest assistance)", highYield: 4, formerNames: ["Tracing & third-party liability"] },
       { id: "charitable", name: "Charitable trusts", highYield: 2 },
     ],
   },
@@ -236,13 +238,13 @@ export const SQE_SYLLABUS: SQESubject[] = [
     highYield: 4,
     groups: ["litigation"],
     subtopics: [
-      { id: "police-powers", name: "Police powers & PACE", highYield: 5 },
+      { id: "police-powers", name: "Police station: PACE powers, lawful interview under Code C, role of the defence solicitor", highYield: 5, formerNames: ["Police powers & PACE"] },
       { id: "pre-charge", name: "Pre-charge advice & detention", highYield: 4 },
-      { id: "bail-first-hearings", name: "Bail & first hearings", highYield: 4 },
+      { id: "bail-first-hearings", name: "Applying for and opposing bail; first hearings; criminal legal aid", highYield: 4, formerNames: ["Bail & first hearings"] },
       { id: "plea-allocation", name: "Plea & allocation", highYield: 4 },
-      { id: "trial-evidence", name: "Trial procedure & evidence (incl. bad character/hearsay)", highYield: 5 },
-      { id: "sentencing-appeals", name: "Sentencing & appeals", highYield: 3 },
-      { id: "youths", name: "Youths in the criminal justice system", highYield: 2 },
+      { id: "trial-evidence", name: "Trial procedure & evidence: burden of proof, hearsay (challenging admissibility), confessions (s.76), s.78 exclusion, bad character, good character", highYield: 5, formerNames: ["Trial procedure & evidence (incl. bad character/hearsay)"] },
+      { id: "sentencing-appeals", name: "Sentencing (incl. Newton hearings: applicability and procedure) & appeals", highYield: 3, formerNames: ["Sentencing & appeals"] },
+      { id: "youths", name: "Youth court procedure, hearings & sentencing guidelines", highYield: 2, formerNames: ["Youths in the criminal justice system"] },
     ],
   },
   {
@@ -253,10 +255,10 @@ export const SQE_SYLLABUS: SQESubject[] = [
     highYield: 4,
     groups: ["private-client"],
     subtopics: [
-      { id: "validity", name: "Validity & execution of wills", highYield: 5 },
-      { id: "intestacy", name: "Intestacy rules & family provision", highYield: 4 },
-      { id: "iht", name: "IHT planning & calculation", highYield: 5 },
-      { id: "administration", name: "Estate administration & PRs' duties", highYield: 4 },
+      { id: "validity", name: "Validity of wills (incl. knowledge and approval, burden of proof), codicils, alteration & revocation (incl. effect of divorce/dissolution)", highYield: 5, formerNames: ["Validity & execution of wills"] },
+      { id: "intestacy", name: "Intestacy rules & 1975 Act claims (grounds and factors the court considers)", highYield: 4, formerNames: ["Intestacy rules & family provision"] },
+      { id: "iht", name: "IHT: lifetime transfers (chargeable, PETs, gifts with reservation), death estate, burden, liability & incidence", highYield: 5, formerNames: ["IHT planning & calculation"] },
+      { id: "administration", name: "Grants (NCPR priority, application & evidence), PRs' appointment, duties before distribution & protection from liability", highYield: 4, formerNames: ["Estate administration & PRs' duties"] },
       { id: "trusts-in-wills", name: "Trusts arising in wills", highYield: 3 },
     ],
   },
@@ -275,6 +277,23 @@ export const SQE_SYLLABUS: SQESubject[] = [
     ],
   },
 ];
+
+/** SRA Functioning Legal Knowledge version these topic names follow. */
+export const SQE_FLK_VERSION = {
+  id: "flk-2026-09",
+  appliesFrom: "2026-09-01",
+  source: "https://sqe.sra.org.uk/assessments/sqe1-assessments/sqe1-specification/sqe-changes-sept-2026",
+} as const;
+
+/** Map a saved subtopic name (current or pre-September-2026) to today's name. */
+export function resolveSqeSubtopicName(name: string): string {
+  for (const subject of SQE_SYLLABUS) {
+    for (const st of subject.subtopics) {
+      if (st.name === name || st.formerNames?.includes(name)) return st.name;
+    }
+  }
+  return name;
+}
 
 export function getSubject(id: string): SQESubject | undefined {
   return SQE_SYLLABUS.find((s) => s.id === id);

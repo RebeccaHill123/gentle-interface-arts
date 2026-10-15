@@ -32,6 +32,15 @@ export interface AccaPaper {
   areas: AccaArea[];
   /** Strategic Professional options papers — pick one or two of four. */
   optional?: boolean;
+  /** Jurisdiction/variant, e.g. "UK" for TX-UK and ATX-UK. */
+  variant?: string;
+  /** Sittings this topic list was checked against (YYYY-MM, inclusive). */
+  validFrom?: string;
+  validTo?: string;
+  /** Official syllabus/examinable-documents source this list was checked against. */
+  sourceUrl?: string;
+  /** Date the topic list was last checked against that source. Absent = not yet verified. */
+  verifiedOn?: string;
 }
 
 function area(
@@ -756,12 +765,20 @@ export const ACCA_PAPERS: AccaPaper[] = [
     level: "Strategic Professional",
     format: "3 hours 15 minutes — constructed response",
     optional: true,
+    variant: "UK",
+    validFrom: "2026-06",
+    validTo: "2027-06",
+    // Finance Act 2025: domicile, deemed domicile and the remittance basis are
+    // no longer examinable; the FIG regime and long-term UK residence are.
+    sourceUrl:
+      "https://www.accaglobal.com/content/dam/acca/global/PDF-students/acca/p6/examdocs/atx_uk_j26_j27_fa2025_article.pdf",
+    verifiedOn: "2026-10-15",
     areas: [
       area("atx-individuals", "Taxation of individuals", 0.3, 5, [
         "Income tax planning and the choice of business medium",
         "Employment versus self-employment and remuneration packages",
         "Share schemes and employment-related securities",
-        "Residence, domicile and the remittance basis",
+        "Residence and the foreign income and gains (FIG) regime for qualifying new residents",
         "Overseas income, double tax relief and expatriates",
         "Pensions, investment products and tax-efficient savings",
         "Personal tax planning and the interaction of taxes",
@@ -772,7 +789,7 @@ export const ACCA_PAPERS: AccaPaper[] = [
         "Trusts: creation, taxation and use in planning",
         "Business property relief and agricultural property relief",
         "Death estate planning, wills and deeds of variation",
-        "Overseas aspects of CGT and IHT",
+        "Overseas aspects of CGT and IHT, including long-term UK residence for IHT",
       ]),
       area("atx-corporate", "Corporate taxation & groups", 0.26, 5, [
         "Corporation tax planning and loss utilisation",
@@ -927,6 +944,12 @@ export function accaPaperLabel(codes: string[]): string {
   return papers.map((p) => `${p.code} ${p.name}`).join(" + ");
 }
 
+/**
+ * Current ACCA qualification version. The redesigned qualification (2027)
+ * lives in acca-future-qualification.ts and is never mixed with this list.
+ */
+export const ACCA_QUALIFICATION_VERSION = "current" as const;
+
 /** Canonical syllabus text for AI prompts — exact area and subtopic names. */
 export function accaSyllabusForPrompt(codes: string[]): string {
   const papers = normaliseAccaPapers(codes)
@@ -943,7 +966,8 @@ export function accaSyllabusForPrompt(codes: string[]): string {
               .join("; ")}`,
         )
         .join("\n");
-      return `## ${p.code} ${p.name} (${p.level}; ${p.format})\n${areas}`;
+      const validity = p.validFrom && p.validTo ? `; sittings ${p.validFrom} to ${p.validTo}` : "";
+      return `## ${p.code} ${p.name} (${p.level}; ${p.format}${validity})\n${areas}`;
     })
     .join("\n\n");
 }
