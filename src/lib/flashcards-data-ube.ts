@@ -17,10 +17,6 @@ export const UBE_DECKS: Deck[] = [
   { id: "ube-torts", title: "Torts", description: "Intentional torts, negligence, strict liability, products and defamation.", flk: "MBE", subject: "Torts" },
   // MEE-exclusive
   { id: "ube-ba", title: "Business Associations", description: "Agency, partnerships, corporations and LLCs.", flk: "MEE", subject: "Business Associations" },
-  { id: "ube-conflicts", title: "Conflict of Laws", description: "Choice of law, domicile, FF&C and recognition of judgments.", flk: "MEE", subject: "Conflict of Laws" },
-  { id: "ube-family", title: "Family Law", description: "Marriage, divorce, property division, support and custody (UCCJEA).", flk: "MEE", subject: "Family Law" },
-  { id: "ube-trusts", title: "Trusts & Estates", description: "Wills, intestacy, will contests, express trusts and trustee duties.", flk: "MEE", subject: "Trusts & Estates" },
-  { id: "ube-secured", title: "Secured Transactions (UCC Art. 9)", description: "Attachment, perfection, priority and default under Article 9.", flk: "MEE", subject: "Secured Transactions" },
   // MPT
   { id: "ube-mpt", title: "Multistate Performance Test (MPT)", description: "Closed-library lawyering skills: memos, briefs, client letters.", flk: "MPT", subject: "MPT" },
 ];

@@ -477,41 +477,6 @@ const MEE_BANK: Omit<EssayQuestion, "id">[] = [
     guidance:
       "Address the duty of loyalty (usurpation of opportunity, duty not to compete absent agreement), duty of care, contractual modification under most LLC statutes, and remedies including disgorgement, injunction and damages.",
   },
-  {
-    topic: "Family Law",
-    prompt:
-      "A divorcing couple lived in a community-property state during their marriage and moved to a common-law property state two years before filing. Identify the issues raised by characterizing property acquired in each state and apply the majority approach to division on divorce.",
-    guidance:
-      "Discuss quasi-community property, source-of-funds tracing, transmutation, and equitable distribution principles.",
-  },
-  {
-    topic: "Conflict of Laws",
-    prompt:
-      "A plaintiff sues a defendant in State A for injuries arising from a car accident in State B. State A applies the 'most significant relationship' test. The defendant is domiciled in State C. Identify the choice-of-law issues and discuss which state's substantive law most likely governs liability and damages, addressing any depecage.",
-    guidance:
-      "Apply Restatement (Second) §§ 6, 145; identify contacts and policies; discuss whether different issues (e.g., damages caps) take different states' laws.",
-  },
-  {
-    topic: "Trusts & Estates",
-    prompt:
-      "A testator devised 'my residence at 14 Maple Street' to her sister. After execution of the will, the testator sold 14 Maple Street and purchased a new home at 22 Oak Street using the proceeds. The will was never updated. On the testator's death, what is the sister entitled to receive? Discuss ademption by extinction and any applicable exceptions.",
-    guidance:
-      "Identify specific devise, classic ademption rule, traceable-proceeds and replacement-property exceptions, and any UPC §2-606 nonademption principles.",
-  },
-  {
-    topic: "Secured Transactions",
-    prompt:
-      "A bank perfects a security interest in a debtor's inventory by filing on January 10. On January 20 the debtor sells a unit of inventory to a consumer in the ordinary course of business. On February 1, an unsecured creditor obtains a judgment lien on the inventory. Determine the priority of competing claims to the sold unit and to the remaining inventory.",
-    guidance:
-      "Apply UCC §§ 9-317, 9-320, 9-322; buyer in ordinary course of business takes free; first-to-file-or-perfect among secured parties; judgment-lien creditor's status.",
-  },
-  {
-    topic: "Family Law / Trusts & Estates",
-    prompt:
-      "A widow inherited a brokerage account from her late spouse. She remarries five years later. After her remarriage, she transfers the brokerage account into a revocable trust naming her children from the first marriage as remainder beneficiaries. On her death, her surviving spouse files an elective-share claim. Analyze whether the trust assets are reachable under the augmented estate concept and the likely outcome.",
-    guidance:
-      "Address elective-share statutes, the augmented-estate approach, and treatment of revocable trusts as transfers with retained interest.",
-  },
 ];
 
 // ----- MPT bank ---------------------------------------------------------------
