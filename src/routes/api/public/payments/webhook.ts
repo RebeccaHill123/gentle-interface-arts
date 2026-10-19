@@ -502,6 +502,32 @@ async function claimPendingPlan({
     sub.metadata = { ...(sub.metadata ?? {}), userId };
     await upsertFromSubscription(sub, env, { strict: true, userId });
     profile = await readProfile(admin, userId);
+  } else if (session.mode === "payment") {
+    // One-off 4-month block. Access is a fixed window that simply expires:
+    // stored as a non-renewing ("canceled") entitlement with a future period
+    // end, so existing grace-period rules grant access until that date.
+    if (session.payment_status !== "paid") {
+      throw new ProvisioningError(`block payment not settled for ${session.id}`);
+    }
+    const { blockAccessEnd, BLOCK_PRICE_ID } = await import("@/lib/founding");
+    const createdMs = (session.created ? session.created * 1000 : Date.now());
+    const accessEnd = blockAccessEnd(new Date(createdMs)).toISOString();
+    const { error: blockErr } = await admin
+      .from("profiles")
+      .update({
+        stripe_customer_id: customerId,
+        stripe_price_id: BLOCK_PRICE_ID,
+        subscription_status: "canceled",
+        current_period_end: accessEnd,
+        cancel_at_period_end: true,
+        is_pro: !!profile?.grandfathered_pro,
+        pro_since: new Date(createdMs).toISOString(),
+      })
+      .eq("user_id", userId);
+    if (blockErr) {
+      throw new ProvisioningError("block entitlement write failed", blockErr);
+    }
+    profile = await readProfile(admin, userId);
   }
 
   if (!profileHasAccess(profile)) {

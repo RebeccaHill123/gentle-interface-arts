@@ -9,7 +9,7 @@ export interface SubscriptionState {
   isSubscriber: boolean;
   isTrialing: boolean;
   trialEnd: string | null;
-  plan: "founding_monthly" | "pro_monthly" | "pro_six_month" | null;
+  plan: "founding_monthly" | "tentra_monthly" | "tentra_4_month_block" | "pro_monthly" | "pro_six_month" | null;
   status: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
