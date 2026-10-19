@@ -2,7 +2,6 @@ import homePreviewAsset from "@/assets/tentra-london-dusk-preview-2026-10.jpg.as
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { BrandMark, TentraMonogram } from "@/components/brand-mark";
-import londonDusk from "@/assets/london-blue-hour-lilac-hero.jpg";
 import eveningWorkspace from "@/assets/evening-workspace.jpg";
 import { Button } from "@/components/ui/button";
 import { TodayTaskCard } from "@/components/dashboard/today-task-card";
