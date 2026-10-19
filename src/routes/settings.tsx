@@ -179,7 +179,11 @@ function SettingsPage() {
   };
 
   const planLabel =
-    sub.plan === "founding_monthly"
+    sub.plan === "tentra_monthly"
+      ? "Monthly — £12.99 / month"
+      : sub.plan === "tentra_4_month_block"
+        ? "4-month access — £39.99, paid once"
+        : sub.plan === "founding_monthly"
       ? "Founding Member — £9.99 / month"
       : sub.plan === "pro_monthly"
         ? "Monthly — £16.99 / month"
@@ -193,7 +197,11 @@ function SettingsPage() {
       year: "numeric",
     });
   const planAmount =
-    sub.plan === "pro_monthly"
+    sub.plan === "tentra_monthly"
+      ? "£12.99"
+      : sub.plan === "tentra_4_month_block"
+        ? "£39.99"
+        : sub.plan === "pro_monthly"
       ? "£16.99"
       : sub.plan === "pro_six_month"
         ? "£72.99"
