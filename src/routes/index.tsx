@@ -1,4 +1,4 @@
-import homePreviewAsset from "@/assets/tentra-social-share-lilac-2026-10-19.jpg.asset.json";
+import homePreviewAsset from "@/assets/tentra-share-2026-10-19b.jpg.asset.json";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { BrandMark, TentraMonogram } from "@/components/brand-mark";
