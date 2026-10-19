@@ -27,11 +27,20 @@ const OTP_SLOTS = Array.from({ length: OTP_LENGTH }, (_, i) => i);
 export const Route = createFileRoute("/auth")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { mode: "signin" | "signup"; from?: "onboarding"; next?: string } => ({
+  ): {
+    mode: "signin" | "signup";
+    from?: "onboarding";
+    next?: string;
+    name?: string;
+  } => ({
     mode: search.mode === "signin" ? "signin" : "signup",
     ...(search.from === "onboarding" ? { from: "onboarding" as const } : {}),
     ...(typeof search.next === "string" && search.next.startsWith("/") && !search.next.startsWith("//")
       ? { next: search.next as string }
+      : {}),
+    // First name carried from onboarding so it is asked only once.
+    ...(typeof search.name === "string" && search.name.trim()
+      ? { name: search.name.trim().slice(0, 60) }
       : {}),
   }),
   component: AuthPage,
@@ -77,10 +86,16 @@ const signInSchema = z.object({
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { mode: initialMode, from, next } = Route.useSearch();
+  const {
+    mode: initialMode,
+    from,
+    next,
+    name: prefillName,
+  } = Route.useSearch();
   const [mode, setMode] = useState<"signup" | "signin">(initialMode);
   const fromOnboarding = from === "onboarding";
-  const [firstName, setFirstName] = useState("");
+  // Prefilled from the onboarding answer so the student isn't asked twice.
+  const [firstName, setFirstName] = useState(prefillName ?? "");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
