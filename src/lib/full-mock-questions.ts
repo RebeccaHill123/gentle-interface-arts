@@ -569,7 +569,9 @@ function rotateEssay(count: number, prefix: string): EssayQuestion[] {
   const out: EssayQuestion[] = [];
   for (let i = 0; i < count; i++) {
     const src = MEE_BANK[i % MEE_BANK.length];
-    out.push({ id: `${prefix}-${i + 1}`, ...src });
+    // "-v2" ids: the MEE bank changed when NCBE retired subjects (July 2026),
+    // so answers saved against the old prompts never show under new ones.
+    out.push({ id: `${prefix}-v2-${i + 1}`, ...src });
   }
   return out;
 }
