@@ -72,10 +72,10 @@ import {
 } from "@/lib/acquisition";
 
 /**
- * First-run onboarding is deliberately two screens: exam + date, then weekly
- * hours. Everything else the generator understands (intensity, coverage mode,
- * per-module confidence, name) is defaulted here and can be refined later from
- * Settings → Study plan. See DEFAULTS below.
+ * First-run onboarding asks for the student's first name, then exam + date,
+ * then weekly hours. Everything else the generator understands (intensity,
+ * coverage mode, per-module confidence) is defaulted here and can be refined
+ * later from Settings → Study plan. See DEFAULTS below.
  */
 
 const EXAM_PARAM_TO_TYPE: Record<AcquisitionExamParam, ExamType> = {
@@ -114,9 +114,7 @@ export const Route = createFileRoute("/onboarding")({
 
 const STEP_COUNT = 3;
 
-/** Only the name is deferred — it does not affect plan quality. */
 const DEFAULTS = {
-  name: "",
   intensity: "intermediate" as IntensityTier,
   coverageMode: "even" as CoverageMode,
   /**
@@ -286,7 +284,8 @@ function OnboardingPage() {
     draft?.confidenceSource === "balanced",
   );
   const coverageMode = draft?.coverageMode ?? DEFAULTS.coverageMode;
-  const name = draft?.name ?? DEFAULTS.name;
+  // Asked in step 1 and pre-filled into signup so the student answers it once.
+  const [name, setName] = useState(draft?.name ?? "");
   const intensity: IntensityTier = stage ?? DEFAULTS.intensity;
 
   const ratedCount = modules.filter((m) => m.rated).length;
@@ -437,6 +436,7 @@ function OnboardingPage() {
 
   const validateStep1 = (): string | null => {
     if (!examSelected) return "Please choose the exam you're preparing for.";
+    if (!name.trim()) return "Please tell us your first name.";
     if (examType === "SQE1" && !sqeAssessment) {
       return "Please choose which part of SQE1 you're preparing for.";
     }
@@ -706,6 +706,27 @@ function OnboardingPage() {
             >
               {step === 1 ? (
                 <div className="space-y-8">
+                  <div className="space-y-2">
+                    <Label htmlFor="onboarding-first-name">
+                      What should we call you?
+                    </Label>
+                    <Input
+                      id="onboarding-first-name"
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        setError(null);
+                      }}
+                      placeholder="Your first name"
+                      autoComplete="given-name"
+                      maxLength={60}
+                      className="h-11 rounded-xl bg-background/60"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      We use it to greet you and personalise your plan — nothing
+                      else.
+                    </p>
+                  </div>
                   <StepExamDate
                     option={activeOption}
                     examType={examType}

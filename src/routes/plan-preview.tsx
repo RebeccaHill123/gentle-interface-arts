@@ -51,7 +51,12 @@ function PlanPreviewPage() {
   const navigate = useNavigate();
   const [stored, setStored] = useState<StoredPlan | null>(null);
   const [ready, setReady] = useState(false);
-  const authSearch = { mode: "signup", from: "onboarding", next: "/subscribe?next=/dashboard" } as const;
+  const authSearch = {
+    mode: "signup",
+    from: "onboarding",
+    next: "/subscribe?next=/dashboard",
+    ...(stored?.input.name ? { name: stored.input.name.trim() } : {}),
+  } as const;
 
   useEffect(() => {
     const local = loadPreviewFromLocal();
@@ -152,8 +157,8 @@ function PlanPreviewPage() {
             </h2>
           )}
           <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-            <LockedAction icon={<PlayCircle className="h-4 w-4" />} label="Start focus block" />
-            <LockedAction icon={<ListChecks className="h-4 w-4" />} label="Log a study session" />
+            <LockedAction icon={<PlayCircle className="h-4 w-4" />} label="Start focus block" name={stored?.input.name} />
+            <LockedAction icon={<ListChecks className="h-4 w-4" />} label="Log a study session" name={stored?.input.name} />
           </div>
         </section>
 
@@ -331,14 +336,30 @@ function StatCard({ icon, label, value }: { icon: React.ReactNode; label: string
   );
 }
 
-function LockedAction({ icon, label }: { icon: React.ReactNode; label: string }) {
+function LockedAction({
+  icon,
+  label,
+  name,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  name?: string;
+}) {
   return (
     <Button
       asChild
       variant="outline"
       className="h-11 flex-1 rounded-full border-border/70 bg-background/60 text-sm font-medium text-foreground hover:bg-foreground/[0.04]"
     >
-      <Link to="/auth" search={{ mode: "signup", from: "onboarding", next: "/subscribe?next=/dashboard" }}>
+      <Link
+        to="/auth"
+        search={{
+          mode: "signup",
+          from: "onboarding",
+          next: "/subscribe?next=/dashboard",
+          ...(name ? { name } : {}),
+        }}
+      >
         {icon}
         <span className="ml-2">{label}</span>
         <Lock className="ml-2 h-3.5 w-3.5 text-muted-foreground" />

@@ -297,6 +297,7 @@ type ProfileSnapshot = {
   grandfathered_pro: boolean | null;
   subscription_status: string | null;
   current_period_end: string | null;
+  display_name: string | null;
 };
 
 async function readProfile(
@@ -306,7 +307,7 @@ async function readProfile(
   const { data, error } = await admin
     .from("profiles")
     .select(
-      "user_id, is_pro, grandfathered_pro, subscription_status, current_period_end",
+      "user_id, is_pro, grandfathered_pro, subscription_status, current_period_end, display_name",
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -348,7 +349,7 @@ async function claimPendingPlan({
   const { data: pending, error: pendingErr } = await admin
     .from("pending_plans")
     .select(
-      "id, status, plan_data, claimed_user_id, email, magic_link_email, magic_link_hash",
+      "id, status, plan_data, onboarding_data, claimed_user_id, email, magic_link_email, magic_link_hash",
     )
     .eq("token", token)
     .maybeSingle();
@@ -465,6 +466,24 @@ async function claimPendingPlan({
     if (!profile) {
       throw new ProvisioningError(`profile still missing for ${userId}`);
     }
+  }
+
+  // Carry the student's onboarding name onto their profile. Checkout creates
+  // the account from an email alone, so this is the only chance to record it.
+  const onboardingRaw = pending.onboarding_data as unknown as
+    | { name?: unknown }
+    | null;
+  const onboardingName =
+    typeof onboardingRaw?.name === "string" ? onboardingRaw.name.trim() : "";
+  if (onboardingName && !profile.display_name) {
+    const { error: nameErr } = await admin
+      .from("profiles")
+      .update({ first_name: onboardingName, display_name: onboardingName })
+      .eq("user_id", userId);
+    if (nameErr) {
+      throw new ProvisioningError("profile name write failed", nameErr);
+    }
+    profile = await readProfile(admin, userId);
   }
 
   // 2. Plan attachment — never overwrite an existing user's plan.
