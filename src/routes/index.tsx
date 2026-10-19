@@ -532,7 +532,7 @@ function LandingPage() {
                 <div className="relative">
                   <div className="text-center">
                     <div className="inline-flex items-center rounded-full bg-pink/10 px-3 py-1 text-[12px] font-medium text-pink">
-                      Start with a 7-day free trial
+                      7-day free trial on the monthly plan
                     </div>
                     <div className="mt-6 grid gap-3 text-left sm:grid-cols-2">
                       <div className="rounded-2xl border border-border/60 bg-background/70 p-5">
@@ -573,7 +573,7 @@ function LandingPage() {
                       <ArrowRight className="ml-1.5 h-4 w-4" />
                     </PremiumCta>
                     <span className="text-center text-[11.5px] text-muted-foreground">
-                      7-day free trial on monthly · Secure checkout via Stripe
+                      Secure checkout via Stripe · Cancel anytime
                     </span>
                   </div>
                 </div>
