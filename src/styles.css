@@ -121,14 +121,14 @@
   --blue: oklch(0.5 0.15 255);
   --cyan: oklch(0.52 0.08 230);
 
-  --gradient-tentra: linear-gradient(135deg, oklch(0.55 0.16 255), oklch(0.6 0.17 350));
-  --gradient-pink-blue: linear-gradient(120deg, oklch(0.52 0.16 255) 0%, oklch(0.52 0.15 300) 55%, oklch(0.58 0.17 350) 100%);
-  --gradient-pink-violet: linear-gradient(120deg, oklch(0.48 0.15 258), oklch(0.55 0.17 345));
+  --gradient-tentra: linear-gradient(135deg, oklch(0.66 0.11 262), oklch(0.71 0.11 350));
+  --gradient-pink-blue: linear-gradient(120deg, oklch(0.72 0.1 350) 0%, oklch(0.68 0.09 312) 55%, oklch(0.66 0.1 265) 100%);
+  --gradient-pink-violet: linear-gradient(120deg, oklch(0.6 0.12 265), oklch(0.65 0.12 345));
   --gradient-soft: linear-gradient(135deg, oklch(0.77 0.08 258 / 0.16), oklch(0.76 0.1 295 / 0.18));
-  --gradient-hero: radial-gradient(ellipse 60% 50% at 15% 0%, oklch(0.76 0.1 295 / 0.18), transparent 60%);
-  --gradient-cta: linear-gradient(120deg, oklch(0.5 0.16 255) 0%, oklch(0.5 0.15 300) 55%, oklch(0.56 0.17 350) 100%);
-  --gradient-accent: linear-gradient(135deg, oklch(0.72 0.12 255), oklch(0.76 0.12 345));
-  --gradient-wash: radial-gradient(120% 60% at 50% 0%, oklch(0.76 0.1 295 / 0.18), transparent 60%);
+  --gradient-hero: radial-gradient(ellipse 70% 55% at 50% -10%, oklch(0.85 0.06 350 / 0.5), transparent 65%);
+  --gradient-cta: linear-gradient(120deg, oklch(0.72 0.1 350) 0%, oklch(0.68 0.09 312) 55%, oklch(0.66 0.1 265) 100%);
+  --gradient-accent: linear-gradient(135deg, oklch(0.76 0.09 262), oklch(0.8 0.09 345));
+  --gradient-wash: radial-gradient(120% 60% at 50% 0%, oklch(0.85 0.05 345 / 0.28), transparent 65%);
   --gradient-dusk: linear-gradient(90deg, oklch(0.25 0.06 285 / 0.62) 0%, oklch(0.25 0.06 285 / 0.28) 55%, oklch(0.25 0.06 285 / 0.08) 100%), linear-gradient(180deg, transparent 60%, oklch(0.25 0.05 285 / 0.55) 100%);
   --gradient-dusk-closing: linear-gradient(180deg, oklch(0.25 0.06 285 / 0.72), oklch(0.3 0.08 295 / 0.6));
 
