@@ -5,7 +5,7 @@ import { BrandMark, TentraMonogram } from "@/components/brand-mark";
 import eveningWorkspace from "@/assets/evening-workspace.jpg";
 import { Button } from "@/components/ui/button";
 import { TodayPanel } from "@/components/dashboard/today-panel";
-import { LayoutGrid, CalendarDays, Scale, BarChart3 } from "lucide-react";
+import { LayoutGrid, CalendarDays, Scale } from "lucide-react";
 import type { ScheduledTask } from "@/lib/plan/types";
 import {
   ArrowRight,
