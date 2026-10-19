@@ -210,6 +210,7 @@ function SettingsPage() {
           : null;
 
   const isEnded = sub.status === "canceled";
+  const isBlock = sub.plan === "tentra_4_month_block";
   const trialEndLabel = sub.trialEnd ? fmtDate(sub.trialEnd) : null;
 
   const renewalLabel = sub.currentPeriodEnd
@@ -262,7 +263,9 @@ function SettingsPage() {
                 <div className="text-sm font-semibold text-foreground">
                   {sub.isTrialing
                     ? "Free trial"
-                    : isEnded
+                    : isBlock
+                      ? "Active"
+                      : isEnded
                       ? "Cancelled"
                       : "Active"}
                   <span className="ml-2 font-normal text-muted-foreground">
@@ -273,7 +276,11 @@ function SettingsPage() {
                   {sub.isTrialing && trialEndLabel && (
                     <div>Trial ends {trialEndLabel}</div>
                   )}
-                  {isEnded || sub.cancelAtPeriodEnd ? (
+                  {isBlock ? (
+                    <div>
+                      Paid once — access until {renewalLabel ?? "—"}. It won't renew and no further payments will be taken.
+                    </div>
+                  ) : isEnded || sub.cancelAtPeriodEnd ? (
                     <div>
                       {sub.isTrialing && trialEndLabel
                         ? `Cancelled — access continues until ${trialEndLabel}, and you will not be charged.`
@@ -290,7 +297,7 @@ function SettingsPage() {
                         : (renewalLabel ?? "—")}
                     </div>
                   )}
-                  {!isEnded && !sub.cancelAtPeriodEnd && (
+                  {!isBlock && !isEnded && !sub.cancelAtPeriodEnd && (
                     <div>
                       Cancel any time in the billing portal before your next
                       payment date to avoid being charged. Access continues
