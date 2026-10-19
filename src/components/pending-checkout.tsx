@@ -9,14 +9,15 @@ import { createPendingCheckoutSession } from "@/lib/pending-plans.functions";
 interface Props {
   token: string;
   returnUrl: string;
+  plan: "monthly" | "block";
 }
 
-export function PendingCheckout({ token, returnUrl }: Props) {
+export function PendingCheckout({ token, returnUrl, plan }: Props) {
   const options = useMemo(
     () => ({
       fetchClientSecret: async (): Promise<string> => {
         const result = await createPendingCheckoutSession({
-          data: { token, returnUrl, environment: getStripeEnvironment() },
+          data: { token, returnUrl, plan, environment: getStripeEnvironment() },
         });
         if ("error" in result) throw new Error(result.error);
         if (!result.clientSecret)
@@ -24,7 +25,7 @@ export function PendingCheckout({ token, returnUrl }: Props) {
         return result.clientSecret;
       },
     }),
-    [token, returnUrl],
+    [token, returnUrl, plan],
   );
 
   return (

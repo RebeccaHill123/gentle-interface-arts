@@ -79,7 +79,7 @@ export const Route = createFileRoute("/")({
           description:
             "Personalised, adaptive study planning for SQE1, SQE2, the U.S. Bar (UBE), MPRE and ACCA papers, with revision tracking, practice questions, analytics and AI study support.",
 
-          offers: { "@type": "Offer", price: "9.99", priceCurrency: "GBP" },
+          offers: [{ "@type": "Offer", price: "12.99", priceCurrency: "GBP" }, { "@type": "Offer", price: "39.99", priceCurrency: "GBP" }],
         }),
       },
     ],
@@ -496,7 +496,7 @@ function LandingPage() {
             </div>
           </section>
 
-          {/* PRICING — single Founding Member card */}
+          {/* PRICING */}
           <section id="pricing" className="band-lavender mx-auto max-w-5xl px-4 pt-16 md:pt-24 pb-20 md:px-8 md:pb-28">
             <div className="mx-auto mb-10 max-w-2xl text-center md:mb-14">
               <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
@@ -512,7 +512,7 @@ function LandingPage() {
               </p>
             </div>
 
-            {/* Centred Founding Member card */}
+            {/* Centred pricing card */}
             <div className="mx-auto w-full max-w-[560px]">
               <div
                 className="relative overflow-hidden rounded-[1.75rem] border border-border/50 bg-card p-8 md:p-10"
@@ -531,25 +531,33 @@ function LandingPage() {
                 />
                 <div className="relative">
                   <div className="text-center">
-                    <div className="inline-flex items-center rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.28em] text-foreground/80">
-                      Founding Member
+                    <div className="inline-flex items-center rounded-full bg-pink/10 px-3 py-1 text-[12px] font-medium text-pink">
+                      7-day free trial on the monthly plan
                     </div>
-                    <h3 className="mt-6 font-display text-[2.15rem] font-light leading-none tracking-[-0.02em] text-foreground md:text-[2.4rem]">
-                      Founding Member Access
-                    </h3>
-                    <div className="mt-6 flex items-baseline justify-center gap-2">
-                      <span className="text-[3rem] font-light leading-none tracking-[-0.03em] text-foreground md:text-[3.5rem]">
-                        £9.99
-                      </span>
-                      <span className="text-[14px] font-normal text-muted-foreground">
-                        / month
-                      </span>
+                    <div className="mt-6 grid gap-3 text-left sm:grid-cols-2">
+                      <div className="rounded-2xl border border-border/60 bg-background/70 p-5">
+                        <div className="text-[13px] font-medium text-muted-foreground">Monthly</div>
+                        <div className="mt-2 flex items-baseline gap-1.5">
+                          <span className="text-[1.9rem] font-light leading-none tracking-[-0.02em] text-foreground">£12.99</span>
+                          <span className="text-[13px] text-muted-foreground">/ month</span>
+                        </div>
+                        <p className="mt-3 text-[12.5px] leading-[1.55] text-muted-foreground">
+                          7 days free, then monthly. Cancel anytime.
+                        </p>
+                      </div>
+                      <div className="rounded-2xl border border-border/60 bg-background/70 p-5">
+                        <div className="text-[13px] font-medium text-muted-foreground">4-month block</div>
+                        <div className="mt-2 flex items-baseline gap-1.5">
+                          <span className="text-[1.9rem] font-light leading-none tracking-[-0.02em] text-foreground">£39.99</span>
+                          <span className="text-[13px] text-muted-foreground">one-off</span>
+                        </div>
+                        <p className="mt-3 text-[12.5px] leading-[1.55] text-muted-foreground">
+                          Pay once for 4 months of full access. No renewal.
+                        </p>
+                      </div>
                     </div>
-                    <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
-                      Full access to your personalised study system. Cancel anytime.
-                    </p>
-                    <p className="mx-auto mt-2 max-w-sm text-[12.5px] leading-[1.55] text-muted-foreground">
-                      An introductory rate for Tentra's earliest members.
+                    <p className="mx-auto mt-5 max-w-sm text-[13.5px] leading-[1.6] text-foreground/85">
+                      Full access to your personalised study system on either plan.
                     </p>
                   </div>
 

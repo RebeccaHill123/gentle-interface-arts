@@ -179,8 +179,12 @@ function SettingsPage() {
   };
 
   const planLabel =
-    sub.plan === "founding_monthly"
-      ? "Founding Member — £9.99 / month"
+    sub.plan === "tentra_monthly"
+      ? "Monthly — £12.99 / month"
+      : sub.plan === "tentra_4_month_block"
+        ? "4-month access — £39.99, paid once"
+        : sub.plan === "founding_monthly"
+      ? "Monthly — £9.99 / month"
       : sub.plan === "pro_monthly"
         ? "Monthly — £16.99 / month"
         : sub.plan === "pro_six_month"
@@ -193,7 +197,11 @@ function SettingsPage() {
       year: "numeric",
     });
   const planAmount =
-    sub.plan === "pro_monthly"
+    sub.plan === "tentra_monthly"
+      ? "£12.99"
+      : sub.plan === "tentra_4_month_block"
+        ? "£39.99"
+        : sub.plan === "pro_monthly"
       ? "£16.99"
       : sub.plan === "pro_six_month"
         ? "£72.99"
@@ -202,6 +210,7 @@ function SettingsPage() {
           : null;
 
   const isEnded = sub.status === "canceled";
+  const isBlock = sub.plan === "tentra_4_month_block";
   const trialEndLabel = sub.trialEnd ? fmtDate(sub.trialEnd) : null;
 
   const renewalLabel = sub.currentPeriodEnd
@@ -254,7 +263,9 @@ function SettingsPage() {
                 <div className="text-sm font-semibold text-foreground">
                   {sub.isTrialing
                     ? "Free trial"
-                    : isEnded
+                    : isBlock
+                      ? "Active"
+                      : isEnded
                       ? "Cancelled"
                       : "Active"}
                   <span className="ml-2 font-normal text-muted-foreground">
@@ -265,7 +276,11 @@ function SettingsPage() {
                   {sub.isTrialing && trialEndLabel && (
                     <div>Trial ends {trialEndLabel}</div>
                   )}
-                  {isEnded || sub.cancelAtPeriodEnd ? (
+                  {isBlock ? (
+                    <div>
+                      Paid once — access until {renewalLabel ?? "—"}. It won't renew and no further payments will be taken.
+                    </div>
+                  ) : isEnded || sub.cancelAtPeriodEnd ? (
                     <div>
                       {sub.isTrialing && trialEndLabel
                         ? `Cancelled — access continues until ${trialEndLabel}, and you will not be charged.`
@@ -282,7 +297,7 @@ function SettingsPage() {
                         : (renewalLabel ?? "—")}
                     </div>
                   )}
-                  {!isEnded && !sub.cancelAtPeriodEnd && (
+                  {!isBlock && !isEnded && !sub.cancelAtPeriodEnd && (
                     <div>
                       Cancel any time in the billing portal before your next
                       payment date to avoid being charged. Access continues

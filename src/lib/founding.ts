@@ -18,7 +18,27 @@
 // The `pro_six_month` price is preserved in Stripe (see stripe.server.ts
 // `ensureSixMonthPrice`) so it can be re-surfaced later without recreating.
 
-export const FOUNDING_MEMBER_PRICE_ID = "founding_monthly" as const;
+/** Legacy introductory price — existing subscribers stay on it. */
+export const LEGACY_FOUNDING_PRICE_ID = "founding_monthly" as const;
+
+/** Current plans offered to new members. */
+export const MONTHLY_PRICE_ID = "tentra_monthly" as const;
+export const BLOCK_PRICE_ID = "tentra_4_month_block" as const;
+export const BLOCK_MONTHS = 4 as const;
+export const MONTHLY_PRICE_LABEL = "£12.99";
+export const BLOCK_PRICE_LABEL = "£39.99";
+
+export type PlanChoice = "monthly" | "block";
+
+/** Kept for existing imports: the monthly price new members subscribe to. */
+export const FOUNDING_MEMBER_PRICE_ID = MONTHLY_PRICE_ID;
+
+/** Access end for a one-off block bought at `from`. */
+export function blockAccessEnd(from: Date = new Date()): Date {
+  const d = new Date(from.getTime());
+  d.setMonth(d.getMonth() + BLOCK_MONTHS);
+  return d;
+}
 
 export const FOUNDING_MEMBER_OPEN =
   (import.meta.env.VITE_FOUNDING_OPEN ?? "true") !== "false";

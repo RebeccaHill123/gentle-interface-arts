@@ -209,7 +209,7 @@ function SubscribePage() {
 
           {!showCheckout && (
             <>
-              {/* Single Founding Member card, centred, editorial */}
+              {/* Single plan card, centred, editorial */}
               <section className="mx-auto w-full max-w-[560px]">
                 <div
                   className="relative overflow-hidden rounded-[1.75rem] border border-border/50 bg-card p-8 md:p-10"
@@ -228,17 +228,14 @@ function SubscribePage() {
                   />
                   <div className="relative">
                     <div className="text-center">
-                      <div className="inline-flex items-center rounded-full border border-border/60 bg-background/70 px-3 py-1 text-[10.5px] font-semibold uppercase tracking-[0.28em] text-foreground/80">
-                        Founding Member
-                      </div>
-                      <h2 className="mt-6 font-display text-[2.15rem] font-light leading-none tracking-[-0.02em] text-foreground md:text-[2.4rem]">
+                      <h2 className=" font-display text-[2.15rem] font-light leading-none tracking-[-0.02em] text-foreground md:text-[2.4rem]">
                         {noTrial
                           ? "Reactivate your membership"
                           : "Start your 7-day free trial"}
                       </h2>
                       <div className="mt-6 flex items-baseline justify-center gap-2">
-                        <span className="text-[3rem] font-light leading-none tracking-[-0.03em] text-foreground md:text-[3.5rem]">
-                          {noTrial ? "£9.99" : "£0"}
+                        <span className="text-[2.25rem] font-light leading-none tracking-[-0.03em] text-foreground md:text-[2.5rem]">
+                          {noTrial ? "£12.99" : "£0"}
                         </span>
                         <span className="text-[14px] font-normal text-muted-foreground">
                           {noTrial ? "due today" : "due today"}
@@ -248,22 +245,22 @@ function SubscribePage() {
                         <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
                           You've already used your Tentra free trial, so your
                           membership starts straight away:{" "}
-                          <span className="font-medium">£9.99 today</span>, then
-                          £9.99/month unless cancelled.
+                          <span className="font-medium">£12.99 today</span>, then
+                          £12.99/month unless cancelled.
                         </p>
                       ) : (
                         <p className="mx-auto mt-5 max-w-sm text-[14px] leading-[1.6] text-foreground/85">
                           Get full access to Tentra free for 7 days. Add your card
                           today and you won't be charged until{" "}
                           <span className="font-medium">{billingDate}</span>. After
-                          that, your subscription continues at £9.99/month unless
+                          that, your subscription continues at £12.99/month unless
                           cancelled.
                         </p>
                       )}
                       <ul className="mx-auto mt-5 max-w-sm space-y-1.5 text-left text-[13px] leading-[1.5] text-muted-foreground">
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
-                          {noTrial ? "£9.99 charged today" : "£0 due today"}
+                          {noTrial ? "£12.99 charged today" : "£0 due today"}
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
@@ -273,7 +270,7 @@ function SubscribePage() {
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
-                          Then £9.99/month
+                          Then £12.99/month
                         </li>
                         <li className="flex items-start gap-2">
                           <Check className="mt-[3px] h-3.5 w-3.5 shrink-0" />
@@ -295,7 +292,7 @@ function SubscribePage() {
                         {checkingAuth ? (
                           <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Checking…</>
                         ) : noTrial ? (
-                          "Reactivate for £9.99/month"
+                          "Reactivate for £12.99/month"
                         ) : (
                           "Start my free trial"
                         )}
@@ -303,8 +300,8 @@ function SubscribePage() {
                       <div className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
                         <ShieldCheck className="h-3 w-3" />
                         {noTrial
-                          ? "£9.99 charged today · then £9.99/month · Cancel anytime"
-                          : `Card required · £0 today · £9.99/month from ${billingDate} · Cancel anytime`}
+                          ? "£12.99 charged today · then £12.99/month · Cancel anytime"
+                          : `Card required · £0 today · £12.99/month from ${billingDate} · Cancel anytime`}
                       </div>
 
                       {auth.user && (
@@ -351,12 +348,12 @@ function SubscribePage() {
                   ← Back
                 </button>
                 <div className="text-[12px] font-medium text-foreground">
-                  Free for 7 days · then £9.99 / month
+                  Free for 7 days · then £12.99 / month
                 </div>
               </div>
               <StripeEmbeddedCheckout priceId={FOUNDING_MEMBER_PRICE_ID} returnUrl={returnUrl} />
               <p className="mt-3 text-center text-[11.5px] text-muted-foreground">
-£0 is charged today. Your first payment of £9.99 is on {billingDate}, unless you cancel before then.
+£0 is charged today. Your first payment of £12.99 is on {billingDate}, unless you cancel before then.
               </p>
             </section>
           )}

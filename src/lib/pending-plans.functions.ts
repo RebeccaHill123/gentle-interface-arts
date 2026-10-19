@@ -88,8 +88,10 @@ export type PendingCheckoutResult =
 
 export const createPendingCheckoutSession = createServerFn({ method: "POST" })
   .inputValidator(
-    (data: { token: string; returnUrl: string; environment: StripeEnv }) => {
+    (data: { token: string; returnUrl: string; environment: StripeEnv; plan?: "monthly" | "block" }) => {
       if (!data.token) throw new Error("Missing token");
+      if (data.plan && data.plan !== "monthly" && data.plan !== "block")
+        throw new Error("Invalid plan");
       if (!data.returnUrl.startsWith("http"))
         throw new Error("Invalid returnUrl");
       if (data.environment !== "sandbox" && data.environment !== "live")
@@ -117,14 +119,40 @@ export const createPendingCheckoutSession = createServerFn({ method: "POST" })
       }
 
       const stripe = createStripeClient(data.environment);
+      const { TRIAL_DAYS, MONTHLY_PRICE_ID, BLOCK_PRICE_ID } = await import(
+        "@/lib/founding"
+      );
+      const isBlock = data.plan === "block";
+      const priceKey = isBlock ? BLOCK_PRICE_ID : MONTHLY_PRICE_ID;
       const prices = await stripe.prices.list({
-        lookup_keys: ["founding_monthly"],
+        lookup_keys: [priceKey],
         limit: 1,
+        expand: ["data.product"],
       });
       if (!prices.data.length) return { error: "Price not available" };
 
+      if (isBlock) {
+        const product = prices.data[0].product as { name?: string } | string;
+        const session = await stripe.checkout.sessions.create({
+          line_items: [{ price: prices.data[0].id, quantity: 1 }],
+          mode: "payment",
+          ui_mode: "embedded_page",
+          return_url: data.returnUrl,
+          client_reference_id: data.token,
+          customer_creation: "always",
+          metadata: { pending_token: data.token, priceId: priceKey },
+          payment_intent_data: {
+            description:
+              typeof product === "object" && product?.name
+                ? product.name
+                : "Tentra 4-Month Access",
+            metadata: { pending_token: data.token, priceId: priceKey },
+          },
+        });
+        return { clientSecret: session.client_secret ?? "" };
+      }
+
       const { trialSubscriptionData } = await import("@/lib/stripe.server");
-      const { TRIAL_DAYS } = await import("@/lib/founding");
 
       const session = await stripe.checkout.sessions.create({
         line_items: [{ price: prices.data[0].id, quantity: 1 }],
@@ -136,10 +164,10 @@ export const createPendingCheckoutSession = createServerFn({ method: "POST" })
         payment_method_collection: "always",
         // Lets invited users redeem a free-access promotion code.
         allow_promotion_codes: true,
-        metadata: { pending_token: data.token, priceId: "founding_monthly" },
+        metadata: { pending_token: data.token, priceId: priceKey },
         subscription_data: {
           ...trialSubscriptionData(TRIAL_DAYS),
-          metadata: { pending_token: data.token, priceId: "founding_monthly" },
+          metadata: { pending_token: data.token, priceId: priceKey },
         },
       });
 
@@ -247,7 +275,7 @@ export const getSubscribePriceDisplay = createServerFn({ method: "POST" })
       const { TRIAL_DAYS } = await import("@/lib/founding");
       const stripe = createStripeClient(data.environment);
       const prices = await stripe.prices.list({
-        lookup_keys: ["founding_monthly"],
+        lookup_keys: ["tentra_monthly"],
         limit: 1,
       });
       const price = prices.data[0];

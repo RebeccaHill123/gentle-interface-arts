@@ -13,6 +13,8 @@ import { TRIAL_DAYS } from "@/lib/founding";
 
 export type SubscriptionPlanId =
   | "founding_monthly"
+  | "tentra_monthly"
+  | "tentra_4_month_block"
   | "pro_monthly"
   | "pro_six_month";
 
@@ -29,6 +31,7 @@ export const createSubscriptionCheckoutSession = createServerFn({
   }) => {
     if (
       data.priceId !== "founding_monthly" &&
+      data.priceId !== "tentra_monthly" &&
       data.priceId !== "pro_monthly" &&
       data.priceId !== "pro_six_month"
     ) {
