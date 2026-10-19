@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { BrandMark, TentraMonogram } from "@/components/brand-mark";
 import eveningWorkspace from "@/assets/evening-workspace.jpg";
 import { Button } from "@/components/ui/button";
-import { TodayTaskCard } from "@/components/dashboard/today-task-card";
+import { TodayPanel } from "@/components/dashboard/today-panel";\nimport { LayoutGrid, CalendarDays, Scale, BarChart3, Sparkles as SparklesIcon } from "lucide-react";
 import type { ScheduledTask } from "@/lib/plan/types";
 import {
   ArrowRight,
@@ -744,26 +744,60 @@ const SAMPLE_TASKS = [
 
 function HeroPreviewCard() {
   const noop = () => {};
+  const nav = [
+    { icon: LayoutGrid, label: "Today", active: true },
+    { icon: CalendarDays, label: "Plan" },
+    { icon: Scale, label: "Practice" },
+    { icon: BarChart3, label: "Progress" },
+    { icon: Sparkles, label: "Coach" },
+  ];
   return (
-    <div className="theme-day pointer-events-none relative w-full select-none" aria-label="Example of a Tentra Today plan">
-      <div className="rounded-[1.75rem] border border-border/60 bg-background/90 p-3 shadow-card backdrop-blur sm:p-4">
-        <div className="mb-3 flex items-end justify-between px-1">
-          <div>
-            <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Today</div>
-            <div className="mt-0.5 text-[15px] text-foreground">1 of 3 sessions done · 30 of 60 min</div>
+    <div className="theme-day pointer-events-none relative w-full select-none" aria-label="Example of the Tentra Today dashboard">
+      <div className="overflow-hidden rounded-[1.75rem] border border-border/60 bg-background shadow-card">
+        <div className="flex items-center gap-1.5 border-b border-border/60 bg-muted/40 px-4 py-2.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
+          <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
+          <span className="h-2.5 w-2.5 rounded-full bg-foreground/15" />
+          <span className="ml-3 text-[11px] text-muted-foreground">tentraapp.com/dashboard</span>
+        </div>
+        <div className="flex">
+          <aside className="hidden w-44 shrink-0 border-r border-border/60 bg-muted/30 p-3 md:block">
+            <div className="mb-4 flex items-center gap-2 px-1">
+              <TentraMonogram className="h-6 w-6 rounded-md" />
+              <span className="wordmark text-[10px] text-foreground">Tentra</span>
+            </div>
+            <ul className="space-y-1">
+              {nav.map(({ icon: Icon, label, active }) => (
+                <li key={label} className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-[12.5px] ${active ? "bg-foreground/[0.06] text-foreground" : "text-muted-foreground"}`}>
+                  <Icon className="h-3.5 w-3.5" /> {label}
+                </li>
+              ))}
+            </ul>
+          </aside>
+          <div className="max-h-[560px] min-w-0 flex-1 overflow-hidden p-3 sm:p-5">
+            <TodayPanel
+              firstName="Alex"
+              examLabel="SQE1"
+              today="2026-01-01"
+              daysUntilExam={84}
+              tasks={SAMPLE_TASKS}
+              missed={[]}
+              upcoming={[]}
+              analytics={null}
+              daysSinceLastActivity={0}
+              weeklyDoneMins={150}
+              weeklyTargetMins={600}
+              onStart={noop}
+              onComplete={noop}
+              onSkip={noop}
+              onReschedule={noop}
+              onLogElsewhere={noop}
+              onRecoverMissed={noop}
+            />
           </div>
-          <div className="rounded-full bg-foreground/[0.05] px-2.5 py-1 text-[11px] text-muted-foreground">84 days to exam</div>
-        </div>
-        <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-foreground/[0.06]">
-          <div className="h-full w-1/2 rounded-full bg-gradient-pink-blue" />
-        </div>
-        <div className="space-y-2.5">
-          {SAMPLE_TASKS.map((t, i) => (
-            <TodayTaskCard key={t.id} task={t} primary={i === 0} reason={i === 0 ? "Up next · part-finished today" : undefined}
-              onStart={noop} onComplete={noop} onLogElsewhere={noop} onReschedule={noop} onSkip={noop} />
-          ))}
         </div>
       </div>
+      <p className="mt-2 text-center text-[11px] text-muted-foreground">Illustrative example — not real user data</p>
     </div>
   );
 }
