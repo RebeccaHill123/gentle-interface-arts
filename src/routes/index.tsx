@@ -762,7 +762,7 @@ function HeroPreviewCard() {
           <span className="ml-3 text-[11px] text-muted-foreground">tentraapp.com/dashboard</span>
         </div>
         <div className="flex">
-          <aside className="hidden w-44 shrink-0 border-r border-border/60 bg-muted/30 p-3 md:block">
+          <aside className="hidden w-40 shrink-0 border-r border-border/60 bg-muted/30 p-3 2xl:block">
             <div className="mb-4 flex items-center gap-2 px-1">
               <TentraMonogram className="h-6 w-6 rounded-md" />
               <span className="wordmark text-[10px] text-foreground">Tentra</span>
