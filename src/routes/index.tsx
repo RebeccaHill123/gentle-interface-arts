@@ -1,4 +1,4 @@
-import homePreviewAsset from "@/assets/tentra-london-dusk-preview-2026-10.jpg.asset.json";
+import homePreviewAsset from "@/assets/tentra-social-share-lilac-2026-10-19.jpg.asset.json";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { BrandMark, TentraMonogram } from "@/components/brand-mark";
@@ -40,12 +40,12 @@ export const Route = createFileRoute("/")({
       },
       {
         property: "og:title",
-        content: "The study plan for demanding professional exams",
+        content: "Tentra | Your AI-Powered Study Companion",
       },
       {
         property: "og:description",
         content:
-          "Plan, track and adapt with AI for SQE1, SQE2, the U.S. Bar (UBE), MPRE and ACCA.",
+          "Smarter exam prep starts here. Get a personalised AI study plan that adapts to your progress, with mock exams, focus sessions and detailed study analytics. Built for ambitious professionals.",
       },
       { property: "og:url", content: "https://tentraapp.com/" },
       { property: "og:type", content: "website" },
@@ -54,14 +54,14 @@ export const Route = createFileRoute("/")({
       { property: "og:image:height", content: "630" },
       {
         property: "og:image:alt",
-        content: "Tentra homepage: personalised study plans for SQE, U.S. Bar and ACCA",
+        content: "Tentra — Your AI-Powered Study Companion",
       },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:title", content: "The study plan for demanding professional exams" },
+      { name: "twitter:title", content: "Tentra | Your AI-Powered Study Companion" },
       {
         name: "twitter:description",
         content:
-          "Plan, track and adapt with AI for SQE1, SQE2, the U.S. Bar (UBE), MPRE and ACCA.",
+          "Smarter exam prep starts here. Get a personalised AI study plan that adapts to your progress, with mock exams, focus sessions and detailed study analytics. Built for ambitious professionals.",
       },
       { name: "twitter:image", content: HOME_PREVIEW_IMAGE },
     ],
