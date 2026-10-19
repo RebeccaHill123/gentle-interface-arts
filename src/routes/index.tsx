@@ -5,6 +5,8 @@ import { BrandMark, TentraMonogram } from "@/components/brand-mark";
 import londonDusk from "@/assets/london-blue-hour-lilac-hero.jpg";
 import eveningWorkspace from "@/assets/evening-workspace.jpg";
 import { Button } from "@/components/ui/button";
+import { TodayTaskCard } from "@/components/dashboard/today-task-card";
+import type { ScheduledTask } from "@/lib/plan/types";
 import {
   ArrowRight,
   Sparkles,
@@ -284,7 +286,7 @@ function LandingPage() {
                 <div className="mb-2 text-right text-[11px] text-muted-foreground">
                   Illustrative example — not real user data
                 </div>
-                <div className="text-[var(--ink)] [--background:var(--ivory)] [--foreground:var(--ink)] [--card:oklch(0.99_0.005_85)] [--card-foreground:var(--ink)] [--muted-foreground:oklch(0.47_0.012_260)] [--border:oklch(0.21_0.012_260/11%)] [--primary:var(--ink)] [--primary-foreground:var(--ivory)] [--pink:oklch(0.55_0.09_2)]">
+                <div>
                   <HeroPreviewCard />
                 </div>
               </div>
@@ -743,117 +745,33 @@ function LandingPage() {
 
 /* ---------- Hero preview card (wide, edge-to-edge) ---------- */
 
+const SAMPLE_TASKS = [
+  { id: "s1", date: "2026-01-01", module: "Contract Law", subtopic: "Consideration & promissory estoppel", title: "Practise consideration questions", minutes: 25, taskType: "timed-sba", difficulty: "core", bucket: "weak", priority: "high", why: "", status: "scheduled", partialMinutes: 10, evidenceLabel: "Weak in your last quiz" },
+  { id: "s2", date: "2026-01-01", module: "Tort", subtopic: "Duty of care", title: "Recall negligence principles", minutes: 20, taskType: "active-recall", difficulty: "core", bucket: "review", priority: "medium", why: "", status: "completed", actualMinutes: 20, evidenceLabel: "Due for review" },
+  { id: "s3", date: "2026-01-01", module: "Criminal Law", subtopic: "Actus reus and mens rea", title: "Learn the elements of an offence", minutes: 15, taskType: "concept-deepdive", difficulty: "core", bucket: "new", priority: "medium", why: "", status: "scheduled" },
+] as unknown as ScheduledTask[];
+
 function HeroPreviewCard() {
+  const noop = () => {};
   return (
-    <div className="relative w-full">
-      <div className="relative overflow-hidden rounded-[1.5rem] border border-border/70 bg-card/80 p-4 shadow-[0_20px_60px_-25px_oklch(0.25_0.05_280/0.35)] backdrop-blur sm:p-5">
-        {/* Header */}
-        <div className="flex items-center justify-between">
+    <div className="pointer-events-none relative w-full select-none" aria-label="Example of a Tentra Today plan">
+      <div className="rounded-[1.75rem] border border-border/60 bg-background/90 p-3 shadow-card backdrop-blur sm:p-4">
+        <div className="mb-3 flex items-end justify-between px-1">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-              Today's plan
-            </div>
-            <div className="mt-1 text-[15px] font-medium tracking-[-0.01em] text-foreground">
-              1 of 3 complete
-            </div>
+            <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Today</div>
+            <div className="mt-0.5 text-[15px] text-foreground">1 of 3 sessions done · 30 of 60 min</div>
           </div>
-          <div className="flex items-center gap-1.5 rounded-full border border-border/60 bg-background/70 px-2.5 py-1 text-[10.5px] font-medium text-foreground">
-            <Calendar className="h-3 w-3 text-pink" />
-            84 days to exam
-          </div>
+          <div className="rounded-full bg-foreground/[0.05] px-2.5 py-1 text-[11px] text-muted-foreground">84 days to exam</div>
         </div>
-
-        {/* Plan blocks — mirrors dashboard TodayPlanCard */}
-        <ul className="mt-4 space-y-2">
-          {[
-            {
-              priority: "Must do",
-              priorityCls: "bg-pink/10 text-pink/90",
-              subject: "Contract Law",
-              minutes: "25m",
-              format: "Quiz",
-              title: "Consideration & promissory estoppel",
-              reason: "Weakest topic — 54% accuracy last 20 Qs",
-              done: false,
-            },
-            {
-              priority: "Weak spot",
-              priorityCls: "bg-amber-500/10 text-amber-500/90",
-              subject: "Tort",
-              minutes: "20m",
-              format: "Flashcards",
-              title: "Negligence: duty of care",
-              reason: "Due for spaced review today",
-              done: true,
-            },
-            {
-              priority: "High yield",
-              priorityCls: "bg-violet-500/10 text-violet-400/90",
-              subject: "Criminal",
-              minutes: "15m",
-              format: "Revision",
-              title: "Actus reus vs mens rea",
-              reason: "High-yield for your exam — not started",
-              done: false,
-            },
-          ].map((x) => (
-            <li
-              key={x.title}
-              className={`group flex items-stretch gap-3 rounded-2xl border border-border/60 bg-background/40 p-3 shadow-card transition-colors ${
-                x.done ? "opacity-70" : ""
-              }`}
-            >
-              <div className="min-w-0 flex-1 space-y-1.5">
-                <div className="flex flex-wrap items-center gap-1">
-                  <span className={`rounded-full px-1.5 py-0.5 text-[9.5px] font-medium ${x.priorityCls}`}>
-                    {x.priority}
-                  </span>
-                  <span className="rounded-full bg-foreground/[0.05] px-1.5 py-0.5 text-[9.5px] text-muted-foreground">
-                    {x.subject}
-                  </span>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-foreground/[0.05] px-1.5 py-0.5 text-[9.5px] text-muted-foreground">
-                    <Timer className="h-2.5 w-2.5" /> {x.minutes}
-                  </span>
-                  <span className="rounded-full bg-foreground/[0.05] px-1.5 py-0.5 text-[9.5px] text-muted-foreground">
-                    {x.format}
-                  </span>
-                </div>
-                <p className={`text-[12.5px] font-medium leading-snug ${x.done ? "text-muted-foreground line-through" : "text-foreground"}`}>
-                  {x.title}
-                </p>
-                <p className="text-[10.5px] italic text-muted-foreground/85">
-                  {x.reason}
-                </p>
-              </div>
-              <div
-                className={`grid h-8 w-8 shrink-0 place-items-center self-center rounded-full border ${
-                  x.done
-                    ? "border-transparent bg-pink/15 text-pink"
-                    : "border-border/60 bg-background text-foreground"
-                }`}
-              >
-                {x.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Play className="h-3 w-3" />}
-              </div>
-            </li>
+        <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-foreground/[0.06]">
+          <div className="h-full w-1/2 rounded-full bg-gradient-pink-blue" />
+        </div>
+        <div className="space-y-2.5">
+          {SAMPLE_TASKS.map((t, i) => (
+            <TodayTaskCard key={t.id} task={t} primary={i === 0} reason={i === 0 ? "Up next · part-finished today" : undefined}
+              onStart={noop} onComplete={noop} onLogElsewhere={noop} onReschedule={noop} onSkip={noop} />
           ))}
-        </ul>
-
-        {/* Recommendation */}
-        <div className="mt-4 flex items-start gap-2 rounded-xl border border-pink/25 bg-gradient-to-br from-pink/[0.08] to-violet/[0.05] p-3">
-          <Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pink" />
-          <div className="text-[12.5px] leading-snug text-foreground">
-            Tentra has prioritised <span className="font-medium">Contract Law</span> based on your recent activity.
-          </div>
         </div>
-      </div>
-
-      {/* Single subtle floating badge */}
-      <div className="absolute -bottom-3 right-3 hidden items-center gap-1.5 rounded-full border border-border/70 bg-card px-3 py-1.5 text-[11px] font-medium text-foreground shadow-[0_10px_25px_-10px_oklch(0.25_0.05_280/0.35)] sm:flex">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-pink/70 motion-reduce:hidden" />
-          <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-pink" />
-        </span>
-        Plan updated automatically
       </div>
     </div>
   );
