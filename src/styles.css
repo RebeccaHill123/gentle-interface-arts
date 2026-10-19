@@ -171,7 +171,23 @@
   --violet: var(--brand-lilac);
   --blue: var(--brand-blue);
   --gradient-pink-violet: linear-gradient(120deg, var(--brand-blue), var(--brand-lilac) 60%, var(--sunset));
-  --gradient-cta: linear-gradient(120deg, oklch(0.97 0.02 260), oklch(0.93 0.04 295));
+  --gradient-cta: linear-gradient(120deg, oklch(0.97 0.025 255), oklch(0.94 0.04 345));
+  color: var(--foreground);
+}
+
+/* Light app surface inside a night section (landing Today preview mirrors the real dashboard). */
+.theme-day {
+  --background: var(--ivory);
+  --foreground: var(--ink);
+  --card: oklch(0.995 0.004 300);
+  --card-foreground: var(--ink);
+  --muted-foreground: oklch(0.47 0.04 285);
+  --border: oklch(0.5 0.08 285 / 16%);
+  --primary: oklch(0.45 0.12 285);
+  --primary-foreground: oklch(0.99 0.005 300);
+  --pink: oklch(0.54 0.16 350);
+  --violet: var(--brand-lilac-deep);
+  --blue: oklch(0.5 0.15 255);
   color: var(--foreground);
 }
 

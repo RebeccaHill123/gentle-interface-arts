@@ -754,7 +754,7 @@ const SAMPLE_TASKS = [
 function HeroPreviewCard() {
   const noop = () => {};
   return (
-    <div className="pointer-events-none relative w-full select-none" aria-label="Example of a Tentra Today plan">
+    <div className="theme-day pointer-events-none relative w-full select-none" aria-label="Example of a Tentra Today plan">
       <div className="rounded-[1.75rem] border border-border/60 bg-background/90 p-3 shadow-card backdrop-blur sm:p-4">
         <div className="mb-3 flex items-end justify-between px-1">
           <div>
