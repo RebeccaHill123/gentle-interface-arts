@@ -297,6 +297,7 @@ type ProfileSnapshot = {
   grandfathered_pro: boolean | null;
   subscription_status: string | null;
   current_period_end: string | null;
+  display_name: string | null;
 };
 
 async function readProfile(
@@ -306,7 +307,7 @@ async function readProfile(
   const { data, error } = await admin
     .from("profiles")
     .select(
-      "user_id, is_pro, grandfathered_pro, subscription_status, current_period_end",
+      "user_id, is_pro, grandfathered_pro, subscription_status, current_period_end, display_name",
     )
     .eq("user_id", userId)
     .maybeSingle();
