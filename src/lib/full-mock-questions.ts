@@ -477,6 +477,41 @@ const MEE_BANK: Omit<EssayQuestion, "id">[] = [
     guidance:
       "Address the duty of loyalty (usurpation of opportunity, duty not to compete absent agreement), duty of care, contractual modification under most LLC statutes, and remedies including disgorgement, injunction and damages.",
   },
+  {
+    topic: "Civil Procedure",
+    prompt:
+      "A Texas buyer sues an Ohio manufacturer in federal court in Texas for $90,000 after a defective industrial oven caused a fire. The manufacturer sold the oven through its website and ships to Texas customers weekly. It moves to dismiss for lack of personal jurisdiction and, alternatively, to transfer venue to Ohio. Discuss.",
+    guidance:
+      "Cover diversity jurisdiction (citizenship, amount in controversy), specific personal jurisdiction (purposeful availment, relatedness, fair play — Ford Motor), venue under 28 U.S.C. § 1391 and transfer under § 1404(a).",
+  },
+  {
+    topic: "Constitutional Law",
+    prompt:
+      "A city ordinance bans all signs on residential lawns except real-estate 'for sale' signs. A homeowner is fined for displaying a sign opposing a local tax measure. She sues, claiming the ordinance violates the First Amendment. Discuss.",
+    guidance:
+      "Address state action, content-based versus content-neutral regulation (Reed v. Town of Gilbert), strict scrutiny, residential signs as a uniquely important medium (City of Ladue v. Gilleo), and possible overbreadth.",
+  },
+  {
+    topic: "Contracts",
+    prompt:
+      "A furniture retailer emailed a supplier ordering 200 oak chairs at $80 each. The supplier replied 'Accepted — all disputes subject to binding arbitration.' The supplier shipped 180 chairs, 30 of which were cracked. The retailer refuses to pay anything and wants to sue in court. Discuss the parties' rights.",
+    guidance:
+      "Apply UCC Article 2: merchants, UCC § 2-207 battle of the forms and material alteration (arbitration), perfect tender, rejection and acceptance of commercial units, cure, and buyer's damages.",
+  },
+  {
+    topic: "Evidence",
+    prompt:
+      "At a robbery trial, the prosecution offers (1) a 911 call in which the victim said 'He just took my bag, he's running toward the station,' (2) the defendant's robbery conviction from six years ago, and (3) a police officer's written report of the victim's later station-house statement, the victim now being unavailable. Discuss admissibility.",
+    guidance:
+      "Analyse hearsay and the present sense impression / excited utterance exceptions, FRE 404(b) and 609 for the prior conviction, the public-records exception's limits in criminal cases, and the Confrontation Clause (Crawford, Davis — testimonial vs. ongoing emergency).",
+  },
+  {
+    topic: "Real Property",
+    prompt:
+      "O conveyed Blackacre to A, who did not record. O then conveyed Blackacre to B for value; B knew nothing of A's deed and recorded. A later recorded and granted a mortgage to Bank. The jurisdiction has a race-notice statute. Discuss who holds title and the status of Bank's mortgage.",
+    guidance:
+      "Explain the race-notice statute, bona fide purchaser for value without notice, actual/constructive/inquiry notice, chain-of-title problems for A's later recording, and the mortgage's priority.",
+  },
 ];
 
 // ----- MPT bank ---------------------------------------------------------------
