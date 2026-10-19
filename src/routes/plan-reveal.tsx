@@ -676,7 +676,7 @@ function PlanRevealPage() {
                 disabled={!hasPaymentsConfigured()}
                 className="h-14 w-full max-w-sm rounded-full bg-gradient-pink-blue text-[15px] font-medium text-primary-foreground shadow-glow"
               >
-                Unlock my full plan
+                {planChoice === "monthly" ? "Start my 7-day free trial" : "Get 4 months of access"}
                 <ArrowRight className="ml-1.5 h-4 w-4" />
               </Button>
               <div className="text-[14px] font-medium text-foreground">
