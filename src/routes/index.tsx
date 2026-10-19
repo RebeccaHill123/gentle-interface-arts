@@ -182,17 +182,9 @@ function LandingPage() {
     <div className="relative min-h-screen overflow-x-hidden bg-background">
       <div className="relative pb-24 md:pb-0">
         <main>
-        {/* DUSK HERO — dark cinematic band with the London skyline */}
-        <div className="theme-night relative isolate overflow-hidden bg-background">
-          <img
-            src={londonDusk}
-            alt="The City of London skyline across the Thames at blue hour under a lilac sky"
-            width={1920}
-            height={1088}
-            fetchPriority="high"
-            className="absolute inset-0 -z-10 h-full w-full object-cover object-[60%_center]"
-          />
-          <div aria-hidden className="absolute inset-0 -z-10" style={{ background: "var(--gradient-dusk)" }} />
+        {/* LIGHT HERO — clean ivory with soft pink/periwinkle washes */}
+        <div className="relative isolate overflow-hidden bg-background">
+          <div aria-hidden className="absolute inset-0 -z-10" style={{ background: "var(--gradient-hero-light)" }} />
         {/* HEADER — compact on mobile */}
         <header className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-8 md:py-6">
           <BrandMark />
