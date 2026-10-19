@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { firstBillingDateLabel } from "@/lib/founding";
+import {
+  firstBillingDateLabel,
+  MONTHLY_PRICE_LABEL,
+  BLOCK_PRICE_LABEL,
+  type PlanChoice,
+} from "@/lib/founding";
 import {
   createFileRoute,
   useNavigate,
@@ -103,6 +108,7 @@ function PlanRevealPage() {
   const { token, src } = useSearch({ from: "/plan-reveal" });
   const [summary, setSummary] = useState<PendingPlanSummary | null>(null);
   const [price, setPrice] = useState<PriceDisplay | null>(null);
+  const [planChoice, setPlanChoice] = useState<PlanChoice>("monthly");
   const [priceError, setPriceError] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showCheckout, setShowCheckout] = useState(false);
@@ -296,11 +302,11 @@ function PlanRevealPage() {
   }
 
   const billingDate = firstBillingDateLabel();
-  const priceLine = price
-    ? `£0 today · then ${price.formatted} from ${billingDate}`
-    : priceError
-      ? "Secure Stripe checkout"
-      : "Loading price…";
+  void priceError;
+  const priceLine =
+    planChoice === "monthly"
+      ? `7-day free trial · £0 today · then ${MONTHLY_PRICE_LABEL}/month from ${billingDate}`
+      : `${BLOCK_PRICE_LABEL} today · 4 months of full access · no renewal`;
   const days = groupWeekOneByDay(summary.weekOne.sessions);
   const weekOneHours =
     summary.weekOne.totalMinutes > 0
@@ -627,6 +633,43 @@ function PlanRevealPage() {
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Change my answers
               </button>
+              <div
+                role="radiogroup"
+                aria-label="Choose your plan"
+                className="grid w-full max-w-sm grid-cols-2 gap-2.5"
+              >
+                {(
+                  [
+                    { id: "monthly", title: "Monthly", price: MONTHLY_PRICE_LABEL, unit: "/ month", note: "7-day free trial" },
+                    { id: "block", title: "4 months", price: BLOCK_PRICE_LABEL, unit: "one-off", note: "Pay once, no renewal" },
+                  ] as const
+                ).map((o) => {
+                  const active = planChoice === o.id;
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      onClick={() => setPlanChoice(o.id)}
+                      className={`rounded-2xl border p-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+                        active
+                          ? "border-pink/60 bg-pink/[0.06]"
+                          : "border-border/70 bg-background/60 hover:border-border"
+                      }`}
+                    >
+                      <div className="text-[12.5px] font-medium text-muted-foreground">{o.title}</div>
+                      <div className="mt-1 flex items-baseline gap-1">
+                        <span className="text-[1.35rem] font-light tracking-[-0.02em] text-foreground">{o.price}</span>
+                        <span className="text-[12px] text-muted-foreground">{o.unit}</span>
+                      </div>
+                      <div className={`mt-1.5 text-[12px] ${o.id === "monthly" ? "font-medium text-pink" : "text-muted-foreground"}`}>
+                        {o.note}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
               <Button
                 onClick={() => handleStart("primary")}
                 size="lg"
@@ -642,7 +685,9 @@ function PlanRevealPage() {
               <ul className="mx-auto max-w-sm space-y-1.5 text-left text-[13px] leading-[1.5] text-muted-foreground">
                 <li className="flex gap-2">
                   <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pink" />
-                  Billing starts today. Cancel any time in Settings.
+                  {planChoice === "monthly"
+                    ? `Free for 7 days. Cancel before ${billingDate} and you won't be charged.`
+                    : "One payment covers 4 months. Nothing renews automatically."}
                 </li>
                 <li className="flex gap-2">
                   <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-pink" />
@@ -664,7 +709,7 @@ function PlanRevealPage() {
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> Back to my plan
               </button>
-              <PendingCheckout token={token!} returnUrl={returnUrl} />
+              <PendingCheckout key={planChoice} token={token!} returnUrl={returnUrl} plan={planChoice} />
             </div>
           )}
         </section>
@@ -683,7 +728,7 @@ function PlanRevealPage() {
             <ArrowRight className="ml-1.5 h-4 w-4" />
           </Button>
           <div className="mt-1.5 text-center text-[13px] text-muted-foreground">
-            {price ? `${price.formatted} · cancel anytime` : "Cancel anytime"}
+            7-day free trial · then {MONTHLY_PRICE_LABEL}/month · or {BLOCK_PRICE_LABEL} for 4 months
           </div>
         </div>
       )}
