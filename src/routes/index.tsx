@@ -4,7 +4,8 @@ import { Link } from "@tanstack/react-router";
 import { BrandMark, TentraMonogram } from "@/components/brand-mark";
 import eveningWorkspace from "@/assets/evening-workspace.jpg";
 import { Button } from "@/components/ui/button";
-import { TodayPanel } from "@/components/dashboard/today-panel";\nimport { LayoutGrid, CalendarDays, Scale, BarChart3, Sparkles as SparklesIcon } from "lucide-react";
+import { TodayPanel } from "@/components/dashboard/today-panel";
+import { LayoutGrid, CalendarDays, Scale, BarChart3 } from "lucide-react";
 import type { ScheduledTask } from "@/lib/plan/types";
 import {
   ArrowRight,
@@ -797,7 +798,6 @@ function HeroPreviewCard() {
           </div>
         </div>
       </div>
-      <p className="mt-2 text-center text-[11px] text-muted-foreground">Illustrative example — not real user data</p>
     </div>
   );
 }
