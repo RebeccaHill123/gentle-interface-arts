@@ -184,7 +184,7 @@ function SettingsPage() {
       : sub.plan === "tentra_4_month_block"
         ? "4-month access — £39.99, paid once"
         : sub.plan === "founding_monthly"
-      ? "Founding Member — £9.99 / month"
+      ? "Monthly — £9.99 / month"
       : sub.plan === "pro_monthly"
         ? "Monthly — £16.99 / month"
         : sub.plan === "pro_six_month"
