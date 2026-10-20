@@ -635,6 +635,7 @@ function DashboardPage() {
 
   /** Start → Focus is one action: the session inherits the task's context. */
   const handleStartTodayItem = (task: ScheduledTask) => {
+    const scheduled = findScheduled(task.id);
     // Starting a scheduled task always replaces whatever session is running
     // (e.g. a leftover quick sprint), so the timer matches the task's length.
     const existing = loadSession();
