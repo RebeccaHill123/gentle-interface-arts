@@ -635,29 +635,36 @@ function DashboardPage() {
 
   /** Start → Focus is one action: the session inherits the task's context. */
   const handleStartTodayItem = (task: ScheduledTask) => {
-    const scheduled = findScheduled(task.id);
-    const { started } = startSession({
-      minutes: task.minutes,
-      breakMinutes: 5,
-      title: task.title,
-      module: task.module !== "Mixed practice" ? task.module : undefined,
-      subtopic: task.subtopic,
-      activityType: task.taskType,
-      why: task.why,
-      output: expectedOutput(task),
-      evidenceLabel: `${activityLabel(task)} · ${task.evidenceLabel ?? "Syllabus coverage"}`,
-      examPath: input.examType,
-      planned:
-        scheduled && schedule
-          ? {
-              taskId: scheduled.id,
-              scheduleVersion: schedule.scheduleVersion,
-              planId: schedule.planId,
-            }
-          : undefined,
-      origin: "today",
-    });
-    if (!started) toast.info("Picking up the session you already have running.");
+    // Starting a scheduled task always replaces whatever session is running
+    // (e.g. a leftover quick sprint), so the timer matches the task's length.
+    const existing = loadSession();
+    const { started } = startSession(
+      {
+        minutes: task.minutes,
+        breakMinutes: 5,
+        title: task.title,
+        module: task.module !== "Mixed practice" ? task.module : undefined,
+        subtopic: task.subtopic,
+        activityType: task.taskType,
+        why: task.why,
+        output: expectedOutput(task),
+        evidenceLabel: `${activityLabel(task)} · ${task.evidenceLabel ?? "Syllabus coverage"}`,
+        examPath: input.examType,
+        planned:
+          scheduled && schedule
+            ? {
+                taskId: scheduled.id,
+                scheduleVersion: schedule.scheduleVersion,
+                planId: schedule.planId,
+              }
+            : undefined,
+        origin: "today",
+      },
+      { replace: true },
+    );
+    if (started && existing && !existing.loggedAt) {
+      toast.info(`Switched to “${task.title}” — your previous timer was replaced.`);
+    }
     navigate({ to: "/focus/sprint" });
   };
 
