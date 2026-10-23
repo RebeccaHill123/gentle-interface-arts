@@ -636,8 +636,8 @@ function DashboardPage() {
   /** Start → Focus is one action: the session inherits the task's context. */
   const handleStartTodayItem = (task: ScheduledTask) => {
     const scheduled = findScheduled(task.id);
-    // Starting a scheduled task always replaces whatever session is running
-    // (e.g. a leftover quick sprint), so the timer matches the task's length.
+    // Reopen the same task without losing elapsed time; replace other timers
+    // (e.g. a leftover quick sprint) so they cannot override this task's length.
     const existing = loadSession();
     const { started } = startSession(
       {
@@ -661,7 +661,7 @@ function DashboardPage() {
             : undefined,
         origin: "today",
       },
-      { replace: true },
+      { replace: true, preserveSameTask: true },
     );
     if (started && existing && !existing.loggedAt) {
       toast.info(`Switched to “${task.title}” — your previous timer was replaced.`);
