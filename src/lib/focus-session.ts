@@ -99,13 +99,23 @@ export interface StartSessionInput {
 /**
  * Start a session. Returns the existing one untouched when a live session is
  * already running (single-session invariant) unless `replace` is set.
+ * Scheduled launches can preserve the same task while replacing other timers.
  */
 export function startSession(
   input: StartSessionInput,
-  options: { replace?: boolean } = {},
+  options: { replace?: boolean; preserveSameTask?: boolean } = {},
 ): { session: ActiveSession; started: boolean } {
   const existing = loadSession();
-  if (existing && !isStale(existing) && !existing.loggedAt && !options.replace) {
+  const sameTask = existing?.origin === "today" && input.origin === "today" && (
+    existing.planned && input.planned
+      ? existing.planned.taskId === input.planned.taskId &&
+        existing.planned.planId === input.planned.planId
+      : !existing.planned && !input.planned &&
+        existing.title === input.title && existing.module === input.module &&
+        existing.subtopic === input.subtopic
+  );
+  if (existing && !isStale(existing) && !existing.loggedAt &&
+      (!options.replace || (options.preserveSameTask && sameTask))) {
     return { session: existing, started: false };
   }
   const now = Date.now();
