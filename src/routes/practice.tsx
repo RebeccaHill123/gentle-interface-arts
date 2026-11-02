@@ -1255,24 +1255,6 @@ function ResultsScreen({
         ? "You moved fast — verify accuracy isn't slipping under speed."
         : "Pacing was within the exam-realistic band.";
 
-  function followUpDrill() {
-    const cfg: PracticeConfig = {
-      ...config,
-      formatLabel: "Follow-up drill",
-      questions: Math.min(PROVIDER_MAX_QUESTIONS, Math.max(5, wrong.length || 6)),
-      duration: Math.max(10, Math.round((wrong.length || 6) * 1.7)),
-      difficulty: "Adaptive",
-      rationale: `Targeted drill on the ${wrong.length} concepts you missed in your last ${config.formatLabel}.`,
-      reasonBits: ["Recently missed items", config.module],
-    };
-    try {
-      sessionStorage.setItem(PRACTICE_CONFIG_KEY, JSON.stringify(cfg));
-    } catch {}
-    clearSnapshot();
-    // Fresh mount with no search target so the queued follow-up config is used.
-    window.location.href = "/practice";
-  }
-
   return (
     <div className="mx-auto max-w-3xl">
       {/* Headline */}
@@ -1362,37 +1344,13 @@ function ResultsScreen({
         </Insight>
       </section>
 
-      {/* Recommended next steps */}
-      <section className="mt-5 rounded-2xl border border-border bg-card/70 p-5 backdrop-blur">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Recommended next steps
-        </div>
-        <ul className="mt-2 space-y-2 text-sm">
-          {wrong.length > 0 && (
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
-              Run a follow-up drill on the {wrong.length} concept
-              {wrong.length === 1 ? "" : "s"} you missed.
-            </li>
-          )}
-          {accuracyPct < 70 && (
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
-              Schedule a 30-minute review block on {config.module} this week.
-            </li>
-          )}
-          {accuracyPct >= 80 && (
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
-              Move to stretch difficulty or interleave a related module.
-            </li>
-          )}
-          <li className="flex items-start gap-2">
-            <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
-            Re-test in 3 days to lock in spacing-effect retention.
-          </li>
-        </ul>
-      </section>
+      {/* Smart Review: summary, per-question results, explanations, diagnosis, follow-ups */}
+      <SmartReviewResults
+        config={config}
+        questions={questions}
+        answers={answers}
+        flagged={flagged}
+      />
 
       {saveLabel && (
         <section
