@@ -535,6 +535,14 @@ function PracticeSessionPage() {
       persist();
     };
 
+    // Flagged (defective) questions are excluded from the recorded score.
+    const flaggedIdx = [...flaggedRef.current];
+    const adjusted = scoreSession({
+      questions: questionsRef.current,
+      answers: snap.answers,
+      flagged: flaggedIdx,
+    });
+
     if (parts.includes("activity")) {
       try {
         const result = await recordStudyActivity({
@@ -546,8 +554,8 @@ function PracticeSessionPage() {
           subject: cfg.module,
           subtopic: cfg.topic ?? undefined,
           examPath: examPathRef.current ?? null,
-          gradedAccuracy: snap.accuracy,
-          note: `${cfg.formatLabel} · ${snap.correct}/${snap.total}`,
+          gradedAccuracy: adjusted.accuracy,
+          note: `${cfg.formatLabel} · ${adjusted.correct}/${adjusted.scored}`,
         });
         commit(mergeWriteOutcome(status, "activity", result));
       } catch (e) {
@@ -558,27 +566,55 @@ function PracticeSessionPage() {
 
     if (parts.includes("attempts")) {
       try {
-        const attempts = questionsRef.current.map((q, i) => {
-          const selected = snap.answers[i] ?? null;
-          return {
-            idempotencyKey: makeIdempotencyKey("practice-attempt", snap.sessionId, i),
-            sourceType: "practice" as const,
-            sourceRef: snap.sessionId,
-            questionFingerprint: fingerprint(q.prompt ?? String(i)),
-            subject: cfg.module,
-            subtopic: cfg.topic ?? undefined,
-            occurredAt,
-            isCorrect: selected != null && selected === q.correctIndex,
-            selectedAnswer: selected != null ? String.fromCharCode(65 + selected) : null,
-            durationSeconds: Math.round((snap.perQuestionMs[i] ?? 0) / 1000),
-            examPath: examPathRef.current ?? null,
-          };
-        });
+        const attempts = questionsRef.current
+          .map((q, i) => ({ q, i }))
+          .filter(({ i }) => !flaggedRef.current.has(i))
+          .map(({ q, i }) => {
+            const selected = snap.answers[i] ?? null;
+            return {
+              idempotencyKey: makeIdempotencyKey("practice-attempt", snap.sessionId, i),
+              sourceType: "practice" as const,
+              sourceRef: snap.sessionId,
+              questionFingerprint: fingerprint(q.prompt ?? String(i)),
+              subject: cfg.module,
+              subtopic: cfg.topic ?? undefined,
+              occurredAt,
+              isCorrect: selected != null && selected === q.correctIndex,
+              selectedAnswer: selected != null ? String.fromCharCode(65 + selected) : null,
+              durationSeconds: Math.round((snap.perQuestionMs[i] ?? 0) / 1000),
+              examPath: examPathRef.current ?? null,
+            };
+          });
         const result = await recordGradedAttempts(attempts);
         commit(mergeWriteOutcome(status, "attempts", result));
       } catch (e) {
         console.warn("practice attempts write threw", e);
         commit(markWriteThrew(status, "attempts", "We couldn't record your answers yet."));
+      }
+
+      // Smart Review history: full question/answer snapshot with explanations.
+      // Idempotent via the session key, and best-effort — it never blocks the
+      // canonical completion writes above.
+      try {
+        const summary = buildSessionSummary({
+          subject: cfg.module,
+          questions: questionsRef.current,
+          answers: snap.answers,
+          flagged: flaggedIdx,
+        });
+        await saveSmartReviewSession({
+          idempotencyKey: makeIdempotencyKey("smart-review", snap.sessionId),
+          examPath: examPathRef.current ?? null,
+          subject: cfg.module,
+          subtopic: cfg.topic ?? null,
+          difficulty: cfg.difficulty,
+          questions: questionsRef.current,
+          answers: snap.answers,
+          flagged: flaggedIdx,
+          summary,
+        });
+      } catch (e) {
+        console.warn("smart review session save threw", e);
       }
     }
 
