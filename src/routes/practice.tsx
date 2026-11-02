@@ -1202,6 +1202,7 @@ function ResultsScreen({
   config,
   questions,
   final,
+  flagged,
   confidenceBefore,
   completion,
   retrying,
@@ -1212,6 +1213,7 @@ function ResultsScreen({
   config: PracticeConfig;
   questions: QuizQuestion[];
   final: FinalSnapshot;
+  flagged: number[];
   confidenceBefore: number | null;
   completion: CompletionStatus | null;
   retrying: boolean;
