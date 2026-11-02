@@ -166,6 +166,11 @@ export function validateSnapshot(raw: unknown): ActiveSnapshot | null {
         (n): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0 && n < total,
       )
     : [];
+  const flagged = Array.isArray(r.flagged)
+    ? r.flagged.filter(
+        (n): n is number => typeof n === "number" && Number.isInteger(n) && n >= 0 && n < total,
+      )
+    : [];
   const current =
     typeof r.current === "number" && Number.isInteger(r.current) && r.current >= 0 && r.current < total
       ? r.current
@@ -183,6 +188,7 @@ export function validateSnapshot(raw: unknown): ActiveSnapshot | null {
     questions,
     answers,
     revealed,
+    flagged,
     feedbackMode: r.feedbackMode === "end" ? "end" : "immediate",
     current,
     perQuestionMs,
