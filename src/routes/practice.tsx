@@ -778,6 +778,8 @@ function PracticeSessionPage() {
           onNext={nextQuestion}
           onPrev={prevQuestion}
           onFinish={() => void finishSession()}
+          flagged={flaggedSet.has(current)}
+          onToggleFlag={() => toggleFlag(current)}
         />
       )}
       {phase === "results" && config && finalSnapshot && (
@@ -785,6 +787,7 @@ function PracticeSessionPage() {
           config={config}
           questions={questions}
           final={finalSnapshot}
+          flagged={[...flaggedSet]}
           confidenceBefore={confidenceBefore}
           completion={completion}
           retrying={retrying}
@@ -1019,6 +1022,8 @@ function QuizScreen({
   onNext: () => void;
   onPrev: () => void;
   onFinish: () => void;
+  flagged: boolean;
+  onToggleFlag: () => void;
 }) {
   const q = questions[current];
   const total = questions.length;
