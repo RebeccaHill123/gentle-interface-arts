@@ -14,6 +14,63 @@ export type Database = {
   }
   public: {
     Tables: {
+      community_checkins: {
+        Row: {
+          created_at: string
+          exam_type: string
+          id: string
+          local_date: string
+          note: string | null
+          topic: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          exam_type: string
+          id?: string
+          local_date: string
+          note?: string | null
+          topic: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          exam_type?: string
+          id?: string
+          local_date?: string
+          note?: string | null
+          topic?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      community_members: {
+        Row: {
+          created_at: string
+          display_name: string
+          exam_type: string
+          opted_in: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          exam_type: string
+          opted_in?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          exam_type?: string
+          opted_in?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -769,6 +826,28 @@ export type Database = {
         Returns: {
           deleted_count: number
           expired_count: number
+        }[]
+      }
+      get_community_checkins: {
+        Args: never
+        Returns: {
+          created_at: string
+          display_name: string
+          id: string
+          is_me: boolean
+          note: string
+          topic: string
+        }[]
+      }
+      get_community_leaderboard: {
+        Args: never
+        Returns: {
+          display_name: string
+          is_me: boolean
+          streak_days: number
+          user_id: string
+          week_minutes: number
+          week_questions: number
         }[]
       }
     }

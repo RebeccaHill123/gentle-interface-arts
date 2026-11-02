@@ -15,6 +15,13 @@
       "when": 1793617779324,
       "tag": "0001_create_smart_review_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793633095855,
+      "tag": "0002_community_momentum",
+      "breakpoints": true
     }
   ]
 }
