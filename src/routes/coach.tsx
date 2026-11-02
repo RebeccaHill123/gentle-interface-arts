@@ -453,12 +453,36 @@ function CoachPage() {
     setHasPrior(false);
   }
 
+  /** Quiz results feed back into the transcript so the tutor retains context. */
+  function handleQuizComplete(summaryForTutor: string) {
+    setMessages((prev) => [...prev, { role: "assistant", content: summaryForTutor }]);
+  }
+
   async function send(textOverride?: string) {
     const text = (textOverride ?? input).trim();
     if (!text || isStreaming) return;
     setInput("");
 
     const userMsg: Msg = { role: "user", content: text };
+
+    // Tutor mode: an explicit quiz request with a usable topic launches an
+    // interactive Smart Review quiz inline instead of a text-only reply.
+    if (mode === "tutor") {
+      const spec = detectQuizRequest(text, planModules);
+      if (spec) {
+        setMessages((prev) => [
+          ...prev,
+          userMsg,
+          {
+            role: "assistant",
+            content: `Here's an interactive ${spec.count}-question ${spec.difficulty.toLowerCase()} quiz on **${spec.topic ?? spec.module}**. Answers stay hidden until you submit — your result is saved to Smart Review automatically, and I'll keep the context for follow-up questions.`,
+            quiz: spec,
+          },
+        ]);
+        return;
+      }
+    }
+
     const next: Msg[] = [...messages, userMsg];
 
     const visible: Msg[] = [...messages, userMsg];
@@ -748,7 +772,16 @@ function CoachPage() {
           >
             <div className="flex flex-col gap-6">
               {messages.map((m, i) => (
-                <Message key={i} role={m.role} content={m.content} firstName={firstName} />
+                <Message
+                  key={i}
+                  role={m.role}
+                  content={m.content}
+                  firstName={firstName}
+                  quiz={m.quiz}
+                  quizExamType={coachExam === "UBE" ? "UBE" : coachExam === "MPRE" ? "MPRE" : coachExam === "ACCA" ? "ACCA" : "SQE1"}
+                  quizExamPath={examPathStr}
+                  onQuizComplete={handleQuizComplete}
+                />
               ))}
               {isStreaming && messages[messages.length - 1]?.role === "user" && (
                 <div className="flex items-center gap-2 pl-11 text-xs text-muted-foreground animate-fade-in">
