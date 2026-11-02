@@ -104,7 +104,7 @@ function CommunityPage() {
 
   async function join(anonymous: boolean) {
     if (!userId) return;
-    const display = anonymous || !name.trim() ? `${label.short ?? examType} candidate` : name.trim().slice(0, 40);
+    const display = anonymous || !name.trim() ? `${label} candidate` : name.trim().slice(0, 40);
     setBusy(true);
     const { error } = await supabase.from("community_members").upsert({ user_id: userId, exam_type: examType, display_name: display, opted_in: true });
     setBusy(false);
@@ -136,7 +136,7 @@ function CommunityPage() {
     await refresh();
   }
 
-  const cohort = `${label.short ?? examType} candidates`;
+  const cohort = `${label} candidates`;
   const myCheckin = checkins.find((c) => c.is_me);
 
   if (!ready) {
@@ -154,7 +154,7 @@ function CommunityPage() {
           <div className="grid h-14 w-14 place-items-center rounded-2xl bg-gradient-pink-blue shadow-glow">
             <Users className="h-6 w-6 text-primary-foreground" />
           </div>
-          <h2 className="mt-5 text-2xl font-semibold text-foreground">Join your {label.short ?? examType} cohort</h2>
+          <h2 className="mt-5 text-2xl font-semibold text-foreground">Join your {label} cohort</h2>
           <p className="mt-2 max-w-xl text-sm text-muted-foreground">
             See this week's study momentum, keep your streak visible and share what you're revising today.
             Only other {cohort} see you, and only your study minutes, question count and streak are shared — never your scores.
