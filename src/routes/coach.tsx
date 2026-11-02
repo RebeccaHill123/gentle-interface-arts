@@ -26,8 +26,43 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadPlan, computeStreak } from "@/lib/plan-store";
 import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
 import { getExamLabel } from "@/lib/exam-label";
+import { ChatQuizCard, type ChatQuizSpec } from "@/components/smart-review/chat-quiz-card";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; quiz?: ChatQuizSpec };
+
+/**
+ * Detects an interactive-quiz request in Tutor mode. Returns null when the
+ * request has no usable topic — the tutor then asks which topic conversationally.
+ */
+function detectQuizRequest(text: string, modules: string[]): ChatQuizSpec | null {
+  const t = text.toLowerCase();
+  const asksQuiz =
+    /\b(quiz|test me|mcqs?|multiple[- ]choice|questions?|sbas?|drill|practise|practice)\b/.test(t);
+  if (!asksQuiz) return null;
+
+  const countMatch = /(\d{1,2})\s*(?:questions?|mcqs?|sbas?|ots?)/.exec(t);
+  const rawCount = countMatch ? parseInt(countMatch[1], 10) : 5;
+  const count = rawCount <= 7 ? 5 : rawCount <= 12 ? 10 : rawCount <= 17 ? 15 : 20;
+
+  const difficulty: ChatQuizSpec["difficulty"] = /\beasy\b|easier|foundational/.test(t)
+    ? "Easy"
+    : /\bhard(?:er)?\b|stretch|advanced/.test(t)
+      ? "Hard"
+      : /\bmedium\b|intermediate/.test(t)
+        ? "Medium"
+        : "Mixed";
+
+  // Prefer an exact match against the student's plan modules.
+  const moduleMatch = modules.find((m) => t.includes(m.toLowerCase()));
+  if (moduleMatch) {
+    return { module: moduleMatch, topic: moduleMatch, count, difficulty };
+  }
+
+  const topicMatch = /(?:on|about|in)\s+([a-z][a-z0-9 &,()'/\-]{2,80}?)(?:[.?!,]|$)/i.exec(text);
+  const topic = topicMatch?.[1]?.trim();
+  if (!topic || /my choice|a topic|something|anything/i.test(topic)) return null;
+  return { module: topic, topic, count, difficulty };
+}
 type Suggestion = { label: string; prompt: string };
 type Mode = "coach" | "tutor";
 type CoachExam = "SQE" | "UBE" | "MPRE" | "ACCA";
@@ -164,6 +199,8 @@ function CoachPage() {
   const [thinkingIdx, setThinkingIdx] = useState(0);
   const [hasPrior, setHasPrior] = useState(false);
   const [coachExam, setCoachExam] = useState<CoachExam>("SQE");
+  const [planModules, setPlanModules] = useState<string[]>([]);
+  const [examPathStr, setExamPathStr] = useState<string | undefined>(undefined);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
