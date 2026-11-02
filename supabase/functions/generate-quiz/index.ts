@@ -1,8 +1,15 @@
-// Edge function: generate a 10-question multiple-choice quiz for a given exam topic
+// Edge function: generate a multiple-choice quiz for a given exam topic
 //
 // Cost-incurring: verifies the caller's bearer token and real Tentra entitlement
 // BEFORE the AI gateway is touched. Status semantics: 401 unauthenticated,
 // 403 no active access, 503 entitlement read failure, 400 invalid input.
+//
+// Smart Review extensions:
+// - `count`: 5, 10, 15 or 20 questions (default 10).
+// - `difficulty`: "Easy" | "Medium" | "Hard" | "Mixed" — explicit choice wins
+//   over the confidence-derived default.
+// - Each question carries `optionExplanations` (why every option is right or
+//   wrong) and a short `memoryRule` takeaway, alongside the main `explanation`.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.58.0";
 
 const corsHeaders = {
@@ -16,11 +23,17 @@ const jsonHeaders = { ...corsHeaders, "Content-Type": "application/json" };
 const EXAM_TYPES = ["SQE1", "SQE2", "UBE", "MPRE", "ACCA"] as const;
 type ExamType = (typeof EXAM_TYPES)[number];
 
+const QUESTION_COUNTS = [5, 10, 15, 20] as const;
+const DIFFICULTIES = ["Easy", "Medium", "Hard", "Mixed"] as const;
+type Difficulty = (typeof DIFFICULTIES)[number];
+
 interface QuizRequest {
   module: string;
   topic?: string;
   examType: ExamType;
   confidence: number;
+  count: number;
+  difficulty?: Difficulty;
 }
 
 function fail(status: number, error: string) {
@@ -54,13 +67,33 @@ function validateBody(
     if (!Number.isFinite(c)) return { ok: false, error: "Invalid confidence" };
     confidence = Math.min(5, Math.max(1, Math.round(c)));
   }
+  let count = 10;
+  if (r["count"] !== undefined && r["count"] !== null) {
+    const n = Number(r["count"]);
+    if (!Number.isFinite(n) || !(QUESTION_COUNTS as readonly number[]).includes(n)) {
+      return { ok: false, error: "Invalid count" };
+    }
+    count = n;
+  }
+  let difficulty: Difficulty | undefined;
+  if (r["difficulty"] !== undefined && r["difficulty"] !== null) {
+    if (
+      typeof r["difficulty"] !== "string" ||
+      !(DIFFICULTIES as readonly string[]).includes(r["difficulty"])
+    ) {
+      return { ok: false, error: "Invalid difficulty" };
+    }
+    difficulty = r["difficulty"] as Difficulty;
+  }
   return {
     ok: true,
     value: {
       examType: examType as ExamType,
       module: mod,
       confidence,
+      count,
       ...(topic ? { topic } : {}),
+      ...(difficulty ? { difficulty } : {}),
     },
   };
 }
@@ -136,12 +169,20 @@ Deno.serve(async (req) => {
       return fail(503, "Quiz generation is temporarily unavailable.");
     }
 
-    const difficulty =
-      body.confidence <= 2
+    const difficulty: string =
+      body.difficulty === "Easy"
         ? "introductory"
-        : body.confidence >= 4
-          ? "advanced, exam-realistic"
-          : "intermediate";
+        : body.difficulty === "Medium"
+          ? "intermediate"
+          : body.difficulty === "Hard"
+            ? "advanced, exam-realistic"
+            : body.difficulty === "Mixed"
+              ? "mixed-difficulty (a deliberate spread from introductory to advanced, exam-realistic)"
+              : body.confidence <= 2
+                ? "introductory"
+                : body.confidence >= 4
+                  ? "advanced, exam-realistic"
+                  : "intermediate";
 
     const isUbe = body.examType === "UBE";
     const isMpre = body.examType === "MPRE";
@@ -162,10 +203,14 @@ Deno.serve(async (req) => {
           ? "Make the questions varied, ethics-scenario based, and grounded in professional-responsibility duties, conflicts, confidentiality, fees, advertising, judicial conduct and discipline. Avoid trick wording."
           : "Make the questions varied, scenario-based where appropriate, and grounded in current English & Welsh law. Avoid trick wording.";
 
-    const userPrompt = `Write a 10-question ${difficulty} ${body.examType} mini-assessment.
+    const teachingNote =
+      "For every question: the `explanation` must teach the underlying rule or concept (not just restate the answer); `optionExplanations` must give one short reason per option (in the same order as `options`) explaining why that specific option is correct or incorrect, naming the misunderstanding a wrong option reflects where identifiable; `memoryRule` must be a single concise exam takeaway or mnemonic a student can memorise.";
+
+    const userPrompt = `Write a ${body.count}-question ${difficulty} ${body.examType} assessment.
 Module: ${body.module}
 ${body.topic ? `Specific topic / today's task: ${body.topic}` : ""}
-${jurisdictionNote}`;
+${jurisdictionNote}
+${teachingNote}`;
 
     const callGateway = async () =>
       fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -185,13 +230,13 @@ ${jurisdictionNote}`;
               type: "function",
               function: {
                 name: "mini_assessment",
-                description: "10-question exam-specific multiple-choice mini-assessment",
+                description: `${body.count}-question exam-specific multiple-choice assessment with teaching explanations`,
                 parameters: {
                   type: "object",
                   properties: {
                     questions: {
                       type: "array",
-                      description: "Exactly 10 questions",
+                      description: `Exactly ${body.count} questions`,
                       items: {
                         type: "object",
                         properties: {
@@ -205,9 +250,31 @@ ${jurisdictionNote}`;
                             type: "number",
                             description: "0-3, index of the correct option",
                           },
-                          explanation: { type: "string" },
+                          explanation: {
+                            type: "string",
+                            description:
+                              "Teaches the underlying rule or concept and why the correct answer is right",
+                          },
+                          optionExplanations: {
+                            type: "array",
+                            description:
+                              "Exactly 4 short explanations, one per option in the same order, each saying why that option is correct or incorrect",
+                            items: { type: "string" },
+                          },
+                          memoryRule: {
+                            type: "string",
+                            description:
+                              "One concise exam memory rule or takeaway for this question's concept",
+                          },
                         },
-                        required: ["prompt", "options", "correctIndex", "explanation"],
+                        required: [
+                          "prompt",
+                          "options",
+                          "correctIndex",
+                          "explanation",
+                          "optionExplanations",
+                          "memoryRule",
+                        ],
                       },
                     },
                   },
@@ -291,10 +358,11 @@ ${jurisdictionNote}`;
       return fail(502, "Couldn't generate quiz. Please try again.");
     }
 
-    // The model sometimes over-delivers; cap the payload (a few spares let the app drop duplicates and still reach exactly 10).
-    return new Response(JSON.stringify({ questions: quiz.questions.slice(0, 20) }), {
-      headers: jsonHeaders,
-    });
+    // The model sometimes over-delivers; cap the payload (a few spares let the app drop duplicates and still reach the requested count).
+    return new Response(
+      JSON.stringify({ questions: quiz.questions.slice(0, body.count + 5) }),
+      { headers: jsonHeaders },
+    );
   } catch (e) {
     console.error("generate-quiz error", e);
     return fail(500, "Couldn't generate quiz. Please try again.");
