@@ -35,15 +35,21 @@ import {
   PRACTICE_CONFIG_KEY,
   PROVIDER_MAX_QUESTIONS,
   configFingerprint,
+  generatorDifficulty,
   resolvePracticeConfig,
   type PracticeConfig,
   type PracticeSearch,
 } from "@/lib/practice/config";
 import {
   MIN_USABLE_QUESTIONS,
+  seedFromFingerprint,
+  shuffleQuestionOptions,
   validateQuizQuestions,
   type QuizQuestion,
 } from "@/lib/practice/quiz-validate";
+import { buildSessionSummary } from "@/lib/smart-review/summary";
+import { saveSmartReviewSession, scoreSession } from "@/lib/smart-review/sessions";
+import { SmartReviewResults } from "@/components/smart-review/results";
 import { accaQuestionsFor } from "@/lib/acca-questions";
 import {
   ACTIVE_MAX_AGE_MS,
@@ -163,6 +169,7 @@ function PracticeSessionPage() {
   const [examPath, setExamPath] = useState<string | undefined>(undefined);
   const [completion, setCompletion] = useState<CompletionStatus | null>(null);
   const [finalSnapshot, setFinalSnapshot] = useState<FinalSnapshot | null>(null);
+  const [flaggedSet, setFlaggedSet] = useState<Set<number>>(new Set());
   const [retrying, setRetrying] = useState(false);
   const retryLockRef = useRef(false);
 
