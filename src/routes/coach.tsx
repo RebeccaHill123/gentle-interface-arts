@@ -223,6 +223,8 @@ function CoachPage() {
       const plan = loadPlan();
       if (plan) {
         setCoachExam(getExamLabel(plan.input.examType, plan.input.examPath));
+        setPlanModules(plan.input.modules.map((m) => m.name));
+        setExamPathStr(plan.input.examPath ?? undefined);
         setStreak(computeStreak(plan.sessions).current);
         setAnalytics(await loadAnalytics(plan));
         if (plan.input?.examDate) {
@@ -246,13 +248,17 @@ function CoachPage() {
     } catch {}
   }, []);
 
-  // Persist conversation
+  // Persist conversation (text only — live quiz cards never survive a reload;
+  // their outcome is preserved through the assistant summary message).
   useEffect(() => {
     if (messages.length === 0) return;
     try {
       localStorage.setItem(
         HISTORY_KEY,
-        JSON.stringify({ messages: messages.slice(-30), savedAt: Date.now() }),
+        JSON.stringify({
+          messages: messages.slice(-30).map(({ role, content }) => ({ role, content })),
+          savedAt: Date.now(),
+        }),
       );
       setHasPrior(true);
     } catch {}
