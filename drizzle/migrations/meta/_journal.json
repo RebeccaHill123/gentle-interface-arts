@@ -8,6 +8,13 @@
       "when": 1792072120423,
       "tag": "0000_lock_generated_flashcards",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793617779324,
+      "tag": "0001_create_smart_review_sessions",
+      "breakpoints": true
     }
   ]
 }
