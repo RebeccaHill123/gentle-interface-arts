@@ -11,9 +11,11 @@
  *   deliver, so the UI never promises more questions than it hands over.
  */
 
-/** The generate-quiz function is prompt-and-schema bound to a 10-question set. */
-export const PROVIDER_MAX_QUESTIONS = 10;
+/** The generate-quiz function accepts 5, 10, 15 or 20-question sets. */
+export const PROVIDER_MAX_QUESTIONS = 20;
 export const PROVIDER_MIN_QUESTIONS = 4;
+/** Question counts the Smart Review launcher offers. */
+export const SMART_REVIEW_COUNTS = [5, 10, 15, 20] as const;
 
 export const PRACTICE_CONFIG_KEY = "practice:config";
 
