@@ -125,6 +125,7 @@ export function buildSubtopicPerformance(attempts: GradedAttemptRow[]): Subtopic
     const recentAccuracy = accuracyOf(recentCorrect, recent.length);
     const earlierAccuracy = accuracyOf(earlierCorrect, earlier.length);
     const sittings = new Set(list.map((a) => a.local_date)).size;
+    const missDays = new Set(list.filter((a) => !a.is_correct).map((a) => a.local_date)).size;
     const status = statusFor({ attempted, accuracy, recentAccuracy, sittings });
 
     out.push({
@@ -140,6 +141,7 @@ export function buildSubtopicPerformance(attempts: GradedAttemptRow[]): Subtopic
           ? recentAccuracy > earlierAccuracy
           : null,
       sittings,
+      missDays,
       lastAttemptAt: list[list.length - 1]?.occurred_at ?? null,
       status,
       needsTargetedReview: status === "needs-review",
