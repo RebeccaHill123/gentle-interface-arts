@@ -59,8 +59,11 @@ function detectQuizRequest(text: string, modules: string[]): ChatQuizSpec | null
   }
 
   const topicMatch = /(?:on|about|in)\s+([a-z][a-z0-9 &,()'/\-]{2,80}?)(?:[.?!,]|$)/i.exec(text);
-  const topic = topicMatch?.[1]?.trim();
-  if (!topic || /my choice|a topic|something|anything/i.test(topic)) return null;
+  // Strip trailing delivery instructions ("one at a time", "one per question").
+  const topic = topicMatch?.[1]
+    ?.replace(/(?:\s*[—–-]\s*)?one (?:at a time|per question).*$/i, "")
+    .trim();
+  if (!topic || /my choice|a topic|something|anything|per question/i.test(topic)) return null;
   return { module: topic, topic, count, difficulty };
 }
 type Suggestion = { label: string; prompt: string };
