@@ -22,6 +22,13 @@
       "when": 1793633095855,
       "tag": "0002_community_momentum",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793633250771,
+      "tag": "0003_community_messages",
+      "breakpoints": true
     }
   ]
 }

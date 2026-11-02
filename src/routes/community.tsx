@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { loadPlan } from "@/lib/plan-store";
 import { getExamLabel } from "@/lib/exam-label";
+import { CommunityChat } from "@/components/community-chat";
 
 export const Route = createFileRoute("/community")({
   beforeLoad: async () => {
@@ -233,6 +234,9 @@ function CommunityPage() {
           )}
         </section>
       </div>
+      {userId && (
+        <CommunityChat userId={userId} examType={member.exam_type} displayName={member.display_name} cohortLabel={cohort} />
+      )}
       <p className="mt-6 text-xs text-muted-foreground">
         Showing as <span className="font-medium">{member.display_name}</span>.{" "}
         <button type="button" onClick={leave} className="underline">Hide me from the community</button>
