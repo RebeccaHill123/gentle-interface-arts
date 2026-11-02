@@ -1008,6 +1008,8 @@ function QuizScreen({
   onNext,
   onPrev,
   onFinish,
+  flagged,
+  onToggleFlag,
 }: {
   config: PracticeConfig;
   questions: QuizQuestion[];
@@ -1043,6 +1045,23 @@ function QuizScreen({
             Question {current + 1} <span className="text-muted-foreground">/ {total}</span>
           </span>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onToggleFlag}
+              title={
+                flagged
+                  ? "Flagged as defective — excluded from your score. Tap to undo."
+                  : "Flag this question as ambiguous or defective — it will be excluded from your score."
+              }
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 transition ${
+                flagged
+                  ? "border-amber-400/60 bg-amber-400/10 text-amber-300"
+                  : "border-border bg-background/60 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Flag className="h-3 w-3" />
+              {flagged ? "Flagged" : "Flag"}
+            </button>
             <span className="rounded-full border border-border bg-background/60 px-2 py-0.5">
               {config.module}
             </span>
