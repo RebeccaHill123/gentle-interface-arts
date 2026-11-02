@@ -21,9 +21,10 @@ export const ACTIVE_SNAPSHOT_KEY = "practice:active:v1";
 /**
  * v2 adds `questionStartedAt` so the live question interval survives reload.
  * v1 snapshots are migrated (they simply have no recoverable live interval).
+ * v3 adds `flagged` (defective-question flags excluded from the score).
  */
-export const ACTIVE_SNAPSHOT_VERSION = 2;
-const SUPPORTED_SNAPSHOT_VERSIONS = [1, 2];
+export const ACTIVE_SNAPSHOT_VERSION = 3;
+const SUPPORTED_SNAPSHOT_VERSIONS = [1, 2, 3];
 /** An abandoned session stops being restorable after this long. */
 export const ACTIVE_MAX_AGE_MS = 12 * 60 * 60 * 1000;
 const MAX_SNAPSHOT_CHARS = 400_000;
@@ -60,6 +61,8 @@ export type ActiveSnapshot = {
   questions: QuizQuestion[];
   answers: (number | null)[];
   revealed: number[];
+  /** Indices flagged as defective — excluded from the recorded score. */
+  flagged: number[];
   feedbackMode: "immediate" | "end";
   current: number;
   perQuestionMs: number[];
