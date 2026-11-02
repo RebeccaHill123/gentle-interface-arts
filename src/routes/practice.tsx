@@ -187,6 +187,7 @@ function PracticeSessionPage() {
   const finalRef = useRef<FinalSnapshot | null>(null);
   const feedbackRef = useRef<"immediate" | "end">("immediate");
   const revealedRef = useRef<Set<number>>(new Set());
+  const flaggedRef = useRef<Set<number>>(new Set());
   const phaseRef = useRef<Phase>("loading");
   const startedAtRef = useRef<number | null>(null);
   const deadlineRef = useRef<number | null>(null);
@@ -204,6 +205,7 @@ function PracticeSessionPage() {
       questions: questionsRef.current,
       answers: answersRef.current,
       revealed: Array.from(revealedRef.current),
+      flagged: Array.from(flaggedRef.current),
       feedbackMode: feedbackRef.current,
       current: currentRef.current,
       perQuestionMs: perRef.current,
