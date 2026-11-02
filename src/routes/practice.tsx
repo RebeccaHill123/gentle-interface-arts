@@ -1384,14 +1384,6 @@ function ResultsScreen({
         <Button variant="outline" onClick={onRetry} className="rounded-full">
           <RefreshCw className="mr-1 h-4 w-4" /> Retry session
         </Button>
-        {wrong.length > 0 && (
-          <Button
-            onClick={followUpDrill}
-            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
-          >
-            <Sparkles className="mr-1 h-4 w-4" /> Follow-up drill
-          </Button>
-        )}
         <Button variant="ghost" onClick={onNewDrill}>
           New session
         </Button>
