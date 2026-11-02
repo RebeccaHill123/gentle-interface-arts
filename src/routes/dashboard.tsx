@@ -712,6 +712,25 @@ function DashboardPage() {
 
         {schedule && <WeeklyReview schedule={schedule} today={today} />}
 
+        <section className="rounded-2xl border border-border/40 bg-card p-5 shadow-card">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-medium text-foreground">Smart Review</h2>
+              <p className="mt-1 text-xs text-muted-foreground/80">
+                Your strengths, weaknesses and quiz history — updated from every graded answer.
+              </p>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="rounded-full"
+              onClick={() => navigate({ to: "/smart-review" })}
+            >
+              Open Smart Review
+            </Button>
+          </div>
+        </section>
+
         {revision && (
           <section className="rounded-2xl border border-border/40 bg-card p-5 shadow-card">
             <div className="flex items-start justify-between gap-4">

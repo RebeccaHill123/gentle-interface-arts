@@ -9,6 +9,7 @@ import {
   Scale,
   Compass,
   BarChart3,
+  Target,
   Users,
   Settings as SettingsIcon,
   ArrowLeft,
@@ -27,6 +28,7 @@ export type AppRoute =
   | "/mocks"
   | "/topics"
   | "/analytics"
+  | "/smart-review"
   | "/community"
   | "/settings";
 
@@ -42,6 +44,7 @@ const NAV: { to: AppRoute; label: string; icon: typeof LayoutDashboard }[] = [
 
 // Supporting surfaces: reachable, but never competing with the daily loop.
 const SECONDARY_NAV: { to: AppRoute; label: string; icon: typeof LayoutDashboard }[] = [
+  { to: "/smart-review", label: "Smart Review", icon: Target },
   { to: "/focus", label: "Focus timer", icon: Flame },
   { to: "/mocks", label: "Mock exams", icon: Scale },
   { to: "/topics", label: "Topic map", icon: Compass },

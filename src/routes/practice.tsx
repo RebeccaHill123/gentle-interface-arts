@@ -35,15 +35,21 @@ import {
   PRACTICE_CONFIG_KEY,
   PROVIDER_MAX_QUESTIONS,
   configFingerprint,
+  generatorDifficulty,
   resolvePracticeConfig,
   type PracticeConfig,
   type PracticeSearch,
 } from "@/lib/practice/config";
 import {
   MIN_USABLE_QUESTIONS,
+  seedFromFingerprint,
+  shuffleQuestionOptions,
   validateQuizQuestions,
   type QuizQuestion,
 } from "@/lib/practice/quiz-validate";
+import { buildSessionSummary } from "@/lib/smart-review/summary";
+import { saveSmartReviewSession, scoreSession } from "@/lib/smart-review/sessions";
+import { SmartReviewResults } from "@/components/smart-review/results";
 import { accaQuestionsFor } from "@/lib/acca-questions";
 import {
   ACTIVE_MAX_AGE_MS,
@@ -163,6 +169,7 @@ function PracticeSessionPage() {
   const [examPath, setExamPath] = useState<string | undefined>(undefined);
   const [completion, setCompletion] = useState<CompletionStatus | null>(null);
   const [finalSnapshot, setFinalSnapshot] = useState<FinalSnapshot | null>(null);
+  const [flaggedSet, setFlaggedSet] = useState<Set<number>>(new Set());
   const [retrying, setRetrying] = useState(false);
   const retryLockRef = useRef(false);
 
@@ -180,6 +187,7 @@ function PracticeSessionPage() {
   const finalRef = useRef<FinalSnapshot | null>(null);
   const feedbackRef = useRef<"immediate" | "end">("immediate");
   const revealedRef = useRef<Set<number>>(new Set());
+  const flaggedRef = useRef<Set<number>>(new Set());
   const phaseRef = useRef<Phase>("loading");
   const startedAtRef = useRef<number | null>(null);
   const deadlineRef = useRef<number | null>(null);
@@ -197,6 +205,7 @@ function PracticeSessionPage() {
       questions: questionsRef.current,
       answers: answersRef.current,
       revealed: Array.from(revealedRef.current),
+      flagged: Array.from(flaggedRef.current),
       feedbackMode: feedbackRef.current,
       current: currentRef.current,
       perQuestionMs: perRef.current,
@@ -286,6 +295,8 @@ function PracticeSessionPage() {
       setAnswers(s.answers);
       revealedRef.current = new Set(s.revealed);
       setRevealedSet(new Set(s.revealed));
+      flaggedRef.current = new Set(s.flagged);
+      setFlaggedSet(new Set(s.flagged));
       feedbackRef.current = s.feedbackMode;
       setFeedbackMode(s.feedbackMode);
       currentRef.current = s.current;
@@ -345,6 +356,8 @@ function PracticeSessionPage() {
               topic: cfg.topic ?? cfg.formatLabel,
               examType,
               confidence: mod?.confidence ?? 3,
+              count: cfg.questions,
+              difficulty: generatorDifficulty(cfg.difficulty),
             },
           });
           if (cancelled) return;
@@ -366,6 +379,11 @@ function PracticeSessionPage() {
             ];
           }
         }
+        // Smart Review: randomise correct-answer positions so they never form
+        // a predictable pattern. Seeded per session, so a restored snapshot
+        // (which stores the shuffled questions) stays consistent.
+        const seed = seedFromFingerprint(fp);
+        qs = qs.map((q, i) => shuffleQuestionOptions(q, seed + i));
         if (qs.length !== cfg.questions) {
           // Run honestly with what the generator actually delivered. The
           // fingerprint stays bound to the original request so a reload still
@@ -477,6 +495,16 @@ function PracticeSessionPage() {
     persist();
   }
 
+  /** Flags/unflags a defective question; flagged items are excluded from the score. */
+  function toggleFlag(index: number) {
+    const next = new Set(flaggedRef.current);
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
+    flaggedRef.current = next;
+    setFlaggedSet(next);
+    persist();
+  }
+
   function nextQuestion() {
     if (currentRef.current < questionsRef.current.length - 1) {
       goTo(currentRef.current + 1);
@@ -507,6 +535,14 @@ function PracticeSessionPage() {
       persist();
     };
 
+    // Flagged (defective) questions are excluded from the recorded score.
+    const flaggedIdx = [...flaggedRef.current];
+    const adjusted = scoreSession({
+      questions: questionsRef.current,
+      answers: snap.answers,
+      flagged: flaggedIdx,
+    });
+
     if (parts.includes("activity")) {
       try {
         const result = await recordStudyActivity({
@@ -518,8 +554,8 @@ function PracticeSessionPage() {
           subject: cfg.module,
           subtopic: cfg.topic ?? undefined,
           examPath: examPathRef.current ?? null,
-          gradedAccuracy: snap.accuracy,
-          note: `${cfg.formatLabel} · ${snap.correct}/${snap.total}`,
+          gradedAccuracy: adjusted.accuracy,
+          note: `${cfg.formatLabel} · ${adjusted.correct}/${adjusted.scored}`,
         });
         commit(mergeWriteOutcome(status, "activity", result));
       } catch (e) {
@@ -530,32 +566,76 @@ function PracticeSessionPage() {
 
     if (parts.includes("attempts")) {
       try {
-        const attempts = questionsRef.current.map((q, i) => {
-          const selected = snap.answers[i] ?? null;
-          return {
-            idempotencyKey: makeIdempotencyKey("practice-attempt", snap.sessionId, i),
-            sourceType: "practice" as const,
-            sourceRef: snap.sessionId,
-            questionFingerprint: fingerprint(q.prompt ?? String(i)),
-            subject: cfg.module,
-            subtopic: cfg.topic ?? undefined,
-            occurredAt,
-            isCorrect: selected != null && selected === q.correctIndex,
-            selectedAnswer: selected != null ? String.fromCharCode(65 + selected) : null,
-            durationSeconds: Math.round((snap.perQuestionMs[i] ?? 0) / 1000),
-            examPath: examPathRef.current ?? null,
-          };
-        });
+        const attempts = questionsRef.current
+          .map((q, i) => ({ q, i }))
+          .filter(({ i }) => !flaggedRef.current.has(i))
+          .map(({ q, i }) => {
+            const selected = snap.answers[i] ?? null;
+            return {
+              idempotencyKey: makeIdempotencyKey("practice-attempt", snap.sessionId, i),
+              sourceType: "practice" as const,
+              sourceRef: snap.sessionId,
+              questionFingerprint: fingerprint(q.prompt ?? String(i)),
+              subject: cfg.module,
+              subtopic: cfg.topic ?? undefined,
+              occurredAt,
+              isCorrect: selected != null && selected === q.correctIndex,
+              selectedAnswer: selected != null ? String.fromCharCode(65 + selected) : null,
+              durationSeconds: Math.round((snap.perQuestionMs[i] ?? 0) / 1000),
+              examPath: examPathRef.current ?? null,
+            };
+          });
         const result = await recordGradedAttempts(attempts);
         commit(mergeWriteOutcome(status, "attempts", result));
       } catch (e) {
         console.warn("practice attempts write threw", e);
         commit(markWriteThrew(status, "attempts", "We couldn't record your answers yet."));
       }
+
+      // Smart Review history: full question/answer snapshot with explanations.
+      // Idempotent via the session key, and best-effort — it never blocks the
+      // canonical completion writes above.
+      try {
+        const summary = buildSessionSummary({
+          subject: cfg.module,
+          questions: questionsRef.current,
+          answers: snap.answers,
+          flagged: flaggedIdx,
+        });
+        await saveSmartReviewSession({
+          idempotencyKey: makeIdempotencyKey("smart-review", snap.sessionId),
+          examPath: examPathRef.current ?? null,
+          subject: cfg.module,
+          subtopic: cfg.topic ?? null,
+          difficulty: cfg.difficulty,
+          questions: questionsRef.current,
+          answers: snap.answers,
+          flagged: flaggedIdx,
+          summary,
+        });
+      } catch (e) {
+        console.warn("smart review session save threw", e);
+      }
     }
 
     if (completionAccepted(status) && !status.activityQueuedOnly && !status.attemptsQueuedOnly) {
       clearSnapshot();
+    }
+
+    // Smart Review → planner: a weak result feeds the adaptive schedule through
+    // the existing evidence pipeline (accuracy < 70% raises subject priority).
+    // Best-effort and idempotent — unchanged evidence is a no-op.
+    if (completionAccepted(status) && adjusted.scored > 0 && adjusted.accuracy < 0.7) {
+      void (async () => {
+        const [{ loadAnalytics }, { ensureSchedule }] = await Promise.all([
+          import("@/lib/analytics-derive"),
+          import("@/lib/plan/store"),
+        ]);
+        const stored = loadPlan();
+        if (!stored) return;
+        const analytics = await loadAnalytics(stored);
+        await ensureSchedule(stored, analytics, "graded-performance");
+      })().catch((e) => console.warn("graded-performance recalibration failed", e));
     }
     return status;
   }
@@ -635,6 +715,8 @@ function PracticeSessionPage() {
     setPerQuestionMs(perRef.current);
     revealedRef.current = new Set();
     setRevealedSet(new Set());
+    flaggedRef.current = new Set();
+    setFlaggedSet(new Set());
     completionRef.current = null;
     setCompletion(null);
     finalRef.current = null;
@@ -696,6 +778,8 @@ function PracticeSessionPage() {
           onNext={nextQuestion}
           onPrev={prevQuestion}
           onFinish={() => void finishSession()}
+          flagged={flaggedSet.has(current)}
+          onToggleFlag={() => toggleFlag(current)}
         />
       )}
       {phase === "results" && config && finalSnapshot && (
@@ -703,6 +787,7 @@ function PracticeSessionPage() {
           config={config}
           questions={questions}
           final={finalSnapshot}
+          flagged={[...flaggedSet]}
           confidenceBefore={confidenceBefore}
           completion={completion}
           retrying={retrying}
@@ -923,6 +1008,8 @@ function QuizScreen({
   onNext,
   onPrev,
   onFinish,
+  flagged,
+  onToggleFlag,
 }: {
   config: PracticeConfig;
   questions: QuizQuestion[];
@@ -937,6 +1024,8 @@ function QuizScreen({
   onNext: () => void;
   onPrev: () => void;
   onFinish: () => void;
+  flagged: boolean;
+  onToggleFlag: () => void;
 }) {
   const q = questions[current];
   const total = questions.length;
@@ -956,6 +1045,23 @@ function QuizScreen({
             Question {current + 1} <span className="text-muted-foreground">/ {total}</span>
           </span>
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onToggleFlag}
+              title={
+                flagged
+                  ? "Flagged as defective — excluded from your score. Tap to undo."
+                  : "Flag this question as ambiguous or defective — it will be excluded from your score."
+              }
+              className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 transition ${
+                flagged
+                  ? "border-amber-400/60 bg-amber-400/10 text-amber-300"
+                  : "border-border bg-background/60 text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Flag className="h-3 w-3" />
+              {flagged ? "Flagged" : "Flag"}
+            </button>
             <span className="rounded-full border border-border bg-background/60 px-2 py-0.5">
               {config.module}
             </span>
@@ -1096,6 +1202,7 @@ function ResultsScreen({
   config,
   questions,
   final,
+  flagged,
   confidenceBefore,
   completion,
   retrying,
@@ -1106,6 +1213,7 @@ function ResultsScreen({
   config: PracticeConfig;
   questions: QuizQuestion[];
   final: FinalSnapshot;
+  flagged: number[];
   confidenceBefore: number | null;
   completion: CompletionStatus | null;
   retrying: boolean;
@@ -1146,24 +1254,6 @@ function ResultsScreen({
       : avgSec < 45
         ? "You moved fast — verify accuracy isn't slipping under speed."
         : "Pacing was within the exam-realistic band.";
-
-  function followUpDrill() {
-    const cfg: PracticeConfig = {
-      ...config,
-      formatLabel: "Follow-up drill",
-      questions: Math.min(PROVIDER_MAX_QUESTIONS, Math.max(5, wrong.length || 6)),
-      duration: Math.max(10, Math.round((wrong.length || 6) * 1.7)),
-      difficulty: "Adaptive",
-      rationale: `Targeted drill on the ${wrong.length} concepts you missed in your last ${config.formatLabel}.`,
-      reasonBits: ["Recently missed items", config.module],
-    };
-    try {
-      sessionStorage.setItem(PRACTICE_CONFIG_KEY, JSON.stringify(cfg));
-    } catch {}
-    clearSnapshot();
-    // Fresh mount with no search target so the queued follow-up config is used.
-    window.location.href = "/practice";
-  }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -1254,37 +1344,13 @@ function ResultsScreen({
         </Insight>
       </section>
 
-      {/* Recommended next steps */}
-      <section className="mt-5 rounded-2xl border border-border bg-card/70 p-5 backdrop-blur">
-        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Recommended next steps
-        </div>
-        <ul className="mt-2 space-y-2 text-sm">
-          {wrong.length > 0 && (
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
-              Run a follow-up drill on the {wrong.length} concept
-              {wrong.length === 1 ? "" : "s"} you missed.
-            </li>
-          )}
-          {accuracyPct < 70 && (
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
-              Schedule a 30-minute review block on {config.module} this week.
-            </li>
-          )}
-          {accuracyPct >= 80 && (
-            <li className="flex items-start gap-2">
-              <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
-              Move to stretch difficulty or interleave a related module.
-            </li>
-          )}
-          <li className="flex items-start gap-2">
-            <ArrowRight className="mt-0.5 h-4 w-4 shrink-0 text-pink" />
-            Re-test in 3 days to lock in spacing-effect retention.
-          </li>
-        </ul>
-      </section>
+      {/* Smart Review: summary, per-question results, explanations, diagnosis, follow-ups */}
+      <SmartReviewResults
+        config={config}
+        questions={questions}
+        answers={answers}
+        flagged={flagged}
+      />
 
       {saveLabel && (
         <section
@@ -1318,14 +1384,6 @@ function ResultsScreen({
         <Button variant="outline" onClick={onRetry} className="rounded-full">
           <RefreshCw className="mr-1 h-4 w-4" /> Retry session
         </Button>
-        {wrong.length > 0 && (
-          <Button
-            onClick={followUpDrill}
-            className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow transition-all hover:brightness-[1.06]"
-          >
-            <Sparkles className="mr-1 h-4 w-4" /> Follow-up drill
-          </Button>
-        )}
         <Button variant="ghost" onClick={onNewDrill}>
           New session
         </Button>

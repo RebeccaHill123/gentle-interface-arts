@@ -105,6 +105,13 @@ function AnalyticsPage() {
               {/* Practice accuracy */}
               <section className="mt-6">
                 <AccuracyCard data={data} />
+                <div className="mt-2 flex justify-end">
+                  <Button asChild variant="ghost" size="sm" className="rounded-full text-muted-foreground">
+                    <Link to="/smart-review">
+                      Subtopic detail, review priorities and quiz history →
+                    </Link>
+                  </Button>
+                </div>
               </section>
 
               {/* Consistency + Needs attention */}

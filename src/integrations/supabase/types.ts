@@ -582,6 +582,66 @@ export type Database = {
         }
         Relationships: []
       }
+      smart_review_sessions: {
+        Row: {
+          accuracy: number
+          answered_count: number
+          answers: Json
+          correct_count: number
+          created_at: string
+          difficulty: string
+          exam_path: string | null
+          flagged: Json
+          id: string
+          idempotency_key: string
+          question_count: number
+          questions: Json
+          review_focus: Json
+          subject: string
+          subtopic: string | null
+          summary: string | null
+          user_id: string
+        }
+        Insert: {
+          accuracy: number
+          answered_count?: number
+          answers: Json
+          correct_count: number
+          created_at?: string
+          difficulty?: string
+          exam_path?: string | null
+          flagged?: Json
+          id?: string
+          idempotency_key: string
+          question_count: number
+          questions: Json
+          review_focus?: Json
+          subject: string
+          subtopic?: string | null
+          summary?: string | null
+          user_id: string
+        }
+        Update: {
+          accuracy?: number
+          answered_count?: number
+          answers?: Json
+          correct_count?: number
+          created_at?: string
+          difficulty?: string
+          exam_path?: string | null
+          flagged?: Json
+          id?: string
+          idempotency_key?: string
+          question_count?: number
+          questions?: Json
+          review_focus?: Json
+          subject?: string
+          subtopic?: string | null
+          summary?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       study_events: {
         Row: {
           activity_type: string

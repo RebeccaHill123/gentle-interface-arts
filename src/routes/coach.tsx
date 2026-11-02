@@ -26,8 +26,46 @@ import { supabase } from "@/integrations/supabase/client";
 import { loadPlan, computeStreak } from "@/lib/plan-store";
 import { loadAnalytics, type AnalyticsBundle } from "@/lib/analytics-derive";
 import { getExamLabel } from "@/lib/exam-label";
+import { ChatQuizCard, type ChatQuizSpec } from "@/components/smart-review/chat-quiz-card";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = { role: "user" | "assistant"; content: string; quiz?: ChatQuizSpec };
+
+/**
+ * Detects an interactive-quiz request in Tutor mode. Returns null when the
+ * request has no usable topic — the tutor then asks which topic conversationally.
+ */
+function detectQuizRequest(text: string, modules: string[]): ChatQuizSpec | null {
+  const t = text.toLowerCase();
+  const asksQuiz =
+    /\b(quiz|test me|mcqs?|multiple[- ]choice|questions?|sbas?|drill|practise|practice)\b/.test(t);
+  if (!asksQuiz) return null;
+
+  const countMatch = /(\d{1,2})\s*(?:questions?|mcqs?|sbas?|ots?)/.exec(t);
+  const rawCount = countMatch ? parseInt(countMatch[1], 10) : 5;
+  const count = rawCount <= 7 ? 5 : rawCount <= 12 ? 10 : rawCount <= 17 ? 15 : 20;
+
+  const difficulty: ChatQuizSpec["difficulty"] = /\beasy\b|easier|foundational/.test(t)
+    ? "Easy"
+    : /\bhard(?:er)?\b|stretch|advanced/.test(t)
+      ? "Hard"
+      : /\bmedium\b|intermediate/.test(t)
+        ? "Medium"
+        : "Mixed";
+
+  // Prefer an exact match against the student's plan modules.
+  const moduleMatch = modules.find((m) => t.includes(m.toLowerCase()));
+  if (moduleMatch) {
+    return { module: moduleMatch, topic: moduleMatch, count, difficulty };
+  }
+
+  const topicMatch = /(?:on|about|in)\s+([a-z][a-z0-9 &,()'/\-]{2,80}?)(?:[.?!,]|$)/i.exec(text);
+  // Strip trailing delivery instructions ("one at a time", "one per question").
+  const topic = topicMatch?.[1]
+    ?.replace(/(?:\s*[—–-]\s*)?one (?:at a time|per question).*$/i, "")
+    .trim();
+  if (!topic || /my choice|a topic|something|anything|per question/i.test(topic)) return null;
+  return { module: topic, topic, count, difficulty };
+}
 type Suggestion = { label: string; prompt: string };
 type Mode = "coach" | "tutor";
 type CoachExam = "SQE" | "UBE" | "MPRE" | "ACCA";
@@ -164,6 +202,8 @@ function CoachPage() {
   const [thinkingIdx, setThinkingIdx] = useState(0);
   const [hasPrior, setHasPrior] = useState(false);
   const [coachExam, setCoachExam] = useState<CoachExam>("SQE");
+  const [planModules, setPlanModules] = useState<string[]>([]);
+  const [examPathStr, setExamPathStr] = useState<string | undefined>(undefined);
   const scrollerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
@@ -186,6 +226,8 @@ function CoachPage() {
       const plan = loadPlan();
       if (plan) {
         setCoachExam(getExamLabel(plan.input.examType, plan.input.examPath));
+        setPlanModules(plan.input.modules.map((m) => m.name));
+        setExamPathStr(plan.input.examPath ?? undefined);
         setStreak(computeStreak(plan.sessions).current);
         setAnalytics(await loadAnalytics(plan));
         if (plan.input?.examDate) {
@@ -209,13 +251,17 @@ function CoachPage() {
     } catch {}
   }, []);
 
-  // Persist conversation
+  // Persist conversation (text only — live quiz cards never survive a reload;
+  // their outcome is preserved through the assistant summary message).
   useEffect(() => {
     if (messages.length === 0) return;
     try {
       localStorage.setItem(
         HISTORY_KEY,
-        JSON.stringify({ messages: messages.slice(-30), savedAt: Date.now() }),
+        JSON.stringify({
+          messages: messages.slice(-30).map(({ role, content }) => ({ role, content })),
+          savedAt: Date.now(),
+        }),
       );
       setHasPrior(true);
     } catch {}
@@ -410,12 +456,36 @@ function CoachPage() {
     setHasPrior(false);
   }
 
+  /** Quiz results feed back into the transcript so the tutor retains context. */
+  function handleQuizComplete(summaryForTutor: string) {
+    setMessages((prev) => [...prev, { role: "assistant", content: summaryForTutor }]);
+  }
+
   async function send(textOverride?: string) {
     const text = (textOverride ?? input).trim();
     if (!text || isStreaming) return;
     setInput("");
 
     const userMsg: Msg = { role: "user", content: text };
+
+    // Tutor mode: an explicit quiz request with a usable topic launches an
+    // interactive Smart Review quiz inline instead of a text-only reply.
+    if (mode === "tutor") {
+      const spec = detectQuizRequest(text, planModules);
+      if (spec) {
+        setMessages((prev) => [
+          ...prev,
+          userMsg,
+          {
+            role: "assistant",
+            content: `Here's an interactive ${spec.count}-question ${spec.difficulty.toLowerCase()} quiz on **${spec.topic ?? spec.module}**. Answers stay hidden until you submit — your result is saved to Smart Review automatically, and I'll keep the context for follow-up questions.`,
+            quiz: spec,
+          },
+        ]);
+        return;
+      }
+    }
+
     const next: Msg[] = [...messages, userMsg];
 
     const visible: Msg[] = [...messages, userMsg];
@@ -705,7 +775,16 @@ function CoachPage() {
           >
             <div className="flex flex-col gap-6">
               {messages.map((m, i) => (
-                <Message key={i} role={m.role} content={m.content} firstName={firstName} />
+                <Message
+                  key={i}
+                  role={m.role}
+                  content={m.content}
+                  firstName={firstName}
+                  quiz={m.quiz}
+                  quizExamType={coachExam === "UBE" ? "UBE" : coachExam === "MPRE" ? "MPRE" : coachExam === "ACCA" ? "ACCA" : "SQE1"}
+                  quizExamPath={examPathStr}
+                  onQuizComplete={handleQuizComplete}
+                />
               ))}
               {isStreaming && messages[messages.length - 1]?.role === "user" && (
                 <div className="flex items-center gap-2 pl-11 text-xs text-muted-foreground animate-fade-in">
@@ -774,7 +853,23 @@ function CoachPage() {
   );
 }
 
-function Message({ role, content, firstName }: { role: "user" | "assistant"; content: string; firstName: string }) {
+function Message({
+  role,
+  content,
+  firstName,
+  quiz,
+  quizExamType,
+  quizExamPath,
+  onQuizComplete,
+}: {
+  role: "user" | "assistant";
+  content: string;
+  firstName: string;
+  quiz?: ChatQuizSpec;
+  quizExamType?: "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
+  quizExamPath?: string;
+  onQuizComplete?: (summary: string) => void;
+}) {
   const isUser = role === "user";
   const initial = (firstName?.[0] || "Y").toUpperCase();
 
@@ -796,8 +891,18 @@ function Message({ role, content, firstName }: { role: "user" | "assistant"; con
         {isUser ? (
           <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">{content}</p>
         ) : (
-          <div className="prose prose-sm max-w-none text-[15px] leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_strong]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5">
-            <ReactMarkdown>{content}</ReactMarkdown>
+          <div className="space-y-3">
+            <div className="prose prose-sm max-w-none text-[15px] leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_strong]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5">
+              <ReactMarkdown>{content}</ReactMarkdown>
+            </div>
+            {quiz && quizExamType && onQuizComplete && (
+              <ChatQuizCard
+                spec={quiz}
+                examType={quizExamType}
+                examPath={quizExamPath}
+                onComplete={onQuizComplete}
+              />
+            )}
           </div>
         )}
       </div>
