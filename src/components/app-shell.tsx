@@ -9,6 +9,7 @@ import {
   Scale,
   Compass,
   BarChart3,
+  Target,
   Users,
   Settings as SettingsIcon,
   ArrowLeft,
