@@ -75,6 +75,7 @@ export function TodayPanel(props: TodayPanelProps) {
         tasks={tasks}
         weeklyDoneMins={props.weeklyDoneMins}
         weeklyTargetMins={props.weeklyTargetMins}
+        missedCount={missed.length}
       />
 
       {/* Live session */}

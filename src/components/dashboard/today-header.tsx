@@ -1,6 +1,7 @@
 // Today's header: date, greeting, planned vs done time and one progress bar.
 // Deliberately light on statistics — the weekly line sits quietly underneath.
 import { dayTotals, greetingFor } from "@/lib/plan/today";
+import { computePace } from "@/lib/plan/pace";
 import type { ScheduledTask } from "@/lib/plan/types";
 
 export function TodayHeader({
@@ -11,6 +12,7 @@ export function TodayHeader({
   tasks,
   weeklyDoneMins,
   weeklyTargetMins,
+  missedCount = 0,
 }: {
   firstName?: string;
   today: string;
@@ -19,8 +21,10 @@ export function TodayHeader({
   tasks: ScheduledTask[];
   weeklyDoneMins: number;
   weeklyTargetMins: number;
+  missedCount?: number;
 }) {
   const totals = dayTotals(tasks);
+  const pace = computePace({ missedCount, weeklyDoneMins, weeklyTargetMins });
   const dateLabel = new Date(`${today}T12:00:00`).toLocaleDateString(undefined, {
     weekday: "long",
     day: "numeric",
@@ -42,16 +46,23 @@ export function TodayHeader({
             {dateLabel} · {greetingFor(firstName)}
           </p>
         </div>
-        {daysUntilExam !== null ? (
-          <span className="shrink-0 rounded-full border border-border/60 bg-background/60 px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground">
-            {daysUntilExam} days to {examLabel}
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <span className="rounded-full border border-border/60 bg-background/60 px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground">
+            {daysUntilExam !== null ? `${daysUntilExam} days to ${examLabel}` : examLabel}
           </span>
-        ) : (
-          <span className="shrink-0 rounded-full border border-border/60 bg-background/60 px-3 py-1.5 text-[11.5px] font-medium text-muted-foreground">
-            {examLabel}
+          <span
+            title={pace.detail}
+            className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${
+              pace.status === "on-track"
+                ? "bg-violet/10 text-violet"
+                : "bg-pink/10 text-pink"
+            }`}
+          >
+            {pace.label}
           </span>
-        )}
+        </div>
       </div>
+      <p className="mt-2 text-[11.5px] text-muted-foreground">{pace.detail}</p>
 
       {totals.taskCount > 0 && (
         <div className="mt-4">
