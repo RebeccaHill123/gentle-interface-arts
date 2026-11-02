@@ -46,6 +46,8 @@ export interface SubtopicPerformance {
   improving: boolean | null;
   /** Distinct days on which this subtopic was attempted. */
   sittings: number;
+  /** Distinct days on which at least one attempt was missed. */
+  missDays: number;
   lastAttemptAt: string | null;
   status: ReviewStatus;
   /** True when the evidence says a targeted review session is warranted. */

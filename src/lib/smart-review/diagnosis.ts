@@ -39,7 +39,7 @@ function diagnoseOne(s: SubtopicPerformance): ReviewRecommendation | null {
   const overall = s.accuracy;
 
   if (s.status === "needs-review") {
-    const repeated = s.sittings >= 2 && (s.earlierAccuracy ?? 100) < 60;
+    const repeated = s.missDays >= 2;
     if (repeated) {
       return {
         subject: s.subject,
