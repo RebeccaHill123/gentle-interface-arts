@@ -66,6 +66,7 @@ function snapshot(over: Partial<ActiveSnapshot> = {}): ActiveSnapshot {
     questions,
     answers: [0, null, null],
     revealed: [0],
+    flagged: [],
     feedbackMode: "immediate",
     current: 1,
     perQuestionMs: [4000, 0, 0],
