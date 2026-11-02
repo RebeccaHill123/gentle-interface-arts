@@ -134,8 +134,12 @@ describe("diagnoseWeakAreas", () => {
     expect(recs.indexOf(rap!)).toBeLessThan(recs.indexOf(hearsay!));
   });
 
-  it("recommends relearning when recent accuracy is very low", () => {
-    const subs = buildSubtopicPerformance(run("Real Property", "RAP", [false, false, false, true], 1));
+  it("recommends relearning when recent accuracy is very low in one sitting", () => {
+    const sameDay = run("Real Property", "RAP", [false, false, false, true], 1).map((a) => ({
+      ...a,
+      local_date: "2026-10-01",
+    }));
+    const subs = buildSubtopicPerformance(sameDay);
     const [rec] = diagnoseWeakAreas(subs);
     expect(rec.kind).toBe("relearn");
     expect(rec.suggestedDifficulty).toBe("Easy");
