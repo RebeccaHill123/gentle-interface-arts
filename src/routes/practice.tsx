@@ -295,6 +295,8 @@ function PracticeSessionPage() {
       setAnswers(s.answers);
       revealedRef.current = new Set(s.revealed);
       setRevealedSet(new Set(s.revealed));
+      flaggedRef.current = new Set(s.flagged);
+      setFlaggedSet(new Set(s.flagged));
       feedbackRef.current = s.feedbackMode;
       setFeedbackMode(s.feedbackMode);
       currentRef.current = s.current;
@@ -354,6 +356,8 @@ function PracticeSessionPage() {
               topic: cfg.topic ?? cfg.formatLabel,
               examType,
               confidence: mod?.confidence ?? 3,
+              count: cfg.questions,
+              difficulty: generatorDifficulty(cfg.difficulty),
             },
           });
           if (cancelled) return;
