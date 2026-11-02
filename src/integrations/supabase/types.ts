@@ -71,6 +71,33 @@ export type Database = {
         }
         Relationships: []
       }
+      community_messages: {
+        Row: {
+          body: string
+          created_at: string
+          display_name: string
+          exam_type: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          display_name: string
+          exam_type: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          display_name?: string
+          exam_type?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       email_send_log: {
         Row: {
           created_at: string
@@ -850,6 +877,7 @@ export type Database = {
           week_questions: number
         }[]
       }
+      my_community_exam: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never
