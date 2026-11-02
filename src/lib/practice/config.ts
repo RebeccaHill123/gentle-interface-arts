@@ -48,6 +48,22 @@ export function clampQuestionCount(n: unknown): number {
   return Math.min(PROVIDER_MAX_QUESTIONS, Math.max(PROVIDER_MIN_QUESTIONS, v));
 }
 
+/** Maps the app's difficulty scale onto the generator's Easy/Medium/Hard/Mixed. */
+export function generatorDifficulty(
+  d: PracticeConfig["difficulty"],
+): "Easy" | "Medium" | "Hard" | "Mixed" {
+  switch (d) {
+    case "Foundational":
+      return "Easy";
+    case "Standard":
+      return "Medium";
+    case "Stretch":
+      return "Hard";
+    default:
+      return "Mixed";
+  }
+}
+
 const MAX_TEXT = 400;
 
 function text(v: unknown, max = MAX_TEXT): string | undefined {
