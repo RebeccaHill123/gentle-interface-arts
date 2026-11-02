@@ -32,6 +32,7 @@ import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as SmartReviewRouteImport } from './routes/smart-review'
 import { Route as SqeRouteImport } from './routes/sqe'
 import { Route as SubscribeRouteImport } from './routes/subscribe'
 import { Route as TermsRouteImport } from './routes/terms'
@@ -166,6 +167,11 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SmartReviewRoute = SmartReviewRouteImport.update({
+  id: '/smart-review',
+  path: '/smart-review',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SqeRoute = SqeRouteImport.update({
   id: '/sqe',
   path: '/sqe',
@@ -285,6 +291,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/smart-review': typeof SmartReviewRoute
   '/sqe': typeof SqeRoute
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
@@ -327,6 +334,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/smart-review': typeof SmartReviewRoute
   '/sqe': typeof SqeRoute
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
@@ -371,6 +379,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/smart-review': typeof SmartReviewRoute
   '/sqe': typeof SqeRoute
   '/subscribe': typeof SubscribeRoute
   '/terms': typeof TermsRoute
@@ -416,6 +425,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/settings'
     | '/sitemap.xml'
+    | '/smart-review'
     | '/sqe'
     | '/subscribe'
     | '/terms'
@@ -458,6 +468,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/settings'
     | '/sitemap.xml'
+    | '/smart-review'
     | '/sqe'
     | '/subscribe'
     | '/terms'
@@ -501,6 +512,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/settings'
     | '/sitemap.xml'
+    | '/smart-review'
     | '/sqe'
     | '/subscribe'
     | '/terms'
@@ -545,6 +557,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  SmartReviewRoute: typeof SmartReviewRoute
   SqeRoute: typeof SqeRoute
   SubscribeRoute: typeof SubscribeRoute
   TermsRoute: typeof TermsRoute
@@ -724,6 +737,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/smart-review': {
+      id: '/smart-review'
+      path: '/smart-review'
+      fullPath: '/smart-review'
+      preLoaderRoute: typeof SmartReviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sqe': {
       id: '/sqe'
       path: '/sqe'
@@ -901,6 +921,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  SmartReviewRoute: SmartReviewRoute,
   SqeRoute: SqeRoute,
   SubscribeRoute: SubscribeRoute,
   TermsRoute: TermsRoute,
