@@ -2,10 +2,10 @@
 
 Source: uploaded LOVABLE_PROMPT_-_TENTRA_SMART_REVIEW_pasted.md
 
-## Phase 0 — Discovery
-- [ ] Map existing quiz/MCQ/question-bank systems (agent sub_fc5aqzrp)
-- [ ] Map AI Tutor/Coach architecture (agent sub_qhx65g8c)
-- [ ] Map dashboard, analytics, adaptive planner (agent sub_t5xe4hz6)
+## Phase 0 — Discovery ✅
+- [x] Quiz systems: reuse /practice + src/lib/practice/*; generate-quiz edge fn (10q, confidence-based difficulty, no option shuffle)
+- [x] Tutor: text-only SSE chat; add inline quiz card reusing practice pipeline
+- [x] Planner: graded_attempts → buildPlanEvidence → prioritiseSubjects already adapts; "graded-performance" trigger exists; nav via AppShell NAV arrays
 
 ## Phase 1 — Data foundation
 - [ ] Schema: quiz attempts, per-question responses, subtopic performance rollup (RLS + grants)
