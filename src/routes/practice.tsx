@@ -263,8 +263,8 @@ function PracticeSessionPage() {
     }
 
     if (!cfgCandidate || !fpCandidate) {
-      setPhaseTracked("error");
-      setError("No practice session was queued. Start one from Mocks & Practice.");
+      // Nothing queued: send the student to the launcher instead of an error.
+      navigate({ to: "/mocks", replace: true });
       return;
     }
 

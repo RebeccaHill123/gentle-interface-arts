@@ -37,7 +37,7 @@ export type AppRoute =
 const NAV: { to: AppRoute; label: string; icon: typeof LayoutDashboard }[] = [
   { to: "/dashboard", label: "Today", icon: LayoutDashboard },
   { to: "/plan", label: "Plan", icon: CalendarClock },
-  { to: "/practice", label: "Practice", icon: Scale },
+  { to: "/mocks", label: "Mocks & Practice", icon: Scale },
   { to: "/analytics", label: "Progress", icon: BarChart3 },
   { to: "/coach", label: "Coach", icon: Sparkles },
 ];
@@ -46,7 +46,6 @@ const NAV: { to: AppRoute; label: string; icon: typeof LayoutDashboard }[] = [
 const SECONDARY_NAV: { to: AppRoute; label: string; icon: typeof LayoutDashboard }[] = [
   { to: "/smart-review", label: "Smart Review", icon: Target },
   { to: "/focus", label: "Focus timer", icon: Flame },
-  { to: "/mocks", label: "Mock exams", icon: Scale },
   { to: "/topics", label: "Topic map", icon: Compass },
   { to: "/community", label: "Community", icon: Users },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
