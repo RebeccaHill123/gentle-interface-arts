@@ -621,6 +621,22 @@ function PracticeSessionPage() {
     if (completionAccepted(status) && !status.activityQueuedOnly && !status.attemptsQueuedOnly) {
       clearSnapshot();
     }
+
+    // Smart Review → planner: a weak result feeds the adaptive schedule through
+    // the existing evidence pipeline (accuracy < 70% raises subject priority).
+    // Best-effort and idempotent — unchanged evidence is a no-op.
+    if (completionAccepted(status) && adjusted.scored > 0 && adjusted.accuracy < 0.7) {
+      void (async () => {
+        const [{ loadAnalytics }, { ensureSchedule }] = await Promise.all([
+          import("@/lib/analytics-derive"),
+          import("@/lib/plan/store"),
+        ]);
+        const stored = loadPlan();
+        if (!stored) return;
+        const analytics = await loadAnalytics(stored);
+        await ensureSchedule(stored, analytics, "graded-performance");
+      })().catch((e) => console.warn("graded-performance recalibration failed", e));
+    }
     return status;
   }
 
@@ -699,6 +715,8 @@ function PracticeSessionPage() {
     setPerQuestionMs(perRef.current);
     revealedRef.current = new Set();
     setRevealedSet(new Set());
+    flaggedRef.current = new Set();
+    setFlaggedSet(new Set());
     completionRef.current = null;
     setCompletion(null);
     finalRef.current = null;
