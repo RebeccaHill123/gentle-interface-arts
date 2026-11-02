@@ -850,7 +850,23 @@ function CoachPage() {
   );
 }
 
-function Message({ role, content, firstName }: { role: "user" | "assistant"; content: string; firstName: string }) {
+function Message({
+  role,
+  content,
+  firstName,
+  quiz,
+  quizExamType,
+  quizExamPath,
+  onQuizComplete,
+}: {
+  role: "user" | "assistant";
+  content: string;
+  firstName: string;
+  quiz?: ChatQuizSpec;
+  quizExamType?: "SQE1" | "SQE2" | "UBE" | "MPRE" | "ACCA";
+  quizExamPath?: string;
+  onQuizComplete?: (summary: string) => void;
+}) {
   const isUser = role === "user";
   const initial = (firstName?.[0] || "Y").toUpperCase();
 
@@ -872,8 +888,18 @@ function Message({ role, content, firstName }: { role: "user" | "assistant"; con
         {isUser ? (
           <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">{content}</p>
         ) : (
-          <div className="prose prose-sm max-w-none text-[15px] leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_strong]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5">
-            <ReactMarkdown>{content}</ReactMarkdown>
+          <div className="space-y-3">
+            <div className="prose prose-sm max-w-none text-[15px] leading-relaxed [&_p]:my-2 [&_ul]:my-2 [&_ol]:my-2 [&_li]:my-1 [&_h1]:text-base [&_h2]:text-base [&_h3]:text-sm [&_strong]:text-foreground [&_code]:rounded [&_code]:bg-muted [&_code]:px-1 [&_code]:py-0.5">
+              <ReactMarkdown>{content}</ReactMarkdown>
+            </div>
+            {quiz && quizExamType && onQuizComplete && (
+              <ChatQuizCard
+                spec={quiz}
+                examType={quizExamType}
+                examPath={quizExamPath}
+                onComplete={onQuizComplete}
+              />
+            )}
           </div>
         )}
       </div>
