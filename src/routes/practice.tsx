@@ -379,6 +379,11 @@ function PracticeSessionPage() {
             ];
           }
         }
+        // Smart Review: randomise correct-answer positions so they never form
+        // a predictable pattern. Seeded per session, so a restored snapshot
+        // (which stores the shuffled questions) stays consistent.
+        const seed = seedFromFingerprint(fp);
+        qs = qs.map((q, i) => shuffleQuestionOptions(q, seed + i));
         if (qs.length !== cfg.questions) {
           // Run honestly with what the generator actually delivered. The
           // fingerprint stays bound to the original request so a reload still
@@ -487,6 +492,16 @@ function PracticeSessionPage() {
     accumulateCurrent();
     currentRef.current = index;
     setCurrent(index);
+    persist();
+  }
+
+  /** Flags/unflags a defective question; flagged items are excluded from the score. */
+  function toggleFlag(index: number) {
+    const next = new Set(flaggedRef.current);
+    if (next.has(index)) next.delete(index);
+    else next.add(index);
+    flaggedRef.current = next;
+    setFlaggedSet(next);
     persist();
   }
 
