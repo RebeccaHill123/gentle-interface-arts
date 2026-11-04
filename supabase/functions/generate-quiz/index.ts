@@ -70,7 +70,9 @@ function validateBody(
   let count = 10;
   if (r["count"] !== undefined && r["count"] !== null) {
     const n = Number(r["count"]);
-    if (!Number.isFinite(n) || !(QUESTION_COUNTS as readonly number[]).includes(n)) {
+    // Smart Review offers 5/10/15/20 (QUESTION_COUNTS), but the practice
+    // launcher, AI quiz builder and tutor follow-ups send any whole count 4–20.
+    if (!Number.isInteger(n) || n < 4 || n > QUESTION_COUNTS[QUESTION_COUNTS.length - 1]) {
       return { ok: false, error: "Invalid count" };
     }
     count = n;
