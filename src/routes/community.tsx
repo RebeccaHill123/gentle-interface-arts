@@ -58,6 +58,7 @@ function CommunityPage() {
   const [topic, setTopic] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
+  const [boardError, setBoardError] = useState(false);
 
   useEffect(() => setPlan(loadPlan()), []);
   const examType = plan?.input.examType ?? "SQE1";
@@ -69,8 +70,9 @@ function CommunityPage() {
       supabase.rpc("get_community_leaderboard"),
       supabase.rpc("get_community_checkins"),
     ]);
-    setRows((lb.data as Row[]) ?? []);
-    setCheckins((ci.data as Checkin[]) ?? []);
+    setBoardError(!!(lb.error || ci.error));
+    if (!lb.error) setRows((lb.data as Row[]) ?? []);
+    if (!ci.error) setCheckins((ci.data as Checkin[]) ?? []);
   }, []);
 
   useEffect(() => {
@@ -174,14 +176,23 @@ function CommunityPage() {
   }
 
   return (
-    <AppShell title="Community" subtitle={`This week with other ${cohort}.`}>
-      <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
-        <section className="rounded-3xl border border-border bg-card p-6 shadow-card">
+    <AppShell title="Community" subtitle={`Chat and study alongside other ${cohort}.`}>
+      {userId && (
+        <CommunityChat userId={userId} examType={member.exam_type} displayName={member.display_name} cohortLabel={cohort} />
+      )}
+      {boardError && (
+        <div role="alert" className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-sm">
+          <span className="text-muted-foreground">Couldn't load this week's board and check-ins.</span>
+          <Button size="sm" variant="outline" onClick={refresh}>Retry</Button>
+        </div>
+      )}
+      <div className="mt-6 grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+        <section className="rounded-3xl border border-border bg-card p-5 shadow-card sm:p-6">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground"><Trophy className="h-4 w-4 text-pink" /> Weekly momentum</h2>
             <span className="text-xs text-muted-foreground">Resets every Monday</span>
           </div>
-          {rows.length <= 1 && (
+          {!boardError && rows.length <= 1 && (
             <p className="mt-3 rounded-xl bg-muted/50 p-3 text-xs text-muted-foreground">
               You're one of the first in this cohort — more candidates will appear here as they join.
             </p>
@@ -234,9 +245,6 @@ function CommunityPage() {
           )}
         </section>
       </div>
-      {userId && (
-        <CommunityChat userId={userId} examType={member.exam_type} displayName={member.display_name} cohortLabel={cohort} />
-      )}
       <p className="mt-6 text-xs text-muted-foreground">
         Showing as <span className="font-medium">{member.display_name}</span>.{" "}
         <button type="button" onClick={leave} className="underline">Hide me from the community</button>

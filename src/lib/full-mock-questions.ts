@@ -596,6 +596,8 @@ const SQE_2027_SESSION_TOPICS: Record<string, string[]> = {
   "flk2-s1": ["Wills & Estates", "Solicitors' Accounts", "Trusts", "Land Law", "Ethics"],
   "flk2-s2": ["Property Practice", "Solicitors' Accounts", "Criminal Law", "Criminal Practice", "Ethics"],
 };
+SQE_2027_SESSION_TOPICS["flk1-mini"] = [...new Set([...SQE_2027_SESSION_TOPICS["flk1-s1"]!, ...SQE_2027_SESSION_TOPICS["flk1-s2"]!])];
+SQE_2027_SESSION_TOPICS["flk2-mini"] = [...new Set([...SQE_2027_SESSION_TOPICS["flk2-s1"]!, ...SQE_2027_SESSION_TOPICS["flk2-s2"]!])];
 
 /** Deterministic seeded shuffle so results can be re-derived from the section id. */
 function seededShuffle<T>(items: T[], seed: string): T[] {

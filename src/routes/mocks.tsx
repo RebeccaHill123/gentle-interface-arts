@@ -10,6 +10,8 @@ import {
   BarChart3,
   Loader2,
   Crown,
+  Timer,
+  PenLine,
 } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
@@ -39,7 +41,7 @@ import {
   type DbSimulation,
   type SimulationMode,
 } from "@/lib/full-mock-store";
-import { getBlueprint, type Pathway } from "@/lib/full-mock-blueprints";
+import { getBlueprint, MINI_SECTIONS, type Pathway } from "@/lib/full-mock-blueprints";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/mocks")({
@@ -70,24 +72,6 @@ export const Route = createFileRoute("/mocks")({
   }),
 });
 
-type MiniMock = {
-  paper: PaperKey;
-  title: string;
-  desc: string;
-  duration: string;
-};
-
-const SQE_MINI: MiniMock[] = [
-  { paper: "FLK1", title: "FLK1 Mini Mock", desc: "20-question FLK1 mini mock.", duration: "30 min" },
-  { paper: "FLK2", title: "FLK2 Mini Mock", desc: "20-question FLK2 mini mock.", duration: "30 min" },
-];
-
-const UBE_MINI: MiniMock[] = [
-  { paper: "MBE", title: "Mini MBE Set", desc: "20 MBE-style questions across the 7 MBE subjects.", duration: "36 min" },
-  { paper: "MEE", title: "Mini MEE Drill", desc: "Essay-style prompts on MEE-tested subjects.", duration: "30 min" },
-  { paper: "MPT", title: "MPT Practice Task", desc: "Closed-library lawyering task with a memo or brief.", duration: "45 min" },
-];
-
 function MocksPage() {
   const navigate = useNavigate();
   const [plan, setPlan] = useState<StoredPlan | null>(null);
@@ -96,6 +80,7 @@ function MocksPage() {
   const [practicePreset, setPracticePreset] = useState<
     { type: "mini-flk"; paper: PaperKey } | undefined
   >(undefined);
+  const [simsError, setSimsError] = useState(false);
 
   const [fullMockOpen, setFullMockOpen] = useState(false);
   const [isPro, setIsPro] = useState(false);
@@ -123,20 +108,42 @@ function MocksPage() {
   }, []);
 
   useEffect(() => {
-    (async () => {
+    loadSims();
+  }, []);
+  async function loadSims() {
+    setSimsError(false);
+    try {
       const [pro, list] = await Promise.all([getProStatus(), listUserSimulations()]);
       setIsPro(pro.isPro);
       setProLoaded(true);
       setSims(list);
-    })();
-  }, []);
+    } catch {
+      setSimsError(true);
+    }
+  }
 
   const singlePaper = !isUbe && !isMpre && !isAcca && scopePapers.length === 1 ? scopePapers[0] : null;
-  const miniMocks = isAcca || isMpre
+  const miniMocks = !pathway
     ? []
-    : isUbe
-    ? UBE_MINI
-    : SQE_MINI.filter((m) => scopePapers.length === 0 || scopePapers.includes(m.paper as "FLK1" | "FLK2"));
+    : MINI_SECTIONS[pathway].filter(
+        (m) => pathway !== "SQE" || scopePapers.length === 0 || scopePapers.includes(m.id.slice(0, 4).toUpperCase() as "FLK1" | "FLK2"),
+      );
+  const quickMock = miniMocks.find((m) => m.kind === "mcq") ?? null;
+  const [startingMini, setStartingMini] = useState<string | null>(null);
+  const startMini = async (id: string) => {
+    if (!pathway || startingMini) return;
+    setStartingMini(id);
+    try {
+      const { simulation } = await createSimulation(pathway, "practice", [id]);
+      navigate({ to: "/mocks/simulation/$simId", params: { simId: simulation.id } });
+    } catch (e) {
+      toast.error("Couldn't start your mock", {
+        description: e instanceof Error ? e.message : "Please check your connection and try again.",
+        action: { label: "Retry", onClick: () => startMini(id) },
+      });
+      setStartingMini(null);
+    }
+  };
   const accaLabel = accaPaperLabel(plan?.input.accaPapers ?? []);
   const accaPapersLabel = accaLabel === "ACCA" ? "your selected ACCA papers" : accaLabel;
   const fullMockTitle = isAcca
@@ -171,11 +178,6 @@ function MocksPage() {
 
   const inProgressSim = relevantSims.find((s) => s.status === "in_progress");
 
-  const openMiniPaper = (paper: PaperKey) => {
-    setPracticePreset({ type: "mini-flk", paper });
-    setPracticeOpen(true);
-  };
-
   const openPractice = () => {
     setPracticePreset(undefined);
     setPracticeOpen(true);
@@ -184,7 +186,7 @@ function MocksPage() {
   return (
     <AppShell title="Mocks & Practice" subtitle="Exam simulation & targeted practice.">
       {/* HERO — Full Simulation */}
-      <section className="relative overflow-hidden rounded-3xl border border-border bg-card p-8 shadow-card md:p-12">
+      <section className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-card md:p-8">
         <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-gradient-pink-blue opacity-25 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-32 -left-24 h-80 w-80 rounded-full bg-gradient-pink-blue opacity-10 blur-3xl" />
 
@@ -193,11 +195,13 @@ function MocksPage() {
             <Badge variant="outline" className="rounded-full border-border text-[10px] uppercase tracking-wide text-muted-foreground">
               <Sparkles className="mr-1 h-3 w-3" /> {pathwayLabel}
             </Badge>
-            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-foreground md:text-5xl">
-              {fullMockTitle}
+            <h2 className="mt-3 text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+              {quickMock ? "Timed mocks" : fullMockTitle}
             </h2>
-            <p className="mt-3 text-base text-muted-foreground md:text-lg">{fullMockDesc}</p>
-            <div className="mt-3 text-sm text-muted-foreground/80">{fullMockMeta}</div>
+            <p className="mt-2 text-sm text-muted-foreground md:text-base">
+              {quickMock ? "Sit a short mock at real exam pace, resume where you left off, or take the full simulation." : fullMockDesc}
+            </p>
+            <div className="mt-3 text-sm text-muted-foreground/80">{quickMock ? `${fullMockTitle}: ${fullMockMeta}` : fullMockMeta}</div>
 
             <div className="mt-6 flex flex-wrap gap-3">
               {isAcca || isMpre ? (
@@ -208,27 +212,33 @@ function MocksPage() {
                 >
                   {isMpre ? "Start MPRE practice" : "Start ACCA practice"} <ArrowRight className="ml-1.5 h-4 w-4" />
                 </Button>
-              ) : inProgressSim ? (
-                <Button
-                  size="lg"
-                  onClick={() =>
-                    navigate({
-                      to: "/mocks/simulation/$simId",
-                      params: { simId: inProgressSim.id },
-                    })
-                  }
-                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                >
-                  Resume simulation <ArrowRight className="ml-1.5 h-4 w-4" />
-                </Button>
               ) : (
-                <Button
-                  size="lg"
-                  onClick={() => setFullMockOpen(true)}
-                  className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
-                >
-                  Start Full Simulation
-                </Button>
+                <>
+                  {inProgressSim && (
+                    <Button
+                      size="lg"
+                      onClick={() => navigate({ to: "/mocks/simulation/$simId", params: { simId: inProgressSim.id } })}
+                      className="rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"
+                    >
+                      Resume {inProgressSim.exam_type} <ArrowRight className="ml-1.5 h-4 w-4" />
+                    </Button>
+                  )}
+                  {quickMock && (
+                    <Button
+                      size="lg"
+                      variant={inProgressSim ? "outline" : "default"}
+                      disabled={!!startingMini}
+                      onClick={() => startMini(quickMock.id)}
+                      className={inProgressSim ? "rounded-full" : "rounded-full bg-gradient-pink-blue text-primary-foreground shadow-glow"}
+                    >
+                      {startingMini === quickMock.id ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Timer className="mr-1.5 h-4 w-4" />}
+                      Start {quickMock.questions}-question {quickMock.title.split(" ")[0]} mock · {Math.round(quickMock.durationSeconds / 60)} min
+                    </Button>
+                  )}
+                  <Button size="lg" variant="outline" onClick={() => setFullMockOpen(true)} className="rounded-full">
+                    Full simulation
+                  </Button>
+                </>
               )}
               {!isAcca && !isMpre && !isPro && proLoaded && (
                 <Button
@@ -243,8 +253,8 @@ function MocksPage() {
             </div>
           </div>
 
-          <div className="hidden h-32 w-32 shrink-0 place-items-center rounded-3xl bg-gradient-pink-blue text-primary-foreground opacity-70 shadow-glow md:grid">
-                  {isAcca || isMpre ? <Target className="h-14 w-14" /> : <Scale className="h-14 w-14" />}
+          <div className="hidden h-20 w-20 shrink-0 place-items-center rounded-2xl bg-gradient-pink-blue text-primary-foreground opacity-70 shadow-glow md:grid">
+                  {isAcca || isMpre ? <Target className="h-8 w-8" /> : <Scale className="h-8 w-8" />}
           </div>
         </div>
       </section>
@@ -272,22 +282,22 @@ function MocksPage() {
         <section className={`mt-8 grid gap-4 ${miniMocks.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
           {miniMocks.map((m) => (
             <button
-              key={m.paper}
+              key={m.id}
               type="button"
-              onClick={() => openMiniPaper(m.paper)}
-              className="group relative flex flex-col overflow-hidden rounded-2xl border border-border bg-card/70 p-6 text-left backdrop-blur transition hover:border-pink/40 hover:shadow-glow"
+              disabled={!!startingMini}
+              onClick={() => startMini(m.id)}
+              className="group flex flex-col rounded-2xl border border-border bg-card p-5 text-left shadow-card transition hover:border-pink/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
             >
-              <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-gradient-pink-blue opacity-10 blur-2xl" />
-              <div className="relative flex items-start justify-between">
-                <div className="grid h-11 w-11 place-items-center rounded-xl bg-gradient-pink-blue text-primary-foreground shadow-glow">
-                  <Scale className="h-5 w-5" />
+              <div className="flex items-start justify-between">
+                <div className="grid h-10 w-10 place-items-center rounded-xl bg-pink/10 text-pink">
+                  {m.kind === "mcq" ? <Scale className="h-5 w-5" /> : <PenLine className="h-5 w-5" />}
                 </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5 group-hover:text-foreground" />
+                {startingMini === m.id ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /> : <ArrowRight className="h-4 w-4 text-muted-foreground transition group-hover:translate-x-0.5" />}
               </div>
-              <div className="relative mt-6">
-                <div className="text-lg font-semibold text-foreground">{m.title}</div>
-                <p className="mt-1 text-sm text-muted-foreground">{m.desc}</p>
-                <div className="mt-3 text-xs text-muted-foreground/80">{m.duration}</div>
+              <div className="mt-4 text-base font-semibold text-foreground">{m.title}</div>
+              <p className="mt-1 text-sm text-muted-foreground">{m.description}</p>
+              <div className="mt-3 text-xs text-muted-foreground">
+                {m.questions} {m.kind === "mcq" ? "questions" : m.kind === "essay" ? "essay" : "task"} · {Math.round(m.durationSeconds / 60)} min timed · autosaves
               </div>
             </button>
           ))}
@@ -352,12 +362,19 @@ function MocksPage() {
         )}
       </section>
 
+      {simsError && (
+        <div role="alert" className="mt-6 flex items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 text-sm">
+          <span className="text-muted-foreground">Couldn't load your saved mocks and results.</span>
+          <Button size="sm" variant="outline" onClick={loadSims}>Retry</Button>
+        </div>
+      )}
+
       {/* PAST PERFORMANCE */}
       {relevantSims.length > 0 && (
         <section className="mt-8">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="text-sm font-medium uppercase tracking-wide text-muted-foreground">
-              Past simulations
+              Past results & in progress
             </h3>
             <Link to="/analytics" className="text-xs text-muted-foreground hover:text-foreground">
               <BarChart3 className="mr-1 inline h-3 w-3" /> Full analytics

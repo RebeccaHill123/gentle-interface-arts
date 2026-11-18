@@ -14,6 +14,7 @@ import {
 } from "@/lib/mock-integrity";
 import {
   getBlueprint,
+  getMiniSection,
   type Pathway,
   type SimulationBlueprint,
 } from "./full-mock-blueprints";
@@ -102,20 +103,24 @@ export async function createSimulation(
   pathway: Pathway,
   mode: SimulationMode,
   sectionIds?: string[],
+  opts?: { examType?: string },
 ): Promise<{ simulation: DbSimulation; sections: DbSection[] }> {
   const user = await requireUser();
 
   const blueprint: SimulationBlueprint = getBlueprint(pathway);
-  const sectionList = sectionIds
-    ? blueprint.sections.filter((s) => sectionIds.includes(s.id))
-    : blueprint.sections;
+  const minis = sectionIds?.map((id) => getMiniSection(pathway, id)).filter((s): s is NonNullable<typeof s> => !!s) ?? [];
+  const sectionList = minis.length
+    ? minis
+    : sectionIds
+      ? blueprint.sections.filter((s) => sectionIds.includes(s.id))
+      : blueprint.sections;
 
   const { data: sim, error: simErr } = await supabase
     .from("mock_simulations")
     .insert({
       user_id: user.id,
       pathway,
-      exam_type: blueprint.examType,
+      exam_type: opts?.examType ?? (minis.length ? minis[0]!.title : blueprint.examType),
       mode,
       status: "in_progress",
       started_at: new Date().toISOString(),

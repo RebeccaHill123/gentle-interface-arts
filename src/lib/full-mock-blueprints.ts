@@ -148,8 +148,30 @@ export function getBlueprintForSections(
   return getBlueprint(pathway);
 }
 
+/**
+ * Short timed mocks run in the same simulation runner (timer, autosave, resume,
+ * results) as full mocks, but are not part of the full blueprint. Timing keeps
+ * the real exam pace: SQE1 153 min / 85 Qs, MBE 3 h / 100 Qs, one MEE essay
+ * is 30 min, one MPT task is 90 min.
+ */
+export const MINI_SECTIONS: Record<Pathway, SectionBlueprint[]> = {
+  SQE: [
+    { id: "flk1-mini", title: "FLK1 Mini Mock", kind: "mcq", questions: 10, durationSeconds: 18 * 60, optionsCount: 5, description: "10 SBA questions across FLK1 subjects at real exam pace." },
+    { id: "flk2-mini", title: "FLK2 Mini Mock", kind: "mcq", questions: 10, durationSeconds: 18 * 60, optionsCount: 5, description: "10 SBA questions across FLK2 subjects at real exam pace." },
+  ],
+  UBE: [
+    { id: "mbe-mini", title: "MBE Mini Mock", kind: "mcq", questions: 10, durationSeconds: 18 * 60, optionsCount: 4, description: "10 MBE questions across the seven MBE subjects at real exam pace." },
+    { id: "mee-mini", title: "Mini MEE", kind: "essay", questions: 1, durationSeconds: 30 * 60, optionsCount: 4, description: "One MEE essay in 30 minutes, as on exam day." },
+    { id: "mpt-mini", title: "Mini MPT", kind: "mpt", questions: 1, durationSeconds: 90 * 60, optionsCount: 4, description: "One closed-library MPT task in 90 minutes, as on exam day." },
+  ],
+};
+
+export function getMiniSection(pathway: Pathway, sectionId: string): SectionBlueprint | undefined {
+  return MINI_SECTIONS[pathway].find((s) => s.id === sectionId);
+}
+
 export function getSection(pathway: Pathway, sectionId: string): SectionBlueprint | undefined {
-  const current = getBlueprint(pathway).sections.find((s) => s.id === sectionId);
+  const current = getBlueprint(pathway).sections.find((s) => s.id === sectionId) ?? getMiniSection(pathway, sectionId);
   if (current || pathway !== "SQE") return current;
   return SQE_FULL_LEGACY.sections.find((s) => s.id === sectionId);
 }

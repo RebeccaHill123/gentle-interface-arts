@@ -294,7 +294,7 @@ function SimulationPage() {
         actualMinutes: Math.round(totalSeconds / 60),
         examPath: bp.examType,
         subject: bp.examType,
-        note: `${bp.examType} — full simulation completed`,
+        note: `${simulation.exam_type || bp.examType} — ${simulation.exam_type && simulation.exam_type !== bp.examType ? "mini mock" : "full simulation"} completed`,
         metadata: {
           pathway: simulation.pathway,
           overallScore: simulation.overall_score ?? objective.percent,
@@ -579,8 +579,8 @@ function SimulationPage() {
 
     <>
       <AppShell
-        title={blueprint.examType}
-        subtitle={`${blueprint.totalDurationLabel} · ${sim.mode === "exam" ? "Exam mode" : "Practice mode"}`}
+        title={sim.exam_type || blueprint.examType}
+        subtitle={`${sim.exam_type && sim.exam_type !== blueprint.examType ? `${Math.round(sections.reduce((t, s) => t + s.duration_seconds, 0) / 60)} min` : blueprint.totalDurationLabel} · ${sim.mode === "exam" ? "Exam mode" : "Practice mode"}`}
       >
         <section className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-card md:p-8">
           <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-gradient-pink-blue opacity-25 blur-3xl" />
@@ -1628,7 +1628,7 @@ function ResultsView({
   const totalMinutes = Math.round(sim.total_time_seconds / 60);
 
   return (
-    <AppShell title="Simulation results" subtitle={blueprint.examType}>
+    <AppShell title="Simulation results" subtitle={sim.exam_type || blueprint.examType}>
       <section className="relative overflow-hidden rounded-3xl border border-border bg-card p-6 shadow-card md:p-8">
         <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-gradient-pink-blue opacity-25 blur-3xl" />
         <div className="relative grid gap-4 md:grid-cols-4">
