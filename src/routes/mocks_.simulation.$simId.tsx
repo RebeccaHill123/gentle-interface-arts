@@ -107,7 +107,7 @@ import { cn } from "@/lib/utils";
 
 
 
-export const Route = createFileRoute("/mocks/simulation/$simId")({
+export const Route = createFileRoute("/mocks_/simulation/$simId")({
   beforeLoad: async () => {
     if (typeof window === "undefined") return;
     const user = await waitForAuthUser();

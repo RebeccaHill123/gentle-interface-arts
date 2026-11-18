@@ -47,7 +47,7 @@ import { Route as FocusSprintRouteImport } from './routes/focus.sprint'
 import { Route as FocusSummaryRouteImport } from './routes/focus.summary'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
-import { Route as MocksSimulationSimIdRouteImport } from './routes/mocks.simulation.$simId'
+import { Route as MocksSimulationSimIdRouteImport } from './routes/mocks_.simulation.$simId'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -246,9 +246,9 @@ const Char91DotmcpChar93InvokeToolToolRoute =
     getParentRoute: () => rootRouteImport,
   } as any)
 const MocksSimulationSimIdRoute = MocksSimulationSimIdRouteImport.update({
-  id: '/simulation/$simId',
-  path: '/simulation/$simId',
-  getParentRoute: () => MocksRoute,
+  id: '/mocks_/simulation/$simId',
+  path: '/mocks/simulation/$simId',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
@@ -280,7 +280,7 @@ export interface FileRoutesByFullPath {
   '/focus': typeof FocusRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/mcp': typeof McpRoute
-  '/mocks': typeof MocksRouteWithChildren
+  '/mocks': typeof MocksRoute
   '/new-york-bar': typeof NewYorkBarRoute
   '/onboarding': typeof OnboardingRoute
   '/plan': typeof PlanRoute
@@ -323,7 +323,7 @@ export interface FileRoutesByTo {
   '/flashcards': typeof FlashcardsRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/mcp': typeof McpRoute
-  '/mocks': typeof MocksRouteWithChildren
+  '/mocks': typeof MocksRoute
   '/new-york-bar': typeof NewYorkBarRoute
   '/onboarding': typeof OnboardingRoute
   '/plan': typeof PlanRoute
@@ -368,7 +368,7 @@ export interface FileRoutesById {
   '/focus': typeof FocusRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
   '/mcp': typeof McpRoute
-  '/mocks': typeof MocksRouteWithChildren
+  '/mocks': typeof MocksRoute
   '/new-york-bar': typeof NewYorkBarRoute
   '/onboarding': typeof OnboardingRoute
   '/plan': typeof PlanRoute
@@ -394,7 +394,7 @@ export interface FileRoutesById {
   '/focus/': typeof FocusIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
-  '/mocks/simulation/$simId': typeof MocksSimulationSimIdRoute
+  '/mocks_/simulation/$simId': typeof MocksSimulationSimIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -527,7 +527,7 @@ export interface FileRouteTypes {
     | '/focus/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
-    | '/mocks/simulation/$simId'
+    | '/mocks_/simulation/$simId'
     | '/api/public/payments/webhook'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -546,7 +546,7 @@ export interface RootRouteChildren {
   FocusRoute: typeof FocusRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   McpRoute: typeof McpRoute
-  MocksRoute: typeof MocksRouteWithChildren
+  MocksRoute: typeof MocksRoute
   NewYorkBarRoute: typeof NewYorkBarRoute
   OnboardingRoute: typeof OnboardingRoute
   PlanRoute: typeof PlanRoute
@@ -569,6 +569,7 @@ export interface RootRouteChildren {
   CheckoutReturnRoute: typeof CheckoutReturnRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
+  MocksSimulationSimIdRoute: typeof MocksSimulationSimIdRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -842,12 +843,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotmcpChar93InvokeToolToolRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/mocks/simulation/$simId': {
-      id: '/mocks/simulation/$simId'
-      path: '/simulation/$simId'
+    '/mocks_/simulation/$simId': {
+      id: '/mocks_/simulation/$simId'
+      path: '/mocks/simulation/$simId'
       fullPath: '/mocks/simulation/$simId'
       preLoaderRoute: typeof MocksSimulationSimIdRouteImport
-      parentRoute: typeof MocksRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
@@ -887,16 +888,6 @@ const FocusRouteChildren: FocusRouteChildren = {
 
 const FocusRouteWithChildren = FocusRoute._addFileChildren(FocusRouteChildren)
 
-interface MocksRouteChildren {
-  MocksSimulationSimIdRoute: typeof MocksSimulationSimIdRoute
-}
-
-const MocksRouteChildren: MocksRouteChildren = {
-  MocksSimulationSimIdRoute: MocksSimulationSimIdRoute,
-}
-
-const MocksRouteWithChildren = MocksRoute._addFileChildren(MocksRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccessUnavailableRoute: AccessUnavailableRoute,
@@ -910,7 +901,7 @@ const rootRouteChildren: RootRouteChildren = {
   FocusRoute: FocusRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
   McpRoute: McpRoute,
-  MocksRoute: MocksRouteWithChildren,
+  MocksRoute: MocksRoute,
   NewYorkBarRoute: NewYorkBarRoute,
   OnboardingRoute: OnboardingRoute,
   PlanRoute: PlanRoute,
@@ -934,6 +925,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutReturnRoute: CheckoutReturnRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
+  MocksSimulationSimIdRoute: MocksSimulationSimIdRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
