@@ -83,7 +83,7 @@ export async function loadMockPerformance(pathway?: Pathway): Promise<MockPerfor
     if (!p) continue;
     const blueprint = getSection(p, sec.section_type);
     if (!blueprint) continue;
-    const gen = generateQuestionsForSection(p, blueprint);
+    const gen = generateQuestionsForSection(p, blueprint, sec.id);
     for (const q of gen.mcq ?? []) topicByQid.set(`${sec.id}:${q.id}`, q.topic);
     for (const q of gen.essay ?? []) topicByQid.set(`${sec.id}:${q.id}`, q.topic);
     for (const q of gen.mpt ?? []) topicByQid.set(`${sec.id}:${q.id}`, q.topic);

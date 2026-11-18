@@ -2,7 +2,7 @@
 // None of this is sourced from copyrighted bar prep material.
 // Items are deliberately generic and labelled as practice content.
 
-import type { Pathway, SectionBlueprint } from "./full-mock-blueprints";
+import { isSeededMini, type Pathway, type SectionBlueprint } from "./full-mock-blueprints";
 
 export type MCQQuestion = {
   id: string;
@@ -598,6 +598,8 @@ const SQE_2027_SESSION_TOPICS: Record<string, string[]> = {
 };
 SQE_2027_SESSION_TOPICS["flk1-mini"] = [...new Set([...SQE_2027_SESSION_TOPICS["flk1-s1"]!, ...SQE_2027_SESSION_TOPICS["flk1-s2"]!])];
 SQE_2027_SESSION_TOPICS["flk2-mini"] = [...new Set([...SQE_2027_SESSION_TOPICS["flk2-s1"]!, ...SQE_2027_SESSION_TOPICS["flk2-s2"]!])];
+SQE_2027_SESSION_TOPICS["flk1-mini-v2"] = SQE_2027_SESSION_TOPICS["flk1-mini"];
+SQE_2027_SESSION_TOPICS["flk2-mini-v2"] = SQE_2027_SESSION_TOPICS["flk2-mini"];
 
 /** Deterministic seeded shuffle so results can be re-derived from the section id. */
 function seededShuffle<T>(items: T[], seed: string): T[] {
@@ -621,14 +623,68 @@ export function sessionTopics(sectionId: string): string[] | null {
   return SQE_2027_SESSION_TOPICS[sectionId] ?? null;
 }
 
+/**
+ * Distinct items for a per-attempt mini mock. Never repeats an item: if the
+ * in-scope pool is smaller than the blueprint count, the set is shorter.
+ * Question ids carry the bank index, so saved answers stay attached to the
+ * same item whatever order it is shown in; the seed (the saved section id)
+ * keeps selection and option order identical across refresh, resume and review.
+ */
+function seededMiniMCQ(bank: Omit<MCQQuestion, "id">[], section: SectionBlueprint, seed: string): MCQQuestion[] {
+  const pool = bank
+    .map((q, bankIndex) => ({ q, bankIndex }))
+    .filter(({ q }) => q.options.length === section.optionsCount);
+  return seededShuffle(pool, `${seed}:pick`)
+    .slice(0, section.questions)
+    .map(({ q, bankIndex }) => {
+      const order = seededShuffle(q.options.map((_, i) => i), `${seed}:opts:${bankIndex}`);
+      return {
+        id: `${section.id}-b${bankIndex}`,
+        topic: q.topic,
+        stem: q.stem,
+        options: order.map((i) => q.options[i]!),
+        correctIndex: order.indexOf(q.correctIndex),
+        explanation: q.explanation,
+      };
+    });
+}
+
+/** Number of distinct items a seeded mini mock can draw for this section. */
+export function miniPoolSize(pathway: Pathway, section: SectionBlueprint): number {
+  if (section.kind === "essay") return MEE_BANK.length;
+  if (section.kind === "mpt") return MPT_BANK.length;
+  const allowed = pathway === "SQE" ? sessionTopics(section.id) : null;
+  const bank = pathway === "UBE" ? MBE_BANK : SQE_BANK;
+  return bank.filter((q) => q.options.length === section.optionsCount && (!allowed || allowed.includes(q.topic))).length;
+}
+
+/**
+ * `seed` is required for "-v2" mini sections (pass the saved section id) and
+ * ignored elsewhere, so full simulations keep their deterministic sets.
+ */
 export function generateQuestionsForSection(
   pathway: Pathway,
   section: SectionBlueprint,
+  seed?: string,
 ): {
   mcq?: MCQQuestion[];
   essay?: EssayQuestion[];
   mpt?: MPTQuestion[];
 } {
+  if (isSeededMini(section.id)) {
+    const s = seed ?? section.id;
+    if (section.kind === "mcq") {
+      const allowed = pathway === "SQE" ? sessionTopics(section.id) : null;
+      const bank = pathway === "UBE" ? MBE_BANK : SQE_BANK;
+      return { mcq: seededMiniMCQ(allowed ? bank.filter((q) => allowed.includes(q.topic)) : bank, section, s) };
+    }
+    if (section.kind === "essay") {
+      const picked = seededShuffle(MEE_BANK.map((q, i) => ({ q, i })), `${s}:pick`).slice(0, section.questions);
+      return { essay: picked.map(({ q, i }) => ({ id: `${section.id}-b${i}`, ...q })) };
+    }
+    const picked = seededShuffle(MPT_BANK.map((q, i) => ({ q, i })), `${s}:pick`).slice(0, section.questions);
+    return { mpt: picked.map(({ q, i }) => ({ id: `${section.id}-b${i}`, ...q })) };
+  }
   if (section.kind === "mcq") {
     const allowed = pathway === "SQE" ? sessionTopics(section.id) : null;
     if (allowed) {

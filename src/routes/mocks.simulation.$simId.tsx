@@ -774,8 +774,8 @@ function SectionRunner({
   onSubmitted: (updatedSection: DbSection, answers: DbAnswer[]) => Promise<void>;
 }) {
   const questions = useMemo(
-    () => generateQuestionsForSection(sim.pathway, bpSection),
-    [sim.pathway, bpSection],
+    () => generateQuestionsForSection(sim.pathway, bpSection, dbSection.id),
+    [sim.pathway, bpSection, dbSection.id],
   );
   const items: (MCQQuestion | EssayQuestion | MPTQuestion)[] = useMemo(() => {
     if (bpSection.kind === "mcq") return questions.mcq ?? [];

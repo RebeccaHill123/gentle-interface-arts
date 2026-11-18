@@ -199,7 +199,7 @@ function MocksPage() {
               {quickMock ? "Timed mocks" : fullMockTitle}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground md:text-base">
-              {quickMock ? "Sit a short mock at real exam pace, resume where you left off, or take the full simulation." : fullMockDesc}
+              {quickMock ? "Sit a 10-question mock timed at the full paper's average pace, resume where you left off, or take the full simulation." : fullMockDesc}
             </p>
             <div className="mt-3 text-sm text-muted-foreground/80">{quickMock ? `${fullMockTitle}: ${fullMockMeta}` : fullMockMeta}</div>
 
@@ -553,6 +553,15 @@ function FullMockDialog({
               </div>
             </div>
           )}
+
+          <div role="note" className="rounded-2xl border border-border bg-background/50 p-4 text-sm">
+            <div className="font-medium">Timing practice: questions repeat</div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Full-length sections use the exam's real question counts and timings, but our vetted question bank
+              is still small, so the same questions repeat many times within each section. Use this to practise
+              stamina and pacing, not as a measure of exam-day scores. For a set with no repeats, take a mini mock.
+            </p>
+          </div>
 
           <div>
             <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
