@@ -39,21 +39,22 @@ export function normaliseQuestion(raw: unknown): QuizQuestion | null {
   const prompt = bounded(r.prompt, MAX_PROMPT_CHARS);
   const explanation = bounded(r.explanation, MAX_EXPLANATION_CHARS);
   if (!prompt || !explanation) return null;
-  if (!Array.isArray(r.options) || r.options.length !== 4) return null;
+  // 4 options (generator, UBE/MPRE/ACCA) or 5 (authored SQE1 single best answer).
+  if (!Array.isArray(r.options) || r.options.length < 4 || r.options.length > 5) return null;
   const options: string[] = [];
   for (const o of r.options) {
     const opt = bounded(o, MAX_OPTION_CHARS);
     if (!opt) return null;
     options.push(opt);
   }
-  if (new Set(options.map((o) => o.toLowerCase())).size !== 4) return null;
+  if (new Set(options.map((o) => o.toLowerCase())).size !== options.length) return null;
   const idx = r.correctIndex;
-  if (typeof idx !== "number" || !Number.isInteger(idx) || idx < 0 || idx > 3) return null;
+  if (typeof idx !== "number" || !Number.isInteger(idx) || idx < 0 || idx >= options.length) return null;
 
   const out: QuizQuestion = { prompt, options, correctIndex: idx, explanation };
 
   // Optional Smart Review teaching fields — kept only when fully well-formed.
-  if (Array.isArray(r.optionExplanations) && r.optionExplanations.length === 4) {
+  if (Array.isArray(r.optionExplanations) && r.optionExplanations.length === options.length) {
     const oe: string[] = [];
     let ok = true;
     for (const e of r.optionExplanations) {
@@ -120,7 +121,7 @@ export function validateQuizQuestions(
  * and a fresh shuffle of the same set agree.
  */
 export function shuffleQuestionOptions(q: QuizQuestion, seed: number): QuizQuestion {
-  const order = [0, 1, 2, 3];
+  const order = q.options.map((_, i) => i);
   let s = seed >>> 0;
   for (let i = order.length - 1; i > 0; i--) {
     s = (Math.imul(s, 1103515245) + 12345) >>> 0;

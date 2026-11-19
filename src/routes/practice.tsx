@@ -51,6 +51,7 @@ import { buildSessionSummary } from "@/lib/smart-review/summary";
 import { saveSmartReviewSession, scoreSession } from "@/lib/smart-review/sessions";
 import { SmartReviewResults } from "@/components/smart-review/results";
 import { accaQuestionsFor } from "@/lib/acca-questions";
+import { sqeQuestionsFor } from "@/lib/sqe-questions";
 import {
   ACTIVE_MAX_AGE_MS,
   ACTIVE_SNAPSHOT_VERSION,
@@ -332,7 +333,7 @@ function PracticeSessionPage() {
     }, 700);
 
     (async () => {
-      // ACCA sessions are served from the authored bank first: real worked
+      // ACCA and SQE1 sessions are served from the authored bank first: real worked
       // questions for the syllabus area, topped up by the generator only when
       // the bank cannot fill the requested count.
       const authored =
@@ -343,7 +344,14 @@ function PracticeSessionPage() {
               count: cfg.questions,
               seed: fp,
             })
-          : [];
+          : examType === "SQE1"
+            ? sqeQuestionsFor({
+                module: cfg.module,
+                topic: cfg.topic ?? null,
+                count: cfg.questions,
+                seed: fp,
+              })
+            : [];
 
       try {
         let qs: QuizQuestion[];
