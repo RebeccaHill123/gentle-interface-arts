@@ -76,9 +76,9 @@
 :root {
   --radius: 0.75rem;
 
-  --brand-lilac: oklch(0.76 0.1 295);        /* #B9A4EE */
+  --brand-lilac: oklch(0.73 0.12 295);       /* richer lilac */
   --brand-blue: oklch(0.77 0.08 258);        /* #91B5ED */
-  --brand-lilac-deep: oklch(0.5 0.13 292);
+  --brand-lilac-deep: oklch(0.48 0.15 292);
   --brand-blue-deep: oklch(0.48 0.11 260);
   --lavender: oklch(0.95 0.02 300);          /* #F0EBFA */
   --sky: oklch(0.96 0.015 255);              /* #EAF2FC */
@@ -92,18 +92,18 @@
 
   --background: var(--ivory);
   --foreground: var(--ink);
-  --card: oklch(0.995 0.004 300);
+  --card: oklch(0.997 0.003 300);
   --card-foreground: var(--ink);
-  --popover: oklch(0.995 0.004 300);
+  --popover: oklch(0.997 0.003 300);
   --popover-foreground: var(--ink);
 
-  --primary: oklch(0.45 0.12 285);
+  --primary: oklch(0.47 0.16 290);
   --primary-foreground: oklch(0.99 0.005 300);
   --secondary: var(--lavender);
   --secondary-foreground: var(--ink);
   --muted: oklch(0.955 0.015 290);
   --muted-foreground: oklch(0.47 0.04 285);
-  --accent: oklch(0.93 0.035 280);
+  --accent: oklch(0.93 0.045 290);
   --accent-foreground: var(--ink);
 
   --destructive: oklch(0.55 0.19 25);
@@ -115,27 +115,27 @@
 
   /* Accent names kept so existing screens re-theme automatically.
      Deep enough to pass AA as icon/label colour on light surfaces. */
-  --pink: oklch(0.54 0.16 350);
+  --pink: oklch(0.56 0.18 350);
   --magenta: oklch(0.5 0.12 330);
   --violet: var(--brand-lilac-deep);
   --blue: oklch(0.5 0.15 255);
   --cyan: oklch(0.52 0.08 230);
 
-  --gradient-tentra: linear-gradient(135deg, oklch(0.66 0.11 262), oklch(0.71 0.11 350));
-  --gradient-pink-blue: linear-gradient(120deg, oklch(0.72 0.1 350) 0%, oklch(0.68 0.09 312) 55%, oklch(0.66 0.1 265) 100%);
-  --gradient-pink-violet: linear-gradient(120deg, oklch(0.6 0.12 265), oklch(0.65 0.12 345));
+  --gradient-tentra: linear-gradient(135deg, oklch(0.62 0.13 262), oklch(0.68 0.13 350));
+  --gradient-pink-blue: linear-gradient(120deg, oklch(0.7 0.12 350) 0%, oklch(0.65 0.13 312) 55%, oklch(0.6 0.14 268) 100%);
+  --gradient-pink-violet: linear-gradient(120deg, oklch(0.58 0.14 265), oklch(0.63 0.14 345));
   --gradient-soft: linear-gradient(135deg, oklch(0.77 0.08 258 / 0.16), oklch(0.76 0.1 295 / 0.18));
   --gradient-hero: radial-gradient(ellipse 70% 55% at 50% -10%, oklch(0.85 0.06 350 / 0.5), transparent 65%);
   --gradient-hero-light: radial-gradient(ellipse 55% 45% at 18% 0%, oklch(0.85 0.06 345 / 0.32), transparent 62%), radial-gradient(ellipse 48% 42% at 88% 12%, oklch(0.79 0.07 258 / 0.22), transparent 65%), radial-gradient(ellipse 70% 55% at 50% 115%, oklch(0.78 0.09 295 / 0.15), transparent 70%);
-  --gradient-cta: linear-gradient(120deg, oklch(0.72 0.1 350) 0%, oklch(0.68 0.09 312) 55%, oklch(0.66 0.1 265) 100%);
-  --gradient-accent: linear-gradient(135deg, oklch(0.76 0.09 262), oklch(0.8 0.09 345));
+  --gradient-cta: linear-gradient(120deg, oklch(0.7 0.12 350) 0%, oklch(0.65 0.13 312) 55%, oklch(0.6 0.14 268) 100%);
+  --gradient-accent: linear-gradient(135deg, oklch(0.74 0.11 262), oklch(0.78 0.11 345));
   --gradient-wash: radial-gradient(120% 60% at 50% 0%, oklch(0.85 0.05 345 / 0.28), transparent 65%);
   --gradient-dusk: linear-gradient(90deg, oklch(0.25 0.06 285 / 0.62) 0%, oklch(0.25 0.06 285 / 0.28) 55%, oklch(0.25 0.06 285 / 0.08) 100%), linear-gradient(180deg, transparent 60%, oklch(0.25 0.05 285 / 0.55) 100%);
   --gradient-dusk-closing: linear-gradient(180deg, oklch(0.25 0.06 285 / 0.72), oklch(0.3 0.08 295 / 0.6));
 
   --shadow-glow: 0 1px 2px -1px oklch(0.4 0.1 285 / 0.12), 0 8px 20px -14px oklch(0.45 0.12 285 / 0.35);
   --shadow-blue: 0 8px 20px -14px oklch(0.48 0.11 260 / 0.35);
-  --shadow-card: 0 1px 2px -1px oklch(0.4 0.08 285 / 0.06), 0 10px 28px -18px oklch(0.45 0.1 285 / 0.2);
+  --shadow-card: 0 1px 2px -1px oklch(0.4 0.08 285 / 0.05), 0 12px 32px -20px oklch(0.45 0.1 285 / 0.18);
   --shadow-soft: 0 1px 2px -1px oklch(0.4 0.08 285 / 0.06);
   --shadow-cta: 0 1px 0 0 oklch(1 0 0 / 0.14) inset, 0 10px 24px -14px oklch(0.45 0.12 285 / 0.6);
 
@@ -150,7 +150,7 @@
 
   --sidebar: var(--lavender);
   --sidebar-foreground: var(--ink);
-  --sidebar-primary: oklch(0.45 0.12 285);
+  --sidebar-primary: oklch(0.47 0.16 290);
   --sidebar-primary-foreground: oklch(0.99 0.005 300);
   --sidebar-accent: oklch(0.92 0.04 285);
   --sidebar-accent-foreground: var(--ink);
@@ -184,9 +184,9 @@
   --card-foreground: var(--ink);
   --muted-foreground: oklch(0.47 0.04 285);
   --border: oklch(0.5 0.08 285 / 16%);
-  --primary: oklch(0.45 0.12 285);
+  --primary: oklch(0.47 0.16 290);
   --primary-foreground: oklch(0.99 0.005 300);
-  --pink: oklch(0.54 0.16 350);
+  --pink: oklch(0.56 0.18 350);
   --violet: var(--brand-lilac-deep);
   --blue: oklch(0.5 0.15 255);
   color: var(--foreground);

@@ -155,12 +155,12 @@ function DesktopSidebar() {
               to={item.to}
               className={`group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] tracking-[-0.005em] transition-colors ${
                 active
-                  ? "bg-foreground/[0.05] font-medium text-foreground"
+                  ? "bg-primary/10 font-medium text-primary"
                   : "font-normal text-muted-foreground hover:bg-foreground/[0.03] hover:text-foreground"
               }`}
             >
               <Icon
-                className={`h-[15px] w-[15px] ${active ? "text-foreground" : "text-muted-foreground/80 group-hover:text-foreground"}`}
+                className={`h-[15px] w-[15px] ${active ? "text-primary" : "text-muted-foreground/80 group-hover:text-foreground"}`}
               />
               {item.label}
             </Link>
@@ -178,11 +178,13 @@ function DesktopSidebar() {
               to={item.to}
               className={`group relative flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-[13px] tracking-[-0.005em] transition-colors ${
                 active
-                  ? "bg-foreground/[0.05] font-medium text-foreground"
+                  ? "bg-primary/10 font-medium text-primary"
                   : "font-normal text-muted-foreground hover:bg-foreground/[0.03] hover:text-foreground"
               }`}
             >
-              <Icon className="h-[15px] w-[15px] text-muted-foreground/80 group-hover:text-foreground" />
+              <Icon
+                className={`h-[15px] w-[15px] ${active ? "text-primary" : "text-muted-foreground/80 group-hover:text-foreground"}`}
+              />
               {item.label}
             </Link>
           );
@@ -222,12 +224,12 @@ function MobileBottomNav() {
               <Link
                 to={item.to}
                 className={`flex flex-col items-center gap-0.5 rounded-xl px-2 py-2 text-[10px] font-medium transition-colors ${
-                  active ? "text-pink" : "text-muted-foreground hover:text-foreground"
+                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <span
                   className={`grid h-8 w-8 place-items-center rounded-lg transition-colors ${
-                    active ? "bg-pink/10 text-pink" : ""
+                    active ? "bg-primary/10 text-primary" : ""
                   }`}
                 >
                   <Icon className="h-4 w-4" />
@@ -272,11 +274,11 @@ function MobileDrawer({ onClose }: { onClose: () => void }) {
                 onClick={onClose}
                 className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[13px] transition-colors ${
                   active
-                    ? "bg-foreground/[0.04] font-medium text-foreground"
+                    ? "bg-primary/10 font-medium text-primary"
                     : "font-normal text-muted-foreground hover:bg-foreground/[0.025] hover:text-foreground"
                 }`}
               >
-                <Icon className={`h-[15px] w-[15px] ${active ? "text-pink" : ""}`} />
+                <Icon className={`h-[15px] w-[15px] ${active ? "text-primary" : ""}`} />
                 {item.label}
               </Link>
             );
