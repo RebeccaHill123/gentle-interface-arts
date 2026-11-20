@@ -236,8 +236,9 @@ function LandingPage() {
                 </h1>
 
                 <p className="mt-5 max-w-[30rem] text-[15.5px] leading-[1.6] text-muted-foreground md:text-[17px]">
-                  Personalised study plans, clear progress and AI coaching for your next
-                  professional exam.
+                  More than a study planner. Work through hundreds of SQE1 practice
+                  MCQs and test your pacing with timed mock exams — all inside a plan
+                  that adapts as you go.
                 </p>
 
                 <div ref={heroCtaRef} className="mt-7 flex flex-col items-stretch gap-3 md:flex-row md:items-center">
@@ -269,7 +270,8 @@ function LandingPage() {
                 </div>
 
                 <p className="mt-3 text-[13px] leading-snug text-muted-foreground/80">
-                  Choose your exam pathway. Your first plan takes under 2 minutes.
+                  Built for SQE1 candidates. Your first plan takes under 2 minutes.
+                  120 authored SQE1 questions today, with fresh questions generated for every session.
                 </p>
               </div>
 
@@ -468,8 +470,8 @@ function LandingPage() {
               <SqeFeatureCard
                 icon={<ClipboardCheck className="h-4 w-4" />}
                 title="Practice questions"
-                body="Topic-based practice questions and mini tests for your selected exam."
-                note="Full timed mocks coming soon"
+                body="Hundreds of SQE1 practice questions and mini tests, plus timed mock exams."
+                note="Timed mocks included"
               />
             </div>
             <InlineCta
@@ -987,9 +989,9 @@ const SHOWCASE_TABS: ShowcaseTab[] = [
     id: "practice",
     label: "Mocks",
     icon: <ClipboardCheck className="h-3.5 w-3.5" />,
-    eyebrow: "Practice (mocks coming soon)",
+    eyebrow: "Mocks & practice",
     title: "Test your knowledge under exam-style conditions.",
-    body: "Topic-based practice questions today. Full timed mocks are on the way.",
+    body: "Topic-based SQE1 practice questions, plus timed mock exams to test your pacing.",
     render: () => <PracticePanel />,
   },
   {
@@ -1339,7 +1341,7 @@ function PracticePanel() {
           <div className="mt-1 text-[12px] font-medium text-foreground">Question 7 of 20</div>
         </div>
         <div className="rounded-md border border-border/60 bg-card/70 px-2 py-0.5 text-[9px] font-medium text-muted-foreground">
-          Full mocks soon
+          Exam-style
         </div>
       </div>
       <div className="mt-3 rounded-xl border border-border/60 bg-card/40 p-3 text-[11px] leading-relaxed text-foreground">
