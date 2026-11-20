@@ -32,3 +32,6 @@ Source: uploaded LOVABLE_PROMPT_-_TENTRA_SMART_REVIEW_pasted.md
 ## Phase 6 — Polish & verify
 - [ ] End-to-end verification (Playwright): /smart-review, practice quiz with flags, tutor quiz card
 - [ ] Report operational vs incomplete elements
+
+## Landing page — visible MCQ/mock showcase
+- [x] Verify new side-by-side showcase (practice MCQ + timed mock) on desktop and phone

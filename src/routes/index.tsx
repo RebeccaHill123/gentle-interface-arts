@@ -288,6 +288,43 @@ function LandingPage() {
           </section>
         </div>
 
+          {/* PRACTICE MCQs + TIMED MOCKS — the visible proof of the hero claim */}
+          <section id="practice-mocks" className="mx-auto max-w-6xl px-4 pb-14 md:px-8 md:pb-20">
+            <div className="mb-7 flex flex-wrap items-end justify-between gap-x-8 gap-y-3 md:mb-9">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+                  SQE1 practice
+                </div>
+                <h2 className="mt-3 max-w-xl text-[1.55rem] font-normal leading-[1.12] tracking-[-0.02em] text-foreground md:text-[2.15rem]">
+                  Practice MCQs and timed mocks, not just a planner.
+                </h2>
+              </div>
+              <p className="max-w-[19rem] text-[13px] leading-[1.55] text-muted-foreground">
+                Five options, one answer and an explanation for every option — then sit timed
+                mocks to test your pacing.
+              </p>
+            </div>
+            <div className="grid gap-5 md:grid-cols-2 md:gap-7">
+              <div>
+                <div className="mb-2 flex items-center gap-1.5 text-[10.5px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  <ClipboardCheck className="h-3.5 w-3.5 text-primary" />
+                  Practice MCQ
+                </div>
+                <SqeMcqShowcase />
+              </div>
+              <div>
+                <div className="mb-2 flex items-center gap-1.5 text-[10.5px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+                  <Timer className="h-3.5 w-3.5 text-primary" />
+                  Timed mock
+                </div>
+                <TimedMockShowcase />
+              </div>
+            </div>
+            <div className="mt-3 text-right text-[11px] text-muted-foreground">
+              Illustrative examples — not real user data
+            </div>
+          </section>
+
           {/* WARM IVORY — feature themes */}
           <section className="mx-auto max-w-6xl px-4 py-16 md:px-8 md:py-28">
             <h2 className="max-w-xl text-[1.9rem] font-normal leading-[1.1] text-foreground md:text-[2.6rem]">
@@ -1367,6 +1404,163 @@ function PracticePanel() {
             {o.a && <CheckCircle2 className="h-3.5 w-3.5 text-pink" />}
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Landing showcase: practice MCQ + timed mock ---------- */
+
+function SqeMcqShowcase() {
+  const options: { k: string; t: string; correct?: boolean }[] = [
+    { k: "A", t: "In the firm's office account, because it is money for third-party costs" },
+    { k: "B", t: "In a bank account in the client's own name" },
+    { k: "C", t: "In the firm's client account", correct: true },
+    { k: "D", t: "Returned to the client until the disbursements fall due" },
+    { k: "E", t: "In the firm's office account until the disbursements are paid" },
+  ];
+  return (
+    <div
+      className="theme-day pointer-events-none relative w-full select-none"
+      aria-label="Example SQE1 practice question with the correct answer and its explanation shown"
+    >
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/70 shadow-card">
+        <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/40 px-4 py-2.5">
+          <span className="text-[10.5px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Practice · Solicitors' accounts
+          </span>
+          <span className="shrink-0 rounded-md border border-border/60 bg-background/70 px-1.5 py-0.5 text-[9.5px] font-medium text-muted-foreground">
+            Q3 of 10
+          </span>
+        </div>
+        <div className="p-4 md:p-5">
+          <p className="text-[13px] leading-[1.6] text-foreground md:text-[13.5px]">
+            A solicitor receives £4,000 from a client to cover anticipated disbursements of
+            £2,500 on a house purchase. Completion is eight days away. Where must the money be
+            held?
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {options.map((o) => (
+              <li
+                key={o.k}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-[11.5px] leading-snug ${
+                  o.correct
+                    ? "border-primary/35 bg-primary/[0.06] text-foreground"
+                    : "border-border/60 bg-background/40 text-muted-foreground"
+                }`}
+              >
+                <span
+                  className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[9.5px] font-medium ${
+                    o.correct
+                      ? "border-primary/40 bg-primary text-primary-foreground"
+                      : "border-border/70 text-muted-foreground"
+                  }`}
+                >
+                  {o.k}
+                </span>
+                <span className="min-w-0 flex-1">{o.t}</span>
+                {o.correct ? <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" /> : null}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 rounded-xl border border-primary/20 bg-primary/[0.05] p-3">
+            <div className="text-[9.5px] font-semibold uppercase tracking-[0.18em] text-primary">
+              Why
+            </div>
+            <p className="mt-1.5 text-[11.5px] leading-[1.55] text-foreground/85">
+              Money received for disbursements that have not yet been billed is client money, so
+              it must go promptly into a client account and be kept separate from the firm's own
+              money. It can only be moved out once the firm has billed the client or the
+              disbursement falls due.
+            </p>
+            <div className="mt-2 text-[10.5px] text-muted-foreground">
+              SRA Accounts Rules 2019, rules 2.1(d), 2.3 and 4.1
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimedMockShowcase() {
+  const answered = [true, true, true, true, true, true, false, false, false, false];
+  const options: { k: string; t: string; selected?: boolean }[] = [
+    { k: "A", t: "Yes — the offer could not be withdrawn once sent" },
+    { k: "B", t: "No — the revocation reached the buyer first", selected: true },
+    { k: "C", t: "Yes — acceptance was sent within a reasonable time" },
+    { k: "D", t: "No — the offer was not made by deed" },
+    { k: "E", t: "Yes — the offer was still open for reply" },
+  ];
+  return (
+    <div
+      className="theme-day pointer-events-none relative w-full select-none"
+      aria-label="Example timed SQE1 mock exam screen with countdown and question progress"
+    >
+      <div className="overflow-hidden rounded-2xl border border-border/60 bg-card/70 shadow-card">
+        <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/40 px-4 py-2.5">
+          <span className="text-[10.5px] font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            FLK1 mock · 10 questions
+          </span>
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-primary/25 bg-primary/[0.07] px-2 py-0.5 text-[11px] font-medium tabular-nums text-primary">
+            <Timer className="h-3 w-3" />
+            00:14:32
+          </span>
+        </div>
+        <div className="p-4 md:p-5">
+          <div className="flex items-center justify-between text-[10.5px] text-muted-foreground">
+            <span className="font-medium text-foreground">Question 7 of 10</span>
+            <span>6 answered</span>
+          </div>
+          <div className="mt-2 flex gap-1">
+            {answered.map((a, i) => (
+              <span
+                key={i}
+                className={`h-1.5 flex-1 rounded-full ${
+                  i === 6 ? "bg-primary/40" : a ? "bg-primary" : "bg-foreground/10"
+                }`}
+              />
+            ))}
+          </div>
+          <p className="mt-3 text-[13px] leading-[1.6] text-foreground md:text-[13.5px]">
+            A seller emails an offer on Monday. On Wednesday the seller emails &ldquo;withdraw my
+            offer&rdquo;. On Thursday the buyer emails acceptance. Is there a contract?
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {options.map((o) => (
+              <li
+                key={o.k}
+                className={`flex items-center gap-2.5 rounded-lg border px-3 py-2 text-[11.5px] leading-snug ${
+                  o.selected
+                    ? "border-primary/35 bg-primary/[0.06] text-foreground"
+                    : "border-border/60 bg-background/40 text-muted-foreground"
+                }`}
+              >
+                <span
+                  className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border text-[9.5px] font-medium ${
+                    o.selected
+                      ? "border-primary/40 bg-primary text-primary-foreground"
+                      : "border-border/70 text-muted-foreground"
+                  }`}
+                >
+                  {o.k}
+                </span>
+                <span className="min-w-0 flex-1">{o.t}</span>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-[10.5px] text-muted-foreground">
+              18 min · 1.8 min per question
+            </span>
+            <span
+              className="rounded-full px-3.5 py-1.5 text-[11.5px] font-medium text-primary-foreground"
+              style={{ background: "var(--gradient-cta)" }}
+            >
+              Submit mock
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
