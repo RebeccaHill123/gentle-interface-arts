@@ -20,6 +20,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as FlashcardsRouteImport } from './routes/flashcards'
 import { Route as FocusRouteImport } from './routes/focus'
 import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
+import { Route as LaunchVideoRouteImport } from './routes/launch-video'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as MocksRouteImport } from './routes/mocks'
 import { Route as NewYorkBarRouteImport } from './routes/new-york-bar'
@@ -105,6 +106,11 @@ const FocusRoute = FocusRouteImport.update({
 const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
   id: '/forgot-password',
   path: '/forgot-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LaunchVideoRoute = LaunchVideoRouteImport.update({
+  id: '/launch-video',
+  path: '/launch-video',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -279,6 +285,7 @@ export interface FileRoutesByFullPath {
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/launch-video': typeof LaunchVideoRoute
   '/mcp': typeof McpRoute
   '/mocks': typeof MocksRoute
   '/new-york-bar': typeof NewYorkBarRoute
@@ -322,6 +329,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/flashcards': typeof FlashcardsRoute
   '/forgot-password': typeof ForgotPasswordRoute
+  '/launch-video': typeof LaunchVideoRoute
   '/mcp': typeof McpRoute
   '/mocks': typeof MocksRoute
   '/new-york-bar': typeof NewYorkBarRoute
@@ -367,6 +375,7 @@ export interface FileRoutesById {
   '/flashcards': typeof FlashcardsRoute
   '/focus': typeof FocusRouteWithChildren
   '/forgot-password': typeof ForgotPasswordRoute
+  '/launch-video': typeof LaunchVideoRoute
   '/mcp': typeof McpRoute
   '/mocks': typeof MocksRoute
   '/new-york-bar': typeof NewYorkBarRoute
@@ -413,6 +422,7 @@ export interface FileRouteTypes {
     | '/flashcards'
     | '/focus'
     | '/forgot-password'
+    | '/launch-video'
     | '/mcp'
     | '/mocks'
     | '/new-york-bar'
@@ -456,6 +466,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/flashcards'
     | '/forgot-password'
+    | '/launch-video'
     | '/mcp'
     | '/mocks'
     | '/new-york-bar'
@@ -500,6 +511,7 @@ export interface FileRouteTypes {
     | '/flashcards'
     | '/focus'
     | '/forgot-password'
+    | '/launch-video'
     | '/mcp'
     | '/mocks'
     | '/new-york-bar'
@@ -545,6 +557,7 @@ export interface RootRouteChildren {
   FlashcardsRoute: typeof FlashcardsRoute
   FocusRoute: typeof FocusRouteWithChildren
   ForgotPasswordRoute: typeof ForgotPasswordRoute
+  LaunchVideoRoute: typeof LaunchVideoRoute
   McpRoute: typeof McpRoute
   MocksRoute: typeof MocksRoute
   NewYorkBarRoute: typeof NewYorkBarRoute
@@ -652,6 +665,13 @@ declare module '@tanstack/react-router' {
       path: '/forgot-password'
       fullPath: '/forgot-password'
       preLoaderRoute: typeof ForgotPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/launch-video': {
+      id: '/launch-video'
+      path: '/launch-video'
+      fullPath: '/launch-video'
+      preLoaderRoute: typeof LaunchVideoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -900,6 +920,7 @@ const rootRouteChildren: RootRouteChildren = {
   FlashcardsRoute: FlashcardsRoute,
   FocusRoute: FocusRouteWithChildren,
   ForgotPasswordRoute: ForgotPasswordRoute,
+  LaunchVideoRoute: LaunchVideoRoute,
   McpRoute: McpRoute,
   MocksRoute: MocksRoute,
   NewYorkBarRoute: NewYorkBarRoute,
