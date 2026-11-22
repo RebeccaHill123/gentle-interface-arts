@@ -35,3 +35,7 @@ Source: uploaded LOVABLE_PROMPT_-_TENTRA_SMART_REVIEW_pasted.md
 
 ## Landing page — visible MCQ/mock showcase
 - [x] Verify new side-by-side showcase (practice MCQ + timed mock) on desktop and phone
+
+## Premium vertical launch video — November 22
+- [ ] Create an isolated autoplay preview using real Tentra UI and supported practice-to-plan recalibration.
+- [ ] Export a new 25–30 second vertical MP4 and verify the preview and rendered result; leave production workflows unchanged.
