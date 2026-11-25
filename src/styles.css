@@ -18,7 +18,6 @@
   --color-periwinkle: var(--brand-blue);
   --color-lavender: var(--lavender);
   --color-sky: var(--sky);
-  --color-trustpilot: var(--trustpilot);
 
   --radius-sm: calc(var(--radius) - 6px);
   --radius-md: calc(var(--radius) - 2px);
@@ -142,9 +141,6 @@
 
   --success: oklch(0.55 0.11 155);
   --warning: oklch(0.68 0.13 70);
-
-  /* Trustpilot brand green — used only for the review stars and rating. */
-  --trustpilot: oklch(0.62 0.16 152);
 
   --chart-1: var(--brand-lilac-deep);
   --chart-2: var(--brand-blue-deep);

@@ -671,67 +671,19 @@ function LandingPage() {
             </div>
           </section>
 
-          {/* TRUSTPILOT REVIEWS */}
-          <section className="mx-auto max-w-5xl px-4 pb-16 md:px-8 md:pb-24">
-            <div className="rounded-[1.25rem] border border-border/60 bg-card/45 p-5 backdrop-blur md:rounded-[1.5rem] md:p-8">
-              <div className="flex flex-col items-start gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <div className="text-[10.5px] font-semibold uppercase tracking-[0.24em] text-muted-foreground">
-                    Reviews
-                  </div>
-                  <h2 className="mt-2 text-[1.35rem] font-light tracking-[-0.02em] text-foreground md:text-[1.65rem]">
-                    Rated <span className="font-normal text-trustpilot">Excellent</span> on
-                    Trustpilot
+          {/* SQE STUDY BENEFITS */}
+          <section aria-label="SQE study support" className="mx-auto max-w-5xl px-4 pb-12 md:px-8 md:pb-16">
+            <div className="grid gap-6 border-t border-border/60 pt-8 md:grid-cols-3 md:gap-8">
+              {STUDY_BENEFITS.map((benefit) => (
+                <div key={benefit.headline}>
+                  <h2 className="text-[15px] font-medium leading-relaxed text-foreground">
+                    {benefit.headline}
                   </h2>
+                  <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+                    {benefit.body}
+                  </p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <TrustpilotStars />
-                  <span className="text-[13px] text-muted-foreground">4.8 out of 5</span>
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-3 md:mt-8 md:gap-4 lg:grid-cols-3">
-                {TRUSTPILOT_REVIEWS.map((r) => (
-                  <figure
-                    key={r.name}
-                    className="flex flex-col rounded-xl border border-border/60 bg-background/45 p-4"
-                  >
-                    <TrustpilotStars size="sm" />
-                    <blockquote className="mt-3 text-[13.5px] font-medium leading-[1.5] tracking-[-0.01em] text-foreground">
-                      “{r.headline}”
-                    </blockquote>
-                    <p className="mt-2 flex-1 text-[12.5px] leading-[1.55] text-muted-foreground">
-                      {r.body}
-                    </p>
-                    <figcaption className="mt-4 flex items-center gap-2.5 border-t border-border/50 pt-3">
-                      <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-pink/10 text-[11px] font-medium text-pink">
-                        {r.initials}
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block text-[12.5px] font-medium text-foreground">
-                          {r.name}
-                        </span>
-                        <span className="block text-[11px] text-muted-foreground">{r.role}</span>
-                      </span>
-                    </figcaption>
-                  </figure>
-                ))}
-              </div>
-
-              <div className="mt-6 flex flex-col items-start gap-2 md:mt-8 md:flex-row md:items-center md:justify-between">
-                <a
-                  href="https://www.trustpilot.com/review/tentraapp.com"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-[13px] font-medium text-trustpilot transition-opacity hover:opacity-80"
-                >
-                  Read all reviews on Trustpilot
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </a>
-                <span className="text-[11px] text-muted-foreground">
-                  Illustrative examples — not real user data
-                </span>
-              </div>
+              ))}
             </div>
           </section>
 
@@ -1623,51 +1575,19 @@ function AnalyticsPanel() {
   );
 }
 
-/* ---------- Trustpilot reviews (drafted copy — swap for live reviews) ---------- */
+/* ---------- Editorial study benefits, not customer testimonials ---------- */
 
-const TRUSTPILOT_REVIEWS = [
+const STUDY_BENEFITS = [
   {
-    headline: "Stopped the endless second-guessing every morning",
-    body: "Before Tentra, I spent the first 45 minutes of every evening trying to work out which SQE1 subject to touch next. Having a daily list that accounts for what I missed the day before has taken the panic out of balancing FLK1 and FLK2 around a full-time training contract.",
-    name: "Maya P.",
-    initials: "MP",
-    role: "SQE1 candidate, London",
+    headline: "Less second-guessing. More studying.",
+    body: "A daily plan brings FLK1 and FLK2 revision into focus, around your exam date and the time you have.",
   },
   {
-    headline: "The explanations are actually thorough",
-    body: "Most apps give you one line on why an option is wrong. Tentra's questions cite the specific rules and principles, so you learn the law rather than memorising the answer stem. The timed 10-question mini-mocks are spot-on for pacing.",
-    name: "Callum T.",
-    initials: "CT",
-    role: "Non-law graduate sitting SQE1",
+    headline: "Understand the answer, not just the letter.",
+    body: "Practise SQE1 questions with explanations and legal references, then work on your pacing with timed practice.",
   },
   {
-    headline: "Adapts when you're genuinely struggling",
-    body: "I scored poorly on shareholder remedies and my plan for the following week automatically recalibrated to fit in targeted review without blowing up my exam timeline. Feels like having a tutor keeping you honest.",
-    name: "Aisha K.",
-    initials: "AK",
-    role: "SQE1 January sitting",
+    headline: "Give your weak spots some attention.",
+    body: "Use Smart Review to revisit challenging topics and recalibrate your plan as your preparation progresses.",
   },
 ];
-
-function TrustpilotStars({ size = "md" }: { size?: "sm" | "md" }) {
-  const box = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4";
-  const glyph = size === "sm" ? "h-2 w-2" : "h-2.5 w-2.5";
-  return (
-    <span
-      role="img"
-      aria-label="5 out of 5 stars on Trustpilot"
-      className="inline-flex items-center gap-0.5"
-    >
-      {Array.from({ length: 5 }).map((_, i) => (
-        <span
-          key={i}
-          className={`grid ${box} place-items-center rounded-[3px] bg-trustpilot text-ivory`}
-        >
-          <svg viewBox="0 0 24 24" className={`${glyph} fill-current`} aria-hidden="true">
-            <path d="M12 2.6l2.85 6.05 6.65.9-4.83 4.6 1.2 6.6L12 17.5l-5.87 3.25 1.2-6.6-4.83-4.6 6.65-.9z" />
-          </svg>
-        </span>
-      ))}
-    </span>
-  );
-}
